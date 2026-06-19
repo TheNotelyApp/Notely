@@ -7,7 +7,15 @@ const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const projectRoot = app.getAppPath();
 const notesRoot = process.env.NOTES_ROOT || path.join(projectRoot, "notes");
 const appDataDir = path.join(notesRoot, ".notes-app");
+const projectsRoot = path.join(notesRoot, "projects");
+const projectsRegistryPath = path.join(appDataDir, "projects.json");
 const versionsRoot = path.join(projectRoot, ".versions");
+
+const DEFAULT_PROJECT = {
+  slug: "default",
+  name: "Default",
+  rootPath: notesRoot
+};
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
@@ -37,6 +45,99 @@ function nowStamp() {
 
 function hashContent(content) {
   return crypto.createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+function filePathWithin(rootDir, targetPath) {
+  const normalizedRoot = path.resolve(rootDir).toLowerCase();
+  const normalizedTarget = path.resolve(targetPath).toLowerCase();
+  return normalizedTarget.startsWith(normalizedRoot);
+}
+
+function makeProjectSlug(name, projects) {
+  const base = slugify(String(name || "project"));
+  const existing = new Set((projects || []).map((item) => item.slug));
+  let candidate = base;
+  let index = 2;
+
+  while (existing.has(candidate)) {
+    candidate = `${base}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
+function normalizeProjectEntry(entry) {
+  const slug = slugify(entry?.slug || entry?.name || "project");
+  const name = String(entry?.name || slug || "Project").trim() || "Project";
+  const rootPath = path.resolve(entry?.rootPath || path.join(projectsRoot, slug));
+  return { slug, name, rootPath };
+}
+
+function loadProjectRegistry() {
+  ensureDir(appDataDir);
+  ensureDir(projectsRoot);
+
+  let state = null;
+  if (fs.existsSync(projectsRegistryPath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(projectsRegistryPath, "utf8"));
+      const projects = Array.isArray(parsed?.projects)
+        ? parsed.projects.map(normalizeProjectEntry).filter((item) => item.slug)
+        : [];
+      state = {
+        projects,
+        activeProjectSlug: parsed?.activeProjectSlug || ""
+      };
+    } catch {
+      state = null;
+    }
+  }
+
+  if (!state) {
+    state = {
+      projects: [{ ...DEFAULT_PROJECT }],
+      activeProjectSlug: DEFAULT_PROJECT.slug
+    };
+  }
+
+  if (!state.projects.some((item) => item.slug === DEFAULT_PROJECT.slug)) {
+    state.projects.unshift({ ...DEFAULT_PROJECT });
+  }
+
+  if (!state.activeProjectSlug || !state.projects.some((item) => item.slug === state.activeProjectSlug)) {
+    state.activeProjectSlug = DEFAULT_PROJECT.slug;
+  }
+
+  for (const item of state.projects) {
+    ensureDir(item.rootPath);
+  }
+
+  fs.writeFileSync(projectsRegistryPath, JSON.stringify(state, null, 2), "utf8");
+  return state;
+}
+
+function listProjectsState() {
+  const activeProject = projectRegistry.projects.find((item) => item.slug === projectRegistry.activeProjectSlug)
+    || projectRegistry.projects[0]
+    || { ...DEFAULT_PROJECT };
+  return {
+    projects: projectRegistry.projects.map((item) => ({
+      slug: item.slug,
+      name: item.name,
+      rootPath: item.rootPath
+    })),
+    activeProject: {
+      slug: activeProject.slug,
+      name: activeProject.name,
+      rootPath: activeProject.rootPath
+    }
+  };
+}
+
+function getActiveProjectRoot() {
+  const state = listProjectsState();
+  return state.activeProject.rootPath;
 }
 
 function parseDocument(content, filePath) {
@@ -84,11 +185,12 @@ function buildDocumentContent(document) {
   return parts.join("\n\n") + "\n";
 }
 
-function listMarkdownFiles() {
-  return fs.readdirSync(notesRoot, { withFileTypes: true })
+function listMarkdownFiles(rootDir) {
+  ensureDir(rootDir);
+  return fs.readdirSync(rootDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md"))
     .map((entry) => {
-      const filePath = path.join(notesRoot, entry.name);
+      const filePath = path.join(rootDir, entry.name);
       const content = fs.readFileSync(filePath, "utf8");
       const parsed = parseDocument(content, filePath);
       const stat = fs.statSync(filePath);
@@ -102,6 +204,33 @@ function listMarkdownFiles() {
       };
     })
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function createDocumentInProject(rootDir, payload) {
+  const requestedTitle = String(payload?.title || "").trim();
+  if (!requestedTitle) {
+    throw new Error("Note title is required.");
+  }
+
+  const safeBaseName = slugify(requestedTitle);
+  let fileName = `${safeBaseName}.md`;
+  let filePath = path.join(rootDir, fileName);
+  let counter = 2;
+
+  while (fs.existsSync(filePath)) {
+    fileName = `${safeBaseName}-${counter}.md`;
+    filePath = path.join(rootDir, fileName);
+    counter += 1;
+  }
+
+  const initialContent = buildDocumentContent({
+    header: `Title: ${requestedTitle}`,
+    rawNotes: "",
+    cleansed: ""
+  });
+
+  fs.writeFileSync(filePath, initialContent, "utf8");
+  return parseDocument(initialContent, filePath);
 }
 
 class MetadataStore {
@@ -158,9 +287,25 @@ class MetadataStore {
       .filter((entry) => entry.filePath === filePath)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+
+  deleteHistoryVersion(filePath, versionPath) {
+    if (this.db) {
+      this.db.prepare(`
+        DELETE FROM history_entries
+        WHERE file_path = ? AND version_path = ?
+      `).run(filePath, versionPath);
+      return;
+    }
+
+    this.state.history = this.state.history.filter(
+      (entry) => !(entry.filePath === filePath && entry.versionPath === versionPath)
+    );
+    fs.writeFileSync(this.jsonPath, JSON.stringify(this.state, null, 2));
+  }
 }
 
 let metadataStore;
+let projectRegistry;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -194,6 +339,7 @@ app.whenReady().then(() => {
   ensureDir(notesRoot);
   ensureDir(versionsRoot);
   metadataStore = new MetadataStore();
+  projectRegistry = loadProjectRegistry();
   createWindow();
 
   app.on("activate", () => {
@@ -205,11 +351,47 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-ipcMain.handle("documents:list", () => listMarkdownFiles());
+ipcMain.handle("projects:list", () => listProjectsState());
+
+ipcMain.handle("projects:create", (_event, payload) => {
+  const name = String(payload?.name || "").trim();
+  if (!name) {
+    throw new Error("Project name is required.");
+  }
+
+  const slug = makeProjectSlug(name, projectRegistry.projects);
+  const rootPath = path.join(projectsRoot, slug);
+  ensureDir(rootPath);
+
+  projectRegistry.projects.push({ slug, name, rootPath });
+  projectRegistry.activeProjectSlug = slug;
+  fs.writeFileSync(projectsRegistryPath, JSON.stringify(projectRegistry, null, 2), "utf8");
+
+  return listProjectsState();
+});
+
+ipcMain.handle("projects:set-active", (_event, payload) => {
+  const slug = String(payload?.slug || "").trim();
+  const exists = projectRegistry.projects.some((item) => item.slug === slug);
+  if (!exists) {
+    throw new Error("Project not found.");
+  }
+
+  projectRegistry.activeProjectSlug = slug;
+  fs.writeFileSync(projectsRegistryPath, JSON.stringify(projectRegistry, null, 2), "utf8");
+  return listProjectsState();
+});
+
+ipcMain.handle("documents:list", () => listMarkdownFiles(getActiveProjectRoot()));
+
+ipcMain.handle("documents:create", (_event, payload) => {
+  const rootDir = getActiveProjectRoot();
+  return createDocumentInProject(rootDir, payload);
+});
 
 ipcMain.handle("documents:read", (_event, filePath) => {
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(notesRoot) || path.extname(resolved).toLowerCase() !== ".md") {
+  if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
     throw new Error("Invalid document path.");
   }
   return parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
@@ -217,7 +399,7 @@ ipcMain.handle("documents:read", (_event, filePath) => {
 
 ipcMain.handle("documents:save", (_event, payload) => {
   const resolved = path.resolve(payload.filePath);
-  if (!resolved.startsWith(notesRoot) || path.extname(resolved).toLowerCase() !== ".md") {
+  if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
     throw new Error("Invalid document path.");
   }
 
@@ -252,7 +434,7 @@ ipcMain.handle("documents:history", (_event, filePath) => {
 ipcMain.handle("documents:restore", (_event, payload) => {
   const resolved = path.resolve(payload.filePath);
   const versionPath = path.resolve(payload.versionPath);
-  if (!resolved.startsWith(notesRoot) || !versionPath.startsWith(versionsRoot)) {
+  if (!filePathWithin(notesRoot, resolved) || !filePathWithin(versionsRoot, versionPath)) {
     throw new Error("Invalid restore path.");
   }
 
@@ -278,7 +460,7 @@ ipcMain.handle("documents:restore", (_event, payload) => {
 
 ipcMain.handle("documents:open-in-editor", async (_event, filePath) => {
   const resolved = path.resolve(filePath || "");
-  if (!resolved.startsWith(notesRoot) || path.extname(resolved).toLowerCase() !== ".md") {
+  if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
     throw new Error("Invalid document path.");
   }
   if (!fs.existsSync(resolved)) {
@@ -296,6 +478,41 @@ ipcMain.handle("documents:open-in-editor", async (_event, filePath) => {
     }
     return { openedWith: "default" };
   }
+});
+
+ipcMain.handle("documents:read-version", (_event, payload) => {
+  const resolvedFilePath = path.resolve(payload?.filePath || "");
+  const resolvedVersionPath = path.resolve(payload?.versionPath || "");
+
+  if (!filePathWithin(notesRoot, resolvedFilePath) || path.extname(resolvedFilePath).toLowerCase() !== ".md") {
+    throw new Error("Invalid document path.");
+  }
+  if (!filePathWithin(versionsRoot, resolvedVersionPath) || path.extname(resolvedVersionPath).toLowerCase() !== ".md") {
+    throw new Error("Invalid version path.");
+  }
+  if (!fs.existsSync(resolvedVersionPath)) {
+    throw new Error("Version file does not exist.");
+  }
+
+  return fs.readFileSync(resolvedVersionPath, "utf8");
+});
+
+ipcMain.handle("documents:delete-version", (_event, payload) => {
+  const resolvedFilePath = path.resolve(payload?.filePath || "");
+  const resolvedVersionPath = path.resolve(payload?.versionPath || "");
+
+  if (!filePathWithin(notesRoot, resolvedFilePath) || path.extname(resolvedFilePath).toLowerCase() !== ".md") {
+    throw new Error("Invalid document path.");
+  }
+  if (!filePathWithin(versionsRoot, resolvedVersionPath) || path.extname(resolvedVersionPath).toLowerCase() !== ".md") {
+    throw new Error("Invalid version path.");
+  }
+
+  if (fs.existsSync(resolvedVersionPath)) {
+    fs.unlinkSync(resolvedVersionPath);
+  }
+  metadataStore.deleteHistoryVersion(resolvedFilePath, resolvedVersionPath);
+  return true;
 });
 
 ipcMain.handle("images:save", (_event, payload) => {

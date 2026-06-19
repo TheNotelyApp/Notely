@@ -16,6 +16,38 @@ export async function listDocuments() {
   return api.listDocuments();
 }
 
+export async function createDocument(title) {
+  const api = getNotesApi();
+  if (typeof api.createDocument !== "function") {
+    throw new Error("Create note action unavailable. Please restart the app.");
+  }
+  return api.createDocument({ title });
+}
+
+export async function listProjects() {
+  const api = getNotesApi();
+  if (typeof api.listProjects !== "function") {
+    throw new Error("Project list action unavailable. Please restart the app.");
+  }
+  return api.listProjects();
+}
+
+export async function createProject(name) {
+  const api = getNotesApi();
+  if (typeof api.createProject !== "function") {
+    throw new Error("Create project action unavailable. Please restart the app.");
+  }
+  return api.createProject({ name });
+}
+
+export async function setActiveProject(slug) {
+  const api = getNotesApi();
+  if (typeof api.setActiveProject !== "function") {
+    throw new Error("Switch project action unavailable. Please restart the app.");
+  }
+  return api.setActiveProject({ slug });
+}
+
 export async function readDocument(filePath) {
   const api = getNotesApi();
   return api.readDocument(filePath);
@@ -34,6 +66,22 @@ export async function getHistory(filePath) {
 export async function restoreHistory(payload) {
   const api = getNotesApi();
   return api.restoreHistory(payload);
+}
+
+export async function readVersion(filePath, versionPath) {
+  const api = getNotesApi();
+  if (typeof api.readVersion !== "function") {
+    throw new Error("Read version action unavailable. Please restart the app.");
+  }
+  return api.readVersion({ filePath, versionPath });
+}
+
+export async function deleteVersion(filePath, versionPath) {
+  const api = getNotesApi();
+  if (typeof api.deleteVersion !== "function") {
+    throw new Error("Delete version action unavailable. Please restart the app.");
+  }
+  return api.deleteVersion({ filePath, versionPath });
 }
 
 export async function openInEditor(filePath) {

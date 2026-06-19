@@ -12,11 +12,30 @@ import {
   Table2,
   ImagePlus,
   Zap,
+  FileText,
 } from "lucide-react";
 import { applySnippet, createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertImageFromFile } from "../services/imageService";
-import { listImages } from "../services/electronService";
+import { listDocuments, listImages } from "../services/electronService";
 import { applyMarkdownQuickFix, getIssueFixType } from "../utils/markdownQuickFix";
+
+function toRelativeDocPath(fromFilePath, toFilePath) {
+  if (!fromFilePath || !toFilePath) return "";
+  const fromParts = fromFilePath.split(/[\\/]+/);
+  const toParts = toFilePath.split(/[\\/]+/);
+
+  fromParts.pop();
+  while (fromParts.length && toParts.length && fromParts[0].toLowerCase() === toParts[0].toLowerCase()) {
+    fromParts.shift();
+    toParts.shift();
+  }
+
+  const up = Array.from({ length: fromParts.length }, () => "..");
+  const relative = [...up, ...toParts].join("/");
+  if (!relative) return "./";
+  if (relative.startsWith(".")) return relative;
+  return `./${relative}`;
+}
 
 function isValidHttpUrl(value) {
   const trimmed = (value || "").trim();
@@ -44,11 +63,13 @@ export function MarkdownToolbar({
   const mermaidPopoverRef = useRef(null);
   const imageLinkPopoverRef = useRef(null);
   const webLinkPopoverRef = useRef(null);
+  const docLinkPopoverRef = useRef(null);
   const tablePopoverRef = useRef(null);
   const validationPopoverRef = useRef(null);
   const [showMermaidBuilder, setShowMermaidBuilder] = useState(false);
   const [showImageLinker, setShowImageLinker] = useState(false);
   const [showWebLinker, setShowWebLinker] = useState(false);
+  const [showDocLinker, setShowDocLinker] = useState(false);
   const [showTableBuilder, setShowTableBuilder] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
   const [availableImages, setAvailableImages] = useState([]);
@@ -60,6 +81,11 @@ export function MarkdownToolbar({
   const [webLinkText, setWebLinkText] = useState("");
   const [webLinkUrl, setWebLinkUrl] = useState("");
   const [webLinkError, setWebLinkError] = useState("");
+  const [docSearch, setDocSearch] = useState("");
+  const [docLinkText, setDocLinkText] = useState("");
+  const [availableDocs, setAvailableDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docsError, setDocsError] = useState("");
   const [chartType, setChartType] = useState("flowchart");
   const [flowDirection, setFlowDirection] = useState("LR");
   const [flowStart, setFlowStart] = useState("Start");
@@ -72,7 +98,14 @@ export function MarkdownToolbar({
   const [tableColumns, setTableColumns] = useState(3);
 
   useEffect(() => {
-    if (!showMermaidBuilder && !showImageLinker && !showWebLinker && !showTableBuilder && !showValidationPanel) {
+    if (
+      !showMermaidBuilder &&
+      !showImageLinker &&
+      !showWebLinker &&
+      !showDocLinker &&
+      !showTableBuilder &&
+      !showValidationPanel
+    ) {
       return undefined;
     }
 
@@ -80,12 +113,21 @@ export function MarkdownToolbar({
       const insideMermaid = mermaidPopoverRef.current?.contains(event.target);
       const insideImageLinker = imageLinkPopoverRef.current?.contains(event.target);
       const insideWebLinker = webLinkPopoverRef.current?.contains(event.target);
+      const insideDocLinker = docLinkPopoverRef.current?.contains(event.target);
       const insideTableBuilder = tablePopoverRef.current?.contains(event.target);
       const insideValidation = validationPopoverRef.current?.contains(event.target);
-      if (!insideMermaid && !insideImageLinker && !insideWebLinker && !insideTableBuilder && !insideValidation) {
+      if (
+        !insideMermaid &&
+        !insideImageLinker &&
+        !insideWebLinker &&
+        !insideDocLinker &&
+        !insideTableBuilder &&
+        !insideValidation
+      ) {
         setShowMermaidBuilder(false);
         setShowImageLinker(false);
         setShowWebLinker(false);
+        setShowDocLinker(false);
         setShowTableBuilder(false);
         setShowValidationPanel(false);
       }
@@ -96,6 +138,7 @@ export function MarkdownToolbar({
         setShowMermaidBuilder(false);
         setShowImageLinker(false);
         setShowWebLinker(false);
+        setShowDocLinker(false);
         setShowTableBuilder(false);
         setShowValidationPanel(false);
       }
@@ -108,7 +151,7 @@ export function MarkdownToolbar({
       document.removeEventListener("mousedown", handleGlobalClick);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [showImageLinker, showMermaidBuilder, showTableBuilder, showValidationPanel, showWebLinker]);
+  }, [showDocLinker, showImageLinker, showMermaidBuilder, showTableBuilder, showValidationPanel, showWebLinker]);
 
   const handleImageSelect = async (event) => {
     console.log("Image file selected:", event.target.files);
@@ -146,6 +189,14 @@ export function MarkdownToolbar({
     if (!search) return true;
     return pathValue.toLowerCase().includes(search);
   });
+  const filteredDocs = availableDocs.filter((entry) => {
+    const query = docSearch.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      (entry.title || "").toLowerCase().includes(query) ||
+      (entry.fileName || "").toLowerCase().includes(query)
+    );
+  });
   const normalizedTableRows = Math.min(Math.max(Number(tableRows) || 1, 1), 20);
   const normalizedTableColumns = Math.min(Math.max(Number(tableColumns) || 1, 1), 20);
   const hasValidImageUrl = isValidHttpUrl(imageUrl);
@@ -173,6 +224,7 @@ export function MarkdownToolbar({
     setShowMermaidBuilder(false);
     setShowImageLinker(false);
     setShowWebLinker(false);
+    setShowDocLinker(false);
     setShowTableBuilder(false);
 
     if (validationStatus === "checking") {
@@ -256,7 +308,48 @@ export function MarkdownToolbar({
     setShowWebLinker(shouldOpen);
     setShowMermaidBuilder(false);
     setShowImageLinker(false);
+    setShowDocLinker(false);
     setWebLinkError("");
+  }
+
+  async function openDocLinker() {
+    const shouldOpen = !showDocLinker;
+    setShowDocLinker(shouldOpen);
+    setShowMermaidBuilder(false);
+    setShowImageLinker(false);
+    setShowWebLinker(false);
+    setShowTableBuilder(false);
+    setShowValidationPanel(false);
+    setDocsError("");
+
+    if (!shouldOpen) return;
+
+    setDocsLoading(true);
+    try {
+      const docs = await listDocuments();
+      setAvailableDocs((docs || []).filter((entry) => entry.filePath !== basePath));
+    } catch (error) {
+      setAvailableDocs([]);
+      setDocsError(error?.message || "Unable to load documents.");
+    } finally {
+      setDocsLoading(false);
+    }
+  }
+
+  function insertDocLink(targetDoc) {
+    const filePath = targetDoc?.filePath;
+    const text = (docLinkText || "").trim() || targetDoc?.title || targetDoc?.fileName || "Linked note";
+    const relativePath = toRelativeDocPath(basePath, filePath);
+    if (!relativePath) {
+      setDocsError("Unable to build a relative link for that file.");
+      return;
+    }
+
+    insertTextAtCursor(value, onChange, `[${text}](${relativePath})`, textareaRef);
+    setShowDocLinker(false);
+    setDocLinkText("");
+    setDocSearch("");
+    onNotify?.("Document link inserted.", "success");
   }
 
   function linkExistingImage(pathValue) {
@@ -363,6 +456,9 @@ export function MarkdownToolbar({
       </button>
       <button onClick={openWebLinker} title="Insert web link">
         <Link2 size={18} />
+      </button>
+      <button onClick={openDocLinker} title="Link to another note">
+        <FileText size={18} />
       </button>
       <button onClick={() => imageInputRef.current?.click()} title="Insert image from file">
         <ImagePlus size={18} />
@@ -585,6 +681,55 @@ export function MarkdownToolbar({
           <div className="image-linker-url-actions">
             <button onClick={insertWebLink} disabled={!hasValidWebLinkUrl}>Insert Link</button>
           </div>
+        </div>
+      )}
+
+      {showDocLinker && (
+        <div className="doc-linker" ref={docLinkPopoverRef} role="dialog" aria-label="Document link inserter">
+          <div className="mermaid-builder-header">
+            <strong>Link to Note</strong>
+            <button className="mermaid-close" onClick={() => setShowDocLinker(false)} title="Close">
+              x
+            </button>
+          </div>
+
+          <div className="mermaid-fields">
+            <label>
+              Search notes
+              <input
+                value={docSearch}
+                onChange={(event) => setDocSearch(event.target.value)}
+                placeholder="Type title or filename"
+              />
+            </label>
+            <label>
+              Link text (optional)
+              <input
+                value={docLinkText}
+                onChange={(event) => setDocLinkText(event.target.value)}
+                placeholder="Defaults to note title"
+              />
+            </label>
+          </div>
+
+          {docsError ? <p className="toolbar-inline-error">{docsError}</p> : null}
+          {docsLoading ? <p className="toolbar-inline-note">Loading notes...</p> : null}
+
+          {!docsLoading && !filteredDocs.length ? (
+            <p className="toolbar-inline-note">No matching notes found.</p>
+          ) : (
+            <div className="doc-linker-list">
+              {filteredDocs.map((entry) => (
+                <button
+                  key={entry.filePath}
+                  onClick={() => insertDocLink(entry)}
+                  title={entry.fileName || entry.title}
+                >
+                  {(entry.title || entry.fileName || "Untitled note").trim()}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

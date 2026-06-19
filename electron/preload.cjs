@@ -1,11 +1,17 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("notesApi", {
+  listProjects: () => ipcRenderer.invoke("projects:list"),
+  createProject: (payload) => ipcRenderer.invoke("projects:create", payload),
+  setActiveProject: (payload) => ipcRenderer.invoke("projects:set-active", payload),
   listDocuments: () => ipcRenderer.invoke("documents:list"),
+  createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
   readDocument: (filePath) => ipcRenderer.invoke("documents:read", filePath),
   saveDocument: (payload) => ipcRenderer.invoke("documents:save", payload),
   getHistory: (filePath) => ipcRenderer.invoke("documents:history", filePath),
   restoreHistory: (payload) => ipcRenderer.invoke("documents:restore", payload),
+  readVersion: (payload) => ipcRenderer.invoke("documents:read-version", payload),
+  deleteVersion: (payload) => ipcRenderer.invoke("documents:delete-version", payload),
   openInEditor: (filePath) => ipcRenderer.invoke("documents:open-in-editor", filePath),
   openFileInEditor: (filePath) => ipcRenderer.invoke("documents:open-in-editor", filePath),
   saveImage: (payload) => ipcRenderer.invoke("images:save", payload),

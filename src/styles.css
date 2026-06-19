@@ -79,6 +79,126 @@ button {
   color: #8e1b1b;
 }
 
+.project-toolbar {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d9dedb;
+  border-radius: 8px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-toolbar-left,
+.project-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-toolbar-label {
+  color: #56666b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.project-select,
+.project-toolbar input {
+  min-height: 32px;
+  border: 1px solid #d9dedb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #172326;
+  padding: 0 10px;
+}
+
+.project-select {
+  min-width: 220px;
+}
+
+.project-toolbar input {
+  min-width: 190px;
+}
+
+.overlay-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 18, 21, 0.45);
+}
+
+.overlay-dialog-card {
+  width: min(440px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid #cfd8d4;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 35, 40, 0.18);
+}
+
+.overlay-dialog-header,
+.overlay-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d9dedb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a3a3e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  background: #f2f7f5;
+  border-color: #1a3a3e;
+}
+
+.overlay-dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.overlay-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.overlay-dialog-field span {
+  color: #56666b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.overlay-dialog-field input {
+  min-height: 36px;
+  border: 1px solid #d9dedb;
+  border-radius: 8px;
+  padding: 0 12px;
+}
+
+.overlay-dialog-actions {
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
 .landing-header {
   display: flex;
   align-items: end;
@@ -115,10 +235,83 @@ button {
   text-align: right;
 }
 
+.landing-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.document-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d9dedb;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.document-view-toggle button {
+  min-height: 30px;
+  border: 0;
+  border-right: 1px solid #d9dedb;
+  background: #ffffff;
+  color: #1a3a3e;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.document-view-toggle button:last-child {
+  border-right: 0;
+}
+
+.document-view-toggle button.active {
+  background: #1a3a3e;
+  color: #ffffff;
+}
+
 .document-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
+}
+
+.document-table-wrap {
+  border: 1px solid #d9dedb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.document-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.document-table th,
+.document-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e7ece9;
+  text-align: left;
+  font-size: 13px;
+}
+
+.document-table th {
+  background: #f7f9f8;
+  color: #56666b;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.document-table tbody tr {
+  cursor: pointer;
+}
+
+.document-table tbody tr:hover {
+  background: #f2f7f5;
 }
 
 .document-card {
@@ -458,6 +651,97 @@ button {
   font-size: 12px;
 }
 
+.history-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.history-item-actions .small-button {
+  min-height: 26px;
+  padding: 0 8px;
+}
+
+.diff-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 18, 21, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+}
+
+.diff-modal {
+  width: min(980px, 95vw);
+  max-height: 85vh;
+  background: #ffffff;
+  border: 1px solid #cfd8d4;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d9dedb;
+}
+
+.diff-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.diff-table-head,
+.diff-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.diff-table-head {
+  padding: 8px 12px;
+  border-bottom: 1px solid #d9dedb;
+  font-size: 12px;
+  font-weight: 700;
+  color: #56666b;
+}
+
+.diff-table-body {
+  overflow: auto;
+  max-height: calc(85vh - 120px);
+}
+
+.diff-row {
+  padding: 6px 12px;
+  border-bottom: 1px solid #eef2f0;
+  font-size: 12px;
+}
+
+.diff-row pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+}
+
+.diff-row.added {
+  background: #eef9f4;
+}
+
+.diff-row.removed {
+  background: #fff3f3;
+}
+
+.diff-row.changed {
+  background: #fff7e8;
+}
+
 .editor-panel {
   display: flex;
   min-height: 0;
@@ -689,6 +973,38 @@ button {
   background: #ffffff;
   box-shadow: 0 14px 32px rgba(17, 36, 40, 0.18);
   z-index: 30;
+}
+
+.doc-linker {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, 88vw);
+  border: 1px solid #cfd8d4;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(17, 36, 40, 0.18);
+  z-index: 30;
+}
+
+.doc-linker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.doc-linker-list button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-builder {
