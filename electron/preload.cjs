@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld("notesApi", {
   readDocument: (filePath) => ipcRenderer.invoke("documents:read", filePath),
   saveDocument: (payload) => ipcRenderer.invoke("documents:save", payload),
   getHistory: (filePath) => ipcRenderer.invoke("documents:history", filePath),
-  restoreHistory: (payload) => ipcRenderer.invoke("documents:restore", payload)
+  restoreHistory: (payload) => ipcRenderer.invoke("documents:restore", payload),
+  saveImage: (payload) => ipcRenderer.invoke("images:save", payload)
 });

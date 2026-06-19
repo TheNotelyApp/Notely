@@ -1,0 +1,42 @@
+/**
+ * IPC service for Electron communication
+ */
+
+function getNotesApi() {
+  if (!window.notesApi) {
+    throw new Error(
+      "Notes API not available. Make sure the app is running under Electron."
+    );
+  }
+  return window.notesApi;
+}
+
+export async function listDocuments() {
+  const api = getNotesApi();
+  return api.listDocuments();
+}
+
+export async function readDocument(filePath) {
+  const api = getNotesApi();
+  return api.readDocument(filePath);
+}
+
+export async function saveDocument(payload) {
+  const api = getNotesApi();
+  return api.saveDocument(payload);
+}
+
+export async function getHistory(filePath) {
+  const api = getNotesApi();
+  return api.getHistory(filePath);
+}
+
+export async function restoreHistory(payload) {
+  const api = getNotesApi();
+  return api.restoreHistory(payload);
+}
+
+export async function saveImage(fileName, base64Data) {
+  const api = getNotesApi();
+  return api.saveImage({ fileName, base64Data });
+}

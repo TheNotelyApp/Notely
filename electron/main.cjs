@@ -275,3 +275,27 @@ ipcMain.handle("documents:restore", (_event, payload) => {
 
   return parseDocument(restored, resolved);
 });
+
+ipcMain.handle("images:save", (_event, payload) => {
+  const { fileName, base64Data } = payload;
+  const imagesDir = path.join(notesRoot, "images");
+  ensureDir(imagesDir);
+
+  // Generate unique filename if it already exists
+  const ext = path.extname(fileName);
+  const baseName = path.basename(fileName, ext);
+  let finalName = fileName;
+  let counter = 1;
+
+  while (fs.existsSync(path.join(imagesDir, finalName))) {
+    finalName = `${baseName}-${counter}${ext}`;
+    counter++;
+  }
+
+  const imagePath = path.join(imagesDir, finalName);
+  const buffer = Buffer.from(base64Data.split(",")[1], "base64");
+  fs.writeFileSync(imagePath, buffer);
+
+  // Return relative path for markdown insertion
+  return `./images/${finalName}`;
+});

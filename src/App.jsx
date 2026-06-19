@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MarkdownIt from "markdown-it";
 import mermaid from "mermaid";
 import {
@@ -16,10 +16,12 @@ import {
   PenLine,
   SplitSquareHorizontal,
   Eye,
+  ImagePlus,
   Zap,
   Clock,
   MapPin,
-  User
+  User,
+  Images
 } from "lucide-react";
 
 const md = new MarkdownIt({
@@ -54,6 +56,122 @@ function formatDate(value) {
 
 function renderMarkdown(content) {
   return md.render(content || "");
+}
+
+function extractImagesFromMarkdown(content) {
+  if (!content) return [];
+  const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const images = [];
+  let match;
+  while ((match = regex.exec(content))) {
+    images.push({
+      altText: match[1] || "Image",
+      path: match[2],
+      id: `${match[2]}-${Math.random().toString(36).slice(2)}`,
+    });
+  }
+  return images;
+}
+
+function MediaTab({ content }) {
+  const images = useMemo(() => extractImagesFromMarkdown(content), [content]);
+
+  if (images.length === 0) {
+    return (
+      <div className="media-empty">
+        <p>No images found in this note.</p>
+        <p className="muted">Insert images using the toolbar button or drag &amp; drop.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="media-grid">
+      {images.map((image) => (
+        <div className="media-item" key={image.id}>
+          <div className="media-preview">
+            <img src={image.path} alt={image.altText} />
+          </div>
+          <div className="media-info">
+            <p className="media-alt">{image.altText}</p>
+            <p className="media-path" title={image.path}>{image.path}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function replaceTextAtSelection(value, start, end, insertion) {
+  const safeStart = Number.isInteger(start) ? start : value.length;
+  const safeEnd = Number.isInteger(end) ? end : safeStart;
+  return value.slice(0, safeStart) + insertion + value.slice(safeEnd);
+}
+
+function insertTextAtCursor(value, onChange, text, textareaRef) {
+  if (!textareaRef?.current) {
+    console.error("Textarea ref not available");
+    // Fallback: try querySelector
+    const textarea = document.querySelector(".markdown-textarea");
+    if (!textarea) {
+      console.error("Could not find textarea element");
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const next = replaceTextAtSelection(value, start, end, text);
+    onChange(next);
+    return;
+  }
+
+  const textarea = textareaRef.current;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const next = replaceTextAtSelection(value, start, end, text);
+  onChange(next);
+
+  // Set focus and selection after React updates
+  setTimeout(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.selectionStart = start + text.length;
+      textareaRef.current.selectionEnd = start + text.length;
+    }
+  }, 0);
+}
+
+function toFileUrl(absolutePath) {
+  return encodeURI(`file:///${absolutePath.replace(/\\/g, "/").replace(/^\/*/, "")}`);
+}
+
+function resolveAssetUrl(basePath, assetPath) {
+  if (!assetPath || /^(data:|https?:|file:|blob:|\/)/i.test(assetPath)) {
+    return assetPath;
+  }
+
+  if (!basePath) return assetPath;
+
+  const baseDir = basePath.replace(/[\\/][^\\/]*$/, "");
+  const normalizedAsset = assetPath.replace(/^\.\//, "");
+  return toFileUrl(`${baseDir}/${normalizedAsset}`);
+}
+
+function rewriteMarkdownImages(html, basePath) {
+  if (!basePath) return html;
+
+  return html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi, (match, before, src, after) => {
+    const resolved = resolveAssetUrl(basePath, src);
+    return `<img${before}src="${resolved}"${after}>`;
+  });
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function DocumentList({ documents, onOpen, loading }) {
@@ -147,10 +265,15 @@ function MarkdownPreview({ content }) {
   );
 }
 
-function MarkdownToolbar({ value, onChange }) {
+function MarkdownToolbar({ value, onChange, textareaRef }) {
+  const imageInputRef = useRef(null);
+
   const applySnippet = (before, after = "", placeholder = "") => {
-    const textarea = document.querySelector(".markdown-textarea");
-    if (!textarea) return;
+    const textarea = textareaRef?.current;
+    if (!textarea) {
+      console.error("Textarea not available for snippet");
+      return;
+    }
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selected = value.slice(start, end) || placeholder;
@@ -163,6 +286,40 @@ function MarkdownToolbar({ value, onChange }) {
     });
   };
 
+  const handleImageSelect = (event) => {
+    console.log("Image file selected:", event.target.files);
+    const file = event.target.files?.[0];
+    if (!file) {
+      console.warn("No file selected");
+      return;
+    }
+
+    console.log("Processing file:", file.name, file.type, file.size);
+    readFileAsDataUrl(file)
+      .then((dataUrl) => {
+        console.log("DataURL created, sending to Electron...");
+        // Use Electron IPC to save the image to disk
+        if (!window.notesApi?.saveImage) {
+          throw new Error("Image saving not available (Electron not running)");
+        }
+        return window.notesApi.saveImage({ fileName: file.name, base64Data: dataUrl });
+      })
+      .then((imagePath) => {
+        console.log("Image saved at:", imagePath);
+        const altText = file.name.replace(/\.[^.]+$/, "");
+        const markdown = `![${altText}](${imagePath})`;
+        console.log("Inserting markdown:", markdown);
+        insertTextAtCursor(value, onChange, markdown, textareaRef);
+      })
+      .catch((error) => {
+        console.error("Image insertion failed:", error);
+        alert("Failed to insert image. Please try again.");
+      })
+      .finally(() => {
+        event.target.value = "";
+      });
+  };
+
   return (
     <div className="editor-toolbar" aria-label="Markdown formatting toolbar">
       <button onClick={() => applySnippet("## ", "", "Heading")} title="Heading"><Heading2 size={18} /></button>
@@ -171,26 +328,63 @@ function MarkdownToolbar({ value, onChange }) {
       <button onClick={() => applySnippet("- ", "", "list item")} title="List"><List size={18} /></button>
       <button onClick={() => applySnippet("> ", "", "quote")} title="Quote"><Quote size={18} /></button>
       <button onClick={() => applySnippet("`", "`", "code")} title="Code"><Code size={18} /></button>
+      <button onClick={() => imageInputRef.current?.click()} title="Insert image"><ImagePlus size={18} /></button>
       <button onClick={() => applySnippet("```mermaid\n", "\n```", "flowchart LR\n  A[Start] --> B[End]")} title="Mermaid"><Zap size={18} /></button>
+      <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} hidden />
     </div>
   );
 }
 
-function MarkdownEditor({ value, onChange }) {
+function MarkdownEditor({ value, onChange, textareaRef }) {
+  const handleDragOver = (event) => {
+    if (event.dataTransfer?.types?.includes("Files")) {
+      event.preventDefault();
+    }
+  };
+
+  const handleDrop = async (event) => {
+    const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith("image/"));
+    if (!files.length) return;
+
+    event.preventDefault();
+
+    try {
+      if (!window.notesApi?.saveImage) {
+        throw new Error("Image saving not available (Electron not running)");
+      }
+
+      const images = [];
+      for (const file of files) {
+        const dataUrl = await readFileAsDataUrl(file);
+        const imagePath = await window.notesApi.saveImage({ fileName: file.name, base64Data: dataUrl });
+        const altText = file.name.replace(/\.[^.]+$/, "");
+        images.push(`![${altText}](${imagePath})`);
+      }
+
+      insertTextAtCursor(value, onChange, `${images.join("\n\n")}\n`, textareaRef);
+    } catch (error) {
+      console.error("Image drop insertion failed:", error);
+      alert("Failed to insert images. Please try again.");
+    }
+  };
+
   return (
     <div className="markdown-editor">
       <textarea
+        ref={textareaRef}
         className="markdown-textarea"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         spellCheck
       />
     </div>
   );
 }
 
-function EditorPane({ value, onChange, mode }) {
-  const markdownEditor = <MarkdownEditor value={value} onChange={onChange} />;
+function EditorPane({ value, onChange, mode, textareaRef }) {
+  const markdownEditor = <MarkdownEditor value={value} onChange={onChange} textareaRef={textareaRef} />;
 
   if (mode === "preview") {
     return <MarkdownPreview content={value} />;
@@ -220,6 +414,7 @@ function EditorPane({ value, onChange, mode }) {
 }
 
 function DocumentDetail({ documents, document, history, activeTab, setActiveTab, mode, setMode, onChange, onSave, onOpenDocument, onRefreshHistory, saving, dirty, onHome }) {
+  const textareaRef = useRef(null);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
 
   const updateContent = (value) => {
@@ -296,8 +491,12 @@ function DocumentDetail({ documents, document, history, activeTab, setActiveTab,
                 <FileText size={16} />
                 <span>Formal Notes</span>
               </button>
+              <button className={activeTab === "media" ? "active" : ""} onClick={() => setActiveTab("media")} title="Media and images">
+                <Images size={16} />
+                <span>Media</span>
+              </button>
             </div>
-            {mode !== "preview" && <MarkdownToolbar value={content} onChange={updateContent} />}
+            {mode !== "preview" && activeTab !== "media" && <MarkdownToolbar value={content} onChange={updateContent} textareaRef={textareaRef} />}
             <div className="mode-switch">
               {[
                 { key: "edit", label: "Edit", icon: PenLine },
@@ -311,7 +510,11 @@ function DocumentDetail({ documents, document, history, activeTab, setActiveTab,
               ))}
             </div>
           </div>
-          <EditorPane value={content} onChange={updateContent} mode={mode} />
+          {activeTab === "media" ? (
+            <MediaTab content={content} />
+          ) : (
+            <EditorPane value={content} onChange={updateContent} mode={mode} textareaRef={textareaRef} />
+          )}
         </main>
       </div>
     </div>
