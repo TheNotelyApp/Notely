@@ -1,34 +1,4 @@
-import { useEffect, useState } from "react";
-import { validateMarkdownSyntax } from "../utils/markdownValidation";
-
-export function MarkdownValidationBanner({ value }) {
-  const [issues, setIssues] = useState([]);
-  const [status, setStatus] = useState("idle");
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("checking");
-
-    const timer = window.setTimeout(async () => {
-      try {
-        const result = await validateMarkdownSyntax(value || "");
-        if (!cancelled) {
-          setIssues(result);
-          setStatus("ready");
-        }
-      } catch {
-        if (!cancelled) {
-          setIssues([]);
-          setStatus("error");
-        }
-      }
-    }, 450);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [value]);
+export function MarkdownValidationBanner({ issues = [], status = "idle" }) {
 
   if (status === "checking") {
     return <div className="validation-banner checking">Checking markdown...</div>;

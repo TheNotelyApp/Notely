@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "concurrently \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && node scripts/launch-electron.cjs --dev\"",
     "build": "vite build",
-    "start": "node scripts/launch-electron.cjs"
+    "start": "node scripts/launch-electron.cjs",
+    "lint:markdown": "markdownlint-cli2",
+    "ci:check": "npm run build && npm run lint:markdown"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",
@@ -28,6 +30,7 @@
     "@vitejs/plugin-react": "^4.5.0",
     "concurrently": "^9.1.2",
     "electron": "^37.2.0",
+    "markdownlint-cli2": "^0.18.1",
     "vite": "^6.3.5",
     "wait-on": "^8.0.3"
   }

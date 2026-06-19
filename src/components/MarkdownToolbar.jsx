@@ -16,7 +16,6 @@ import {
 import { applySnippet, createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertImageFromFile } from "../services/imageService";
 import { listImages } from "../services/electronService";
-import { validateMarkdownSyntax } from "../utils/markdownValidation";
 
 function isValidHttpUrl(value) {
   const trimmed = (value || "").trim();
@@ -30,7 +29,25 @@ function isValidHttpUrl(value) {
   }
 }
 
-export function MarkdownToolbar({ value, onChange, textareaRef, basePath, onNotify }) {
+function getIssueFixType(issue) {
+  const text = (issue?.message || "").toLowerCase();
+  if (issue?.ruleId === "table-separator") return "table-separator";
+  if (issue?.ruleId === "table-columns") return "table-columns";
+  if (text.includes("code fenced") || text.includes("fenced code") || text.includes("code fence")) {
+    return "code-fence";
+  }
+  return null;
+}
+
+export function MarkdownToolbar({
+  value,
+  onChange,
+  textareaRef,
+  basePath,
+  onNotify,
+  validationIssues = [],
+  validationStatus = "idle",
+}) {
   const imageInputRef = useRef(null);
   const mermaidPopoverRef = useRef(null);
   const imageLinkPopoverRef = useRef(null);
@@ -42,7 +59,6 @@ export function MarkdownToolbar({ value, onChange, textareaRef, basePath, onNoti
   const [showWebLinker, setShowWebLinker] = useState(false);
   const [showTableBuilder, setShowTableBuilder] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
-  const [validationIssues, setValidationIssues] = useState([]);
   const [availableImages, setAvailableImages] = useState([]);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [imagesError, setImagesError] = useState("");
@@ -152,23 +168,79 @@ export function MarkdownToolbar({ value, onChange, textareaRef, basePath, onNoti
     setShowValidationPanel(false);
   }
 
-  async function runMarkdownValidation() {
-    try {
-      const issues = await validateMarkdownSyntax(value);
-      setValidationIssues(issues);
-      setShowValidationPanel(true);
-      setShowMermaidBuilder(false);
-      setShowImageLinker(false);
-      setShowWebLinker(false);
-      setShowTableBuilder(false);
+  function runMarkdownValidation() {
+    setShowValidationPanel(true);
+    setShowMermaidBuilder(false);
+    setShowImageLinker(false);
+    setShowWebLinker(false);
+    setShowTableBuilder(false);
 
-      if (issues.length) {
-        onNotify?.(`Found ${issues.length} markdown issue${issues.length > 1 ? "s" : ""}.`, "warning");
-      } else {
-        onNotify?.("No markdown syntax issues found.", "success");
+    if (validationStatus === "checking") {
+      onNotify?.("Validation is running...", "info");
+      return;
+    }
+    if (validationStatus === "error") {
+      onNotify?.("Validation service unavailable.", "error");
+      return;
+    }
+    if (validationIssues.length) {
+      onNotify?.(
+        `Found ${validationIssues.length} markdown issue${validationIssues.length > 1 ? "s" : ""}.`,
+        "warning"
+      );
+    } else {
+      onNotify?.("No markdown syntax issues found.", "success");
+    }
+  }
+
+  function applyValidationFix(issue) {
+    if (!issue) return;
+
+    const fixType = getIssueFixType(issue);
+    const lines = (value || "").split(/\r?\n/);
+
+    if (fixType === "code-fence") {
+      const next = `${value || ""}\n\`\`\``;
+      onChange(next);
+      onNotify?.("Inserted closing code fence.", "success");
+      return;
+    }
+
+    if (fixType === "table-separator") {
+      const headerIndex = Math.max((issue.line || 2) - 2, 0);
+      const separatorIndex = Math.max((issue.line || 2) - 1, 0);
+      const headerLine = lines[headerIndex] || "";
+      const columns = Math.max(
+        1,
+        headerLine.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length
+      );
+      lines[separatorIndex] = `| ${Array.from({ length: columns }, () => "---").join(" | ")} |`;
+      onChange(lines.join("\n"));
+      onNotify?.("Fixed table separator.", "success");
+      return;
+    }
+
+    if (fixType === "table-columns") {
+      const lineIndex = Math.max((issue.line || 1) - 1, 0);
+      const row = (lines[lineIndex] || "").trim().replace(/^\|/, "").replace(/\|$/, "");
+      const cells = row ? row.split("|").map((cell) => cell.trim()) : [];
+
+      let expectedColumns = cells.length;
+      for (let i = lineIndex - 1; i >= 0; i -= 1) {
+        if (!lines[i].includes("|")) continue;
+        const candidate = lines[i].trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length;
+        if (candidate > 0) {
+          expectedColumns = candidate;
+          break;
+        }
       }
-    } catch (error) {
-      onNotify?.(error?.message || "Markdown validation failed.", "error");
+
+      const fixedCells = [...cells];
+      while (fixedCells.length < expectedColumns) fixedCells.push(" ");
+      if (fixedCells.length > expectedColumns) fixedCells.length = expectedColumns;
+      lines[lineIndex] = `| ${fixedCells.join(" | ")} |`;
+      onChange(lines.join("\n"));
+      onNotify?.("Fixed table column count.", "success");
     }
   }
 
@@ -359,12 +431,21 @@ export function MarkdownToolbar({ value, onChange, textareaRef, basePath, onNoti
             </button>
           </div>
 
-          {validationIssues.length ? (
+          {validationStatus === "checking" ? (
+            <p className="toolbar-inline-note">Checking markdown...</p>
+          ) : validationStatus === "error" ? (
+            <p className="toolbar-inline-error">Validation service unavailable.</p>
+          ) : validationIssues.length ? (
             <div className="validation-list">
               {validationIssues.map((issue, index) => (
                 <p key={`${issue.line}-${index}`}>
                   Line {issue.line}:{issue.column || 1} - {issue.message}
                   {issue.ruleId ? ` (${issue.ruleId})` : ""}
+                  {getIssueFixType(issue) ? (
+                    <button type="button" onClick={() => applyValidationFix(issue)}>
+                      Quick fix
+                    </button>
+                  ) : null}
                 </p>
               ))}
             </div>

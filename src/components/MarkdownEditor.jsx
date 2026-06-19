@@ -1,13 +1,27 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertImagesFromFiles } from "../services/imageService";
 
-export function MarkdownEditor({ value, onChange, textareaRef, onNotify }) {
+function getLineStartIndex(text, lineNumber) {
+  const targetLine = Math.max(lineNumber, 1);
+  let currentLine = 1;
+  for (let index = 0; index < text.length; index += 1) {
+    if (currentLine === targetLine) return index;
+    if (text[index] === "\n") currentLine += 1;
+  }
+  return text.length;
+}
+
+export function MarkdownEditor({ value, onChange, textareaRef, onNotify, validationIssues = [] }) {
   const gutterRef = useRef(null);
+  const [activeLine, setActiveLine] = useState(1);
   const lineNumbers = useMemo(() => {
     const count = (value.match(/\n/g) || []).length + 1;
     return Array.from({ length: count }, (_value, index) => index + 1);
   }, [value]);
+  const issueLineSet = useMemo(() => {
+    return new Set((validationIssues || []).map((issue) => issue.line));
+  }, [validationIssues]);
 
   const handleDragOver = (event) => {
     if (event.dataTransfer?.types?.includes("Files")) {
@@ -40,12 +54,45 @@ export function MarkdownEditor({ value, onChange, textareaRef, onNotify }) {
     }
   };
 
+  const updateActiveLineFromSelection = (event) => {
+    const beforeCursor = event.target.value.slice(0, event.target.selectionStart);
+    const line = beforeCursor.split("\n").length;
+    setActiveLine(line);
+  };
+
+  const handleLineClick = async (line) => {
+    const editor = textareaRef?.current;
+    if (!editor) return;
+
+    const startIndex = getLineStartIndex(value || "", line);
+    editor.focus();
+    editor.selectionStart = startIndex;
+    editor.selectionEnd = startIndex;
+    setActiveLine(line);
+
+    try {
+      await navigator.clipboard.writeText(`#L${line}`);
+      onNotify?.(`Line ${line} copied as #L${line}.`, "info");
+    } catch {
+      // Clipboard may be blocked; ignore silently.
+    }
+  };
+
   return (
     <div className="markdown-editor">
       <div className="markdown-editor-shell">
         <div className="markdown-gutter" ref={gutterRef} aria-hidden="true">
           {lineNumbers.map((line) => (
-            <div className="markdown-line-number" key={line}>{line}</div>
+            <button
+              type="button"
+              className={`markdown-line-number ${activeLine === line ? "active" : ""}`}
+              key={line}
+              onClick={() => handleLineClick(line)}
+              title={`Go to line ${line}`}
+            >
+              <span>{line}</span>
+              {issueLineSet.has(line) ? <em className="line-issue-marker">!</em> : null}
+            </button>
           ))}
         </div>
         <textarea
@@ -56,6 +103,8 @@ export function MarkdownEditor({ value, onChange, textareaRef, onNotify }) {
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onScroll={handleEditorScroll}
+          onClick={updateActiveLineFromSelection}
+          onKeyUp={updateActiveLineFromSelection}
           spellCheck
         />
       </div>

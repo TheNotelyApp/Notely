@@ -687,6 +687,20 @@ button {
   border: 1px solid #ecd6a7;
   color: #715a1e;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.validation-list p button {
+  min-height: 22px;
+  border: 1px solid #d5c087;
+  border-radius: 4px;
+  background: #fffdf6;
+  color: #6d531a;
+  font-size: 11px;
+  padding: 0 8px;
 }
 
 .table-preview-wrap {
@@ -890,7 +904,29 @@ button {
 }
 
 .markdown-line-number {
-  height: 20.15px;
+  width: 100%;
+  min-height: 20.15px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.markdown-line-number.active {
+  color: #1a3a3e;
+  font-weight: 700;
+}
+
+.line-issue-marker {
+  font-style: normal;
+  color: #b86c00;
+  font-weight: 700;
 }
 
 .markdown-textarea.with-line-numbers {
