@@ -150,6 +150,14 @@ export function MarkdownToolbar({
   const normalizedTableColumns = Math.min(Math.max(Number(tableColumns) || 1, 1), 20);
   const hasValidImageUrl = isValidHttpUrl(imageUrl);
   const hasValidWebLinkUrl = isValidHttpUrl(webLinkUrl);
+  const validationSummary =
+    validationStatus === "checking"
+      ? "Last check: Checking..."
+      : validationStatus === "error"
+        ? "Last check: Error"
+        : validationIssues.length
+          ? `Last check: Issues ${validationIssues.length}`
+          : "Last check: OK";
 
   function openTableBuilder() {
     const shouldOpen = !showTableBuilder;
@@ -368,6 +376,9 @@ export function MarkdownToolbar({
       <button onClick={runMarkdownValidation} title="Validate markdown syntax">
         <CheckCircle2 size={18} />
       </button>
+      <span className={`toolbar-validation-summary ${validationStatus}`} title={validationSummary}>
+        {validationSummary}
+      </span>
 
       {showValidationPanel && (
         <div

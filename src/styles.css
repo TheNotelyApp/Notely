@@ -327,6 +327,10 @@ button {
   gap: 10px;
 }
 
+.workspace.history-panel-collapsed {
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+
 .history-panel,
 .editor-panel {
   border: 1px solid #d9dedb;
@@ -337,6 +341,21 @@ button {
 .history-panel {
   padding: 12px;
   overflow: hidden;
+}
+
+.history-panel.collapsed {
+  padding: 8px 6px;
+}
+
+.history-collapsed-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.history-panel.collapsed .small-button {
+  min-height: 30px;
+  min-width: 30px;
+  padding: 0;
 }
 
 .sidebar-heading {
@@ -396,6 +415,12 @@ button {
 .panel-title-row h2 {
   margin: 0;
   font-size: 14px;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .small-button {
@@ -605,6 +630,26 @@ button {
   border-color: #1a3a3e;
   background: #eef5f2;
   color: #0d2326;
+}
+
+.toolbar-validation-summary {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4f666d;
+  white-space: nowrap;
+}
+
+.toolbar-validation-summary.ready {
+  color: #1d6b58;
+}
+
+.toolbar-validation-summary.checking {
+  color: #4f666d;
+}
+
+.toolbar-validation-summary.error {
+  color: #8e1b1b;
 }
 
 .mermaid-builder {

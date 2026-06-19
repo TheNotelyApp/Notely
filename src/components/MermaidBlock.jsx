@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import mermaid from "mermaid";
 
 export function MermaidBlock({ code, index }) {
   const [svg, setSvg] = useState("");
@@ -9,20 +8,24 @@ export function MermaidBlock({ code, index }) {
     let cancelled = false;
     const id = `mermaid-${index}-${Math.random().toString(36).slice(2)}`;
 
-    mermaid
-      .render(id, code)
-      .then((result) => {
+    async function renderMermaid() {
+      try {
+        const mermaidModule = await import("mermaid");
+        const mermaid = mermaidModule?.default;
+        const result = await mermaid.render(id, code);
         if (!cancelled) {
           setSvg(result.svg);
           setError("");
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) {
           setSvg("");
           setError(err?.message || "Unable to render Mermaid diagram.");
         }
-      });
+      }
+    }
+
+    renderMermaid();
 
     return () => {
       cancelled = true;

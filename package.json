@@ -31,9 +31,10 @@
     "@vitejs/plugin-react": "^4.5.0",
     "concurrently": "^9.1.2",
     "electron": "^37.2.0",
+    "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.18.1",
-    "vitest": "^2.1.8",
     "vite": "^6.3.5",
+    "vitest": "^2.1.8",
     "wait-on": "^8.0.3"
   }
 }

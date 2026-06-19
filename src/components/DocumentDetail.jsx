@@ -1,8 +1,10 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   Home,
   Save,
   RotateCcw,
+  ChevronDown,
+  ChevronRight,
   FileText,
   FilePenLine,
   PenLine,
@@ -33,6 +35,7 @@ export function DocumentDetail({
   onNotify,
 }) {
   const textareaRef = useRef(null);
+  const [isHistoryPanelCollapsed, setIsHistoryPanelCollapsed] = useState(false);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
 
@@ -86,25 +89,50 @@ export function DocumentDetail({
         </div>
       </header>
 
-      <div className="workspace">
-        <aside className="history-panel">
-          <div className="panel-title-row">
-            <h2>Versions</h2>
-            <button className="small-button" onClick={onRefreshHistory} title="Refresh history">
-              <RotateCcw size={16} />
-            </button>
-          </div>
-          {history.length ? (
-            <div className="history-list">
-              {history.map((entry) => (
-                <div className="history-item" key={entry.versionPath}>
-                  <strong>{formatDate(entry.createdAt)}</strong>
-                  <span>{entry.reason}</span>
-                </div>
-              ))}
+      <div className={`workspace ${isHistoryPanelCollapsed ? "history-panel-collapsed" : ""}`}>
+        <aside className={`history-panel ${isHistoryPanelCollapsed ? "collapsed" : ""}`}>
+          {isHistoryPanelCollapsed ? (
+            <div className="history-collapsed-actions">
+              <button
+                className="small-button"
+                onClick={() => setIsHistoryPanelCollapsed(false)}
+                title="Expand versions panel"
+                aria-expanded="false"
+              >
+                <ChevronRight size={16} />
+              </button>
             </div>
           ) : (
-            <p className="muted">Versions appear after the first save.</p>
+            <>
+              <div className="panel-title-row">
+                <h2>Versions</h2>
+                <div className="panel-actions">
+                  <button className="small-button" onClick={onRefreshHistory} title="Refresh history">
+                    <RotateCcw size={16} />
+                  </button>
+                  <button
+                    className="small-button"
+                    onClick={() => setIsHistoryPanelCollapsed(true)}
+                    title="Collapse versions panel"
+                    aria-expanded="true"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
+              </div>
+              {history.length ? (
+                <div className="history-list">
+                  {history.map((entry) => (
+                    <div className="history-item" key={entry.versionPath}>
+                      <strong>{formatDate(entry.createdAt)}</strong>
+                      <span>{entry.reason}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">Versions appear after the first save.</p>
+              )}
+            </>
           )}
         </aside>
 
