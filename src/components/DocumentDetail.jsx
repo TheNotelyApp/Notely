@@ -3,7 +3,7 @@ import {
   Home,
   Save,
   RotateCcw,
-  ChevronDown,
+  ChevronLeft,
   ChevronRight,
   FileText,
   FilePenLine,
@@ -116,7 +116,7 @@ export function DocumentDetail({
                     title="Collapse versions panel"
                     aria-expanded="true"
                   >
-                    <ChevronDown size={16} />
+                    <ChevronLeft size={16} />
                   </button>
                 </div>
               </div>
