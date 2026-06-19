@@ -9,7 +9,8 @@
     "build": "vite build",
     "start": "node scripts/launch-electron.cjs",
     "lint:markdown": "markdownlint-cli2",
-    "ci:check": "npm run build && npm run lint:markdown"
+    "test": "vitest run",
+    "ci:check": "npm run build && npm run lint:markdown && npm run test"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",
@@ -31,6 +32,7 @@
     "concurrently": "^9.1.2",
     "electron": "^37.2.0",
     "markdownlint-cli2": "^0.18.1",
+    "vitest": "^2.1.8",
     "vite": "^6.3.5",
     "wait-on": "^8.0.3"
   }

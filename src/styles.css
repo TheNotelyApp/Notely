@@ -679,21 +679,29 @@ button {
   gap: 6px;
 }
 
-.validation-list p {
+.validation-item {
   margin: 0;
   padding: 6px 8px;
   border-radius: 5px;
   background: #fff7e9;
   border: 1px solid #ecd6a7;
   color: #715a1e;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 
-.validation-list p button {
+.validation-item p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.validation-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.validation-item-actions button {
   min-height: 22px;
   border: 1px solid #d5c087;
   border-radius: 4px;

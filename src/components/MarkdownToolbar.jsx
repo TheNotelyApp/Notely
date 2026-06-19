@@ -16,6 +16,7 @@ import {
 import { applySnippet, createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertImageFromFile } from "../services/imageService";
 import { listImages } from "../services/electronService";
+import { applyMarkdownQuickFix, getIssueFixType } from "../utils/markdownQuickFix";
 
 function isValidHttpUrl(value) {
   const trimmed = (value || "").trim();
@@ -29,16 +30,6 @@ function isValidHttpUrl(value) {
   }
 }
 
-function getIssueFixType(issue) {
-  const text = (issue?.message || "").toLowerCase();
-  if (issue?.ruleId === "table-separator") return "table-separator";
-  if (issue?.ruleId === "table-columns") return "table-columns";
-  if (text.includes("code fenced") || text.includes("fenced code") || text.includes("code fence")) {
-    return "code-fence";
-  }
-  return null;
-}
-
 export function MarkdownToolbar({
   value,
   onChange,
@@ -47,6 +38,7 @@ export function MarkdownToolbar({
   onNotify,
   validationIssues = [],
   validationStatus = "idle",
+  onJumpToLine,
 }) {
   const imageInputRef = useRef(null);
   const mermaidPopoverRef = useRef(null);
@@ -195,53 +187,13 @@ export function MarkdownToolbar({
 
   function applyValidationFix(issue) {
     if (!issue) return;
-
-    const fixType = getIssueFixType(issue);
-    const lines = (value || "").split(/\r?\n/);
-
-    if (fixType === "code-fence") {
-      const next = `${value || ""}\n\`\`\``;
-      onChange(next);
-      onNotify?.("Inserted closing code fence.", "success");
+    const result = applyMarkdownQuickFix(value, issue);
+    if (!result.changed) {
+      onNotify?.(result.message, "warning");
       return;
     }
-
-    if (fixType === "table-separator") {
-      const headerIndex = Math.max((issue.line || 2) - 2, 0);
-      const separatorIndex = Math.max((issue.line || 2) - 1, 0);
-      const headerLine = lines[headerIndex] || "";
-      const columns = Math.max(
-        1,
-        headerLine.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length
-      );
-      lines[separatorIndex] = `| ${Array.from({ length: columns }, () => "---").join(" | ")} |`;
-      onChange(lines.join("\n"));
-      onNotify?.("Fixed table separator.", "success");
-      return;
-    }
-
-    if (fixType === "table-columns") {
-      const lineIndex = Math.max((issue.line || 1) - 1, 0);
-      const row = (lines[lineIndex] || "").trim().replace(/^\|/, "").replace(/\|$/, "");
-      const cells = row ? row.split("|").map((cell) => cell.trim()) : [];
-
-      let expectedColumns = cells.length;
-      for (let i = lineIndex - 1; i >= 0; i -= 1) {
-        if (!lines[i].includes("|")) continue;
-        const candidate = lines[i].trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length;
-        if (candidate > 0) {
-          expectedColumns = candidate;
-          break;
-        }
-      }
-
-      const fixedCells = [...cells];
-      while (fixedCells.length < expectedColumns) fixedCells.push(" ");
-      if (fixedCells.length > expectedColumns) fixedCells.length = expectedColumns;
-      lines[lineIndex] = `| ${fixedCells.join(" | ")} |`;
-      onChange(lines.join("\n"));
-      onNotify?.("Fixed table column count.", "success");
-    }
+    onChange(result.nextValue);
+    onNotify?.(result.message, "success");
   }
 
   function insertTableTemplate() {
@@ -438,15 +390,24 @@ export function MarkdownToolbar({
           ) : validationIssues.length ? (
             <div className="validation-list">
               {validationIssues.map((issue, index) => (
-                <p key={`${issue.line}-${index}`}>
-                  Line {issue.line}:{issue.column || 1} - {issue.message}
-                  {issue.ruleId ? ` (${issue.ruleId})` : ""}
-                  {getIssueFixType(issue) ? (
-                    <button type="button" onClick={() => applyValidationFix(issue)}>
-                      Quick fix
-                    </button>
-                  ) : null}
-                </p>
+                <div className="validation-item" key={`${issue.line}-${index}`}>
+                  <p>
+                    Line {issue.line}:{issue.column || 1} - {issue.message}
+                    {issue.ruleId ? ` (${issue.ruleId})` : ""}
+                  </p>
+                  <div className="validation-item-actions">
+                    {Number.isFinite(issue.line) ? (
+                      <button type="button" onClick={() => onJumpToLine?.(issue.line)}>
+                        Go to line
+                      </button>
+                    ) : null}
+                    {getIssueFixType(issue) ? (
+                      <button type="button" onClick={() => applyValidationFix(issue)}>
+                        Quick fix
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

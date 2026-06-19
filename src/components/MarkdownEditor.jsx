@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertImagesFromFiles } from "../services/imageService";
 
@@ -12,7 +12,14 @@ function getLineStartIndex(text, lineNumber) {
   return text.length;
 }
 
-export function MarkdownEditor({ value, onChange, textareaRef, onNotify, validationIssues = [] }) {
+export function MarkdownEditor({
+  value,
+  onChange,
+  textareaRef,
+  onNotify,
+  validationIssues = [],
+  focusedLine = 1,
+}) {
   const gutterRef = useRef(null);
   const [activeLine, setActiveLine] = useState(1);
   const lineNumbers = useMemo(() => {
@@ -22,6 +29,12 @@ export function MarkdownEditor({ value, onChange, textareaRef, onNotify, validat
   const issueLineSet = useMemo(() => {
     return new Set((validationIssues || []).map((issue) => issue.line));
   }, [validationIssues]);
+
+  useEffect(() => {
+    if (Number.isFinite(focusedLine) && focusedLine > 0) {
+      setActiveLine(focusedLine);
+    }
+  }, [focusedLine]);
 
   const handleDragOver = (event) => {
     if (event.dataTransfer?.types?.includes("Files")) {

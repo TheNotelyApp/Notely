@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { MarkdownToolbar } from "./MarkdownToolbar";
@@ -15,7 +15,28 @@ export function EditorPane({
   onNotify,
 }) {
   const previewRef = useRef(null);
+  const [focusedLine, setFocusedLine] = useState(1);
   const { issues: validationIssues, status: validationStatus } = useMarkdownValidation(value);
+
+  const jumpToLine = (line) => {
+    const editor = textareaRef?.current;
+    if (!editor) return;
+
+    const safeLine = Math.max(Number(line) || 1, 1);
+    const lines = (value || "").split(/\r?\n/);
+    let startIndex = 0;
+    for (let index = 0; index < Math.min(safeLine - 1, lines.length); index += 1) {
+      startIndex += lines[index].length + 1;
+    }
+
+    editor.focus();
+    editor.selectionStart = startIndex;
+    editor.selectionEnd = startIndex;
+
+    const lineHeight = parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
+    editor.scrollTop = Math.max(0, (safeLine - 1) * lineHeight - lineHeight * 3);
+    setFocusedLine(safeLine);
+  };
 
   useEffect(() => {
     if (mode !== "split") return undefined;
@@ -90,6 +111,7 @@ export function EditorPane({
       textareaRef={textareaRef}
       onNotify={onNotify}
       validationIssues={validationIssues}
+      focusedLine={focusedLine}
     />
   );
 
@@ -114,6 +136,7 @@ export function EditorPane({
                 onNotify={onNotify}
                 validationIssues={validationIssues}
                 validationStatus={validationStatus}
+                onJumpToLine={jumpToLine}
               />
             </div>
           ) : null}
@@ -146,6 +169,7 @@ export function EditorPane({
             onNotify={onNotify}
             validationIssues={validationIssues}
             validationStatus={validationStatus}
+            onJumpToLine={jumpToLine}
           />
         </div>
       ) : null}
