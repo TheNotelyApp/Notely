@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.versions/
+notes/
+notes/.notes-app/
