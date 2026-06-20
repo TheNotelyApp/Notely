@@ -278,6 +278,305 @@ button {
   justify-content: flex-end;
 }
 
+.p2p-status-dialog-card {
+  width: min(940px, calc(100vw - 34px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.p2p-status-wrap {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 150px);
+}
+
+.p2p-status-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.p2p-status-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.p2p-status-summary-card {
+  border: 1px solid #d9e2de;
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.p2p-status-summary-card span {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #60757b;
+  font-weight: 700;
+}
+
+.p2p-status-summary-card strong {
+  font-size: 18px;
+  color: #183037;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.p2p-status-summary-card strong.online {
+  color: #16653b;
+}
+
+.p2p-status-summary-card strong.offline {
+  color: #7a3a19;
+}
+
+.p2p-status-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.p2p-status-meta p {
+  margin: 0;
+  border: 1px solid #d9e2de;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.p2p-status-meta span {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #60757b;
+  font-weight: 700;
+}
+
+.p2p-status-meta strong {
+  font-size: 12px;
+  color: #1a333b;
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+  word-break: break-word;
+}
+
+.p2p-status-peer-table-wrap {
+  border: 1px solid #d9e2de;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: auto;
+}
+
+.p2p-status-peer-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.p2p-status-peer-table th,
+.p2p-status-peer-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e8efec;
+  text-align: left;
+  font-size: 12px;
+}
+
+.p2p-status-peer-table th {
+  position: sticky;
+  top: 0;
+  background: #f4f8f6;
+  color: #60757b;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.p2p-status-table-empty {
+  color: #60757b;
+  text-align: center;
+  padding: 14px;
+  font-style: italic;
+}
+
+.mono-cell {
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+}
+
+.p2p-status-empty {
+  border: 1px dashed #c8d7d1;
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 14px;
+  color: #60757b;
+}
+
+.activity-dialog-card {
+  width: min(980px, calc(100vw - 34px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.activity-wrap {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 150px);
+}
+
+.activity-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.activity-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-actions-left .small-button {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.activity-actions .small-button {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.activity-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.activity-summary-card {
+  border: 1px solid #d9e2de;
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.activity-summary-card span {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #60757b;
+  font-weight: 700;
+}
+
+.activity-summary-card strong {
+  font-size: 14px;
+  color: #183037;
+  word-break: break-word;
+}
+
+.activity-table-wrap {
+  border: 1px solid #d9e2de;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: auto;
+}
+
+.activity-filters {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) minmax(260px, 1fr) minmax(140px, 170px) minmax(140px, 170px);
+  gap: 10px;
+}
+
+.activity-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.activity-filter-field span {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #60757b;
+  font-weight: 700;
+}
+
+.activity-filter-field input,
+.activity-filter-field select {
+  min-height: 32px;
+  border: 1px solid #d7e0dc;
+  border-radius: 7px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #172d33;
+  font: inherit;
+  font-size: 12px;
+}
+
+.activity-filter-file input {
+  width: 100%;
+}
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.activity-table th,
+.activity-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e8efec;
+  text-align: left;
+  font-size: 12px;
+}
+
+.activity-table th {
+  position: sticky;
+  top: 0;
+  background: #f4f8f6;
+  color: #60757b;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.activity-table-empty {
+  color: #60757b;
+  text-align: center;
+  padding: 14px;
+  font-style: italic;
+}
+
+.activity-empty {
+  border: 1px dashed #c8d7d1;
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 14px;
+  color: #60757b;
+}
+
+@media (max-width: 920px) {
+  .p2p-status-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .p2p-status-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activity-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activity-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .overlay-dialog-actions.split {
   justify-content: space-between;
 }

@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   pickFolder: () => ipcRenderer.invoke("settings:pick-folder"),
   listProjects: () => ipcRenderer.invoke("projects:list"),
   setActiveProject: (payload) => ipcRenderer.invoke("projects:set-active", payload),
+  getP2PStatus: () => ipcRenderer.invoke("p2p:get-status"),
+  getWorkspaceActivity: (payload) => ipcRenderer.invoke("activity:get-workspace", payload),
   listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
   createFolder: (payload) => ipcRenderer.invoke("folders:create", payload),

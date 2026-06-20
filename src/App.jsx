@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import mermaid from "mermaid";
-import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
+import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, ShieldEllipsis, TimerReset, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
 import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
+import { P2PStatusPanel } from "./components/P2PStatusPanel";
+import { WorkspaceActivityPanel } from "./components/WorkspaceActivityPanel";
 import {
   createFolder,
   createDocument,
@@ -21,6 +23,8 @@ import {
   setNotesRootSetting,
   setActiveProject,
   getHistory,
+  getP2PStatus,
+  getWorkspaceActivity,
   updateMenuContext,
 } from "./services/electronService";
 
@@ -82,6 +86,12 @@ export default function App() {
   const [documentMenuAction, setDocumentMenuAction] = useState(null);
   const [showTerminal, setShowTerminal] = useState(false);
   const [landingFolderPath, setLandingFolderPath] = useState("");
+  const [p2pStatusOpen, setP2PStatusOpen] = useState(false);
+  const [p2pStatusLoading, setP2PStatusLoading] = useState(false);
+  const [p2pStatus, setP2PStatus] = useState(null);
+  const [workspaceActivityOpen, setWorkspaceActivityOpen] = useState(false);
+  const [workspaceActivityLoading, setWorkspaceActivityLoading] = useState(false);
+  const [workspaceActivity, setWorkspaceActivity] = useState(null);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -504,6 +514,36 @@ export default function App() {
     }
   }
 
+  async function handleOpenP2PStatus() {
+    setP2PStatusOpen(true);
+    setP2PStatusLoading(true);
+    try {
+      const snapshot = await getP2PStatus();
+      setP2PStatus(snapshot);
+      setError("");
+    } catch (err) {
+      setError(err?.message || "Unable to load P2P status.");
+      notify(err?.message || "Unable to load P2P status.", "error");
+    } finally {
+      setP2PStatusLoading(false);
+    }
+  }
+
+  async function handleOpenWorkspaceActivity() {
+    setWorkspaceActivityOpen(true);
+    setWorkspaceActivityLoading(true);
+    try {
+      const timeline = await getWorkspaceActivity(250);
+      setWorkspaceActivity(timeline);
+      setError("");
+    } catch (err) {
+      setError(err?.message || "Unable to load workspace activity.");
+      notify(err?.message || "Unable to load workspace activity.", "error");
+    } finally {
+      setWorkspaceActivityLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadDocumentsData();
   }, []);
@@ -546,6 +586,16 @@ export default function App() {
 
       if (action === "open-notes-folder-settings") {
         setNotesFolderDialogOpen(true);
+        return;
+      }
+
+      if (action === "open-p2p-status") {
+        handleOpenP2PStatus();
+        return;
+      }
+
+      if (action === "open-workspace-activity") {
+        handleOpenWorkspaceActivity();
         return;
       }
 
@@ -670,6 +720,14 @@ export default function App() {
                 <button className="small-button" type="button" onClick={() => setNoteDialogOpen(true)}>
                   <NotebookPen size={14} />
                   New Note
+                </button>
+                <button className="small-button" type="button" onClick={handleOpenP2PStatus}>
+                  <ShieldEllipsis size={14} />
+                  P2P Status
+                </button>
+                <button className="small-button" type="button" onClick={handleOpenWorkspaceActivity}>
+                  <TimerReset size={14} />
+                  Activity
                 </button>
                 <div className="document-view-toggle" role="group" aria-label="Landing notes view mode">
                   <button
@@ -828,6 +886,48 @@ export default function App() {
                 {savingNotesFolder ? "Saving..." : "Save"}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {p2pStatusOpen ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="P2P status">
+          <div className="overlay-dialog-card p2p-status-dialog-card">
+            <div className="overlay-dialog-header">
+              <h2>P2P Status</h2>
+              <button
+                className="icon-button"
+                onClick={() => setP2PStatusOpen(false)}
+                type="button"
+                aria-label="Close P2P status"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <P2PStatusPanel status={p2pStatus} loading={p2pStatusLoading} onRefresh={handleOpenP2PStatus} />
+          </div>
+        </div>
+      ) : null}
+
+      {workspaceActivityOpen ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Workspace activity">
+          <div className="overlay-dialog-card activity-dialog-card">
+            <div className="overlay-dialog-header">
+              <h2>Workspace Activity</h2>
+              <button
+                className="icon-button"
+                onClick={() => setWorkspaceActivityOpen(false)}
+                type="button"
+                aria-label="Close workspace activity"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <WorkspaceActivityPanel
+              data={workspaceActivity}
+              loading={workspaceActivityLoading}
+              onRefresh={handleOpenWorkspaceActivity}
+            />
           </div>
         </div>
       ) : null}

@@ -104,6 +104,22 @@ export async function setActiveProject(slug) {
   return api.setActiveProject({ slug });
 }
 
+export async function getP2PStatus() {
+  const api = getNotesApi();
+  if (typeof api.getP2PStatus !== "function") {
+    throw new Error("P2P status unavailable. Please restart the app.");
+  }
+  return api.getP2PStatus();
+}
+
+export async function getWorkspaceActivity(limit = 200) {
+  const api = getNotesApi();
+  if (typeof api.getWorkspaceActivity !== "function") {
+    throw new Error("Workspace activity unavailable. Please restart the app.");
+  }
+  return api.getWorkspaceActivity({ limit });
+}
+
 export async function readDocument(filePath) {
   const api = getNotesApi();
   return api.readDocument(filePath);

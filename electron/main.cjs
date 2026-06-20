@@ -108,6 +108,69 @@ function filePathWithin(rootDir, targetPath) {
   return normalizedTarget.startsWith(normalizedRoot);
 }
 
+function readP2PStatusSnapshot() {
+  const harnessRoot = path.join(projectRoot, ".artifacts", "p2p-harness");
+  const summaryPath = path.join(harnessRoot, "summary.json");
+
+  if (!fs.existsSync(summaryPath)) {
+    return {
+      available: false,
+      source: summaryPath,
+      generatedAt: null,
+      sessionId: null,
+      workspaceId: null,
+      peerCount: 0,
+      trustedLinkCount: 0,
+      workspaceKeyCount: 0,
+      peers: []
+    };
+  }
+
+  let summary;
+  try {
+    summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
+  } catch {
+    return {
+      available: false,
+      source: summaryPath,
+      generatedAt: null,
+      sessionId: null,
+      workspaceId: null,
+      peerCount: 0,
+      trustedLinkCount: 0,
+      workspaceKeyCount: 0,
+      peers: []
+    };
+  }
+
+  const peers = Array.isArray(summary?.peers)
+    ? summary.peers
+      .filter((peer) => peer && typeof peer === "object")
+      .map((peer) => ({
+        name: String(peer.name || "Unknown peer"),
+        peerId: String(peer.peerId || ""),
+        trustedPeerCount: Array.isArray(peer.trustedPeers) ? peer.trustedPeers.length : 0,
+        workspaceKeyCount: Array.isArray(peer.workspaceKeys) ? peer.workspaceKeys.length : 0,
+        inboxCount: Number.isFinite(peer.inboxCount) ? peer.inboxCount : 0
+      }))
+    : [];
+
+  const trustedLinkCount = peers.reduce((total, peer) => total + peer.trustedPeerCount, 0);
+  const workspaceKeyCount = peers.reduce((total, peer) => total + peer.workspaceKeyCount, 0);
+
+  return {
+    available: true,
+    source: summaryPath,
+    generatedAt: summary?.generatedAt || null,
+    sessionId: summary?.sessionId || null,
+    workspaceId: summary?.workspaceId || null,
+    peerCount: peers.length,
+    trustedLinkCount,
+    workspaceKeyCount,
+    peers
+  };
+}
+
 function getUniquePath(targetPath) {
   if (!fs.existsSync(targetPath)) {
     return targetPath;
@@ -2034,6 +2097,34 @@ class MetadataStore {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  getWorkspaceActivity(workspaceRoot, limit = 200) {
+    const resolvedRoot = path.resolve(String(workspaceRoot || notesRoot));
+    const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 200));
+
+    if (this.db) {
+      const prefix = `${resolvedRoot.toLowerCase()}%`;
+      return this.db.prepare(`
+        SELECT file_path AS filePath, version_path AS versionPath, file_hash AS fileHash, reason, created_at AS createdAt
+        FROM history_entries
+        WHERE lower(file_path) LIKE ?
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(prefix, safeLimit);
+    }
+
+    return this.state.history
+      .filter((entry) => filePathWithin(resolvedRoot, entry.filePath))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, safeLimit)
+      .map((entry) => ({
+        filePath: entry.filePath,
+        versionPath: entry.versionPath,
+        fileHash: entry.fileHash,
+        reason: entry.reason,
+        createdAt: entry.createdAt
+      }));
+  }
+
   deleteHistoryVersion(filePath, versionPath) {
     if (this.db) {
       this.db.prepare(`
@@ -2148,6 +2239,11 @@ function buildAppMenu(win, context = {}) {
           accelerator: "CmdOrCtrl+Shift+H",
           click: () => sendMenuAction(win, "manage-versions")
         },
+        {
+          label: "Workspace Activity",
+          accelerator: "CmdOrCtrl+Shift+A",
+          click: () => sendMenuAction(win, "open-workspace-activity")
+        },
         { type: "separator" },
         {
           label: "Open",
@@ -2161,6 +2257,11 @@ function buildAppMenu(win, context = {}) {
               label: "Open Website View",
               accelerator: "CmdOrCtrl+Shift+W",
               click: () => sendMenuAction(win, "open-website")
+            },
+            {
+              label: "P2P Status",
+              accelerator: "CmdOrCtrl+Shift+P",
+              click: () => sendMenuAction(win, "open-p2p-status")
             }
           ]
         },
@@ -2205,6 +2306,16 @@ function buildAppMenu(win, context = {}) {
           label: "Open Website View",
           accelerator: "CmdOrCtrl+Shift+W",
           click: () => sendMenuAction(win, "open-website")
+        },
+        {
+          label: "Workspace Activity",
+          accelerator: "CmdOrCtrl+Shift+A",
+          click: () => sendMenuAction(win, "open-workspace-activity")
+        },
+        {
+          label: "P2P Status",
+          accelerator: "CmdOrCtrl+Shift+P",
+          click: () => sendMenuAction(win, "open-p2p-status")
         },
         { type: "separator" },
         { role: "quit" }
@@ -2685,6 +2796,33 @@ ipcMain.handle("projects:set-active", (_event, payload) => {
 
   activeProjectSlug = slug;
   return listProjectsState();
+});
+
+ipcMain.handle("p2p:get-status", () => readP2PStatusSnapshot());
+
+ipcMain.handle("activity:get-workspace", (_event, payload) => {
+  const activeProject = getActiveProject();
+  const workspaceRoot = path.resolve(activeProject?.rootPath || notesRoot);
+  const rows = metadataStore.getWorkspaceActivity(workspaceRoot, payload?.limit);
+
+  const activity = rows.map((entry, index) => ({
+    id: `${entry.createdAt || "unknown"}-${index}`,
+    filePath: entry.filePath,
+    fileName: path.basename(entry.filePath || ""),
+    relativePath: normalizeToPosix(path.relative(workspaceRoot, entry.filePath || "")),
+    reason: entry.reason || "unknown",
+    createdAt: entry.createdAt || null,
+    versionPath: entry.versionPath || "",
+    fileHash: entry.fileHash || "",
+    actor: "local-user"
+  }));
+
+  return {
+    workspaceRoot,
+    workspaceLabel: activeProject?.isRoot ? "Root" : (activeProject?.name || "Workspace"),
+    total: activity.length,
+    activity
+  };
 });
 
 ipcMain.handle("documents:list", (_event, payload) => {
