@@ -69,6 +69,24 @@ But this sentance has an eror.`;
     expect(messages).not.toContain("aksadsdbnjasd");
   });
 
+  it("skips title-like markdown fragments but keeps lowercase standalone typos", async () => {
+    const titleLikeSamples = ["# Column", "- Column", "> Column"];
+
+    for (const content of titleLikeSamples) {
+      const issues = await checkSpelling(content);
+      const messages = issues.map((issue) => issue.message).join(" ");
+      expect(messages).not.toContain("Column");
+    }
+
+    const typoSamples = ["- aksadsdbnjasd", "> aksadsdbnjasd"];
+
+    for (const content of typoSamples) {
+      const issues = await checkSpelling(content);
+      const messages = issues.map((issue) => issue.message).join(" ");
+      expect(messages).toContain("aksadsdbnjasd");
+    }
+  });
+
   it("ignores common abbreviations", async () => {
     const content = "API and REST are common terms. See the docs at https://example.com";
     const issues = await checkSpelling(content);

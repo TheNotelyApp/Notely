@@ -171,6 +171,32 @@ function stripMarkdownArtifacts(text) {
     .trim();
 }
 
+function isStandaloneLowercaseWord(text) {
+  const normalized = stripMarkdownArtifacts(text || "");
+  if (!normalized) return false;
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length !== 1) return false;
+
+  const word = words[0].replace(/[^\w'-]/g, "");
+  return /^[a-z][a-z'-]{3,}$/.test(word);
+}
+
+function shouldSpellCheckLine(text, blockType) {
+  const normalized = stripMarkdownArtifacts(text || "");
+  if (!normalized) return false;
+
+  if (isSentenceLike(normalized)) {
+    return true;
+  }
+
+  if (blockType === "heading_open") {
+    return false;
+  }
+
+  return isStandaloneLowercaseWord(normalized);
+}
+
 function extractMarkdownProseLines(content) {
   const normalizedContent = preprocessMarkdownForLanguageChecks(content);
   const tokens = markdownParser.parse(normalizedContent || "", {});
@@ -249,9 +275,10 @@ function extractMarkdownSpellingLines(content) {
             Number.isFinite(token.map?.[0])
               ? token.map[0] + 1
               : (openStack.slice().reverse().find((entry) => Number.isFinite(entry.line))?.line || 1);
+          const blockType = openStack.slice().reverse().find((entry) => proseBlockTypes.has(entry.type))?.type || null;
 
           visibleLines.forEach((lineText, index) => {
-            if (isProseLike(lineText)) {
+            if (shouldSpellCheckLine(lineText, blockType)) {
               lines.push({ line: baseLine + index, text: lineText });
             }
           });
