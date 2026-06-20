@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import mermaid from "mermaid";
-import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, ShieldEllipsis, TimerReset, X } from "lucide-react";
+import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
 import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
@@ -824,14 +824,6 @@ export default function App() {
                 <button className="small-button" type="button" onClick={() => setNoteDialogOpen(true)}>
                   <NotebookPen size={14} />
                   New Note
-                </button>
-                <button className="small-button" type="button" onClick={handleOpenP2PStatus}>
-                  <ShieldEllipsis size={14} />
-                  P2P Status
-                </button>
-                <button className="small-button" type="button" onClick={handleOpenWorkspaceActivity}>
-                  <TimerReset size={14} />
-                  Activity
                 </button>
                 <div className="document-view-toggle" role="group" aria-label="Landing notes view mode">
                   <button

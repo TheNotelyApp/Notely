@@ -2253,6 +2253,11 @@ function buildAppMenu(win, context = {}) {
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")
         },
+        {
+          label: "P2P Status",
+          accelerator: "CmdOrCtrl+Shift+P",
+          click: () => sendMenuAction(win, "open-p2p-status")
+        },
         { type: "separator" },
         {
           label: "Open",
@@ -2266,11 +2271,6 @@ function buildAppMenu(win, context = {}) {
               label: "Open Website View",
               accelerator: "CmdOrCtrl+Shift+W",
               click: () => sendMenuAction(win, "open-website")
-            },
-            {
-              label: "P2P Status",
-              accelerator: "CmdOrCtrl+Shift+P",
-              click: () => sendMenuAction(win, "open-p2p-status")
             }
           ]
         },
