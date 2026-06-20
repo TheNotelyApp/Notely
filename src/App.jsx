@@ -7,6 +7,7 @@ import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
 import { P2PStatusPanel } from "./components/P2PStatusPanel";
 import { WorkspaceActivityPanel } from "./components/WorkspaceActivityPanel";
 import { ConflictResolutionPanel } from "./components/ConflictResolutionPanel";
+import AISettings from "./components/AISettings";
 import {
   createFolder,
   createDocument,
@@ -135,6 +136,8 @@ export default function App() {
   const [conflictResolutionEntry, setConflictResolutionEntry] = useState(null);
   const [conflictResolutionFiles, setConflictResolutionFiles] = useState(null);
   const [conflictResolutionLoading, setConflictResolutionLoading] = useState(false);
+    const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -578,6 +581,71 @@ export default function App() {
   }
 
   async function refreshP2PStatus() {
+    async function handleAIEmbeddings() {
+      setAiLoading(true);
+      try {
+        const result = await window.electron.ipcRenderer.invoke('ai:embeddings:generate', {
+          forceRefresh: true
+        });
+        if (result?.success) {
+          notify('Embeddings generated successfully!', 'success');
+        } else {
+          notify(result?.error || 'Failed to generate embeddings', 'error');
+        }
+      } catch (err) {
+        notify(err?.message || 'Failed to generate embeddings', 'error');
+      } finally {
+        setAiLoading(false);
+      }
+    }
+
+    async function handleAIGraph() {
+      setAiLoading(true);
+      try {
+        const result = await window.electron.ipcRenderer.invoke('ai:graph:build', {});
+        if (result?.success) {
+          notify('Relationship graph built successfully!', 'success');
+        } else {
+          notify(result?.error || 'Failed to build graph', 'error');
+        }
+      } catch (err) {
+        notify(err?.message || 'Failed to build graph', 'error');
+      } finally {
+        setAiLoading(false);
+      }
+    }
+
+    async function handleAIPatterns() {
+      setAiLoading(true);
+      try {
+        const result = await window.electron.ipcRenderer.invoke('ai:patterns:detect', {});
+        if (result?.success) {
+          notify('Patterns detected successfully!', 'success');
+        } else {
+          notify(result?.error || 'Failed to detect patterns', 'error');
+        }
+      } catch (err) {
+        notify(err?.message || 'Failed to detect patterns', 'error');
+      } finally {
+        setAiLoading(false);
+      }
+    }
+
+    async function handleAIClearCache() {
+      setAiLoading(true);
+      try {
+        const result = await window.electron.ipcRenderer.invoke('ai:config:clear-data', {});
+        if (result?.success) {
+          notify('AI cache cleared successfully!', 'success');
+        } else {
+          notify(result?.error || 'Failed to clear cache', 'error');
+        }
+      } catch (err) {
+        notify(err?.message || 'Failed to clear cache', 'error');
+      } finally {
+        setAiLoading(false);
+      }
+    }
     const snapshot = await getP2PStatus();
     setP2PStatus(snapshot);
   }
@@ -1019,6 +1087,31 @@ export default function App() {
       if (action === "remove-document") {
         handleDeleteCurrentDocument();
       }
+
+        if (action === "open-ai-settings") {
+          setAiSettingsOpen(true);
+          return;
+        }
+
+        if (action === "ai-generate-embeddings") {
+          handleAIEmbeddings();
+          return;
+        }
+
+        if (action === "ai-build-graph") {
+          handleAIGraph();
+          return;
+        }
+
+        if (action === "ai-detect-patterns") {
+          handleAIPatterns();
+          return;
+        }
+
+        if (action === "ai-clear-cache") {
+          handleAIClearCache();
+          return;
+        }
     });
   }, [current, dirty, activeProject, activeTab]);
 

@@ -2859,6 +2859,34 @@ function buildAppMenu(win, context = {}) {
       ]
     },
     {
+      label: "🤖 AI",
+      submenu: [
+        {
+          label: "AI Settings",
+          accelerator: "CmdOrCtrl+Shift+,",
+          click: () => sendMenuAction(win, "open-ai-settings")
+        },
+        { type: "separator" },
+        {
+          label: "Generate Embeddings",
+          click: () => sendMenuAction(win, "ai-generate-embeddings")
+        },
+        {
+          label: "Build Relationship Graph",
+          click: () => sendMenuAction(win, "ai-build-graph")
+        },
+        {
+          label: "Detect Patterns",
+          click: () => sendMenuAction(win, "ai-detect-patterns")
+        },
+        { type: "separator" },
+        {
+          label: "Clear Cache",
+          click: () => sendMenuAction(win, "ai-clear-cache")
+        }
+      ]
+    },
+    {
       label: "Help",
       submenu: [
         { role: "toggleDevTools" }
