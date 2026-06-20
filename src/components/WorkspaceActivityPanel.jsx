@@ -23,6 +23,7 @@ export function WorkspaceActivityPanel({ data, loading, onRefresh }) {
   const [fileQuery, setFileQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const currentData = data || {};
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -51,15 +52,7 @@ export function WorkspaceActivityPanel({ data, loading, onRefresh }) {
     }
   }, [actionFilter, fileQuery, fromDate, toDate]);
 
-  if (!data) {
-    return (
-      <div className="activity-empty">
-        <p>No workspace activity available yet.</p>
-      </div>
-    );
-  }
-
-  const activity = Array.isArray(data.activity) ? data.activity : [];
+  const activity = Array.isArray(currentData.activity) ? currentData.activity : [];
   const actionTypes = useMemo(() => {
     const unique = new Set(activity.map((item) => String(item.reason || "unknown").trim()).filter(Boolean));
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
@@ -101,6 +94,14 @@ export function WorkspaceActivityPanel({ data, loading, onRefresh }) {
     });
   }, [activity, actionFilter, fileQuery, fromDate, toDate]);
 
+  if (!data) {
+    return (
+      <div className="activity-empty">
+        <p>No workspace activity available yet.</p>
+      </div>
+    );
+  }
+
   function handleClearFilters() {
     setActionFilter("all");
     setFileQuery("");
@@ -125,15 +126,15 @@ export function WorkspaceActivityPanel({ data, loading, onRefresh }) {
       <div className="activity-summary-grid">
         <div className="activity-summary-card">
           <span>Workspace</span>
-          <strong>{data.workspaceLabel || "Workspace"}</strong>
+          <strong>{currentData.workspaceLabel || "Workspace"}</strong>
         </div>
         <div className="activity-summary-card">
           <span>Root</span>
-          <strong className="mono-cell" title={data.workspaceRoot || ""}>{data.workspaceRoot || "N/A"}</strong>
+          <strong className="mono-cell" title={currentData.workspaceRoot || ""}>{currentData.workspaceRoot || "N/A"}</strong>
         </div>
         <div className="activity-summary-card">
           <span>Events</span>
-          <strong>{filteredActivity.length} / {data.total || 0}</strong>
+          <strong>{filteredActivity.length} / {currentData.total || 0}</strong>
         </div>
       </div>
 
