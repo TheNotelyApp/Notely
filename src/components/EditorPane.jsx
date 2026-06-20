@@ -112,6 +112,7 @@ export function EditorPane({
       textareaRef={textareaRef}
       onNotify={onNotify}
       validationIssues={validationIssues}
+      onJumpToLine={jumpToLine}
       focusedLine={focusedLine}
     />
   );

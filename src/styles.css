@@ -1164,6 +1164,50 @@ button {
   font-size: 12px;
 }
 
+.validation-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.validation-banner-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.validation-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.validation-kind-badge.spelling {
+  color: #8e3d5a;
+}
+
+.validation-kind-badge.grammar {
+  color: #3d5a8e;
+}
+
+.validation-kind-badge.issue,
+.validation-kind-badge.markdown,
+.validation-kind-badge.table-columns,
+.validation-kind-badge.table-separator {
+  color: #715a1e;
+}
+
 .validation-item-actions {
   display: flex;
   align-items: center;
@@ -1352,12 +1396,56 @@ button {
   border: 0;
   outline: none;
   padding: 14px 16px;
-  background: #fffefd;
+  background: transparent;
   color: #172326;
   font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
   font-size: 13px;
   line-height: 1.55;
   tab-size: 2;
+}
+
+.markdown-textarea-stack {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.markdown-issue-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-left: 1px solid transparent;
+}
+
+.markdown-issue-layer-inner {
+  padding: 14px 16px;
+  will-change: transform;
+}
+
+.markdown-issue-line {
+  height: 20.15px;
+  border-radius: 5px;
+  margin: 0;
+}
+
+.markdown-issue-line.active-line {
+  background: rgba(26, 58, 62, 0.05);
+}
+
+.markdown-issue-line.spelling-line {
+  background: rgba(184, 108, 0, 0.11);
+  border-left: 3px solid rgba(184, 108, 0, 0.45);
+}
+
+.markdown-issue-line.grammar-line {
+  background: rgba(61, 90, 142, 0.1);
+  border-left: 3px solid rgba(61, 90, 142, 0.45);
+}
+
+.markdown-issue-line.other-line {
+  background: rgba(142, 61, 90, 0.08);
+  border-left: 3px solid rgba(142, 61, 90, 0.28);
 }
 
 .markdown-editor-shell {
@@ -1402,10 +1490,50 @@ button {
   font-weight: 700;
 }
 
+.markdown-line-number.has-issue {
+  color: #8a4d00;
+}
+
 .line-issue-marker {
   font-style: normal;
   color: #b86c00;
   font-weight: 700;
+}
+
+.editor-context-menu {
+  position: fixed;
+  z-index: 1300;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid #d6dfdb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(20, 38, 42, 0.18);
+  display: grid;
+  gap: 4px;
+}
+
+.editor-context-menu button {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 32px;
+  border: 0;
+  background: #f7faf9;
+  color: #163337;
+  text-align: left;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.editor-context-menu button:hover {
+  background: #e9f2ee;
+}
+
+.editor-context-menu-group {
+  display: grid;
+  gap: 4px;
 }
 
 .markdown-textarea.with-line-numbers {
@@ -1698,4 +1826,28 @@ button {
   color: #8a9fa8;
   word-break: break-all;
   font-family: monospace;
+}
+
+/* Spell and grammar checking banner styles */
+.validation-banner.spelling {
+  background: #fdf3f7;
+  color: #8e3d5a;
+  border-bottom-color: #e8c2d5;
+}
+
+.validation-banner.info {
+  background: #f0f3ff;
+  color: #3d5a8e;
+  border-bottom-color: #c2d5e8;
+}
+
+/* Spell checker indicator in gutter */
+.markdown-gutter button.has-spelling-issue {
+  background-color: #ffe8d6 !important;
+  color: #8e5a3d;
+}
+
+.markdown-gutter button.has-grammar-issue {
+  background-color: #e8f0ff !important;
+  color: #3d5a8e;
 }

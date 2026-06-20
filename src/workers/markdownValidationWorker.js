@@ -1,11 +1,11 @@
-import { validateMarkdownSyntax } from "../utils/markdownValidation";
+import { validateMarkdownComplete } from "../utils/markdownValidationComplete";
 
 self.onmessage = async (event) => {
   const text = event?.data?.text || "";
   const requestId = event?.data?.requestId;
 
   try {
-    const issues = await validateMarkdownSyntax(text);
+    const issues = await validateMarkdownComplete(text);
     self.postMessage({ ok: true, issues, requestId });
   } catch (error) {
     self.postMessage({

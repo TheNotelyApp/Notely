@@ -17,7 +17,7 @@ import {
 import { applySnippet, createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertImageFromFile } from "../services/imageService";
 import { listDocuments, listImages } from "../services/electronService";
-import { applyMarkdownQuickFix, getIssueFixType } from "../utils/markdownQuickFix";
+import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 
 function toRelativeDocPath(fromFilePath, toFilePath) {
   if (!fromFilePath || !toFilePath) return "";
@@ -47,6 +47,14 @@ function isValidHttpUrl(value) {
   } catch {
     return false;
   }
+}
+
+function getIssueLabel(issue) {
+  if (!issue) return "Issue";
+  if (issue.ruleId === "spelling") return issue.word ? "Typo" : "Spelling";
+  if (issue.ruleId === "grammar" || String(issue.ruleId || "").includes("grammar")) return "Grammar";
+  if (String(issue.ruleId || "").includes("table")) return "Markdown";
+  return "Issue";
 }
 
 export function MarkdownToolbar({
@@ -254,6 +262,25 @@ export function MarkdownToolbar({
     }
     onChange(result.nextValue);
     onNotify?.(result.message, "success");
+  }
+
+  function applyValidationSuggestionFix(issue) {
+    if (!issue) return;
+    const result = applyValidationSuggestion(value, issue);
+    if (!result.changed) {
+      onNotify?.(result.message, "warning");
+      return;
+    }
+
+    onChange(result.nextValue);
+    onNotify?.(result.message, "success");
+  }
+
+  function getIssueActionLabel(issue) {
+    if (!issue) return null;
+    if (getIssueFixType(issue)) return "Quick fix";
+    if (issue.suggestion) return "Apply suggestion";
+    return null;
   }
 
   function insertTableTemplate() {
@@ -498,9 +525,13 @@ export function MarkdownToolbar({
             <div className="validation-list">
               {validationIssues.map((issue, index) => (
                 <div className="validation-item" key={`${issue.line}-${index}`}>
+                  <div className="validation-item-head">
+                    <span className={`validation-kind-badge ${issue.ruleId || "issue"}`}>{getIssueLabel(issue)}</span>
+                  </div>
                   <p>
                     Line {issue.line}:{issue.column || 1} - {issue.message}
                     {issue.ruleId ? ` (${issue.ruleId})` : ""}
+                    {issue.suggestion ? ` Suggestion: ${issue.suggestion}` : ""}
                   </p>
                   <div className="validation-item-actions">
                     {Number.isFinite(issue.line) ? (
@@ -511,6 +542,10 @@ export function MarkdownToolbar({
                     {getIssueFixType(issue) ? (
                       <button type="button" onClick={() => applyValidationFix(issue)}>
                         Quick fix
+                      </button>
+                    ) : issue.suggestion ? (
+                      <button type="button" onClick={() => applyValidationSuggestionFix(issue)}>
+                        Apply suggestion
                       </button>
                     ) : null}
                   </div>

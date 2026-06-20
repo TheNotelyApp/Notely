@@ -2,6 +2,24 @@ function normalizedLineList(text) {
   return (text || "").split(/\r?\n/);
 }
 
+function getLineStartIndex(value, targetLine) {
+  const lines = normalizedLineList(value);
+  const safeLine = Math.max(Number(targetLine) || 1, 1);
+  let index = 0;
+
+  for (let lineIndex = 0; lineIndex < Math.min(safeLine - 1, lines.length); lineIndex += 1) {
+    index += lines[lineIndex].length + 1;
+  }
+
+  return index;
+}
+
+function getTextIndexAtLineColumn(value, line, column) {
+  const startIndex = getLineStartIndex(value, line);
+  const safeColumn = Math.max(Number(column) || 1, 1);
+  return Math.min(startIndex + safeColumn - 1, (value || "").length);
+}
+
 export function getIssueFixType(issue) {
   const text = (issue?.message || "").toLowerCase();
   if (issue?.ruleId === "table-separator") return "table-separator";
@@ -71,5 +89,30 @@ export function applyMarkdownQuickFix(value, issue) {
     nextValue: value || "",
     changed: false,
     message: "No automatic quick fix available for this issue.",
+  };
+}
+
+export function applyValidationSuggestion(value, issue) {
+  const suggestion = (issue?.suggestion || "").trim();
+  if (!suggestion) {
+    return {
+      nextValue: value || "",
+      changed: false,
+      message: "No suggestion available for this issue.",
+    };
+  }
+
+  const startIndex = getTextIndexAtLineColumn(value, issue?.line, issue?.column);
+  const replacementLength = Math.max(Number(issue?.length) || 0, issue?.word?.length || 0, suggestion.length, 1);
+  const nextValue = [
+    (value || "").slice(0, startIndex),
+    suggestion,
+    (value || "").slice(startIndex + replacementLength),
+  ].join("");
+
+  return {
+    nextValue,
+    changed: nextValue !== (value || ""),
+    message: `Applied suggestion: ${suggestion}`,
   };
 }

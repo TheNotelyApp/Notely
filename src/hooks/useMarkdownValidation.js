@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { validateMarkdownSyntax } from "../utils/markdownValidation";
+import { validateMarkdownComplete } from "../utils/markdownValidationComplete";
 
 export function useMarkdownValidation(value, delayMs = 450) {
   const [issues, setIssues] = useState([]);
@@ -36,7 +36,7 @@ export function useMarkdownValidation(value, delayMs = 450) {
 
     const runFallbackValidation = async () => {
       try {
-        const nextIssues = await validateMarkdownSyntax(value || "");
+        const nextIssues = await validateMarkdownComplete(value || "");
         if (requestId !== requestIdRef.current) return;
         settled = true;
         setIssues(nextIssues);
