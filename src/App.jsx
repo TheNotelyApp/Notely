@@ -35,7 +35,7 @@ import {
   runP2PSyncSelfTest,
   listP2PSyncConflicts,
   getWorkspaceActivity,
-  openInEditor as openInEditorPath,
+  onP2PSyncApplied,
   updateMenuContext,
 } from "./services/electronService";
 
@@ -704,7 +704,7 @@ export default function App() {
 
   async function handleOpenConflictFile(filePath) {
     try {
-      await openInEditorPath(filePath);
+      await openInEditor(filePath);
     } catch (err) {
       notify(err?.message || "Unable to open conflict file.", "error");
     }
@@ -712,6 +712,22 @@ export default function App() {
 
   useEffect(() => {
     loadDocumentsData();
+  }, []);
+
+  useEffect(() => {
+    return onP2PSyncApplied((payload) => {
+      const op = payload?.op;
+      const relativePath = payload?.relativePath || "";
+      const peerName = payload?.peerName || "a peer";
+      if (op === "delete") {
+        notify(`Note deleted by ${peerName}: ${relativePath}`, "info");
+      } else if (op === "conflict") {
+        notify(`Sync conflict from ${peerName} — check Conflict Center.`, "warning");
+      } else {
+        notify(`Note synced from ${peerName}: ${relativePath}`, "info");
+      }
+      loadDocumentsData();
+    });
   }, []);
 
   useEffect(() => {

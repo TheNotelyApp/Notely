@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld("notesApi", {
   rotateP2PWorkspaceKeys: (payload) => ipcRenderer.invoke("p2p:rotate-workspace-keys", payload),
   runP2PSyncSelfTest: () => ipcRenderer.invoke("p2p:run-sync-self-test"),
   listP2PSyncConflicts: (payload) => ipcRenderer.invoke("sync:list-conflicts", payload),
+  onP2PSyncApplied: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("sync:applied", listener);
+    return () => ipcRenderer.removeListener("sync:applied", listener);
+  },
   getWorkspaceActivity: (payload) => ipcRenderer.invoke("activity:get-workspace", payload),
   listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),

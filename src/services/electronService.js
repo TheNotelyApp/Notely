@@ -192,6 +192,14 @@ export async function listP2PSyncConflicts(limit = 200) {
   return api.listP2PSyncConflicts({ limit });
 }
 
+export function onP2PSyncApplied(callback) {
+  const api = getNotesApi();
+  if (typeof api.onP2PSyncApplied !== "function") {
+    return () => {};
+  }
+  return api.onP2PSyncApplied(callback);
+}
+
 export async function getWorkspaceActivity(limit = 200) {
   const api = getNotesApi();
   if (typeof api.getWorkspaceActivity !== "function") {

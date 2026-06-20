@@ -37,6 +37,9 @@ export function P2PStatusPanel({
   const trustedPeers = Array.isArray(currentStatus.trustedPeers) ? currentStatus.trustedPeers : [];
   const invites = Array.isArray(currentStatus.invites) ? currentStatus.invites : [];
   const discoveryRunning = Boolean(currentStatus?.discovery?.running);
+  const syncStats = currentStatus?.sync?.stats || null;
+  const syncOutboxCount = Number(currentStatus?.sync?.outboxCount || 0);
+  const peerSyncMeta = Array.isArray(currentStatus?.sync?.peerMeta) ? currentStatus.sync.peerMeta : [];
 
   const sortedDiscovered = useMemo(
     () => [...discoveredPeers].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))),
@@ -353,6 +356,42 @@ export function P2PStatusPanel({
             <span>Legacy Harness Rows</span>
             <strong>{peers.length}</strong>
           </p>
+        </div>
+      ) : null}
+
+      {syncStats ? (
+        <div className="p2p-status-peer-table-wrap">
+          <h3 className="p2p-section-title">Sync Reliability</h3>
+          <div className="p2p-status-meta">
+            <p><span>Queued</span><strong>{syncStats.queued || 0}</strong></p>
+            <p><span>Sent</span><strong>{syncStats.sent || 0}</strong></p>
+            <p><span>Acked</span><strong>{syncStats.acked || 0}</strong></p>
+            <p><span>Retried</span><strong>{syncStats.retried || 0}</strong></p>
+            <p><span>Dropped</span><strong>{syncStats.dropped || 0}</strong></p>
+            <p><span>Outbox</span><strong>{syncOutboxCount}</strong></p>
+            <p><span>Last Ack</span><strong>{syncStats.lastAckAt ? formatDateTime(syncStats.lastAckAt) : "None"}</strong></p>
+            <p><span>Last Error</span><strong className={syncStats.lastError ? "offline" : ""}>{syncStats.lastError || "None"}</strong></p>
+          </div>
+          {peerSyncMeta.length ? (
+            <table className="p2p-status-peer-table">
+              <thead>
+                <tr>
+                  <th>Peer ID</th>
+                  <th>Last Ack</th>
+                  <th>Last Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {peerSyncMeta.map((meta) => (
+                  <tr key={meta.peerId}>
+                    <td className="mono-cell" title={meta.peerId}>{meta.peerId}</td>
+                    <td>{meta.lastAckAt ? formatDateTime(meta.lastAckAt) : "None"}</td>
+                    <td className={meta.lastError ? "p2p-test-fail" : ""}>{meta.lastError || "OK"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -464,7 +464,13 @@ function emitLocalP2PSyncEvent(event) {
   });
 }
 
-function handleIncomingP2PSyncEvent({ peerId, event }) {
+function pushSyncApplied(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("sync:applied", payload);
+  }
+}
+
+function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
   try {
     const op = String(event?.op || "").trim();
     const relativePath = normalizeToPosix(String(event?.payload?.relativePath || "").trim());
@@ -516,6 +522,7 @@ function handleIncomingP2PSyncEvent({ peerId, event }) {
         versionPath: result?.movedPath || `p2p://${event?.eventId || "unknown"}`,
         fileHash: localHash
       });
+      pushSyncApplied({ op: "delete", relativePath, peerName: peerName || peerId });
       return;
     }
 
@@ -547,6 +554,7 @@ function handleIncomingP2PSyncEvent({ peerId, event }) {
         versionPath: `p2p://${event?.eventId || "unknown"}`,
         fileHash: hashContent(incomingContent)
       });
+      pushSyncApplied({ op, relativePath, peerName: peerName || peerId });
       return;
     }
 
@@ -571,6 +579,7 @@ function handleIncomingP2PSyncEvent({ peerId, event }) {
         versionPath: backupPath,
         fileHash: localHash
       });
+      pushSyncApplied({ op, relativePath, peerName: peerName || peerId });
       return;
     }
 
@@ -590,6 +599,7 @@ function handleIncomingP2PSyncEvent({ peerId, event }) {
         versionPath: backupPath,
         fileHash: localHash
       });
+      pushSyncApplied({ op: "merge", relativePath, peerName: peerName || peerId });
       return;
     }
 
@@ -610,6 +620,7 @@ function handleIncomingP2PSyncEvent({ peerId, event }) {
       versionPath: conflictPath,
       fileHash: hashContent(incomingContent)
     });
+    pushSyncApplied({ op: "conflict", relativePath, peerName: peerName || peerId });
   } catch (error) {
     console.error("P2P sync apply failed:", error?.message || error);
   }
