@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import mermaid from "mermaid";
-import { FolderOpen, FolderPlus, Globe, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
+import { FolderOpen, Globe, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
 import {
-  createProject,
   createDocument,
   getNotesRootSetting,
   listProjects,
@@ -57,7 +56,6 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProjectState] = useState(null);
-  const [creatingFolder, setCreatingFolder] = useState(false);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [creatingNote, setCreatingNote] = useState(false);
   const [notesViewMode, setNotesViewMode] = useState(initialViewMode);
@@ -179,11 +177,6 @@ export default function App() {
   }
 
   async function handleCreateNote() {
-    if (activeProject?.isRoot) {
-      notify("Cannot create notes in root. Open a project folder first.", "warning");
-      return;
-    }
-
     const title = newNoteTitle.trim();
     if (!title) {
       notify("Enter a note title first.", "warning");
@@ -218,36 +211,6 @@ export default function App() {
       notify(err?.message || "Unable to create note.", "error");
     } finally {
       setCreatingNote(false);
-    }
-  }
-
-  async function handleCreateFolder() {
-    if (!activeProject?.isRoot) {
-      notify("New folders can be created only in root.", "warning");
-      return;
-    }
-
-    const name = window.prompt("Enter new folder name");
-    if (name == null) return;
-
-    const trimmed = name.trim();
-    if (!trimmed) {
-      notify("Folder name is required.", "warning");
-      return;
-    }
-
-    setCreatingFolder(true);
-    setError("");
-    try {
-      const result = await createProject(trimmed);
-      applyProjectState(result);
-      setDocuments(await listDocuments());
-      notify("Folder created.", "success");
-    } catch (err) {
-      setError(err?.message || "Unable to create folder.");
-      notify(err?.message || "Unable to create folder.", "error");
-    } finally {
-      setCreatingFolder(false);
     }
   }
 
@@ -353,28 +316,18 @@ export default function App() {
       screen: current ? "document" : "landing",
       viewMode: notesViewMode,
       dirty,
-      canCreateFolder: !current && Boolean(activeProject?.isRoot),
     });
-  }, [current, notesViewMode, dirty, activeProject]);
+  }, [current, notesViewMode, dirty]);
 
   useEffect(() => {
     return onMenuAction((action) => {
       if (action === "new-note") {
-        if (activeProject?.isRoot) {
-          notify("Cannot create notes in root. Open a project folder first.", "warning");
-          return;
-        }
         setNoteDialogOpen(true);
         return;
       }
 
       if (action === "view-tile") {
         setNotesViewMode("tile");
-        return;
-      }
-
-      if (action === "new-project") {
-        handleCreateFolder();
         return;
       }
 
@@ -441,18 +394,10 @@ export default function App() {
               </button>
               <button
                 className="small-button"
-                onClick={handleCreateFolder}
-                disabled={creatingFolder || !activeProject?.isRoot}
-              >
-                <FolderPlus size={14} />
-                New Folder
-              </button>
-              <button
-                className="small-button"
                 onClick={() => {
                   setNoteDialogOpen(true);
                 }}
-                disabled={creatingNote || activeProject?.isRoot}
+                disabled={creatingNote}
               >
                 <NotebookPen size={14} />
                 New Note

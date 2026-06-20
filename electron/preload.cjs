@@ -15,7 +15,6 @@ contextBridge.exposeInMainWorld("notesApi", {
   setNotesRootSetting: (payload) => ipcRenderer.invoke("settings:set-notes-root", payload),
   pickFolder: () => ipcRenderer.invoke("settings:pick-folder"),
   listProjects: () => ipcRenderer.invoke("projects:list"),
-  createProject: (payload) => ipcRenderer.invoke("projects:create", payload),
   setActiveProject: (payload) => ipcRenderer.invoke("projects:set-active", payload),
   listDocuments: () => ipcRenderer.invoke("documents:list"),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),

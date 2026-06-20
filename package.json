@@ -9,7 +9,7 @@
   },
   "main": "electron/main.cjs",
   "scripts": {
-    "dev": "concurrently \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && node scripts/launch-electron.cjs --dev\"",
+    "dev": "node scripts/dev.cjs",
     "assets:icon": "node scripts/generate-icon.cjs",
     "release:clean": "node scripts/clean-release-artifacts.cjs",
     "build": "vite build",

@@ -72,14 +72,6 @@ export async function listProjects() {
   return api.listProjects();
 }
 
-export async function createProject(name) {
-  const api = getNotesApi();
-  if (typeof api.createProject !== "function") {
-    throw new Error("Create project action unavailable. Please restart the app.");
-  }
-  return api.createProject({ name });
-}
-
 export async function setActiveProject(slug) {
   const api = getNotesApi();
   if (typeof api.setActiveProject !== "function") {

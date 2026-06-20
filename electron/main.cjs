@@ -1606,7 +1606,6 @@ function buildAppMenu(win, context = {}) {
   const screen = context?.screen === "document" ? "document" : "landing";
   const viewMode = context?.viewMode === "table" ? "table" : "tile";
   const dirty = Boolean(context?.dirty);
-  const canCreateFolder = Boolean(context?.canCreateFolder);
 
   const fileSubmenu = screen === "document"
     ? [
@@ -1632,11 +1631,6 @@ function buildAppMenu(win, context = {}) {
           accelerator: "CmdOrCtrl+N",
           click: () => sendMenuAction(win, "new-note")
         },
-        {
-          label: "New Folder",
-          accelerator: "CmdOrCtrl+Shift+N",
-          enabled: false
-        },
         { type: "separator" },
         { role: "quit" }
       ]
@@ -1645,12 +1639,6 @@ function buildAppMenu(win, context = {}) {
           label: "New Note",
           accelerator: "CmdOrCtrl+N",
           click: () => sendMenuAction(win, "new-note")
-        },
-        {
-          label: "New Folder",
-          accelerator: "CmdOrCtrl+Shift+N",
-          enabled: canCreateFolder,
-          click: () => sendMenuAction(win, "new-project")
         },
         { type: "separator" },
         { role: "quit" }
@@ -1752,7 +1740,7 @@ function createWindow() {
     win.loadFile(path.join(projectRoot, "dist", "index.html"));
   }
 
-  win.__menuContext = { screen: "landing", viewMode: "tile", dirty: false, canCreateFolder: true };
+  win.__menuContext = { screen: "landing", viewMode: "tile", dirty: false };
   Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
   mainWindow = win;
 
@@ -1812,7 +1800,7 @@ app.on("before-quit", () => {
 });
 
 app.on("browser-window-focus", (_event, win) => {
-  const context = win?.__menuContext || { screen: "landing", viewMode: "tile", dirty: false, canCreateFolder: true };
+  const context = win?.__menuContext || { screen: "landing", viewMode: "tile", dirty: false };
   Menu.setApplicationMenu(buildAppMenu(win, context));
 });
 
@@ -1823,8 +1811,7 @@ ipcMain.on("app-menu:update-context", (event, context) => {
   win.__menuContext = {
     screen: context?.screen === "document" ? "document" : "landing",
     viewMode: context?.viewMode === "table" ? "table" : "tile",
-    dirty: Boolean(context?.dirty),
-    canCreateFolder: Boolean(context?.canCreateFolder)
+    dirty: Boolean(context?.dirty)
   };
 
   Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
@@ -1875,36 +1862,6 @@ ipcMain.handle("settings:set-notes-root", (_event, payload) => {
 
 ipcMain.handle("projects:list", () => listProjectsState());
 
-ipcMain.handle("projects:create", (_event, payload) => {
-  const activeProject = getActiveProject();
-  if (!activeProject?.isRoot) {
-    throw new Error("New folders can be created only in root.");
-  }
-
-  const requestedName = String(payload?.name || "").trim();
-  if (!requestedName) {
-    throw new Error("Folder name is required.");
-  }
-
-  const safeName = requestedName
-    .replace(/[<>:"/\\|?*]+/g, "-")
-    .replace(/[.\s]+$/g, "")
-    .trim();
-
-  if (!safeName) {
-    throw new Error("Folder name is invalid.");
-  }
-
-  const folderPath = path.join(notesRoot, safeName);
-  if (fs.existsSync(folderPath)) {
-    throw new Error("A folder with this name already exists.");
-  }
-
-  ensureDir(folderPath);
-  activeProjectSlug = safeName;
-  return listProjectsState();
-});
-
 ipcMain.handle("projects:set-active", (_event, payload) => {
   const slug = String(payload?.slug || "").trim();
   const exists = listProjectsState().projects.some((item) => item.slug === slug);
@@ -1930,10 +1887,6 @@ ipcMain.handle("documents:list", () => {
 
 ipcMain.handle("documents:create", (_event, payload) => {
   const activeProject = getActiveProject();
-  if (activeProject?.isRoot) {
-    throw new Error("Cannot create notes in root. Open a project folder first.");
-  }
-
   const rootDir = activeProject.rootPath;
   return createDocumentInProject(rootDir, payload);
 });
