@@ -278,6 +278,28 @@ button {
   justify-content: flex-end;
 }
 
+.p2p-sync-help-content {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  color: #1f363c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.p2p-sync-help-content p {
+  margin: 0;
+}
+
+.p2p-sync-help-content ol {
+  margin: 0 0 0 18px;
+  padding: 0;
+}
+
+.p2p-sync-help-content li {
+  margin: 0 0 4px;
+}
+
 .p2p-status-dialog-card {
   width: min(940px, calc(100vw - 34px));
   max-height: calc(100vh - 48px);

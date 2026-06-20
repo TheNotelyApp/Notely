@@ -2404,6 +2404,15 @@ function buildAppMenu(win, context = {}) {
     {
       label: "View",
       submenu: viewSubmenu
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "P2P Sync Notes",
+          click: () => sendMenuAction(win, "open-p2p-sync-help")
+        }
+      ]
     }
   ]);
 }

@@ -99,6 +99,7 @@ export default function App() {
   const [workspaceActivityOpen, setWorkspaceActivityOpen] = useState(false);
   const [workspaceActivityLoading, setWorkspaceActivityLoading] = useState(false);
   const [workspaceActivity, setWorkspaceActivity] = useState(null);
+  const [p2pSyncHelpOpen, setP2PSyncHelpOpen] = useState(false);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -703,6 +704,11 @@ export default function App() {
         return;
       }
 
+      if (action === "open-p2p-sync-help") {
+        setP2PSyncHelpOpen(true);
+        return;
+      }
+
       if (action === "view-tile") {
         setNotesViewMode("tile");
         return;
@@ -1035,6 +1041,41 @@ export default function App() {
               loading={workspaceActivityLoading}
               onRefresh={handleOpenWorkspaceActivity}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {p2pSyncHelpOpen ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="P2P sync notes">
+          <div className="overlay-dialog-card">
+            <div className="overlay-dialog-header">
+              <h2>P2P Sync Notes</h2>
+              <button
+                className="icon-button"
+                onClick={() => setP2PSyncHelpOpen(false)}
+                type="button"
+                aria-label="Close P2P sync notes"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p2p-sync-help-content">
+              <p><strong>Current behavior</strong></p>
+              <ol>
+                <li>Discovery: each app broadcasts a LAN hello packet and lists nearby peers.</li>
+                <li>Connect: you can manually ping a peer by address and port.</li>
+                <li>Pairing: one peer creates an invite code, the other submits the code to establish trust.</li>
+                <li>Trust state: trusted peers are saved locally on each device.</li>
+              </ol>
+              <p><strong>File sync status</strong></p>
+              <p>Automatic note file and note content sync is not enabled yet in the current live P2P phase.</p>
+              <p><strong>Planned next phase</strong></p>
+              <ol>
+                <li>Detect note create/update/delete events.</li>
+                <li>Send encrypted note deltas to trusted peers.</li>
+                <li>Apply updates with conflict handling and activity logging.</li>
+              </ol>
+            </div>
           </div>
         </div>
       ) : null}
