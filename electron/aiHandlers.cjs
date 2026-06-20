@@ -36,6 +36,10 @@ function initializeAIHandlers(electronApp, agent) {
   // Configuration
   ipcMain.handle(IPC_EVENTS.AI_SET_API_KEY, handleSetAPIKey);
   ipcMain.handle(IPC_EVENTS.AI_GET_API_KEY, handleGetAPIKey);
+  ipcMain.handle('ai:config:get-preferences', handleGetPreferences);
+  ipcMain.handle('ai:config:set-preferences', handleSetPreferences);
+  ipcMain.handle('ai:config:test-connection', handleTestConnection);
+  ipcMain.handle('ai:config:clear-data', handleClearData);
 
   // Shutdown
   ipcMain.handle(IPC_EVENTS.AI_SHUTDOWN, handleShutdown);
@@ -236,6 +240,86 @@ async function handleGetAPIKey(event, payload) {
     return new AIQueryResponse(true, { apiKey: decrypted });
   } catch (error) {
     console.error('[AI IPC] API key retrieval failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle get preferences
+ */
+async function handleGetPreferences(event, payload) {
+  try {
+    const AIConfig = require('../src/ai/utils/AIConfig');
+    const config = new AIConfig();
+    const prefs = config.loadPreferences();
+    return new AIQueryResponse(true, prefs);
+  } catch (error) {
+    console.error('[AI IPC] Get preferences failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle set preferences
+ */
+async function handleSetPreferences(event, payload) {
+  try {
+    const AIConfig = require('../src/ai/utils/AIConfig');
+    const config = new AIConfig();
+    config.savePreferences(payload.preferences);
+    return new AIQueryResponse(true, { message: 'Preferences saved' });
+  } catch (error) {
+    console.error('[AI IPC] Set preferences failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle connection test
+ */
+async function handleTestConnection(event, payload) {
+  try {
+    if (!aiInitialized || !aiAgent?.isInitialized) {
+      throw new Error('AI agent not initialized');
+    }
+
+    const provider = aiAgent.llmRegistry.getActiveProvider();
+    const isAvailable = await provider.isAvailable();
+
+    if (isAvailable) {
+      return new AIQueryResponse(true, { message: 'Connected successfully' });
+    } else {
+      throw new Error('Provider is not available');
+    }
+  } catch (error) {
+    console.error('[AI IPC] Connection test failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle clear data
+ */
+async function handleClearData(event, payload) {
+  try {
+    if (!aiAgent) {
+      throw new Error('AI agent not available');
+    }
+
+    // Clear session memory
+    aiAgent.memoryManager.clearSession();
+
+    // Clear caches
+    aiAgent.contextManager.clearCache();
+    aiAgent.embeddingService.clearCache();
+    aiAgent.relationshipService.clearCache();
+
+    // Clean database
+    aiAgent.db.cleanExpiredCache();
+
+    return new AIQueryResponse(true, { message: 'All AI data cleared' });
+  } catch (error) {
+    console.error('[AI IPC] Clear data failed:', error);
     return new AIQueryResponse(false, null, error.message);
   }
 }
