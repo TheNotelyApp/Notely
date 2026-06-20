@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
-import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
+import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
 import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
 import { P2PStatusPanel } from "./components/P2PStatusPanel";
 import { WorkspaceActivityPanel } from "./components/WorkspaceActivityPanel";
 import { ConflictResolutionPanel } from "./components/ConflictResolutionPanel";
+import AIChatPanel from "./components/AIChatPanel";
 import AISettings from "./components/AISettings";
 import {
+  aiQuery,
   aiBuildGraph,
   aiClearData,
   aiDetectPatterns,
@@ -49,6 +51,116 @@ import {
   onP2PFullSyncProgress,
   updateMenuContext,
 } from "./services/electronService";
+
+function buildAIContextSummary(editorContext, current) {
+  if (!current?.filePath) {
+    return {
+      label: "Open a note to use AI.",
+      hasSelection: false,
+      hasCurrentBlock: false,
+    };
+  }
+
+  const selectedPreview = String(editorContext?.selectedText || "").trim();
+  const blockPreview = String(editorContext?.currentBlock?.text || "").trim();
+
+  if (selectedPreview) {
+    const compact = selectedPreview.replace(/\s+/g, " ");
+    return {
+      label: `Selection in ${editorContext?.tab || "note"}: ${compact.slice(0, 120)}${compact.length > 120 ? "..." : ""}`,
+      hasSelection: true,
+      hasCurrentBlock: Boolean(blockPreview),
+      suggestedPreset: "research",
+    };
+  }
+
+  if (blockPreview) {
+    const compact = blockPreview.replace(/\s+/g, " ");
+    return {
+      label: `Current block in ${editorContext?.tab || "note"}: ${compact.slice(0, 120)}${compact.length > 120 ? "..." : ""}`,
+      hasSelection: false,
+      hasCurrentBlock: true,
+      suggestedPreset: /meeting|agenda|decision|attendee|follow-up/i.test(compact) ? "meeting" : "research",
+    };
+  }
+
+  return {
+    label: `Whole ${editorContext?.tab || "note"} note will be used for context in ${current.title}.`,
+    hasSelection: false,
+    hasCurrentBlock: false,
+    suggestedPreset: /meeting|standup|sync|minutes/i.test(current.title || "") ? "meeting" : /plan|roadmap|tasks|action/i.test(current.title || "") ? "action-plan" : "research",
+  };
+}
+
+function extractEditableAIText(value) {
+  const text = String(value || "").trim();
+  const fenceMatch = text.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$/i);
+  return fenceMatch ? fenceMatch[1].trim() : text;
+}
+
+function normalizePaletteIntent(options = {}, contextSummary = null) {
+  const requestedTarget = options?.target || null;
+  const defaultTarget = "auto";
+
+  return {
+    query: String(options?.initialQuery || ""),
+    target: requestedTarget || defaultTarget,
+    autoRun: Boolean(options?.autoRun),
+    source: String(options?.source || "manual"),
+    requestId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  };
+}
+
+function resolveAITarget(editorContext, requestedTarget, current, activeTab) {
+  const selectionText = String(editorContext?.selectedText || "");
+  const blockText = String(editorContext?.currentBlock?.text || "");
+  const documentText = activeTab === "raw"
+    ? current?.rawNotes || ""
+    : current?.cleansed || "";
+
+  if (requestedTarget === "workspace") {
+    return {
+      requestedTarget,
+      effectiveTarget: selectionText ? "selection" : blockText ? "block" : "document",
+      targetText: selectionText || blockText || documentText,
+      scopeLabel: "workspace",
+    };
+  }
+
+  if (requestedTarget === "selection") {
+    return {
+      requestedTarget,
+      effectiveTarget: selectionText ? "selection" : "document",
+      targetText: selectionText || documentText,
+      scopeLabel: selectionText ? "selection" : "note",
+    };
+  }
+
+  if (requestedTarget === "block") {
+    return {
+      requestedTarget,
+      effectiveTarget: blockText ? "block" : "document",
+      targetText: blockText || documentText,
+      scopeLabel: blockText ? "block" : "note",
+    };
+  }
+
+  if (requestedTarget === "document") {
+    return {
+      requestedTarget,
+      effectiveTarget: "document",
+      targetText: documentText,
+      scopeLabel: "note",
+    };
+  }
+
+  return {
+    requestedTarget: "auto",
+    effectiveTarget: selectionText ? "selection" : "document",
+    targetText: selectionText || documentText,
+    scopeLabel: selectionText ? "selection" : "note",
+  };
+}
 
 mermaid.initialize({
   startOnLoad: false,
@@ -140,8 +252,27 @@ export default function App() {
   const [conflictResolutionEntry, setConflictResolutionEntry] = useState(null);
   const [conflictResolutionFiles, setConflictResolutionFiles] = useState(null);
   const [conflictResolutionLoading, setConflictResolutionLoading] = useState(false);
-    const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-    const [aiLoading, setAiLoading] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQueryLoading, setAiQueryLoading] = useState(false);
+  const [aiQueryError, setAiQueryError] = useState("");
+  const [aiContextSummary, setAiContextSummary] = useState({
+    label: "Open a note to use AI.",
+    hasSelection: false,
+    hasCurrentBlock: false,
+  });
+  const [aiPaletteIntent, setAiPaletteIntent] = useState(() => normalizePaletteIntent());
+  const [aiChatMessages, setAiChatMessages] = useState([]);
+  const [aiPanelVisible, setAiPanelVisible] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem("notely:ai-panel-visible");
+      return stored !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const [inlineGhostSuggestion, setInlineGhostSuggestion] = useState(null);
+  const aiEditorRef = useRef(null);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -648,6 +779,213 @@ export default function App() {
     }
   }
 
+  function handleOpenAIPalette(options = {}) {
+    if (!current?.filePath) {
+      notify("Open a note to use AI.", "warning");
+      return;
+    }
+
+    const editorContext = aiEditorRef.current?.getContext?.() || null;
+    const summary = buildAIContextSummary(editorContext, current);
+    setAiQueryError("");
+    setAiContextSummary(summary);
+    setAiPaletteIntent(normalizePaletteIntent(options, summary));
+    setAiPanelVisible(true);
+  }
+
+  async function handleInlineAIRequest(options = {}) {
+    if (!current?.filePath) {
+      notify("Open a note to use AI.", "warning");
+      return;
+    }
+
+    const query = String(options?.initialQuery || "").trim();
+    if (!query) return;
+
+    setAiQueryLoading(true);
+    setAiQueryError("");
+
+    try {
+      const editorContext = aiEditorRef.current?.getContext?.() || {};
+      const resolvedTarget = resolveAITarget(editorContext, options?.target || "block", current, activeTab);
+
+      const response = await aiQuery(query, {
+        currentFile: current.filePath,
+        workspaceRoot: activeProject?.rootPath || landingFolderPath || notesFolderPath || null,
+        activeTab,
+        editorMode: mode,
+        documentTitle: current.title,
+        selectedText: editorContext.selectedText || null,
+        currentBlock: editorContext.currentBlock?.text || null,
+        selectionStart: editorContext.selectionStart ?? null,
+        selectionEnd: editorContext.selectionEnd ?? null,
+        cursorOffset: editorContext.cursorOffset ?? null,
+        requestedTarget: resolvedTarget.requestedTarget,
+        resolvedTarget: resolvedTarget.effectiveTarget,
+        workspaceContext: resolvedTarget.requestedTarget === "workspace",
+        targetText: resolvedTarget.targetText || null,
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.error || "AI query failed.");
+      }
+
+      const resultText = extractEditableAIText(
+        response?.data?.result?.result ||
+        response?.data?.result ||
+        ""
+      );
+
+      if (!resultText) {
+        notify("AI did not return an inline suggestion.", "warning");
+        return;
+      }
+
+      setInlineGhostSuggestion({
+        text: resultText,
+        insertAt: editorContext.cursorOffset ?? 0,
+        source: String(options?.source || "inline"),
+      });
+      notify("Inline AI suggestion ready.", "success");
+    } catch (err) {
+      const message = err?.message || "AI query failed.";
+      setAiQueryError(message);
+      notify(message, "error");
+    } finally {
+      setAiQueryLoading(false);
+    }
+  }
+
+  async function handleAIQuery({ query, target }) {
+    if (!current?.filePath) {
+      throw new Error("Open a note to use AI.");
+    }
+
+    setAiQueryLoading(true);
+    setAiQueryError("");
+
+    try {
+      const editorContext = aiEditorRef.current?.getContext?.() || {};
+      const resolvedTarget = resolveAITarget(editorContext, target || "auto", current, activeTab);
+
+      const response = await aiQuery(query, {
+        currentFile: current.filePath,
+        workspaceRoot: activeProject?.rootPath || landingFolderPath || notesFolderPath || null,
+        activeTab,
+        editorMode: mode,
+        documentTitle: current.title,
+        selectedText: editorContext.selectedText || null,
+        currentBlock: editorContext.currentBlock?.text || null,
+        selectionStart: editorContext.selectionStart ?? null,
+        selectionEnd: editorContext.selectionEnd ?? null,
+        cursorOffset: editorContext.cursorOffset ?? null,
+        requestedTarget: resolvedTarget.requestedTarget,
+        resolvedTarget: resolvedTarget.effectiveTarget,
+        workspaceContext: resolvedTarget.requestedTarget === "workspace",
+        targetText: resolvedTarget.targetText || null,
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.error || "AI query failed.");
+      }
+
+      const resultText = extractEditableAIText(
+        response?.data?.result?.result ||
+        response?.data?.result ||
+        "AI query completed."
+      );
+
+      notify(resultText.length > 180 ? `${resultText.slice(0, 177)}...` : resultText, "success");
+      return {
+        response,
+        text: resultText,
+        scopeLabel: resolvedTarget.scopeLabel,
+      };
+    } catch (err) {
+      const message = err?.message || "AI query failed.";
+      setAiQueryError(message);
+      notify(message, "error");
+      throw err;
+    } finally {
+      setAiQueryLoading(false);
+    }
+  }
+
+  async function handleApplyAIResult({ text, mode, previewOnly = false, insertAt = null }) {
+    const outcome = aiEditorRef.current?.applyResult?.({ text, mode, previewOnly, insertAt });
+    if (!outcome?.applied) {
+      if (outcome?.preview) {
+        return outcome;
+      }
+      notify(outcome?.reason || "Unable to apply AI result.", "warning");
+      return outcome;
+    }
+
+    const message =
+      mode === "insert"
+        ? "AI content inserted into the editor."
+        : mode === "replace-selection"
+          ? "Selection replaced with AI content."
+          : "Current block replaced with AI content.";
+    notify(message, "success");
+    return outcome;
+  }
+
+  async function handleAIChatSend({ message, target }) {
+    const scope = target || "auto";
+    const userEntry = {
+      id: `user-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      role: "user",
+      text: message,
+      scope,
+      scopeLabel: scope,
+    };
+
+    setAiChatMessages((currentMessages) => [...currentMessages, userEntry]);
+
+    try {
+      const result = await handleAIQuery({
+        query: message,
+        target: scope,
+      });
+      setAiChatMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: `assistant-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          role: "assistant",
+          text: result?.text || "",
+          scope,
+          scopeLabel: result?.scopeLabel || scope,
+        },
+      ]);
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  function handleClearAIChat() {
+    setAiChatMessages([]);
+    setAiQueryError("");
+  }
+
+  function handleRejectInlineGhost() {
+    setInlineGhostSuggestion(null);
+  }
+
+  async function handleAcceptInlineGhost() {
+    if (!inlineGhostSuggestion?.text) return;
+    const outcome = await handleApplyAIResult({
+      text: inlineGhostSuggestion.text,
+      mode: "insert",
+      previewOnly: false,
+      insertAt: inlineGhostSuggestion.insertAt,
+    });
+    if (outcome?.applied) {
+      setInlineGhostSuggestion(null);
+    }
+  }
+
   async function refreshP2PStatus() {
     const snapshot = await getP2PStatus();
     setP2PStatus(snapshot);
@@ -961,12 +1299,40 @@ export default function App() {
   }, [mode]);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem("notely:ai-panel-visible", aiPanelVisible ? "true" : "false");
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [aiPanelVisible]);
+
+  useEffect(() => {
     updateMenuContext({
       screen: current ? "document" : "landing",
       viewMode: notesViewMode,
       dirty,
     });
   }, [current, notesViewMode, dirty]);
+
+  useEffect(() => {
+    setInlineGhostSuggestion(null);
+    setAiChatMessages([]);
+  }, [current?.filePath, activeTab]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!current?.filePath) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.shiftKey || event.altKey) return;
+      if (event.key.toLowerCase() !== "k") return;
+
+      event.preventDefault();
+      handleOpenAIPalette({ forceOpen: true });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [current?.filePath]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -1097,6 +1463,11 @@ export default function App() {
         return;
       }
 
+      if (action === "open-ai-palette") {
+        handleOpenAIPalette({ forceOpen: true });
+        return;
+      }
+
       if (action === "ai-generate-embeddings") {
         handleAIEmbeddings();
         return;
@@ -1130,13 +1501,21 @@ export default function App() {
       </div>
       {error && <div className="error-banner">{error}</div>}
       {!showTerminal ? (
-        <button
-          className="terminal-toggle-fab"
-          type="button"
-          onClick={() => setShowTerminal(true)}
-        >
-          Terminal
-        </button>
+        <div className="terminal-status-bar">
+          <div className="terminal-status-left">
+            <button
+              className="terminal-status-button"
+              type="button"
+              onClick={() => setShowTerminal(true)}
+              title="Open terminal"
+            >
+              <Terminal size={16} />
+              <strong>Terminal</strong>
+              {terminalCwd && <span className="terminal-status-path">{terminalCwd}</span>}
+            </button>
+          </div>
+          <div className="terminal-status-right" />
+        </div>
       ) : null}
       {!current ? (
         <>
@@ -1207,6 +1586,31 @@ export default function App() {
           menuAction={documentMenuAction}
           onNotify={notify}
           onBack={handleGoHome}
+          onOpenAI={handleOpenAIPalette}
+          onOpenAIRequest={handleOpenAIPalette}
+          onInlineAIRequest={handleInlineAIRequest}
+          onRegisterAIEditor={(api) => {
+            aiEditorRef.current = api;
+          }}
+          inlineGhostSuggestion={inlineGhostSuggestion}
+          onAcceptInlineGhost={handleAcceptInlineGhost}
+          onRejectInlineGhost={handleRejectInlineGhost}
+          aiPanelVisible={aiPanelVisible}
+          onShowAI={() => setAiPanelVisible(true)}
+          aiSidebar={aiPanelVisible ? (
+            <AIChatPanel
+              onHide={() => setAiPanelVisible(false)}
+              onClear={handleClearAIChat}
+              onSend={handleAIChatSend}
+              onApply={handleApplyAIResult}
+              isLoading={aiQueryLoading}
+              error={aiQueryError || null}
+              contextSummary={aiContextSummary}
+              intent={aiPaletteIntent}
+              messages={aiChatMessages}
+              noteTitle={current?.title || "Current Note"}
+            />
+          ) : null}
         />
       )}
 

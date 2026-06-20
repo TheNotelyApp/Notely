@@ -19,6 +19,11 @@ export function EditorPane({
   canUndo = false,
   canRedo = false,
   onOpenFind,
+  onOpenAIRequest,
+  onInlineAIContinue,
+  ghostSuggestion,
+  onAcceptInlineGhost,
+  onRejectInlineGhost,
 }) {
   const previewRef = useRef(null);
   const splitPaneRef = useRef(null);
@@ -186,6 +191,11 @@ export function EditorPane({
       onUndo={onUndo}
       onRedo={onRedo}
       onOpenFind={onOpenFind}
+      onOpenAIRequest={onOpenAIRequest}
+      onInlineAIContinue={onInlineAIContinue}
+      ghostSuggestion={ghostSuggestion}
+      onAcceptInlineGhost={onAcceptInlineGhost}
+      onRejectInlineGhost={onRejectInlineGhost}
       onEditorReady={() => setEditorReadyTick((value) => value + 1)}
     />
   );

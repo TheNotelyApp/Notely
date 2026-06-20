@@ -27,6 +27,14 @@ export function updateMenuContext(context) {
   api.updateMenuContext(context || {});
 }
 
+export async function aiQuery(query, context = {}) {
+  const api = getNotesApi();
+  if (typeof api.aiQuery !== "function") {
+    throw new Error("AI queries are unavailable. Please restart the app.");
+  }
+  return api.aiQuery({ query, context });
+}
+
 export async function aiGetApiKey(provider) {
   const api = getNotesApi();
   if (typeof api.aiGetApiKey !== "function") {

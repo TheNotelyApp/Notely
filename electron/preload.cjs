@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("notesApi", {
     return () => ipcRenderer.removeListener("app-menu:action", listener);
   },
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
+  aiQuery: (payload) => ipcRenderer.invoke("ai:query", payload),
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
   aiSetApiKey: (payload) => ipcRenderer.invoke("ai:config:set-api-key", payload),
   aiGetPreferences: (payload) => ipcRenderer.invoke("ai:config:get-preferences", payload),

@@ -2884,6 +2884,16 @@ function buildAppMenu(win, context = {}) {
     {
       label: "AI",
       submenu: [
+        ...(screen === "document"
+          ? [
+              {
+                label: "Open AI Palette",
+                accelerator: "CmdOrCtrl+K",
+                click: () => sendMenuAction(win, "open-ai-palette")
+              },
+              { type: "separator" }
+            ]
+          : []),
         {
           label: "AI Settings",
           accelerator: "CmdOrCtrl+Shift+,",
