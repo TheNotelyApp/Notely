@@ -9,6 +9,8 @@ const { spawn } = require("node:child_process");
 const pty = require("node-pty");
 const MarkdownIt = require("markdown-it");
 const { P2PLiveService } = require("./p2pLive.cjs");
+const { initializeAIHandlers } = require("./aiHandlers.cjs");
+const { initializeAISystem, shutdownAISystem } = require("../src/ai/index.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const projectRoot = app.getAppPath();
@@ -27,8 +29,29 @@ let webPreviewScopeLabel = "Project";
 const terminalSessions = new Map();
 let nextTerminalSessionId = 1;
 let p2pService = null;
+let aiAgent = null;
 const FULL_SYNC_BATCH_SIZE = 25;
 const FULL_SYNC_MAX_FILES = 1000;
+
+async function initializeAIForWorkspace() {
+  try {
+    const AIConfig = require("../src/ai/utils/AIConfig");
+    const config = new AIConfig();
+    const geminiKey = config.getAPIKey("gemini");
+    const llmProvider = geminiKey
+      ? { name: "gemini", config: { apiKey: geminiKey } }
+      : null;
+
+    const result = await initializeAISystem(appDataDir, notesRoot, llmProvider);
+    aiAgent = result.agent;
+    console.log("[AI] System initialized");
+  } catch (error) {
+    aiAgent = null;
+    console.error("[AI] Initialization failed:", error?.message || error);
+  } finally {
+    initializeAIHandlers(app, aiAgent);
+  }
+}
 
 function ensureDir(dirPath) {
   if (!dirPath || typeof dirPath !== "string") {
@@ -2859,7 +2882,7 @@ function buildAppMenu(win, context = {}) {
       ]
     },
     {
-      label: "🤖 AI",
+      label: "AI",
       submenu: [
         {
           label: "AI Settings",
@@ -2981,8 +3004,9 @@ if (!gotSingleInstanceLock) {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   applyNotesRoot(resolveInitialNotesRoot());
+  await initializeAIForWorkspace();
   if (!mainWindow || mainWindow.isDestroyed()) {
     createWindow();
   } else {
@@ -3000,6 +3024,8 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  shutdownAISystem();
+
   if (webPreviewServer) {
     webPreviewServer.close();
     webPreviewServer = null;

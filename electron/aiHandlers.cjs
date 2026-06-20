@@ -14,6 +14,7 @@ let aiInitialized = false;
  */
 function initializeAIHandlers(electronApp, agent) {
   aiAgent = agent;
+  aiInitialized = Boolean(agent?.isInitialized);
 
   // AI Initialization
   ipcMain.handle(IPC_EVENTS.AI_INIT, handleInitialize);
@@ -197,6 +198,14 @@ async function handleSetAPIKey(event, payload) {
     // Write config
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
+    if (aiAgent?.isInitialized) {
+      try {
+        await aiAgent.llmRegistry.activateProvider(provider, { apiKey });
+      } catch (activationError) {
+        console.warn('[AI IPC] Provider activation after key save failed:', activationError.message);
+      }
+    }
+
     return new AIQueryResponse(true, { message: 'API key saved successfully' });
   } catch (error) {
     console.error('[AI IPC] API key setting failed:', error);
@@ -279,11 +288,21 @@ async function handleSetPreferences(event, payload) {
  */
 async function handleTestConnection(event, payload) {
   try {
-    if (!aiInitialized || !aiAgent?.isInitialized) {
+    if (!aiAgent?.isInitialized) {
       throw new Error('AI agent not initialized');
     }
 
-    const provider = aiAgent.llmRegistry.getActiveProvider();
+    const providerName = String(payload?.provider || 'gemini');
+    const AIConfig = require('../src/ai/utils/AIConfig');
+    const config = new AIConfig();
+    const apiKey = config.getAPIKey(providerName);
+
+    if (!apiKey) {
+      throw new Error(`No API key configured for ${providerName}`);
+    }
+
+    const provider = await aiAgent.llmRegistry.activateProvider(providerName, { apiKey });
+    aiInitialized = Boolean(aiAgent?.isInitialized);
     const isAvailable = await provider.isAvailable();
 
     if (isAvailable) {

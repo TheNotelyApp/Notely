@@ -1,58 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import './AISettings.css';
+import {
+  aiClearData,
+  aiGetApiKey,
+  aiGetPreferences,
+  aiSetApiKey,
+  aiSetPreferences,
+  aiTestConnection,
+} from '../services/electronService';
 
-/**
- * AISettings - Dedicated settings panel for AI agent configuration
- * Access via menu: Top Menu > AI Settings
- */
+const providers = [
+  { id: 'gemini', name: 'Google Gemini', description: 'Fast, multimodal AI' },
+  { id: 'openai', name: 'OpenAI', description: 'Planned provider' },
+  { id: 'local', name: 'Local LLM', description: 'Planned provider' }
+];
+
+const defaultPreferences = {
+  enablePatternLearning: true,
+  enableEmbeddings: true,
+  enableRelationshipDiscovery: true,
+  maxTokensPerQuery: 2048,
+  temperature: 0.7
+};
+
 const AISettings = ({ isOpen, onClose }) => {
   const [apiKey, setApiKey] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('gemini');
-  const [preferences, setPreferences] = useState({
-    enablePatternLearning: true,
-    enableEmbeddings: true,
-    enableRelationshipDiscovery: true,
-    maxTokensPerQuery: 2048,
-    temperature: 0.7
-  });
+  const [preferences, setPreferences] = useState(defaultPreferences);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState(null);
-
-  const providers = [
-    { id: 'gemini', name: 'Google Gemini', description: 'Fast, multimodal AI' },
-    { id: 'openai', name: 'OpenAI', description: 'GPT-4, GPT-3.5' },
-    { id: 'local', name: 'Local LLM', description: 'Ollama, LM Studio' }
-  ];
 
   useEffect(() => {
     if (isOpen) {
       loadSettings();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedProvider]);
 
   const loadSettings = async () => {
     try {
       setLoading(true);
-      
-      // Load API key
-      const keyResponse = await window.electron.ipcRenderer.invoke('ai:config:get-api-key', {
-        provider: selectedProvider
-      });
-      
+      setTestResult(null);
+
+      const keyResponse = await aiGetApiKey(selectedProvider);
       if (keyResponse.success && keyResponse.data?.apiKey) {
-        // Mask the key for display
         const key = keyResponse.data.apiKey;
         setApiKey(key.substring(0, 5) + '...' + key.substring(key.length - 5));
+      } else {
+        setApiKey('');
       }
 
-      // Load preferences
-      const prefsResponse = await window.electron.ipcRenderer.invoke('ai:config:get-preferences', {});
+      const prefsResponse = await aiGetPreferences();
       if (prefsResponse.success && prefsResponse.data) {
-        setPreferences(prefsResponse.data);
+        setPreferences({ ...defaultPreferences, ...prefsResponse.data });
       }
 
-      setStatus('Settings loaded');
+      setStatus('');
     } catch (error) {
       setStatus(`Error loading settings: ${error.message}`);
     } finally {
@@ -62,24 +66,19 @@ const AISettings = ({ isOpen, onClose }) => {
 
   const handleSaveAPIKey = async () => {
     if (!apiKey || apiKey.includes('...')) {
-      setStatus('Please enter a complete API key');
+      setStatus('Please enter a complete API key.');
       return;
     }
 
     try {
       setLoading(true);
-      
-      const response = await window.electron.ipcRenderer.invoke('ai:config:set-api-key', {
-        provider: selectedProvider,
-        apiKey
-      });
+      const response = await aiSetApiKey(selectedProvider, apiKey);
 
       if (response.success) {
-        setStatus(`✓ ${selectedProvider} API key saved securely`);
-        // Mask the key after saving
+        setStatus(`${selectedProvider} API key saved.`);
         setApiKey(apiKey.substring(0, 5) + '...' + apiKey.substring(apiKey.length - 5));
       } else {
-        setStatus(`✗ Failed to save: ${response.error}`);
+        setStatus(`Failed to save key: ${response.error}`);
       }
     } catch (error) {
       setStatus(`Error: ${error.message}`);
@@ -91,15 +90,12 @@ const AISettings = ({ isOpen, onClose }) => {
   const handleSavePreferences = async () => {
     try {
       setLoading(true);
-
-      const response = await window.electron.ipcRenderer.invoke('ai:config:set-preferences', {
-        preferences
-      });
+      const response = await aiSetPreferences(preferences);
 
       if (response.success) {
-        setStatus('✓ Preferences saved');
+        setStatus('Preferences saved.');
       } else {
-        setStatus(`✗ Failed to save preferences: ${response.error}`);
+        setStatus(`Failed to save preferences: ${response.error}`);
       }
     } catch (error) {
       setStatus(`Error: ${error.message}`);
@@ -113,37 +109,34 @@ const AISettings = ({ isOpen, onClose }) => {
       setLoading(true);
       setTestResult(null);
 
-      const response = await window.electron.ipcRenderer.invoke('ai:config:test-connection', {
-        provider: selectedProvider
-      });
-
+      const response = await aiTestConnection(selectedProvider);
       if (response.success) {
         setTestResult({
           success: true,
-          message: `✓ Successfully connected to ${selectedProvider}`
+          message: `Connected successfully to ${selectedProvider}.`
         });
-        setStatus('Connection test passed');
+        setStatus('Connection test passed.');
       } else {
         setTestResult({
           success: false,
-          message: `✗ Connection failed: ${response.error}`
+          message: `Connection failed: ${response.error}`
         });
-        setStatus('Connection test failed');
+        setStatus('Connection test failed.');
       }
     } catch (error) {
       setTestResult({
         success: false,
         message: `Error: ${error.message}`
       });
-      setStatus('Connection test error');
+      setStatus('Connection test failed.');
     } finally {
       setLoading(false);
     }
   };
 
   const handlePreferenceChange = (key, value) => {
-    setPreferences(prev => ({
-      ...prev,
+    setPreferences((currentPreferences) => ({
+      ...currentPreferences,
       [key]: value
     }));
   };
@@ -155,13 +148,12 @@ const AISettings = ({ isOpen, onClose }) => {
 
     try {
       setLoading(true);
-
-      const response = await window.electron.ipcRenderer.invoke('ai:config:clear-data', {});
+      const response = await aiClearData();
 
       if (response.success) {
-        setStatus('✓ AI data cleared');
+        setStatus('AI data cleared.');
       } else {
-        setStatus(`✗ Failed to clear data: ${response.error}`);
+        setStatus(`Failed to clear data: ${response.error}`);
       }
     } catch (error) {
       setStatus(`Error: ${error.message}`);
@@ -173,44 +165,45 @@ const AISettings = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="ai-settings-overlay" onClick={onClose}>
-      <div className="ai-settings-container" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="ai-settings-header">
-          <h2>⚙️ AI Agent Settings</h2>
-          <button className="ai-settings-close" onClick={onClose}>×</button>
+    <div className="overlay-dialog" onClick={onClose} role="dialog" aria-modal="true" aria-label="AI settings">
+      <div className="overlay-dialog-card ai-settings-dialog-card" onClick={(event) => event.stopPropagation()}>
+        <div className="overlay-dialog-header ai-settings-dialog-header">
+          <div className="ai-settings-title-group">
+            <h2>AI Settings</h2>
+            <p>Provider, preferences, and local AI data.</p>
+          </div>
+          <button className="icon-button" onClick={onClose} type="button" aria-label="Close AI settings">
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Status Message */}
-        {status && (
+        {status ? (
           <div className={`ai-settings-status ${testResult?.success ? 'success' : testResult?.success === false ? 'error' : 'info'}`}>
             {status}
           </div>
-        )}
+        ) : null}
 
         <div className="ai-settings-content">
-          {/* Provider Selection */}
-          <section className="ai-settings-section">
-            <h3>LLM Provider</h3>
+          <section className="ai-settings-section ai-settings-setup-card">
+            <div className="ai-settings-setup-head">
+              <h3>Provider Setup</h3>
+              <span className="ai-settings-badge">On device</span>
+            </div>
             <div className="provider-grid">
-              {providers.map(provider => (
+              {providers.map((provider) => (
                 <button
                   key={provider.id}
                   className={`provider-card ${selectedProvider === provider.id ? 'selected' : ''}`}
                   onClick={() => setSelectedProvider(provider.id)}
                   disabled={loading}
+                  type="button"
                 >
                   <div className="provider-name">{provider.name}</div>
                   <div className="provider-description">{provider.description}</div>
                 </button>
               ))}
             </div>
-          </section>
-
-          {/* API Key Configuration */}
-          <section className="ai-settings-section">
-            <h3>API Key Configuration</h3>
-            <div className="api-key-group">
+            <div className="api-key-group compact">
               <label htmlFor="api-key">
                 {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
               </label>
@@ -219,153 +212,141 @@ const AISettings = ({ isOpen, onClose }) => {
                   id="api-key"
                   type="password"
                   className="api-key-input"
-                  placeholder="Enter your API key..."
+                  placeholder="Enter your API key"
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(event) => setApiKey(event.target.value)}
                   disabled={loading}
                 />
                 <button
                   className="btn btn-primary"
                   onClick={handleSaveAPIKey}
                   disabled={loading || !apiKey}
+                  type="button"
                 >
                   Save Key
                 </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleTestConnection}
+                  disabled={loading || !apiKey}
+                  type="button"
+                >
+                  Test
+                </button>
               </div>
-              <p className="help-text">
-                🔒 Keys are encrypted and stored securely on your device.
-              </p>
             </div>
-
-            {/* Test Connection */}
-            <button
-              className="btn btn-secondary"
-              onClick={handleTestConnection}
-              disabled={loading || !apiKey}
-            >
-              Test Connection
-            </button>
-
-            {testResult && (
+            {testResult ? (
               <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
                 {testResult.message}
               </div>
-            )}
+            ) : null}
           </section>
 
-          {/* Preferences */}
-          <section className="ai-settings-section">
-            <h3>AI Preferences</h3>
-
-            <div className="preference-group">
-              <label className="preference-checkbox">
+          <section className="ai-settings-section ai-settings-features-card">
+            <h3>Features</h3>
+            <div className="ai-settings-option-list">
+              <label className="preference-checkbox ai-settings-option-row">
                 <input
                   type="checkbox"
                   checked={preferences.enablePatternLearning}
-                  onChange={(e) => handlePreferenceChange('enablePatternLearning', e.target.checked)}
+                  onChange={(event) => handlePreferenceChange('enablePatternLearning', event.target.checked)}
                   disabled={loading}
                 />
-                <span>Learn User Patterns</span>
+                <span>Learn user patterns</span>
               </label>
-              <p className="help-text">Detect your editing style and preferences</p>
-            </div>
-
-            <div className="preference-group">
-              <label className="preference-checkbox">
+              <label className="preference-checkbox ai-settings-option-row">
                 <input
                   type="checkbox"
                   checked={preferences.enableEmbeddings}
-                  onChange={(e) => handlePreferenceChange('enableEmbeddings', e.target.checked)}
+                  onChange={(event) => handlePreferenceChange('enableEmbeddings', event.target.checked)}
                   disabled={loading}
                 />
-                <span>Generate Document Embeddings</span>
+                <span>Generate embeddings</span>
               </label>
-              <p className="help-text">Enable semantic search and similarity matching</p>
-            </div>
-
-            <div className="preference-group">
-              <label className="preference-checkbox">
+              <label className="preference-checkbox ai-settings-option-row">
                 <input
                   type="checkbox"
                   checked={preferences.enableRelationshipDiscovery}
-                  onChange={(e) => handlePreferenceChange('enableRelationshipDiscovery', e.target.checked)}
+                  onChange={(event) => handlePreferenceChange('enableRelationshipDiscovery', event.target.checked)}
                   disabled={loading}
                 />
-                <span>Discover Document Relationships</span>
+                <span>Discover relationships</span>
               </label>
-              <p className="help-text">Find connections between your notes</p>
             </div>
+          </section>
 
-            {/* Sliders */}
-            <div className="preference-group">
-              <label>Max Tokens Per Query: {preferences.maxTokensPerQuery}</label>
+          <section className="ai-settings-section ai-settings-generation-card">
+            <h3>Generation</h3>
+            <div className="ai-settings-range-row">
+              <div className="ai-settings-range-label">
+                <span>Max Tokens</span>
+                <strong>{preferences.maxTokensPerQuery}</strong>
+              </div>
               <input
                 type="range"
                 min="512"
                 max="8192"
                 step="256"
                 value={preferences.maxTokensPerQuery}
-                onChange={(e) => handlePreferenceChange('maxTokensPerQuery', parseInt(e.target.value))}
+                onChange={(event) => handlePreferenceChange('maxTokensPerQuery', parseInt(event.target.value, 10))}
                 disabled={loading}
                 className="slider"
               />
-              <p className="help-text">Higher values allow longer responses</p>
             </div>
-
-            <div className="preference-group">
-              <label>Temperature (Creativity): {preferences.temperature.toFixed(2)}</label>
+            <div className="ai-settings-range-row">
+              <div className="ai-settings-range-label">
+                <span>Temperature</span>
+                <strong>{preferences.temperature.toFixed(2)}</strong>
+              </div>
               <input
                 type="range"
                 min="0"
                 max="1"
                 step="0.1"
                 value={preferences.temperature}
-                onChange={(e) => handlePreferenceChange('temperature', parseFloat(e.target.value))}
+                onChange={(event) => handlePreferenceChange('temperature', parseFloat(event.target.value))}
                 disabled={loading}
                 className="slider"
               />
-              <p className="help-text">0 = deterministic, 1 = creative</p>
             </div>
-
-            <button
-              className="btn btn-primary"
-              onClick={handleSavePreferences}
-              disabled={loading}
-            >
-              Save Preferences
-            </button>
-          </section>
-
-          {/* Data Management */}
-          <section className="ai-settings-section">
-            <h3>Data Management</h3>
-            <div className="data-management">
-              <p>Clear all cached data, patterns, and embeddings.</p>
+            <div className="ai-settings-inline-actions compact">
               <button
-                className="btn btn-danger"
-                onClick={handleClearData}
+                className="btn btn-primary"
+                onClick={handleSavePreferences}
                 disabled={loading}
+                type="button"
               >
-                Clear All AI Data
+                Save Preferences
               </button>
             </div>
           </section>
 
-          {/* Info */}
-          <section className="ai-settings-section info-section">
-            <h3>ℹ️ Information</h3>
-            <ul>
-              <li><strong>Storage:</strong> All data stored locally on your device</li>
-              <li><strong>Privacy:</strong> No data sent to cloud (except LLM API calls)</li>
-              <li><strong>Database:</strong> <code>.notes-app/app.sqlite</code></li>
-              <li><strong>Config:</strong> <code>%APPDATA%/Notely/ai-config.json</code></li>
-            </ul>
+          <section className="ai-settings-section ai-settings-storage-card">
+            <div className="ai-settings-storage-meta">
+              <div className="ai-settings-meta-pill">Local only</div>
+              <div className="ai-settings-meta-pill">SQLite memory</div>
+              <div className="ai-settings-meta-pill">Private persona</div>
+            </div>
+            <div className="data-management compact">
+              <div className="ai-settings-storage-copy">
+                <strong>Data paths</strong>
+                <span><code>.notes-app/app.sqlite</code></span>
+                <span><code>%APPDATA%/Notely/ai-config.json</code></span>
+              </div>
+              <button
+                className="btn btn-danger"
+                onClick={handleClearData}
+                disabled={loading}
+                type="button"
+              >
+                Clear AI Data
+              </button>
+            </div>
           </section>
         </div>
 
-        {/* Footer */}
         <div className="ai-settings-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="btn btn-secondary" onClick={onClose} type="button">
             Close
           </button>
         </div>

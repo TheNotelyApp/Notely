@@ -9,6 +9,10 @@ import { WorkspaceActivityPanel } from "./components/WorkspaceActivityPanel";
 import { ConflictResolutionPanel } from "./components/ConflictResolutionPanel";
 import AISettings from "./components/AISettings";
 import {
+  aiBuildGraph,
+  aiClearData,
+  aiDetectPatterns,
+  aiGenerateEmbeddings,
   createFolder,
   createDocument,
   deleteDocument as deleteDocumentApi,
@@ -580,72 +584,71 @@ export default function App() {
     }
   }
 
+  async function handleAIEmbeddings() {
+    setAiLoading(true);
+    try {
+      const result = await aiGenerateEmbeddings(true);
+      if (result?.success) {
+        notify("Embeddings generated successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to generate embeddings", "error");
+      }
+    } catch (err) {
+      notify(err?.message || "Failed to generate embeddings", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function handleAIGraph() {
+    setAiLoading(true);
+    try {
+      const result = await aiBuildGraph();
+      if (result?.success) {
+        notify("Relationship graph built successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to build graph", "error");
+      }
+    } catch (err) {
+      notify(err?.message || "Failed to build graph", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function handleAIPatterns() {
+    setAiLoading(true);
+    try {
+      const result = await aiDetectPatterns();
+      if (result?.success) {
+        notify("Patterns detected successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to detect patterns", "error");
+      }
+    } catch (err) {
+      notify(err?.message || "Failed to detect patterns", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function handleAIClearCache() {
+    setAiLoading(true);
+    try {
+      const result = await aiClearData();
+      if (result?.success) {
+        notify("AI cache cleared successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to clear cache", "error");
+      }
+    } catch (err) {
+      notify(err?.message || "Failed to clear cache", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   async function refreshP2PStatus() {
-    async function handleAIEmbeddings() {
-      setAiLoading(true);
-      try {
-        const result = await window.electron.ipcRenderer.invoke('ai:embeddings:generate', {
-          forceRefresh: true
-        });
-        if (result?.success) {
-          notify('Embeddings generated successfully!', 'success');
-        } else {
-          notify(result?.error || 'Failed to generate embeddings', 'error');
-        }
-      } catch (err) {
-        notify(err?.message || 'Failed to generate embeddings', 'error');
-      } finally {
-        setAiLoading(false);
-      }
-    }
-
-    async function handleAIGraph() {
-      setAiLoading(true);
-      try {
-        const result = await window.electron.ipcRenderer.invoke('ai:graph:build', {});
-        if (result?.success) {
-          notify('Relationship graph built successfully!', 'success');
-        } else {
-          notify(result?.error || 'Failed to build graph', 'error');
-        }
-      } catch (err) {
-        notify(err?.message || 'Failed to build graph', 'error');
-      } finally {
-        setAiLoading(false);
-      }
-    }
-
-    async function handleAIPatterns() {
-      setAiLoading(true);
-      try {
-        const result = await window.electron.ipcRenderer.invoke('ai:patterns:detect', {});
-        if (result?.success) {
-          notify('Patterns detected successfully!', 'success');
-        } else {
-          notify(result?.error || 'Failed to detect patterns', 'error');
-        }
-      } catch (err) {
-        notify(err?.message || 'Failed to detect patterns', 'error');
-      } finally {
-        setAiLoading(false);
-      }
-    }
-
-    async function handleAIClearCache() {
-      setAiLoading(true);
-      try {
-        const result = await window.electron.ipcRenderer.invoke('ai:config:clear-data', {});
-        if (result?.success) {
-          notify('AI cache cleared successfully!', 'success');
-        } else {
-          notify(result?.error || 'Failed to clear cache', 'error');
-        }
-      } catch (err) {
-        notify(err?.message || 'Failed to clear cache', 'error');
-      } finally {
-        setAiLoading(false);
-      }
-    }
     const snapshot = await getP2PStatus();
     setP2PStatus(snapshot);
   }
@@ -1086,32 +1089,33 @@ export default function App() {
 
       if (action === "remove-document") {
         handleDeleteCurrentDocument();
+        return;
       }
 
-        if (action === "open-ai-settings") {
-          setAiSettingsOpen(true);
-          return;
-        }
+      if (action === "open-ai-settings") {
+        setAiSettingsOpen(true);
+        return;
+      }
 
-        if (action === "ai-generate-embeddings") {
-          handleAIEmbeddings();
-          return;
-        }
+      if (action === "ai-generate-embeddings") {
+        handleAIEmbeddings();
+        return;
+      }
 
-        if (action === "ai-build-graph") {
-          handleAIGraph();
-          return;
-        }
+      if (action === "ai-build-graph") {
+        handleAIGraph();
+        return;
+      }
 
-        if (action === "ai-detect-patterns") {
-          handleAIPatterns();
-          return;
-        }
+      if (action === "ai-detect-patterns") {
+        handleAIPatterns();
+        return;
+      }
 
-        if (action === "ai-clear-cache") {
-          handleAIClearCache();
-          return;
-        }
+      if (action === "ai-clear-cache") {
+        handleAIClearCache();
+        return;
+      }
     });
   }, [current, dirty, activeProject, activeTab]);
 
@@ -1374,6 +1378,13 @@ export default function App() {
             />
           </div>
         </div>
+      ) : null}
+
+      {aiSettingsOpen ? (
+        <AISettings
+          isOpen={aiSettingsOpen}
+          onClose={() => setAiSettingsOpen(false)}
+        />
       ) : null}
 
       {p2pSyncHelpOpen ? (
