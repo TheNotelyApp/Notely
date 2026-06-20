@@ -268,6 +268,57 @@ function listMarkdownFiles(rootDir) {
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
+function shouldHideDirectory(name) {
+  const lowerName = String(name || "").toLowerCase();
+  return lowerName.startsWith(".") || lowerName === "images" || lowerName === "removed";
+}
+
+function listDirectoryEntries(rootDir, options = {}) {
+  ensureDir(rootDir);
+  const { includeProjectSlug = false } = options;
+
+  return fs.readdirSync(rootDir, { withFileTypes: true })
+    .filter((entry) => {
+      if (entry.isDirectory()) {
+        return !shouldHideDirectory(entry.name);
+      }
+      return entry.isFile() && entry.name.toLowerCase().endsWith(".md");
+    })
+    .map((entry) => {
+      const entryPath = path.join(rootDir, entry.name);
+      const stat = fs.statSync(entryPath);
+
+      if (entry.isDirectory()) {
+        return {
+          entryType: "folder",
+          slug: includeProjectSlug ? entry.name : undefined,
+          filePath: entryPath,
+          title: entry.name,
+          metadata: {},
+          updatedAt: stat.mtime.toISOString()
+        };
+      }
+
+      const content = fs.readFileSync(entryPath, "utf8");
+      const parsed = parseDocument(content, entryPath);
+      return {
+        entryType: "file",
+        filePath: entryPath,
+        fileName: parsed.fileName,
+        title: parsed.title,
+        metadata: parsed.metadata,
+        updatedAt: stat.mtime.toISOString(),
+        hash: parsed.hash
+      };
+    })
+    .sort((a, b) => {
+      if (a.entryType !== b.entryType) {
+        return a.entryType === "folder" ? -1 : 1;
+      }
+      return a.title.localeCompare(b.title);
+    });
+}
+
 function walkFiles(rootDir, options = {}) {
   const excludeDirs = new Set(options.excludeDirs || []);
   const files = [];
@@ -1749,47 +1800,7 @@ function buildPdfStyles() {
 }
 
 function listRootEntries(rootDir) {
-  ensureDir(rootDir);
-  return fs.readdirSync(rootDir, { withFileTypes: true })
-    .filter((entry) => {
-      if (entry.isDirectory()) {
-        return !entry.name.startsWith(".") && entry.name !== "images" && entry.name !== "removed";
-      }
-      return entry.isFile() && entry.name.toLowerCase().endsWith(".md");
-    })
-    .map((entry) => {
-      const entryPath = path.join(rootDir, entry.name);
-      const stat = fs.statSync(entryPath);
-
-      if (entry.isDirectory()) {
-        return {
-          entryType: "folder",
-          slug: entry.name,
-          filePath: entryPath,
-          title: entry.name,
-          metadata: {},
-          updatedAt: stat.mtime.toISOString()
-        };
-      }
-
-      const content = fs.readFileSync(entryPath, "utf8");
-      const parsed = parseDocument(content, entryPath);
-      return {
-        entryType: "file",
-        filePath: entryPath,
-        fileName: parsed.fileName,
-        title: parsed.title,
-        metadata: parsed.metadata,
-        updatedAt: stat.mtime.toISOString(),
-        hash: parsed.hash
-      };
-    })
-    .sort((a, b) => {
-      if (a.entryType !== b.entryType) {
-        return a.entryType === "folder" ? -1 : 1;
-      }
-      return a.title.localeCompare(b.title);
-    });
+  return listDirectoryEntries(rootDir, { includeProjectSlug: true });
 }
 
 function createDocumentInProject(rootDir, payload) {
@@ -1798,9 +1809,18 @@ function createDocumentInProject(rootDir, payload) {
     throw new Error("Note title is required.");
   }
 
+  const resolvedRoot = path.resolve(rootDir);
+  const requestedParentPath = String(payload?.parentPath || "").trim();
+  const targetDir = path.resolve(requestedParentPath || resolvedRoot);
+  if (!filePathWithin(resolvedRoot, targetDir)) {
+    throw new Error("Invalid target folder path.");
+  }
+
+  ensureDir(targetDir);
+
   const safeBaseName = slugify(requestedTitle);
   let fileName = `${safeBaseName}.md`;
-  let filePath = path.join(rootDir, fileName);
+  let filePath = path.join(targetDir, fileName);
   let counter = 2;
 
   while (fs.existsSync(filePath)) {
@@ -1817,6 +1837,52 @@ function createDocumentInProject(rootDir, payload) {
 
   fs.writeFileSync(filePath, initialContent, "utf8");
   return parseDocument(initialContent, filePath);
+}
+
+function createFolderInProject(rootDir, payload) {
+  const folderName = String(payload?.name || "").trim();
+  if (!folderName) {
+    throw new Error("Folder name is required.");
+  }
+  if (folderName === "." || folderName === "..") {
+    throw new Error("Invalid folder name.");
+  }
+  if (/[/\\]/.test(folderName)) {
+    throw new Error("Use a single folder name without slashes.");
+  }
+  if (folderName.startsWith(".")) {
+    throw new Error("Hidden folder names are not allowed.");
+  }
+  if (shouldHideDirectory(folderName)) {
+    throw new Error("This folder name is reserved.");
+  }
+
+  const requestedParentPath = String(payload?.parentPath || "").trim();
+  const resolvedRoot = path.resolve(rootDir);
+  const parentPath = path.resolve(requestedParentPath || resolvedRoot);
+  if (!filePathWithin(resolvedRoot, parentPath)) {
+    throw new Error("Invalid parent folder path.");
+  }
+
+  ensureDir(parentPath);
+
+  const nextFolderPath = path.join(parentPath, folderName);
+  if (!filePathWithin(resolvedRoot, nextFolderPath)) {
+    throw new Error("Invalid folder path.");
+  }
+  if (fs.existsSync(nextFolderPath)) {
+    throw new Error("A file or folder with that name already exists.");
+  }
+
+  fs.mkdirSync(nextFolderPath, { recursive: false });
+  const stat = fs.statSync(nextFolderPath);
+  return {
+    entryType: "folder",
+    filePath: nextFolderPath,
+    title: folderName,
+    metadata: {},
+    updatedAt: stat.mtime.toISOString()
+  };
 }
 
 function updateDocumentHeaderTitle(header, nextTitle) {
@@ -2585,22 +2651,33 @@ ipcMain.handle("projects:set-active", (_event, payload) => {
   return listProjectsState();
 });
 
-ipcMain.handle("documents:list", () => {
+ipcMain.handle("documents:list", (_event, payload) => {
   const activeProject = getActiveProject();
-  if (activeProject?.isRoot) {
+  const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
+  const requestedFolderPath = String(payload?.folderPath || "").trim();
+  const targetDir = path.resolve(requestedFolderPath || projectRoot);
+
+  if (!filePathWithin(projectRoot, targetDir)) {
+    throw new Error("Invalid folder path.");
+  }
+
+  if (activeProject?.isRoot && targetDir.toLowerCase() === path.resolve(notesRoot).toLowerCase()) {
     return listRootEntries(notesRoot);
   }
 
-  return listMarkdownFiles(activeProject.rootPath).map((entry) => ({
-    ...entry,
-    entryType: "file"
-  }));
+  return listDirectoryEntries(targetDir, { includeProjectSlug: false });
 });
 
 ipcMain.handle("documents:create", (_event, payload) => {
   const activeProject = getActiveProject();
   const rootDir = activeProject.rootPath;
   return createDocumentInProject(rootDir, payload);
+});
+
+ipcMain.handle("folders:create", (_event, payload) => {
+  const activeProject = getActiveProject();
+  const rootDir = activeProject.rootPath;
+  return createFolderInProject(rootDir, payload);
 });
 
 ipcMain.handle("documents:rename", (_event, payload) => {

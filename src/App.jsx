@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import mermaid from "mermaid";
-import { FolderOpen, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
+import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
 import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
 import {
+  createFolder,
   createDocument,
   deleteDocument as deleteDocumentApi,
   getNotesRootSetting,
@@ -70,17 +71,33 @@ export default function App() {
   const [activeProject, setActiveProjectState] = useState(null);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [creatingNote, setCreatingNote] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [notesViewMode, setNotesViewMode] = useState(initialViewMode);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [notesFolderDialogOpen, setNotesFolderDialogOpen] = useState(false);
   const [notesFolderPath, setNotesFolderPath] = useState("");
   const [savingNotesFolder, setSavingNotesFolder] = useState(false);
   const [documentMenuAction, setDocumentMenuAction] = useState(null);
   const [showTerminal, setShowTerminal] = useState(false);
+  const [landingFolderPath, setLandingFolderPath] = useState("");
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
-    : (activeProject?.rootPath || notesFolderPath);
+    : (landingFolderPath || activeProject?.rootPath || notesFolderPath);
+
+  const normalizedProjectRoot = String(activeProject?.rootPath || "")
+    .replace(/[\\/]+$/, "")
+    .toLowerCase();
+  const normalizedLandingFolder = String(landingFolderPath || activeProject?.rootPath || "")
+    .replace(/[\\/]+$/, "")
+    .toLowerCase();
+  const canNavigateUp = Boolean(
+    normalizedProjectRoot &&
+    normalizedLandingFolder &&
+    normalizedLandingFolder !== normalizedProjectRoot
+  );
 
   const notify = (message, type = "info") => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -111,7 +128,9 @@ export default function App() {
     try {
       const projectState = await listProjects();
       applyProjectState(projectState);
-      setDocuments(await listDocuments());
+      const baseFolder = projectState?.activeProject?.rootPath || "";
+      setLandingFolderPath(baseFolder);
+      setDocuments(await listDocuments(baseFolder));
       const notesSetting = await getNotesRootSetting();
       setNotesFolderPath(notesSetting?.notesRoot || "");
     } catch (err) {
@@ -270,7 +289,9 @@ export default function App() {
       applyProjectState(result);
       setCurrent(null);
       setHistory([]);
-      setDocuments(await listDocuments());
+      const baseFolder = result?.activeProject?.rootPath || "";
+      setLandingFolderPath(baseFolder);
+      setDocuments(await listDocuments(baseFolder));
       notify("Project switched.", "success");
     } catch (err) {
       setError(err?.message || "Unable to switch project.");
@@ -295,9 +316,9 @@ export default function App() {
     setCreatingNote(true);
     setError("");
     try {
-      const created = await createDocument(title);
+      const created = await createDocument(title, landingFolderPath || activeProject?.rootPath);
       setNewNoteTitle("");
-      setDocuments(await listDocuments());
+      setDocuments(await listDocuments(landingFolderPath || activeProject?.rootPath));
       setCurrent(created);
       setSavedHash(
         JSON.stringify({
@@ -315,6 +336,29 @@ export default function App() {
       notify(err?.message || "Unable to create note.", "error");
     } finally {
       setCreatingNote(false);
+    }
+  }
+
+  async function handleCreateFolder() {
+    const name = newFolderName.trim();
+    if (!name) {
+      notify("Enter a folder name first.", "warning");
+      return;
+    }
+
+    setCreatingFolder(true);
+    setError("");
+    try {
+      await createFolder(name, landingFolderPath || activeProject?.rootPath);
+      setNewFolderName("");
+      setFolderDialogOpen(false);
+      setDocuments(await listDocuments(landingFolderPath || activeProject?.rootPath));
+      notify("Folder created.", "success");
+    } catch (err) {
+      setError(err?.message || "Unable to create folder.");
+      notify(err?.message || "Unable to create folder.", "error");
+    } finally {
+      setCreatingFolder(false);
     }
   }
 
@@ -420,11 +464,41 @@ export default function App() {
   async function handleOpenListItem(item) {
     if (!item) return;
     if (item.entryType === "folder") {
-      await handleSwitchProject(item.slug);
+      try {
+        setError("");
+        setLoading(true);
+        setLandingFolderPath(item.filePath);
+        setDocuments(await listDocuments(item.filePath));
+      } catch (err) {
+        setError(err?.message || "Unable to open folder.");
+        notify(err?.message || "Unable to open folder.", "error");
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     if (item.entryType === "file") {
       await openDocument(item.filePath);
+    }
+  }
+
+  async function handleLandingNavigateUp() {
+    const activeRoot = activeProject?.rootPath;
+    const currentPath = landingFolderPath || activeRoot;
+    if (!activeRoot || !currentPath || !canNavigateUp) return;
+
+    const parentPath = currentPath.replace(/[\\/][^\\/]+[\\/]*$/, "");
+    const nextPath = parentPath || activeRoot;
+    try {
+      setError("");
+      setLoading(true);
+      setLandingFolderPath(nextPath);
+      setDocuments(await listDocuments(nextPath));
+    } catch (err) {
+      setError(err?.message || "Unable to navigate up.");
+      notify(err?.message || "Unable to navigate up.", "error");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -460,6 +534,11 @@ export default function App() {
     return onMenuAction((action) => {
       if (action === "new-note") {
         setNoteDialogOpen(true);
+        return;
+      }
+
+      if (action === "new-folder") {
+        setFolderDialogOpen(true);
         return;
       }
 
@@ -570,28 +649,44 @@ export default function App() {
           <header className="landing-header">
             <div>
               <h1>{activeProject?.isRoot ? "All Notes" : `${activeProject?.name || "Folder"} Notes`}</h1>
-              <div className="landing-path" title={activeProject?.rootPath || notesFolderPath || "Path unavailable"}>
-                {activeProject?.rootPath || notesFolderPath || "Path unavailable"}
+              <div className="landing-path" title={landingFolderPath || activeProject?.rootPath || notesFolderPath || "Path unavailable"}>
+                {landingFolderPath || activeProject?.rootPath || notesFolderPath || "Path unavailable"}
               </div>
             </div>
             <div className="landing-header-actions">
-              <div className="document-view-toggle" role="group" aria-label="Landing notes view mode">
-                <button
-                  className={notesViewMode === "tile" ? "active" : ""}
-                  onClick={() => setNotesViewMode("tile")}
-                  type="button"
-                >
-                  <LayoutGrid size={14} />
-                  Tile
+              <div className="landing-primary-actions">
+                {canNavigateUp ? (
+                  <button className="small-button" type="button" onClick={handleLandingNavigateUp}>
+                    <ArrowUp size={14} />
+                    Up
+                  </button>
+                ) : null}
+                <button className="small-button" type="button" onClick={() => setFolderDialogOpen(true)}>
+                  <FolderPlus size={14} />
+                  New Folder
                 </button>
-                <button
-                  className={notesViewMode === "table" ? "active" : ""}
-                  onClick={() => setNotesViewMode("table")}
-                  type="button"
-                >
-                  <Rows3 size={14} />
-                  Table
+                <button className="small-button" type="button" onClick={() => setNoteDialogOpen(true)}>
+                  <NotebookPen size={14} />
+                  New Note
                 </button>
+                <div className="document-view-toggle" role="group" aria-label="Landing notes view mode">
+                  <button
+                    className={notesViewMode === "tile" ? "active" : ""}
+                    onClick={() => setNotesViewMode("tile")}
+                    type="button"
+                  >
+                    <LayoutGrid size={14} />
+                    Tile
+                  </button>
+                  <button
+                    className={notesViewMode === "table" ? "active" : ""}
+                    onClick={() => setNotesViewMode("table")}
+                    type="button"
+                  >
+                    <Rows3 size={14} />
+                    Table
+                  </button>
+                </div>
               </div>
             </div>
           </header>
@@ -655,6 +750,39 @@ export default function App() {
               <button className="primary-button" onClick={handleCreateNote} disabled={creatingNote} type="button">
                 <NotebookPen size={14} />
                 {creatingNote ? "Creating..." : "Create Note"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {folderDialogOpen ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Create folder">
+          <div className="overlay-dialog-card">
+            <div className="overlay-dialog-header">
+              <h2>New Folder</h2>
+              <button
+                className="icon-button"
+                onClick={() => setFolderDialogOpen(false)}
+                type="button"
+                aria-label="Close new folder dialog"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <label className="overlay-dialog-field">
+              <span>Folder name</span>
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(event) => setNewFolderName(event.target.value)}
+                placeholder="Enter folder name"
+                autoFocus
+              />
+            </label>
+            <div className="overlay-dialog-actions">
+              <button className="primary-button" onClick={handleCreateFolder} disabled={creatingFolder} type="button">
+                {creatingFolder ? "Creating..." : "Create Folder"}
               </button>
             </div>
           </div>

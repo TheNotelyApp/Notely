@@ -51,17 +51,25 @@ export async function pickFolder() {
   return api.pickFolder();
 }
 
-export async function listDocuments() {
+export async function listDocuments(folderPath) {
   const api = getNotesApi();
-  return api.listDocuments();
+  return api.listDocuments({ folderPath });
 }
 
-export async function createDocument(title) {
+export async function createDocument(title, parentPath) {
   const api = getNotesApi();
   if (typeof api.createDocument !== "function") {
     throw new Error("Create note action unavailable. Please restart the app.");
   }
-  return api.createDocument({ title });
+  return api.createDocument({ title, parentPath });
+}
+
+export async function createFolder(name, parentPath) {
+  const api = getNotesApi();
+  if (typeof api.createFolder !== "function") {
+    throw new Error("Create folder action unavailable. Please restart the app.");
+  }
+  return api.createFolder({ name, parentPath });
 }
 
 export async function renameDocument(filePath, title) {
