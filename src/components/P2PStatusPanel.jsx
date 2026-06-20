@@ -30,19 +30,12 @@ export function P2PStatusPanel({
   const [manualPort, setManualPort] = useState("");
   const [busyAction, setBusyAction] = useState("");
 
-  if (!status) {
-    return (
-      <div className="p2p-status-empty">
-        <p>No P2P status available yet.</p>
-      </div>
-    );
-  }
-
-  const peers = Array.isArray(status.peers) ? status.peers : [];
-  const discoveredPeers = Array.isArray(status.discoveredPeers) ? status.discoveredPeers : [];
-  const trustedPeers = Array.isArray(status.trustedPeers) ? status.trustedPeers : [];
-  const invites = Array.isArray(status.invites) ? status.invites : [];
-  const discoveryRunning = Boolean(status?.discovery?.running);
+  const currentStatus = status || {};
+  const peers = Array.isArray(currentStatus.peers) ? currentStatus.peers : [];
+  const discoveredPeers = Array.isArray(currentStatus.discoveredPeers) ? currentStatus.discoveredPeers : [];
+  const trustedPeers = Array.isArray(currentStatus.trustedPeers) ? currentStatus.trustedPeers : [];
+  const invites = Array.isArray(currentStatus.invites) ? currentStatus.invites : [];
+  const discoveryRunning = Boolean(currentStatus?.discovery?.running);
 
   const sortedDiscovered = useMemo(
     () => [...discoveredPeers].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))),
@@ -50,10 +43,18 @@ export function P2PStatusPanel({
   );
 
   useEffect(() => {
-    if (status?.self?.name && !deviceNameDraft) {
-      setDeviceNameDraft(status.self.name);
+    if (currentStatus?.self?.name && !deviceNameDraft) {
+      setDeviceNameDraft(currentStatus.self.name);
     }
-  }, [status, deviceNameDraft]);
+  }, [currentStatus, deviceNameDraft]);
+
+  if (!status) {
+    return (
+      <div className="p2p-status-empty">
+        <p>No P2P status available yet.</p>
+      </div>
+    );
+  }
 
   async function runAction(key, fn) {
     setBusyAction(key);
@@ -86,41 +87,41 @@ export function P2PStatusPanel({
       <div className="p2p-status-summary-grid">
         <div className="p2p-status-summary-card">
           <span>State</span>
-          <strong className={status.available ? "online" : "offline"}>
-            {status.available ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {status.available ? (discoveryRunning ? "Live Discovery" : "Ready") : "No Local Data"}
+          <strong className={currentStatus.available ? "online" : "offline"}>
+            {currentStatus.available ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {currentStatus.available ? (discoveryRunning ? "Live Discovery" : "Ready") : "No Local Data"}
           </strong>
         </div>
         <div className="p2p-status-summary-card">
           <span>Peers</span>
-          <strong>{status.peerCount || 0}</strong>
+          <strong>{currentStatus.peerCount || 0}</strong>
         </div>
         <div className="p2p-status-summary-card">
           <span>Trusted Links</span>
-          <strong>{status.trustedLinkCount || 0}</strong>
+          <strong>{currentStatus.trustedLinkCount || 0}</strong>
         </div>
         <div className="p2p-status-summary-card">
           <span>Workspace Keys</span>
-          <strong>{status.workspaceKeyCount || 0}</strong>
+          <strong>{currentStatus.workspaceKeyCount || 0}</strong>
         </div>
       </div>
 
       <div className="p2p-status-meta">
         <p>
           <span>Generated</span>
-          <strong>{formatDateTime(status.generatedAt)}</strong>
+          <strong>{formatDateTime(currentStatus.generatedAt)}</strong>
         </p>
         <p>
           <span>Session</span>
-          <strong>{status.self?.peerId || status.sessionId || "N/A"}</strong>
+          <strong>{currentStatus.self?.peerId || currentStatus.sessionId || "N/A"}</strong>
         </p>
         <p>
           <span>Listen Port</span>
-          <strong>{status.self?.listenPort || "N/A"}</strong>
+          <strong>{currentStatus.self?.listenPort || "N/A"}</strong>
         </p>
         <p>
           <span>Source</span>
-          <strong>{status.source || "N/A"}</strong>
+          <strong>{currentStatus.source || "N/A"}</strong>
         </p>
       </div>
 
