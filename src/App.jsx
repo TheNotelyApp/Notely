@@ -112,6 +112,16 @@ export default function App() {
   const [p2pSyncHelpOpen, setP2PSyncHelpOpen] = useState(false);
   const [fullSyncProgressByPeer, setFullSyncProgressByPeer] = useState({});
 
+  const dirty =
+    current
+      ? savedHash !==
+        JSON.stringify({
+          header: current.header,
+          rawNotes: current.rawNotes,
+          cleansed: current.cleansed,
+        })
+      : false;
+
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
   syncStateRef.current = { doc: current, dirty, openDocument };
   const [syncSelfTestOpen, setSyncSelfTestOpen] = useState(false);
@@ -149,16 +159,6 @@ export default function App() {
       setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
     }, 3000);
   };
-
-  const dirty =
-    current
-      ? savedHash !==
-        JSON.stringify({
-          header: current.header,
-          rawNotes: current.rawNotes,
-          cleansed: current.cleansed,
-        })
-      : false;
 
   function applyProjectState(result) {
     setProjects(result?.projects || []);
