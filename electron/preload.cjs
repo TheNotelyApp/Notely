@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   listDocuments: () => ipcRenderer.invoke("documents:list"),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
   renameDocument: (payload) => ipcRenderer.invoke("documents:rename", payload),
+  deleteDocument: (payload) => ipcRenderer.invoke("documents:delete", payload),
   readDocument: (filePath) => ipcRenderer.invoke("documents:read", filePath),
   saveDocument: (payload) => ipcRenderer.invoke("documents:save", payload),
   getHistory: (filePath) => ipcRenderer.invoke("documents:history", filePath),
@@ -31,6 +32,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   downloadPdf: (payload) => ipcRenderer.invoke("documents:download-pdf", payload),
   saveImage: (payload) => ipcRenderer.invoke("images:save", payload),
   listImages: (payload) => ipcRenderer.invoke("images:list", payload),
+  getImageUsage: (payload) => ipcRenderer.invoke("images:usage", payload),
   readImage: (payload) => ipcRenderer.invoke("images:read", payload),
   deleteImage: (payload) => ipcRenderer.invoke("images:delete", payload),
   replaceImage: (payload) => ipcRenderer.invoke("images:replace", payload)

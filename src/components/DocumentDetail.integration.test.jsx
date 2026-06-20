@@ -17,6 +17,11 @@ function renderDetail(props) {
 
   return {
     host,
+    rerender(nextProps) {
+      act(() => {
+        root.render(<DocumentDetail {...nextProps} />);
+      });
+    },
     unmount() {
       act(() => {
         root.unmount();
@@ -53,24 +58,21 @@ describe("DocumentDetail popup and panel toggles", () => {
     mode: "edit",
     setMode: vi.fn(),
     onChange: vi.fn(),
-    onRenameDocument: vi.fn(async () => true),
     onSave: vi.fn(),
-    onReloadFromDisk: vi.fn(),
     onRefreshHistory: vi.fn(),
     saving: false,
     dirty: false,
-    onHome: vi.fn(),
     onNotify: vi.fn(),
+    menuAction: null,
   };
 
-  it("opens versions popup from the top controls", () => {
+  it("opens versions popup from menu action", () => {
     const view = renderDetail(baseProps);
-    const versionsButton = view.host.querySelector('button[title="Toggle versions"]');
-
-    expect(versionsButton).toBeTruthy();
-
     act(() => {
-      versionsButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "manage-versions", nonce: Date.now() },
+      });
     });
 
     const popup = view.host.querySelector('[aria-label="Versions"]');
@@ -80,19 +82,49 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
-  it("toggles outline collapsed state", () => {
+  it("toggles outline collapsed state from menu action", () => {
     const view = renderDetail(baseProps);
     const workspace = view.host.querySelector('.workspace');
-    const outlineToggle = view.host.querySelector('button[title="Toggle outline"]');
 
     expect(workspace.className).not.toContain("outline-panel-collapsed");
-    expect(outlineToggle).toBeTruthy();
 
     act(() => {
-      outlineToggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "toggle-outline", nonce: Date.now() },
+      });
     });
 
     expect(workspace.className).toContain("outline-panel-collapsed");
+
+    view.unmount();
+  });
+
+  it("keeps remove action out of document topbar", () => {
+    const view = renderDetail(baseProps);
+    const removeButton = view.host.querySelector('button[title="Move note to removed folder"]');
+
+    expect(removeButton).toBeFalsy();
+
+    view.unmount();
+  });
+
+  it("supports Ctrl+S save shortcut with notification", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onNotify = vi.fn();
+    const view = renderDetail({
+      ...baseProps,
+      onSave,
+      onNotify,
+      dirty: true,
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }));
+    });
+
+    expect(onSave).toHaveBeenCalled();
+    expect(onNotify).toHaveBeenCalledWith("Note saved.", "success");
 
     view.unmount();
   });

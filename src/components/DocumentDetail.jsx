@@ -4,7 +4,6 @@ import {
   Save,
   RotateCcw,
   ChevronRight,
-  FolderOpen,
   FileText,
   FilePenLine,
   FileDown,
@@ -21,14 +20,11 @@ import {
   X,
   Filter,
   Sparkles,
-  Search,
   ListTree,
 } from "lucide-react";
 import { EditorPane } from "./EditorPane";
 import { MediaTab } from "./MediaTab";
 import { formatDate } from "../utils/dateUtils";
-import { openInEditor } from "../services/electronService";
-import { openWebView } from "../services/electronService";
 import { downloadPdf } from "../services/electronService";
 import { deleteVersion, readVersion } from "../services/electronService";
 
@@ -117,47 +113,9 @@ function buildVisibleRows(rows, options = {}) {
 
 const AUTOSAVE_PREF_KEY = "notely:autosave-enabled";
 const AUTOSAVE_DELAY_MS = 1200;
-const DRAFT_SAVE_DELAY_MS = 450;
-const DRAFT_NAMESPACE = "notely:draft:";
 
 function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function getDraftStorageKey(filePath) {
-  return `${DRAFT_NAMESPACE}${encodeURIComponent(filePath || "")}`;
-}
-
-function readDraftSnapshot(filePath) {
-  if (!filePath || typeof window === "undefined") return null;
-
-  try {
-    const raw = window.localStorage.getItem(getDraftStorageKey(filePath));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeDraftSnapshot(filePath, snapshot) {
-  if (!filePath || typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(getDraftStorageKey(filePath), JSON.stringify(snapshot));
-  } catch {
-    // Ignore storage quota and serialization failures.
-  }
-}
-
-function clearDraftSnapshot(filePath) {
-  if (!filePath || typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(getDraftStorageKey(filePath));
-  } catch {
-    // Ignore storage failures.
-  }
 }
 
 function collectMatches(text, query, caseSensitive) {
@@ -180,6 +138,12 @@ function collectMatches(text, query, caseSensitive) {
   return output;
 }
 
+function isTextInputLike(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+}
+
 export function DocumentDetail({
   document,
   history,
@@ -188,31 +152,27 @@ export function DocumentDetail({
   mode,
   setMode,
   onChange,
-  onRenameDocument,
   onSave,
-  onReloadFromDisk,
   onRefreshHistory,
   saving,
   dirty,
-  onHome,
+  menuAction,
   onNotify,
+  onBack,
 }) {
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
-  const pdfPopoverRef = useRef(null);
-  const historyPopoverRef = useRef(null);
-  const renamePopoverRef = useRef(null);
   const historyStateRef = useRef({
     raw: { undo: [], redo: [] },
     cleansed: { undo: [], redo: [] },
   });
   const applyingHistoryRef = useRef(false);
   const [showHistoryPopover, setShowHistoryPopover] = useState(false);
-  const [showRenamePopover, setShowRenamePopover] = useState(false);
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareMeta, setCompareMeta] = useState(null);
-  const [diffRows, setDiffRows] = useState([]);
+  const [compareLatestText, setCompareLatestText] = useState("");
+  const [comparePreviousText, setComparePreviousText] = useState("");
   const [showOnlyChanges, setShowOnlyChanges] = useState(false);
   const [smartMode, setSmartMode] = useState(true);
   const [pdfExporting, setPdfExporting] = useState(false);
@@ -227,8 +187,6 @@ export function DocumentDetail({
     }
   });
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(0);
-  const [recoverableDraft, setRecoverableDraft] = useState(null);
-  const [draftChecked, setDraftChecked] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [replaceValue, setReplaceValue] = useState("");
@@ -236,87 +194,17 @@ export function DocumentDetail({
   const [findMatchIndex, setFindMatchIndex] = useState(-1);
   const [findMatchTotal, setFindMatchTotal] = useState(0);
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
-  const [renameTitle, setRenameTitle] = useState(document.title || "");
-  const [renaming, setRenaming] = useState(false);
+  const [showMetadataPanel, setShowMetadataPanel] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [showMediaManager, setShowMediaManager] = useState(false);
 
-  useEffect(() => {
-    if (!pdfOptionsOpen || typeof globalThis?.document === "undefined") return;
-
-    const handleClickOutside = (event) => {
-      if (pdfPopoverRef.current && !pdfPopoverRef.current.contains(event.target)) {
-        setPdfOptionsOpen(false);
-      }
-    };
-
-    globalThis.document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      if (typeof globalThis?.document !== "undefined") {
-        globalThis.document.removeEventListener("mousedown", handleClickOutside);
-      }
-    };
-  }, [pdfOptionsOpen]);
-
-  useEffect(() => {
-    if (!showHistoryPopover || typeof globalThis?.document === "undefined") return;
-
-    const handleClickOutside = (event) => {
-      if (historyPopoverRef.current && !historyPopoverRef.current.contains(event.target)) {
-        setShowHistoryPopover(false);
-      }
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === "Escape") {
-        setShowHistoryPopover(false);
-      }
-    };
-
-    globalThis.document.addEventListener("mousedown", handleClickOutside);
-    globalThis.document.addEventListener("keydown", handleEscape);
-    return () => {
-      if (typeof globalThis?.document !== "undefined") {
-        globalThis.document.removeEventListener("mousedown", handleClickOutside);
-        globalThis.document.removeEventListener("keydown", handleEscape);
-      }
-    };
-  }, [showHistoryPopover]);
-
-  useEffect(() => {
-    if (!showRenamePopover || typeof globalThis?.document === "undefined") return;
-
-    const handleClickOutside = (event) => {
-      if (renamePopoverRef.current && !renamePopoverRef.current.contains(event.target)) {
-        setShowRenamePopover(false);
-      }
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === "Escape") {
-        setShowRenamePopover(false);
-      }
-    };
-
-    globalThis.document.addEventListener("mousedown", handleClickOutside);
-    globalThis.document.addEventListener("keydown", handleEscape);
-    return () => {
-      if (typeof globalThis?.document !== "undefined") {
-        globalThis.document.removeEventListener("mousedown", handleClickOutside);
-        globalThis.document.removeEventListener("keydown", handleEscape);
-      }
-    };
-  }, [showRenamePopover]);
-
-  useEffect(() => {
-    setRenameTitle(document.title || "");
-    setShowRenamePopover(false);
-  }, [document.filePath, document.title]);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
 
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
   const outlineHeadings = useMemo(() => {
-    if (activeTab === "media") return [];
+    if (showMediaManager) return [];
     const lines = String(content || "").split(/\r?\n/);
     const headings = [];
     lines.forEach((lineText, index) => {
@@ -329,7 +217,7 @@ export function DocumentDetail({
       });
     });
     return headings;
-  }, [activeTab, content]);
+  }, [content, showMediaManager]);
 
   useEffect(() => {
     historyStateRef.current = {
@@ -348,40 +236,7 @@ export function DocumentDetail({
   }, [autosaveEnabled]);
 
   useEffect(() => {
-    const snapshot = readDraftSnapshot(document.filePath);
-    const isChanged = Boolean(snapshot) && (
-      snapshot.header !== (document.header || "")
-      || snapshot.rawNotes !== (document.rawNotes || "")
-      || snapshot.cleansed !== (document.cleansed || "")
-    );
-    setRecoverableDraft(isChanged ? snapshot : null);
-    setDraftChecked(true);
-  }, [document.filePath]);
-
-  useEffect(() => {
-    if (!draftChecked) return undefined;
-    if (!dirty) return undefined;
-
-    const timer = window.setTimeout(() => {
-      writeDraftSnapshot(document.filePath, {
-        header: document.header || "",
-        rawNotes: document.rawNotes || "",
-        cleansed: document.cleansed || "",
-        updatedAt: new Date().toISOString(),
-      });
-    }, DRAFT_SAVE_DELAY_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [draftChecked, dirty, document.filePath, document.header, document.rawNotes, document.cleansed]);
-
-  useEffect(() => {
-    if (!draftChecked) return;
-    if (dirty || recoverableDraft) return;
-    clearDraftSnapshot(document.filePath);
-  }, [draftChecked, dirty, recoverableDraft, document.filePath]);
-
-  useEffect(() => {
-    if (!autosaveEnabled || !dirty || saving || activeTab === "media") return undefined;
+    if (!autosaveEnabled || !dirty || saving || showMediaManager) return undefined;
 
     const timer = window.setTimeout(async () => {
       await onSave({ reason: "autosave", silent: true });
@@ -389,7 +244,7 @@ export function DocumentDetail({
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [autosaveEnabled, dirty, saving, activeTab, onSave, document.filePath, document.header, document.rawNotes, document.cleansed]);
+  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes, document.cleansed]);
 
   useEffect(() => {
     const total = collectMatches(content, findQuery, findCaseSensitive).length;
@@ -400,6 +255,44 @@ export function DocumentDetail({
       setFindMatchIndex(total - 1);
     }
   }, [content, findQuery, findCaseSensitive, findMatchIndex]);
+
+  useEffect(() => {
+    if (!menuAction?.action) return;
+
+    if (menuAction.action === "find-in-note" || menuAction.action === "find-replace") {
+      openFindReplacePanel();
+      return;
+    }
+
+    if (menuAction.action === "toggle-outline") {
+      if (!isFocusMode) {
+        setIsOutlineCollapsed((value) => !value);
+      }
+      return;
+    }
+
+    if (menuAction.action === "toggle-split-preview") {
+      if (!showMediaManager) {
+        setMode((value) => (value === "split" ? "edit" : "split"));
+      }
+      return;
+    }
+
+    if (menuAction.action === "toggle-focus-mode") {
+      setIsFocusMode((value) => !value);
+      return;
+    }
+
+    if (menuAction.action === "export-pdf") {
+      setPdfExportMode("formal");
+      setPdfOptionsOpen(true);
+      return;
+    }
+
+    if (menuAction.action === "manage-versions") {
+      setShowHistoryPopover(true);
+    }
+  }, [menuAction?.nonce, isFocusMode, setMode, showMediaManager]);
 
   const updateContent = (value) => {
     if (value === content) return;
@@ -419,8 +312,8 @@ export function DocumentDetail({
     });
   };
 
-  const canUndo = activeTab !== "media" && historyStateRef.current[activeHistoryKey].undo.length > 0;
-  const canRedo = activeTab !== "media" && historyStateRef.current[activeHistoryKey].redo.length > 0;
+  const canUndo = !showMediaManager && historyStateRef.current[activeHistoryKey].undo.length > 0;
+  const canRedo = !showMediaManager && historyStateRef.current[activeHistoryKey].redo.length > 0;
 
   const jumpToLine = (line) => {
     const safeLine = Math.max(Number(line) || 1, 1);
@@ -443,8 +336,13 @@ export function DocumentDetail({
     editor.selectionStart = startIndex;
     editor.selectionEnd = startIndex;
 
-    const lineHeight = parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
-    editor.scrollTop = Math.max(0, (safeLine - 1) * lineHeight - lineHeight * 3);
+    const lineHeight = typeof editor.getLineHeight === "function"
+      ? editor.getLineHeight()
+      : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
+    const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
+    const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
+    const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
+    editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
   };
 
   const openFindReplacePanel = () => {
@@ -454,6 +352,16 @@ export function DocumentDetail({
       : "";
     if (selectedText && !selectedText.includes("\n")) {
       setFindQuery(selectedText);
+    }
+    onNotify?.("Find panel opened.", "info");
+  };
+
+  const handleManualSave = async () => {
+    try {
+      await onSave({ reason: "manual-save" });
+      onNotify?.("Note saved.", "success");
+    } catch (error) {
+      onNotify?.(error?.message || "Unable to save note.", "error");
     }
   };
 
@@ -548,28 +456,12 @@ export function DocumentDetail({
     onNotify?.(`Replaced ${matches.length} match${matches.length > 1 ? "es" : ""}.`, "success");
   };
 
-  const restoreDraftSnapshot = () => {
-    if (!recoverableDraft) return;
-    onChange({
-      ...document,
-      header: recoverableDraft.header || "",
-      rawNotes: recoverableDraft.rawNotes || "",
-      cleansed: recoverableDraft.cleansed || "",
-    });
-    setRecoverableDraft(null);
-    onNotify?.("Recovered unsaved draft changes.", "success");
-  };
 
-  const discardDraftSnapshot = () => {
-    clearDraftSnapshot(document.filePath);
-    setRecoverableDraft(null);
-    onNotify?.("Discarded recovered draft.", "info");
-  };
 
   const handleUndo = () => {
-    if (activeTab === "media") return;
+    if (showMediaManager) return false;
     const currentHistory = historyStateRef.current[activeHistoryKey];
-    if (!currentHistory.undo.length) return;
+    if (!currentHistory.undo.length) return false;
 
     const previousValue = currentHistory.undo.pop();
     currentHistory.redo.push(content);
@@ -580,12 +472,13 @@ export function DocumentDetail({
       [activeEditorField]: previousValue,
     });
     applyingHistoryRef.current = false;
+    return true;
   };
 
   const handleRedo = () => {
-    if (activeTab === "media") return;
+    if (showMediaManager) return false;
     const currentHistory = historyStateRef.current[activeHistoryKey];
-    if (!currentHistory.redo.length) return;
+    if (!currentHistory.redo.length) return false;
 
     const nextValue = currentHistory.redo.pop();
     currentHistory.undo.push(content);
@@ -596,55 +489,95 @@ export function DocumentDetail({
       [activeEditorField]: nextValue,
     });
     applyingHistoryRef.current = false;
+    return true;
   };
 
-  const handleOpenLatestFile = async () => {
-    try {
-      const result = await openInEditor(document.filePath);
-      if (result?.openedWith === "default") {
-        onNotify?.("VS Code not available. Opened with system default app.", "info");
-      } else {
-        onNotify?.("Opened latest note file in VS Code.", "success");
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      const key = event.key.toLowerCase();
+      const hasPrimaryModifier = event.ctrlKey || event.metaKey;
+      const inInput = isTextInputLike(event.target);
+
+      if (!hasPrimaryModifier) return;
+
+      if (event.shiftKey && key === "f") {
+        if (showMediaManager) return;
+        event.preventDefault();
+        setIsFocusMode((value) => !value);
+        onNotify?.("Focus mode toggled.", "info");
+        return;
       }
-    } catch (error) {
-      onNotify?.(error?.message || "Unable to open file in editor.", "error");
-    }
-  };
 
-  const handleOpenWebsite = async () => {
-    try {
-      const result = await openWebView(document.filePath, content);
-      if (result?.openedWith === "chrome") {
-        onNotify?.("Opened website view in Chrome.", "success");
-      } else {
-        onNotify?.("Chrome not found. Opened in your default browser.", "info");
+      if (key === "s") {
+        event.preventDefault();
+        handleManualSave();
+        return;
       }
-    } catch (error) {
-      onNotify?.(error?.message || "Unable to open website view.", "error");
-    }
-  };
 
-  const handleDownloadPdf = async () => {
-    setPdfOptionsOpen(true);
-  };
-
-  const handleRenameSubmit = async () => {
-    const nextTitle = renameTitle.trim();
-    if (!nextTitle) {
-      onNotify?.("Enter a note title first.", "warning");
-      return;
-    }
-
-    setRenaming(true);
-    try {
-      const renamed = await onRenameDocument?.(nextTitle);
-      if (renamed !== false) {
-        setShowRenamePopover(false);
+      if (key === "f") {
+        event.preventDefault();
+        openFindReplacePanel();
+        return;
       }
-    } finally {
-      setRenaming(false);
-    }
-  };
+
+      if (key === "z") {
+        if (inInput && event.target !== textareaRef.current) return;
+        event.preventDefault();
+        const changed = event.shiftKey ? handleRedo() : handleUndo();
+        if (changed) {
+          onNotify?.(event.shiftKey ? "Redo applied." : "Undo applied.", "info");
+        } else {
+          onNotify?.(event.shiftKey ? "Nothing to redo." : "Nothing to undo.", "info");
+        }
+        return;
+      }
+
+      if (key === "1") {
+        if (showMediaManager) return;
+        event.preventDefault();
+        setMode("edit");
+        onNotify?.("Editor mode: Edit.", "info");
+        return;
+      }
+
+      if (key === "2") {
+        if (showMediaManager) return;
+        event.preventDefault();
+        setMode("split");
+        onNotify?.("Editor mode: Split.", "info");
+        return;
+      }
+
+      if (key === "3") {
+        if (showMediaManager) return;
+        event.preventDefault();
+        setMode("preview");
+        onNotify?.("Editor mode: Preview.", "info");
+        return;
+      }
+
+      if (event.shiftKey && key === "l") {
+        event.preventDefault();
+        if (!isFocusMode) {
+          setIsOutlineCollapsed((value) => !value);
+          onNotify?.("Outline visibility toggled.", "info");
+        } else {
+          onNotify?.("Disable Focus mode to toggle outline.", "info");
+        }
+        return;
+      }
+
+      if (key === "\\") {
+        if (showMediaManager) return;
+        event.preventDefault();
+        setMode((value) => (value === "split" ? "edit" : "split"));
+        onNotify?.("Split preview toggled.", "info");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFocusMode, onNotify, setMode, showMediaManager, handleUndo, handleRedo, onSave]);
 
   const handleConfirmPdfExport = async () => {
     const includeRawNotes = pdfExportMode === "raw" || pdfExportMode === "both";
@@ -678,7 +611,8 @@ export function DocumentDetail({
     setShowOnlyChanges(false);
     setSmartMode(true);
     setCompareMeta(entry);
-    setDiffRows([]);
+    setCompareLatestText("");
+    setComparePreviousText("");
 
     try {
       const latest = [
@@ -691,8 +625,8 @@ export function DocumentDetail({
       ].join("\n");
 
       const previous = await readVersion(document.filePath, entry.versionPath);
-      const rows = buildDiffRows(latest, previous, { ignoreWhitespace: smartMode });
-      setDiffRows(rows);
+      setCompareLatestText(latest);
+      setComparePreviousText(previous || "");
     } catch (error) {
       onNotify?.(error?.message || "Unable to load version diff.", "error");
       setCompareModalOpen(false);
@@ -700,6 +634,13 @@ export function DocumentDetail({
       setCompareLoading(false);
     }
   };
+
+  const diffRows = useMemo(() => {
+    if (!compareLatestText && !comparePreviousText) {
+      return [];
+    }
+    return buildDiffRows(compareLatestText, comparePreviousText, { ignoreWhitespace: smartMode });
+  }, [compareLatestText, comparePreviousText, smartMode]);
 
   const handleDeleteVersion = async (entry) => {
     const confirmed = window.confirm("Delete this older version? This cannot be undone.");
@@ -735,8 +676,14 @@ export function DocumentDetail({
   return (
     <div className="detail-shell">
       <div className="detail-topbar">
-        <button className="back-button" onClick={onHome} title="Back to home">
-          <Home size={18} />
+        <button
+          className="back-button"
+          type="button"
+          onClick={onBack}
+          title="Back to landing"
+          aria-label="Back to landing"
+        >
+          <Home size={16} />
         </button>
         <div className="crumb">Notes / {document.title}</div>
         <div className="save-status">{dirty ? "Unsaved changes" : "Saved"}</div>
@@ -749,161 +696,59 @@ export function DocumentDetail({
           <Save size={18} />
           {autosaveEnabled ? "Autosave On" : "Autosave Off"}
         </button>
-        <button className="text-button" onClick={handleOpenLatestFile} title="Open latest file">
-          <FolderOpen size={18} />
-          Open
-        </button>
-        <div className="topbar-action-wrap" ref={renamePopoverRef}>
-          <button
-            className={`text-button ${showRenamePopover ? "active" : ""}`}
-            onClick={() => setShowRenamePopover((value) => !value)}
-            title="Rename note file"
-            type="button"
-          >
-            <PenLine size={18} />
-            Rename
-          </button>
-          {showRenamePopover ? (
-            <div className="topbar-popover" role="dialog" aria-label="Rename note">
-              <div className="topbar-popover-header">
-                <strong>Rename Note</strong>
-                <button className="small-button" onClick={() => setShowRenamePopover(false)} type="button" title="Close rename">
-                  <X size={16} />
-                </button>
-              </div>
-              <label className="topbar-popover-field">
-                <span>File name</span>
-                <input
-                  type="text"
-                  value={renameTitle}
-                  onChange={(event) => setRenameTitle(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      handleRenameSubmit();
-                    }
-                  }}
-                  autoFocus
-                />
-              </label>
-              <div className="topbar-popover-actions">
-                <button className="primary-button" onClick={handleRenameSubmit} disabled={renaming} type="button">
-                  {renaming ? "Renaming..." : "Rename"}
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <button className="text-button" onClick={handleOpenWebsite} title="Open website in browser">
-          <Globe size={18} />
-          Website
-        </button>
-        <button className="text-button" onClick={onReloadFromDisk} title="Reload file from disk" type="button">
-          <RotateCcw size={18} />
-          Reload
-        </button>
-        <div className="topbar-action-wrap">
-          <button
-            className="text-button"
-            onClick={handleDownloadPdf}
-            disabled={pdfExporting}
-            title="Export note as PDF"
-          >
-            <FileDown size={18} />
-            {pdfExporting ? "Exporting..." : "Export PDF"}
-          </button>
-          {pdfOptionsOpen ? (
-            <div ref={pdfPopoverRef} className="topbar-popover topbar-popover-right" role="dialog" aria-label="Export PDF">
-              <div className="topbar-popover-header">
-                <strong>Export PDF</strong>
-                <button className="small-button" onClick={() => setPdfOptionsOpen(false)} type="button" title="Close export options">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="topbar-popover-field">
-                <span>Content</span>
-                <select
-                  value={pdfExportMode}
-                  onChange={(event) => setPdfExportMode(event.target.value)}
-                  className="topbar-popover-select"
-                >
-                  <option value="formal">Formal Notes</option>
-                  <option value="raw">Raw Notes</option>
-                  <option value="both">Both Raw and Formal</option>
-                </select>
-              </div>
-              <div className="topbar-popover-actions">
-                <button
-                  className="primary-button"
-                  onClick={handleConfirmPdfExport}
-                  disabled={pdfExporting}
-                  type="button"
-                >
-                  <FileDown size={14} />
-                  {pdfExporting ? "Exporting..." : "Export"}
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <button
-          className="primary-button"
-          onClick={onSave}
-          disabled={saving || !dirty}
-          title="Save document"
-        >
-          <Save size={18} />
-          {saving ? "Saving..." : "Save"}
-        </button>
       </div>
 
       {autosaveEnabled && lastAutoSaveAt ? (
         <div className="autosave-status">Last autosave {new Date(lastAutoSaveAt).toLocaleTimeString()}</div>
       ) : null}
 
-      {recoverableDraft ? (
-        <div className="draft-recovery-banner" role="status" aria-live="polite">
-          <span>
-            Unsaved draft found{recoverableDraft.updatedAt ? ` from ${new Date(recoverableDraft.updatedAt).toLocaleString()}` : ""}.
-          </span>
-          <div className="draft-recovery-actions">
-            <button className="small-button" type="button" onClick={restoreDraftSnapshot}>Restore Draft</button>
-            <button className="small-button" type="button" onClick={discardDraftSnapshot}>Discard</button>
-          </div>
-        </div>
-      ) : null}
-
       <header className="doc-header">
-        <div>
+        <div className="doc-header-main">
           <h1>{document.title}</h1>
-          <p>{document.fileName}</p>
+          <p className="doc-header-file">{document.fileName}</p>
         </div>
+        <div className="panel-actions">
+          <button
+            className={`small-button ${showMetadataPanel ? "active" : ""}`}
+            type="button"
+            title="Toggle note metadata"
+            onClick={() => setShowMetadataPanel((value) => !value)}
+          >
+            {showMetadataPanel ? "Hide details" : "Show details"}
+          </button>
+        </div>
+      </header>
+
+      {showMetadataPanel && !isFocusMode ? (
         <div className="metadata-grid">
-          <div>
+          <div className="metadata-card">
             <User size={16} />
             <span>Name</span>
             <strong>{document.metadata?.name || "Not captured"}</strong>
           </div>
-          <div>
+          <div className="metadata-card">
             <Clock size={16} />
             <span>Time</span>
             <strong>{document.metadata?.time || "Not captured"}</strong>
           </div>
-          <div>
+          <div className="metadata-card">
             <MapPin size={16} />
             <span>Location</span>
             <strong>{document.metadata?.location || "Not captured"}</strong>
           </div>
         </div>
-      </header>
+      ) : null}
 
-      <div className={`workspace ${isOutlineCollapsed ? "outline-panel-collapsed" : ""}`}>
+      <div className={`workspace ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""}`}>
         <main className="editor-panel">
           <div className="tab-row">
             <div className="tabs">
               <button
                 className={activeTab === "raw" ? "active" : ""}
-                onClick={() => setActiveTab("raw")}
+                onClick={() => {
+                  setShowMediaManager(false);
+                  setActiveTab("raw");
+                }}
                 title="Quick notes"
               >
                 <FilePenLine size={16} />
@@ -911,118 +756,43 @@ export function DocumentDetail({
               </button>
               <button
                 className={activeTab === "cleansed" ? "active" : ""}
-                onClick={() => setActiveTab("cleansed")}
+                onClick={() => {
+                  setShowMediaManager(false);
+                  setActiveTab("cleansed");
+                }}
                 title="Formal notes"
               >
                 <FileText size={16} />
                 <span>Formal Notes</span>
               </button>
-              <button
-                className={activeTab === "media" ? "active" : ""}
-                onClick={() => setActiveTab("media")}
-                title="Media and images"
-              >
-                <Images size={16} />
-                <span>Media</span>
-              </button>
             </div>
             <div className="mode-switch">
-              <div className="versions-popover-wrap" ref={historyPopoverRef}>
-                <button
-                  className={showHistoryPopover ? "active" : ""}
-                  type="button"
-                  title="Toggle versions"
-                  onClick={() => setShowHistoryPopover((value) => !value)}
-                  aria-expanded={showHistoryPopover}
-                >
-                  <Clock size={16} />
-                  <span>Versions</span>
-                </button>
-                {showHistoryPopover ? (
-                  <div className="versions-popover topbar-popover" role="dialog" aria-label="Versions">
-                    <div className="panel-title-row versions-popover-header">
-                      <h2>Versions</h2>
-                      <div className="panel-actions">
-                        <button className="small-button" onClick={onRefreshHistory} title="Refresh history" type="button">
-                          <RotateCcw size={16} />
-                        </button>
-                        <button
-                          className="small-button"
-                          onClick={() => setShowHistoryPopover(false)}
-                          title="Close versions"
-                          type="button"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    {history.length ? (
-                      <div className="history-list">
-                        {history.map((entry) => (
-                          <div className="history-item" key={entry.versionPath}>
-                            <strong>{formatDate(entry.createdAt)}</strong>
-                            <span>{entry.reason}</span>
-                            <div className="history-item-actions">
-                              <button
-                                className="small-button"
-                                onClick={() => handleCompareVersion(entry)}
-                                title="Compare with latest"
-                                type="button"
-                              >
-                                <GitCompare size={14} />
-                                Compare
-                              </button>
-                              <button
-                                className="small-button"
-                                onClick={() => handleDeleteVersion(entry)}
-                                title="Delete this version"
-                                type="button"
-                              >
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="muted">Versions appear after the first save.</p>
-                    )}
-                  </div>
-                ) : null}
+              <button
+                className={showMediaManager ? "active" : ""}
+                type="button"
+                title="Open assets manager"
+                onClick={() => setShowMediaManager((value) => !value)}
+              >
+                <Images size={16} />
+                <span>Assets</span>
+              </button>
+              <div className="button-group-separator" />
+              <div className="button-group">
+                {[
+                  { key: "edit", label: "Edit", icon: PenLine },
+                  { key: "split", label: "Split", icon: SplitSquareHorizontal },
+                  { key: "preview", label: "Preview", icon: Eye },
+                ].map((item) => (
+                  <button
+                    className={mode === item.key ? "active" : ""}
+                    key={item.key}
+                    onClick={() => setMode(item.key)}
+                  >
+                    <item.icon size={16} />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
               </div>
-              <button
-                className={showFindReplace ? "active" : ""}
-                type="button"
-                title="Find and replace"
-                onClick={() => setShowFindReplace((value) => !value)}
-              >
-                <Search size={16} />
-                <span>Find</span>
-              </button>
-              <button
-                className={isOutlineCollapsed ? "" : "active"}
-                type="button"
-                title="Toggle outline"
-                onClick={() => setIsOutlineCollapsed((value) => !value)}
-              >
-                <ListTree size={16} />
-                <span>Outline</span>
-              </button>
-              {[
-                { key: "edit", label: "Edit", icon: PenLine },
-                { key: "split", label: "Split", icon: SplitSquareHorizontal },
-                { key: "preview", label: "Preview", icon: Eye },
-              ].map((item) => (
-                <button
-                  className={mode === item.key ? "active" : ""}
-                  key={item.key}
-                  onClick={() => setMode(item.key)}
-                >
-                  <item.icon size={16} />
-                  <span>{item.label}</span>
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1054,24 +824,20 @@ export function DocumentDetail({
             </div>
           ) : null}
 
-          {activeTab === "media" ? (
-            <MediaTab content={mediaContent} basePath={document.filePath} onNotify={onNotify} />
-          ) : (
-            <EditorPane
-              value={content}
-              onChange={updateContent}
-              mode={mode}
-              textareaRef={textareaRef}
-              basePath={document.filePath}
-              showToolbar={activeTab !== "media"}
-              onNotify={onNotify}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onOpenFind={openFindReplacePanel}
-            />
-          )}
+          <EditorPane
+            value={content}
+            onChange={updateContent}
+            mode={mode}
+            textareaRef={textareaRef}
+            basePath={document.filePath}
+            showToolbar={!showMediaManager}
+            onNotify={onNotify}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onOpenFind={openFindReplacePanel}
+          />
         </main>
 
         <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
@@ -1196,6 +962,117 @@ export function DocumentDetail({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      ) : null}
+
+      {showHistoryPopover ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Versions">
+          <div className="overlay-dialog-card">
+            <div className="overlay-dialog-header">
+              <h2>Versions</h2>
+              <button className="icon-button" onClick={() => setShowHistoryPopover(false)} type="button" aria-label="Close versions dialog">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overlay-dialog-actions split">
+              <button className="small-button" onClick={onRefreshHistory} title="Refresh history" type="button">
+                <RotateCcw size={16} />
+                Refresh
+              </button>
+            </div>
+            {history.length ? (
+              <div className="history-list">
+                {history.map((entry) => (
+                  <div className="history-item" key={entry.versionPath}>
+                    <strong>{formatDate(entry.createdAt)}</strong>
+                    <span>{entry.reason}</span>
+                    <div className="history-item-actions">
+                      <button
+                        className="small-button"
+                        onClick={() => handleCompareVersion(entry)}
+                        title="Compare with latest"
+                        type="button"
+                      >
+                        <GitCompare size={14} />
+                        Compare
+                      </button>
+                      <button
+                        className="small-button"
+                        onClick={() => handleDeleteVersion(entry)}
+                        title="Delete this version"
+                        type="button"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Versions appear after the first save.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {showMediaManager ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Assets">
+          <div className="overlay-dialog-card assets-dialog-card">
+            <div className="overlay-dialog-header assets-dialog-header">
+              <div className="assets-dialog-title-group">
+                <h2>Assets Library</h2>
+                <p>Manage images referenced across your notes.</p>
+              </div>
+              <button
+                className="icon-button assets-close-button"
+                onClick={() => setShowMediaManager(false)}
+                type="button"
+                aria-label="Close assets dialog"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="assets-dialog-body">
+              <MediaTab content={mediaContent} basePath={document.filePath} onNotify={onNotify} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pdfOptionsOpen ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Export PDF">
+          <div className="overlay-dialog-card">
+            <div className="overlay-dialog-header">
+              <h2>Export PDF</h2>
+              <button className="icon-button" onClick={() => setPdfOptionsOpen(false)} type="button" aria-label="Close export options">
+                <X size={16} />
+              </button>
+            </div>
+            <label className="overlay-dialog-field">
+              <span>Content</span>
+              <select
+                value={pdfExportMode}
+                onChange={(event) => setPdfExportMode(event.target.value)}
+                className="topbar-popover-select"
+              >
+                <option value="formal">Formal Notes</option>
+                <option value="raw">Raw Notes</option>
+                <option value="both">Both Raw and Formal</option>
+              </select>
+            </label>
+            <div className="overlay-dialog-actions">
+              <button
+                className="primary-button"
+                onClick={handleConfirmPdfExport}
+                disabled={pdfExporting}
+                type="button"
+              >
+                <FileDown size={14} />
+                {pdfExporting ? "Exporting..." : "Export"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

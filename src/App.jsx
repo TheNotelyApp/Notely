@@ -5,6 +5,7 @@ import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
 import {
   createDocument,
+  deleteDocument as deleteDocumentApi,
   getNotesRootSetting,
   listProjects,
   listDocuments,
@@ -45,6 +46,15 @@ export default function App() {
     }
   })();
 
+  const initialEditorMode = (() => {
+    try {
+      const stored = window.localStorage.getItem("notes:editor-mode");
+      return ["edit", "split", "preview"].includes(stored) ? stored : "edit";
+    } catch {
+      return "edit";
+    }
+  })();
+
   const [documents, setDocuments] = useState([]);
   const [current, setCurrent] = useState(null);
   const [savedHash, setSavedHash] = useState("");
@@ -52,7 +62,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("raw");
-  const [mode, setMode] = useState("edit");
+  const [mode, setMode] = useState(initialEditorMode);
   const [error, setError] = useState("");
   const [toasts, setToasts] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -64,6 +74,7 @@ export default function App() {
   const [notesFolderDialogOpen, setNotesFolderDialogOpen] = useState(false);
   const [notesFolderPath, setNotesFolderPath] = useState("");
   const [savingNotesFolder, setSavingNotesFolder] = useState(false);
+  const [documentMenuAction, setDocumentMenuAction] = useState(null);
 
   const notify = (message, type = "info") => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -170,6 +181,30 @@ export default function App() {
     } catch (err) {
       setError(err?.message || "Unable to rename note.");
       notify(err?.message || "Unable to rename note.", "error");
+      return false;
+    }
+  }
+
+  async function handleDeleteCurrentDocument() {
+    if (!current?.filePath) return false;
+
+    const confirmed = window.confirm(
+      dirty
+        ? `Move \"${current.title}\" to the removed folder and discard unsaved changes?`
+        : `Move \"${current.title}\" to the removed folder?`
+    );
+    if (!confirmed) return false;
+
+    try {
+      await deleteDocumentApi(current.filePath);
+      setCurrent(null);
+      setHistory([]);
+      await loadDocumentsData();
+      notify("Note moved to removed folder.", "success");
+      return true;
+    } catch (err) {
+      setError(err?.message || "Unable to delete note.");
+      notify(err?.message || "Unable to delete note.", "error");
       return false;
     }
   }
@@ -350,6 +385,30 @@ export default function App() {
     }
   }
 
+  async function handleOpenWebsiteForCurrent() {
+    if (!current?.filePath) return;
+
+    const content = activeTab === "cleansed" ? current.cleansed : current.rawNotes;
+
+    try {
+      const result = await openWebView(current.filePath, content);
+      if (result?.openedWith === "chrome") {
+        notify("Opened website view in Chrome.", "success");
+      } else {
+        notify("Chrome not found. Opened in your default browser.", "info");
+      }
+    } catch (err) {
+      notify(err?.message || "Unable to open website view.", "error");
+    }
+  }
+
+  async function handleRenameFromTopbar() {
+    if (!current?.title) return;
+    const nextTitle = window.prompt("Rename note", current.title);
+    if (nextTitle == null) return;
+    await handleRenameCurrentDocument(nextTitle);
+  }
+
   async function handleOpenListItem(item) {
     if (!item) return;
     if (item.entryType === "folder") {
@@ -372,6 +431,14 @@ export default function App() {
       // Ignore storage failures.
     }
   }, [notesViewMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("notes:editor-mode", mode);
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [mode]);
 
   useEffect(() => {
     updateMenuContext({
@@ -410,9 +477,61 @@ export default function App() {
 
       if (action === "open-in-editor") {
         handleOpenCurrentInEditor();
+        return;
+      }
+
+      if (action === "rename-note") {
+        handleRenameFromTopbar();
+        return;
+      }
+
+      if (action === "find-in-note" || action === "find-replace") {
+        if (current) {
+          setDocumentMenuAction({ action: "find-replace", nonce: Date.now() });
+        }
+        return;
+      }
+
+      if (action === "toggle-outline" || action === "toggle-split-preview" || action === "toggle-focus-mode") {
+        if (current) {
+          setDocumentMenuAction({ action, nonce: Date.now() });
+        }
+        return;
+      }
+
+      if (action === "export-pdf") {
+        if (current) {
+          setDocumentMenuAction({ action, nonce: Date.now() });
+        }
+        return;
+      }
+
+      if (action === "manage-versions") {
+        if (current) {
+          setDocumentMenuAction({ action, nonce: Date.now() });
+        }
+        return;
+      }
+
+      if (action === "open-website") {
+        if (current) {
+          handleOpenWebsiteForCurrent();
+        } else {
+          handleOpenWebsiteFromLanding();
+        }
+        return;
+      }
+
+      if (action === "reload-document") {
+        handleReloadCurrentFromDisk();
+        return;
+      }
+
+      if (action === "remove-document") {
+        handleDeleteCurrentDocument();
       }
     });
-  }, [current, dirty, activeProject]);
+  }, [current, dirty, activeProject, activeTab]);
 
   return (
     <div className="app-shell">
@@ -512,14 +631,13 @@ export default function App() {
           mode={mode}
           setMode={setMode}
           onChange={setCurrent}
-          onRenameDocument={handleRenameCurrentDocument}
           onSave={saveDocument}
-          onReloadFromDisk={handleReloadCurrentFromDisk}
           onRefreshHistory={async () => setHistory(await getHistory(current.filePath))}
           saving={saving}
           dirty={dirty}
-          onHome={handleGoHome}
+          menuAction={documentMenuAction}
           onNotify={notify}
+          onBack={handleGoHome}
         />
       )}
 

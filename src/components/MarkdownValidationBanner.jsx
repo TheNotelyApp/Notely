@@ -1,6 +1,6 @@
 export function MarkdownValidationBanner({ issues = [], status = "idle" }) {
   if (status === "checking") {
-    return <div className="validation-banner checking">Checking markdown, spelling, and grammar...</div>;
+    return <div className="validation-banner checking">Checking markdown and typos...</div>;
   }
 
   if (status === "error") {
@@ -8,7 +8,7 @@ export function MarkdownValidationBanner({ issues = [], status = "idle" }) {
   }
 
   if (!issues.length) {
-    return <div className="validation-banner ok">No issues detected (markdown, spelling, grammar).</div>;
+    return <div className="validation-banner ok">No issues detected (markdown, typos).</div>;
   }
 
   const firstIssue = issues[0];

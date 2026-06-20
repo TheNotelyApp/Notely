@@ -1,22 +1,22 @@
 /**
- * Complete markdown validation with spell checking, grammar checking, and linting
+ * Complete markdown validation with typo checking and linting
  */
 
 import { validateMarkdownSyntax } from "./markdownValidation";
-import { checkSpellingAndGrammar } from "./spellAndGrammarCheck";
+import { checkSpelling } from "./spellAndGrammarCheck";
 
 export async function validateMarkdownComplete(content) {
   const text = content || "";
-  
+
   // Get markdown syntax and table issues
   const syntaxIssues = await validateMarkdownSyntax(text);
-  
-  // Get spelling and grammar issues
-  const spellGrammarIssues = await checkSpellingAndGrammar(text);
-  
+
+  // Get typo issues only
+  const spellingIssues = await checkSpelling(text);
+
   // Combine all issues
-  const allIssues = [...syntaxIssues, ...spellGrammarIssues];
-  
+  const allIssues = [...syntaxIssues, ...spellingIssues];
+
   // Sort by line and column
   return allIssues.sort((left, right) => {
     if (left.line !== right.line) return left.line - right.line;

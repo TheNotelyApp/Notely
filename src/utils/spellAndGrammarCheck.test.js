@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { checkSpelling, checkSpellingAndGrammar } from "./spellAndGrammarCheck";
+import { checkGrammar, checkSpelling, checkSpellingAndGrammar } from "./spellAndGrammarCheck";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -87,6 +87,18 @@ But this sentance has an eror.`;
     }
   });
 
+  it("checks heading typos without flagging common domain words", async () => {
+    const content = "# Capttive Power Plant Analysis";
+
+    const issues = await checkSpelling(content);
+    const messages = issues.map((issue) => issue.message).join(" ");
+
+    expect(messages).toContain("Capttive");
+    expect(messages).not.toContain("Power");
+    expect(messages).not.toContain("Plant");
+    expect(messages).not.toContain("Analysis");
+  });
+
   it("ignores common abbreviations", async () => {
     const content = "API and REST are common terms. See the docs at https://example.com";
     const issues = await checkSpelling(content);
@@ -151,6 +163,51 @@ More outside text.`;
     expect(requestText).toContain("This sentence has an image");
     expect(requestText).toContain("included.");
     expect(requestText).not.toContain("Power Plant Team Meeting");
+  });
+
+  it("includes headings and short bullet fragments in grammar checking input", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ matches: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const content = `# Captive Power Plant Analysis
+
+- Need review soon`;
+
+    await checkSpellingAndGrammar(content);
+
+    const body = fetchMock.mock.calls[0][1].body.toString();
+    const requestText = new URLSearchParams(body).get("text") || "";
+    expect(requestText).toContain("Captive Power Plant Analysis");
+    expect(requestText).toContain("Need review soon");
+  });
+
+  it("falls back to local grammar heuristics when remote grammar check fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+
+    const issues = await checkGrammar("this is is duplicated text.");
+    const messages = issues.map((issue) => issue.message).join(" ");
+
+    expect(messages).toContain("Repeated word");
+    expect(messages).toContain("capital letter");
+  });
+
+  it("skips grammar checks for technical count fragments but still allows spelling checks", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ matches: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await checkGrammar("7 boiler (5 High Pressure, 2 Low Pressure)");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const spellingIssues = await checkSpelling("7 boilar (5 High Pressure, 2 Low Pressure)");
+    const messages = spellingIssues.map((issue) => issue.message).join(" ");
+    expect(messages).toContain("boilar");
   });
 
   it("sorts issues by line and column", async () => {

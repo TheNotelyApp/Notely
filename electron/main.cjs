@@ -105,6 +105,43 @@ function filePathWithin(rootDir, targetPath) {
   return normalizedTarget.startsWith(normalizedRoot);
 }
 
+function getUniquePath(targetPath) {
+  if (!fs.existsSync(targetPath)) {
+    return targetPath;
+  }
+
+  const ext = path.extname(targetPath);
+  const baseName = path.basename(targetPath, ext);
+  const dirName = path.dirname(targetPath);
+  let counter = 1;
+  let candidate = targetPath;
+
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(dirName, `${baseName}-${counter}${ext}`);
+    counter += 1;
+  }
+
+  return candidate;
+}
+
+function moveFileToRemoved(filePath, group) {
+  const resolved = path.resolve(String(filePath || ""));
+  if (!filePathWithin(notesRoot, resolved)) {
+    throw new Error("Invalid path.");
+  }
+  if (!fs.existsSync(resolved)) {
+    throw new Error("File does not exist.");
+  }
+
+  const safeGroup = String(group || "files").trim() || "files";
+  const relativePath = path.relative(notesRoot, resolved);
+  const targetPath = path.join(notesRoot, "removed", safeGroup, relativePath);
+  ensureDir(path.dirname(targetPath));
+  const finalPath = getUniquePath(targetPath);
+  fs.renameSync(resolved, finalPath);
+  return finalPath;
+}
+
 function listProjectsState() {
   ensureDir(notesRoot);
   const projects = [
@@ -118,6 +155,7 @@ function listProjectsState() {
       .filter((entry) => entry.isDirectory())
       .filter((entry) => !entry.name.startsWith("."))
       .filter((entry) => entry.name !== "images")
+      .filter((entry) => entry.name !== "removed")
       .map((entry) => ({
         slug: entry.name,
         name: entry.name,
@@ -300,7 +338,7 @@ function getWebPreviewScopeLabel() {
 
 const WALK_EXCLUDE_DIRS = new Set([
   ".notes-app", ".versions", "node_modules", ".git", ".svn", ".hg",
-  "dist", "build", ".artifacts", ".cache", "__pycache__",
+  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed",
   ".venv", "venv", ".next", ".nuxt", "coverage"
 ]);
 
@@ -1712,7 +1750,7 @@ function listRootEntries(rootDir) {
   return fs.readdirSync(rootDir, { withFileTypes: true })
     .filter((entry) => {
       if (entry.isDirectory()) {
-        return !entry.name.startsWith(".") && entry.name !== "images";
+        return !entry.name.startsWith(".") && entry.name !== "images" && entry.name !== "removed";
       }
       return entry.isFile() && entry.name.toLowerCase().endsWith(".md");
     })
@@ -1833,6 +1871,20 @@ function renameDocumentFile(filePath, payload) {
 
   fs.writeFileSync(nextResolved, nextContent, "utf8");
   return parseDocument(nextContent, nextResolved);
+}
+
+function deleteDocumentFile(filePath) {
+  const resolved = path.resolve(String(filePath || ""));
+  if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    throw new Error("Invalid document path.");
+  }
+  if (!fs.existsSync(resolved)) {
+    throw new Error("Document file does not exist.");
+  }
+
+  const movedPath = moveFileToRemoved(resolved, "notes");
+  metadataStore.renameHistoryFilePath(resolved, movedPath);
+  return { movedPath };
 }
 
 class MetadataStore {
@@ -1965,26 +2017,64 @@ function buildAppMenu(win, context = {}) {
   const fileSubmenu = screen === "document"
     ? [
         {
+          label: "New Note",
+          accelerator: "CmdOrCtrl+N",
+          click: () => sendMenuAction(win, "new-note")
+        },
+        { type: "separator" },
+        {
           label: dirty ? "Save*" : "Save",
           accelerator: "CmdOrCtrl+S",
           enabled: dirty,
           click: () => sendMenuAction(win, "save-document")
         },
         {
-          label: "Open in VS Code",
-          accelerator: "CmdOrCtrl+Shift+O",
-          click: () => sendMenuAction(win, "open-in-editor")
+          label: "Export PDF",
+          accelerator: "CmdOrCtrl+Shift+E",
+          click: () => sendMenuAction(win, "export-pdf")
         },
+        {
+          label: "Versions",
+          accelerator: "CmdOrCtrl+Shift+H",
+          click: () => sendMenuAction(win, "manage-versions")
+        },
+        { type: "separator" },
+        {
+          label: "Open",
+          submenu: [
+            {
+              label: "Open in VS Code",
+              accelerator: "CmdOrCtrl+Shift+O",
+              click: () => sendMenuAction(win, "open-in-editor")
+            },
+            {
+              label: "Open Website View",
+              accelerator: "CmdOrCtrl+Shift+W",
+              click: () => sendMenuAction(win, "open-website")
+            }
+          ]
+        },
+        { type: "separator" },
+        {
+          label: "Rename Note",
+          accelerator: "F2",
+          click: () => sendMenuAction(win, "rename-note")
+        },
+        {
+          label: "Reload from Disk",
+          accelerator: "CmdOrCtrl+Shift+R",
+          click: () => sendMenuAction(win, "reload-document")
+        },
+        {
+          label: "Move Note to Removed",
+          accelerator: "CmdOrCtrl+Delete",
+          click: () => sendMenuAction(win, "remove-document")
+        },
+        { type: "separator" },
         {
           label: "Back to Notes",
           accelerator: "Esc",
           click: () => sendMenuAction(win, "back-to-notes")
-        },
-        { type: "separator" },
-        {
-          label: "New Note",
-          accelerator: "CmdOrCtrl+N",
-          click: () => sendMenuAction(win, "new-note")
         },
         { type: "separator" },
         { role: "quit" }
@@ -1995,9 +2085,49 @@ function buildAppMenu(win, context = {}) {
           accelerator: "CmdOrCtrl+N",
           click: () => sendMenuAction(win, "new-note")
         },
+        {
+          label: "Open Website View",
+          accelerator: "CmdOrCtrl+Shift+W",
+          click: () => sendMenuAction(win, "open-website")
+        },
         { type: "separator" },
         { role: "quit" }
       ];
+
+  const editSubmenu = [
+    { role: "undo" },
+    { role: "redo" },
+    { type: "separator" },
+    { role: "cut" },
+    { role: "copy" },
+    { role: "paste" },
+    { role: "selectAll" },
+    ...(screen === "document"
+      ? [
+          { type: "separator" },
+          {
+            label: "Find or Replace",
+            accelerator: "CmdOrCtrl+F",
+            click: () => sendMenuAction(win, "find-replace")
+          },
+          {
+            label: "Toggle Outline",
+            accelerator: "CmdOrCtrl+Shift+L",
+            click: () => sendMenuAction(win, "toggle-outline")
+          },
+          {
+            label: "Toggle Split Preview",
+            accelerator: "CmdOrCtrl+\\",
+            click: () => sendMenuAction(win, "toggle-split-preview")
+          },
+          {
+            label: "Toggle Focus Mode",
+            accelerator: "CmdOrCtrl+Shift+F",
+            click: () => sendMenuAction(win, "toggle-focus-mode")
+          }
+        ]
+      : [])
+  ];
 
   const viewSubmenu = screen === "document"
     ? [
@@ -2032,15 +2162,12 @@ function buildAppMenu(win, context = {}) {
       submenu: fileSubmenu
     },
     {
-      label: "View",
-      submenu: viewSubmenu
+      label: "Edit",
+      submenu: editSubmenu
     },
     {
-      label: "Window",
-      submenu: [
-        { role: "minimize" },
-        { role: "zoom" }
-      ]
+      label: "View",
+      submenu: viewSubmenu
     }
   ]);
 }
@@ -2248,6 +2375,10 @@ ipcMain.handle("documents:create", (_event, payload) => {
 
 ipcMain.handle("documents:rename", (_event, payload) => {
   return renameDocumentFile(payload?.filePath, payload);
+});
+
+ipcMain.handle("documents:delete", (_event, payload) => {
+  return deleteDocumentFile(payload?.filePath);
 });
 
 ipcMain.handle("documents:read", (_event, filePath) => {
@@ -2535,6 +2666,53 @@ ipcMain.handle("images:list", (_event, payload) => {
     .map((name) => `./images/${name}`);
 });
 
+function collectImageUsage(basePath) {
+  const resolvedBasePath = path.resolve(String(basePath || ""));
+  if (!filePathWithin(notesRoot, resolvedBasePath)) {
+    throw new Error("Invalid document path.");
+  }
+
+  const activeProject = getActiveProject();
+  const scopeRoot = path.resolve(activeProject?.rootPath || notesRoot);
+  const markdownFiles = walkFiles(scopeRoot, { excludeDirs: Array.from(WALK_EXCLUDE_DIRS) })
+    .filter((item) => path.extname(item).toLowerCase() === ".md");
+  const markdownImagePattern = /!\[[^\]]*\]\((<[^>]+>|[^)]+)\)/g;
+  const usageByAssetPath = {};
+
+  for (const markdownFile of markdownFiles) {
+    const content = fs.readFileSync(markdownFile, "utf8");
+    const seenInDocument = new Set();
+    let match;
+
+    while ((match = markdownImagePattern.exec(content))) {
+      const rawPath = String(match[1] || "").trim();
+      const assetPath = rawPath.startsWith("<") && rawPath.endsWith(">")
+        ? rawPath.slice(1, -1)
+        : rawPath;
+      const resolvedAssetPath = resolveImageAssetPath(markdownFile, assetPath);
+      if (!resolvedAssetPath) continue;
+
+      const relativeAssetPath = `./images/${path.basename(resolvedAssetPath)}`;
+      if (seenInDocument.has(relativeAssetPath)) continue;
+      seenInDocument.add(relativeAssetPath);
+
+      const entry = usageByAssetPath[relativeAssetPath] || {
+        referenceCount: 0,
+        documents: [],
+      };
+      entry.referenceCount += 1;
+      entry.documents.push({
+        filePath: markdownFile,
+        fileName: path.basename(markdownFile),
+        title: path.basename(markdownFile, ".md"),
+      });
+      usageByAssetPath[relativeAssetPath] = entry;
+    }
+  }
+
+  return usageByAssetPath;
+}
+
 function resolveImageAssetPath(basePath, assetPath) {
   const rawAsset = (assetPath || "").trim();
   if (!rawAsset) return null;
@@ -2598,6 +2776,15 @@ function resolveImageAssetPath(basePath, assetPath) {
   return path.resolve(resolvedAssetPath);
 }
 
+ipcMain.handle("images:usage", (_event, payload) => {
+  const { basePath } = payload || {};
+  if (!basePath || typeof basePath !== "string") {
+    throw new Error("Invalid base path.");
+  }
+
+  return collectImageUsage(basePath);
+});
+
 ipcMain.handle("images:delete", (_event, payload) => {
   const { basePath, assetPath } = payload || {};
   if (!basePath || typeof basePath !== "string") {
@@ -2612,7 +2799,7 @@ ipcMain.handle("images:delete", (_event, payload) => {
     return false;
   }
 
-  fs.unlinkSync(resolvedAssetPath);
+  moveFileToRemoved(resolvedAssetPath, "images");
   return true;
 });
 

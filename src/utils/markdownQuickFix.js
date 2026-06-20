@@ -103,7 +103,13 @@ export function applyValidationSuggestion(value, issue) {
   }
 
   const startIndex = getTextIndexAtLineColumn(value, issue?.line, issue?.column);
-  const replacementLength = Math.max(Number(issue?.length) || 0, issue?.word?.length || 0, suggestion.length, 1);
+  const replacementLength = Math.max(
+    Number(issue?.sourceLength) || 0,
+    Number(issue?.length) || 0,
+    issue?.word?.length || 0,
+    suggestion.length,
+    1
+  );
   const nextValue = [
     (value || "").slice(0, startIndex),
     suggestion,

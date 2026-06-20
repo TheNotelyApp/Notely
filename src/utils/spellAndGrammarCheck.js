@@ -3,14 +3,6 @@
  * Uses a local spell checker and LanguageTool API for grammar
  */
 
-import MarkdownIt from "markdown-it";
-
-const markdownParser = new MarkdownIt({
-  html: false,
-  linkify: false,
-  typographer: false,
-});
-
 // Simple spell checker using common English words
 // For a production app, consider using a proper dictionary
 const COMMON_WORDS = new Set([
@@ -32,6 +24,10 @@ const COMMON_WORDS = new Set([
   "notely", "tata", "chemicals", "mithapur", "tcl", "project", "folder",
   "file", "document", "notes", "meeting", "metadata", "location", "time",
   "raw", "cleansed", "preview", "edit", "save", "delete", "create",
+  "analysis", "conference", "room", "power", "plant", "captive", "review",
+  "summary", "action", "actions", "recommendation", "recommendations", "system",
+  "process", "boiler", "turbine", "steam", "energy", "generation", "capacity",
+  "efficiency", "auxiliary", "operations", "operation", "performance",
 ]);
 
 // Common abbreviations and acronyms that shouldn't be flagged
@@ -108,41 +104,6 @@ function suggestCorrection(word) {
   return bestDistance <= 2 ? bestCandidate : "";
 }
 
-function collectInlineText(children) {
-  let output = "";
-
-  for (const child of children || []) {
-    if (child.type === "text") {
-      output += child.content || "";
-      continue;
-    }
-
-    if (child.type === "softbreak" || child.type === "hardbreak") {
-      output += " ";
-      continue;
-    }
-
-    if (child.type === "code_inline" || child.type === "image" || child.type === "html_inline") {
-      continue;
-    }
-
-    if (Array.isArray(child.children) && child.children.length) {
-      output += collectInlineText(child.children);
-    }
-  }
-
-  return output;
-}
-
-function preprocessMarkdownForLanguageChecks(content) {
-  return (content || "")
-    .replace(/!\[([^\]]*)\]\((<[^>]+>|[^)]+)\)/g, " ")
-    .replace(/\[([^\]]+)\]\((<[^>]+>|[^)]+)\)/g, (match, linkText) => linkText || "")
-    .replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, linkText) => linkText || "")
-    .replace(/^\s*\[[^\]]+\]:\s+.+$/gm, "")
-    .replace(/<([^\s>]+)>/g, (match, inner) => inner || "");
-}
-
 function isSentenceLike(text) {
   const normalized = stripMarkdownArtifacts(text || "");
   if (!normalized) return false;
@@ -161,6 +122,26 @@ function isProseLike(text) {
 
   const wordCount = normalized.split(/\s+/).filter(Boolean).length;
   return wordCount >= 1;
+}
+
+function isShortProseFragment(text) {
+  const normalized = stripMarkdownArtifacts(text || "");
+  if (!normalized) return false;
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  return words.length >= 2 && normalized.length >= 8;
+}
+
+function isTechnicalCountFragment(text) {
+  const normalized = stripMarkdownArtifacts(text || "");
+  if (!normalized) return false;
+
+  const compact = normalized.replace(/\s+/g, " ").trim();
+  if (!/^\d+\s+[A-Za-z][A-Za-z\s-]*(\([^)]*\))?$/.test(compact)) {
+    return false;
+  }
+
+  return /\(\s*\d+[^)]*\)/.test(compact);
 }
 
 function stripMarkdownArtifacts(text) {
@@ -191,107 +172,246 @@ function shouldSpellCheckLine(text, blockType) {
   }
 
   if (blockType === "heading_open") {
+    return isShortProseFragment(normalized);
+  }
+
+  return isShortProseFragment(normalized) || isStandaloneLowercaseWord(normalized);
+}
+
+function shouldGrammarCheckLine(text, blockType) {
+  const normalized = stripMarkdownArtifacts(text || "");
+  if (!normalized) return false;
+
+  if (isTechnicalCountFragment(normalized)) {
     return false;
   }
 
-  return isStandaloneLowercaseWord(normalized);
+  if (isSentenceLike(normalized)) {
+    return true;
+  }
+
+  if (blockType === "heading_open") {
+    return isShortProseFragment(normalized);
+  }
+
+  return isShortProseFragment(normalized);
+}
+
+function classifyBlockType(line) {
+  const trimmed = String(line || "").trim();
+  if (/^#{1,6}\s+/.test(trimmed)) return "heading_open";
+  if (/^>\s?/.test(trimmed)) return "blockquote_open";
+  if (/^([-*+]\s+|\d+\.\s+)/.test(trimmed)) return "list_item_open";
+  return "paragraph_open";
+}
+
+function isTableLine(line) {
+  const trimmed = String(line || "").trim();
+  if (!trimmed.includes("|")) return false;
+  if (/^\|?\s*:?[-]{3,}:?(\s*\|\s*:?[-]{3,}:?)+\s*\|?$/.test(trimmed)) return true;
+  return /^\|.*\|$/.test(trimmed);
+}
+
+function extractVisibleTextWithMap(sourceLine) {
+  const source = String(sourceLine || "");
+  let output = "";
+  const indexMap = [];
+  let index = 0;
+  let inInlineCode = false;
+
+  const appendChar = (character, sourceIndex) => {
+    output += character;
+    indexMap.push(sourceIndex);
+  };
+
+  const appendText = (text, startIndex) => {
+    for (let offset = 0; offset < text.length; offset += 1) {
+      appendChar(text[offset], startIndex + offset);
+    }
+  };
+
+  while (index < source.length) {
+    if (source.startsWith("![", index)) {
+      const closeBracket = source.indexOf("]", index + 2);
+      const openParen = closeBracket >= 0 ? source.indexOf("(", closeBracket) : -1;
+      const closeParen = openParen >= 0 ? source.indexOf(")", openParen) : -1;
+      if (closeBracket >= 0 && openParen === closeBracket + 1 && closeParen >= 0) {
+        index = closeParen + 1;
+        continue;
+      }
+    }
+
+    if (source[index] === "[`"[0]) {
+      // no-op, handled below to keep patch context stable
+    }
+
+    if (source[index] === "`") {
+      inInlineCode = !inInlineCode;
+      index += 1;
+      continue;
+    }
+
+    if (inInlineCode) {
+      index += 1;
+      continue;
+    }
+
+    if (source[index] === "[") {
+      const closeBracket = source.indexOf("]", index + 1);
+      if (closeBracket >= 0) {
+        const afterBracket = source[closeBracket + 1];
+        if (afterBracket === "(") {
+          const closeParen = source.indexOf(")", closeBracket + 2);
+          if (closeParen >= 0) {
+            appendText(source.slice(index + 1, closeBracket), index + 1);
+            index = closeParen + 1;
+            continue;
+          }
+        }
+        if (afterBracket === "[") {
+          const closeRef = source.indexOf("]", closeBracket + 2);
+          if (closeRef >= 0) {
+            appendText(source.slice(index + 1, closeBracket), index + 1);
+            index = closeRef + 1;
+            continue;
+          }
+        }
+      }
+    }
+
+    if (source[index] === "<") {
+      const closeAngle = source.indexOf(">", index + 1);
+      if (closeAngle >= 0) {
+        appendText(source.slice(index + 1, closeAngle), index + 1);
+        index = closeAngle + 1;
+        continue;
+      }
+    }
+
+    appendChar(source[index], index);
+    index += 1;
+  }
+
+  return { text: output, indexMap };
+}
+
+function stripMarkdownLinePrefix(text, indexMap, blockType) {
+  if (!text) return { text: "", indexMap: [] };
+
+  let prefixLength = 0;
+  if (blockType === "heading_open") {
+    const match = text.match(/^\s*#{1,6}\s+/);
+    prefixLength = match ? match[0].length : 0;
+  } else if (blockType === "blockquote_open") {
+    const match = text.match(/^\s*>\s?/);
+    prefixLength = match ? match[0].length : 0;
+  } else if (blockType === "list_item_open") {
+    const match = text.match(/^\s*(?:[-*+]\s+|\d+\.\s+)/);
+    prefixLength = match ? match[0].length : 0;
+  }
+
+  return {
+    text: text.slice(prefixLength),
+    indexMap: indexMap.slice(prefixLength),
+  };
+}
+
+function normalizeMappedText(text, indexMap) {
+  let normalizedText = "";
+  const normalizedMap = [];
+  let previousWasSpace = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const isSpace = /\s/.test(character);
+
+    if (isSpace) {
+      if (normalizedText.length === 0 || previousWasSpace) continue;
+      normalizedText += " ";
+      normalizedMap.push(indexMap[index]);
+      previousWasSpace = true;
+      continue;
+    }
+
+    normalizedText += character;
+    normalizedMap.push(indexMap[index]);
+    previousWasSpace = false;
+  }
+
+  if (normalizedText.endsWith(" ")) {
+    normalizedText = normalizedText.slice(0, -1);
+    normalizedMap.pop();
+  }
+
+  return {
+    text: normalizedText,
+    indexMap: normalizedMap,
+  };
+}
+
+function getMappedSpan(indexMap, startOffset, normalizedLength) {
+  const safeStart = Math.max(0, Number(startOffset) || 0);
+  const safeLength = Math.max(1, Number(normalizedLength) || 1);
+  const startIndex = Number.isFinite(indexMap?.[safeStart]) ? indexMap[safeStart] : safeStart;
+  const endOffset = Math.min(safeStart + safeLength - 1, Math.max((indexMap?.length || 1) - 1, 0));
+  const endIndex = Number.isFinite(indexMap?.[endOffset]) ? indexMap[endOffset] : endOffset;
+
+  return {
+    column: startIndex + 1,
+    sourceLength: Math.max(endIndex - startIndex + 1, 1),
+  };
+}
+
+function extractMarkdownLanguageLines(content, predicate) {
+  const sourceLines = String(content || "").split(/\r?\n/);
+  const lines = [];
+  let inCodeBlock = false;
+  let fenceMarker = "";
+
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    const sourceLine = sourceLines[index];
+    const trimmed = sourceLine.trim();
+    const fenceMatch = trimmed.match(/^(```+|~~~+)/);
+
+    if (fenceMatch) {
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        fenceMarker = fenceMatch[1];
+      } else if (trimmed.startsWith(fenceMarker)) {
+        inCodeBlock = false;
+        fenceMarker = "";
+      }
+      continue;
+    }
+
+    if (inCodeBlock) continue;
+    if (!trimmed) continue;
+    if (/^\s*\[[^\]]+\]:\s+.+$/.test(sourceLine)) continue;
+    if (isTableLine(sourceLine)) continue;
+
+    const blockType = classifyBlockType(sourceLine);
+    const visible = extractVisibleTextWithMap(sourceLine);
+    const strippedPrefix = stripMarkdownLinePrefix(visible.text, visible.indexMap, blockType);
+    const normalized = normalizeMappedText(strippedPrefix.text, strippedPrefix.indexMap);
+
+    if (predicate(normalized.text, blockType)) {
+      lines.push({
+        line: index + 1,
+        text: normalized.text,
+        indexMap: normalized.indexMap,
+      });
+    }
+  }
+
+  return lines;
 }
 
 function extractMarkdownProseLines(content) {
-  const normalizedContent = preprocessMarkdownForLanguageChecks(content);
-  const tokens = markdownParser.parse(normalizedContent || "", {});
-  const proseBlockTypes = new Set([
-    "paragraph_open",
-    "heading_open",
-    "blockquote_open",
-    "list_item_open",
-  ]);
-  const lines = [];
-  const openStack = [];
-
-  for (const token of tokens) {
-    if (token.type.endsWith("_open")) {
-      openStack.push({
-        type: token.type,
-        line: Number.isFinite(token.map?.[0]) ? token.map[0] + 1 : null,
-      });
-    }
-
-    if (token.type === "inline") {
-      const inProseBlock = openStack.some((entry) => proseBlockTypes.has(entry.type));
-      if (inProseBlock) {
-        const extracted = stripMarkdownArtifacts(collectInlineText(token.children));
-        if (extracted) {
-          const visibleLines = extracted.split(/\n+/).filter(Boolean);
-          const baseLine =
-            Number.isFinite(token.map?.[0])
-              ? token.map[0] + 1
-              : (openStack.slice().reverse().find((entry) => Number.isFinite(entry.line))?.line || 1);
-
-          visibleLines.forEach((lineText, index) => {
-            if (isSentenceLike(lineText)) {
-              lines.push({ line: baseLine + index, text: lineText });
-            }
-          });
-        }
-      }
-    }
-
-    if (token.type.endsWith("_close")) {
-      openStack.pop();
-    }
-  }
-
-  return lines;
+  return extractMarkdownLanguageLines(content, shouldGrammarCheckLine);
 }
 
 function extractMarkdownSpellingLines(content) {
-  const normalizedContent = preprocessMarkdownForLanguageChecks(content);
-  const tokens = markdownParser.parse(normalizedContent || "", {});
-  const proseBlockTypes = new Set([
-    "paragraph_open",
-    "heading_open",
-    "blockquote_open",
-    "list_item_open",
-  ]);
-  const lines = [];
-  const openStack = [];
-
-  for (const token of tokens) {
-    if (token.type.endsWith("_open")) {
-      openStack.push({
-        type: token.type,
-        line: Number.isFinite(token.map?.[0]) ? token.map[0] + 1 : null,
-      });
-    }
-
-    if (token.type === "inline") {
-      const inProseBlock = openStack.some((entry) => proseBlockTypes.has(entry.type));
-      if (inProseBlock) {
-        const extracted = stripMarkdownArtifacts(collectInlineText(token.children));
-        if (extracted) {
-          const visibleLines = extracted.split(/\n+/).filter(Boolean);
-          const baseLine =
-            Number.isFinite(token.map?.[0])
-              ? token.map[0] + 1
-              : (openStack.slice().reverse().find((entry) => Number.isFinite(entry.line))?.line || 1);
-          const blockType = openStack.slice().reverse().find((entry) => proseBlockTypes.has(entry.type))?.type || null;
-
-          visibleLines.forEach((lineText, index) => {
-            if (shouldSpellCheckLine(lineText, blockType)) {
-              lines.push({ line: baseLine + index, text: lineText });
-            }
-          });
-        }
-      }
-    }
-
-    if (token.type.endsWith("_close")) {
-      openStack.pop();
-    }
-  }
-
-  return lines;
+  return extractMarkdownLanguageLines(content, shouldSpellCheckLine);
 }
 
 function maskMarkdownCodePreservingLayout(text) {
@@ -328,6 +448,46 @@ function maskMarkdownCodePreservingLayout(text) {
   return maskedLines.join("\n");
 }
 
+function runLocalGrammarFallback(proseLines) {
+  const issues = [];
+
+  for (const proseLine of proseLines || []) {
+    const text = String(proseLine.text || "");
+
+    const repeatedWordMatch = text.match(/\b([A-Za-z][A-Za-z'-]*)\s+\1\b/i);
+    if (repeatedWordMatch) {
+      const span = getMappedSpan(proseLine.indexMap, repeatedWordMatch.index, repeatedWordMatch[0].length);
+      issues.push({
+        line: proseLine.line,
+        column: span.column,
+        message: `Repeated word: "${repeatedWordMatch[1]}"`,
+        ruleId: "grammar-repeated-word",
+        severity: "info",
+        suggestion: repeatedWordMatch[1],
+        length: repeatedWordMatch[0].length,
+        sourceLength: span.sourceLength,
+      });
+    }
+
+    const startsLikeSentence = text.split(/\s+/).filter(Boolean).length >= 4;
+    if (startsLikeSentence && /^[a-z]/.test(text.trim())) {
+      const span = getMappedSpan(proseLine.indexMap, 0, 1);
+      issues.push({
+        line: proseLine.line,
+        column: span.column,
+        message: "Sentence should start with a capital letter",
+        ruleId: "grammar-capitalization",
+        severity: "info",
+        suggestion: text.trim().charAt(0).toUpperCase(),
+        length: 1,
+        sourceLength: span.sourceLength,
+      });
+    }
+  }
+
+  return issues;
+}
+
 export async function checkSpelling(content) {
   const text = content || "";
   const issues = [];
@@ -343,13 +503,15 @@ export async function checkSpelling(content) {
       const word = match[0];
       if (!isValidWord(word)) {
         const suggestion = suggestCorrection(word);
+        const span = getMappedSpan(proseLine.indexMap, match.index, word.length);
         issues.push({
           line: proseLine.line,
-          column: match.index + 1,
+          column: span.column,
           message: `Possible spelling: "${word}"`,
           ruleId: "spelling",
           severity: "warning",
           length: word.length,
+          sourceLength: span.sourceLength,
           word,
           suggestion,
         });
@@ -385,7 +547,7 @@ export async function checkGrammar(content) {
 
     if (!response.ok) {
       console.error("LanguageTool API error:", response.status);
-      return [];
+      return runLocalGrammarFallback(proseLines);
     }
 
     const data = await response.json();
@@ -398,6 +560,7 @@ export async function checkGrammar(content) {
         line: proseLine.line,
         start: cursor,
         end: cursor + proseLine.text.length,
+        indexMap: proseLine.indexMap,
       });
       cursor += proseLine.text.length + 1;
     }
@@ -424,23 +587,25 @@ export async function checkGrammar(content) {
       const length = match.length || 0;
       const lineEntry = findLineForOffset(offset);
       const line = lineEntry.line;
-      const column = Math.max(1, offset - lineEntry.start + 1);
+      const relativeOffset = Math.max(0, offset - lineEntry.start);
+      const span = getMappedSpan(lineEntry.indexMap, relativeOffset, length);
 
       issues.push({
         line,
-        column,
+        column: span.column,
         message: match.message || "Grammar issue",
         ruleId: match.rule?.id || "grammar",
         severity: match.rule?.issueType === "misspelling" ? "error" : "info",
         suggestion: (match.replacements || [])[0]?.value,
         length,
+        sourceLength: span.sourceLength,
       });
     });
 
     return issues;
   } catch (error) {
     console.error("Grammar check failed:", error);
-    return [];
+    return runLocalGrammarFallback(proseLines);
   }
 }
 

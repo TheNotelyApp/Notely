@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, ImageOff, ImagePlus, RefreshCw, Upload, Trash2 } from "lucide-react";
 import { extractImagesFromMarkdown } from "../utils/mediaUtils";
 import {
+  getImageUsage,
   listImages,
   readImage,
   saveImage,
@@ -14,6 +15,7 @@ import "../styles/media.css";
 export function MediaTab({ content, basePath, onNotify }) {
   const linkedImages = useMemo(() => extractImagesFromMarkdown(content), [content]);
   const [allImages, setAllImages] = useState([]);
+  const [imageUsage, setImageUsage] = useState({});
   const [resolvedImages, setResolvedImages] = useState({});
   const [thumbnailFailures, setThumbnailFailures] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -31,6 +33,10 @@ export function MediaTab({ content, basePath, onNotify }) {
     return new Set(linkedImages.map((image) => image.path));
   }, [linkedImages]);
 
+  const referencedPathSet = useMemo(() => {
+    return new Set(Object.keys(imageUsage).filter((pathValue) => (imageUsage[pathValue]?.referenceCount || 0) > 0));
+  }, [imageUsage]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -41,15 +47,24 @@ export function MediaTab({ content, basePath, onNotify }) {
       }
 
       try {
-        const folderPaths = await listImages(basePath);
+        const [folderPaths, usage] = await Promise.all([
+          listImages(basePath),
+          getImageUsage(basePath),
+        ]);
+        if (!cancelled) {
+          setImageUsage(usage || {});
+        }
         const linkedByPath = new Map(linkedImages.map((image) => [image.path, image]));
 
         const merged = folderPaths.map((pathValue) => {
           const linked = linkedByPath.get(pathValue);
+          const usageEntry = usage?.[pathValue];
           if (linked) {
             return {
               ...linked,
-              isLinked: true,
+              isLinkedInCurrent: true,
+              referenceCount: usageEntry?.referenceCount || 0,
+              referencedBy: usageEntry?.documents || [],
             };
           }
 
@@ -59,15 +74,20 @@ export function MediaTab({ content, basePath, onNotify }) {
             altText,
             path: pathValue,
             id: pathValue,
-            isLinked: false,
+            isLinkedInCurrent: false,
+            referenceCount: usageEntry?.referenceCount || 0,
+            referencedBy: usageEntry?.documents || [],
           };
         });
 
         for (const linked of linkedImages) {
           if (!folderPaths.includes(linked.path)) {
+            const usageEntry = usage?.[linked.path];
             merged.push({
               ...linked,
-              isLinked: true,
+              isLinkedInCurrent: true,
+              referenceCount: usageEntry?.referenceCount || 0,
+              referencedBy: usageEntry?.documents || [],
               missingFile: true,
             });
           }
@@ -75,6 +95,7 @@ export function MediaTab({ content, basePath, onNotify }) {
 
         if (!cancelled) setAllImages(merged);
       } catch {
+        if (!cancelled) setImageUsage({});
         if (!cancelled) setAllImages(linkedImages);
       }
     }
@@ -128,9 +149,9 @@ export function MediaTab({ content, basePath, onNotify }) {
     const normalizedSearch = searchText.trim().toLowerCase();
 
     const visible = allImages.filter((image) => {
-      const linked = image.isLinked ?? linkedPathSet.has(image.path);
-      if (filterType === "linked" && !linked) return false;
-      if (filterType === "unlinked" && linked) return false;
+      const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
+      if (filterType === "referenced" && !referenced) return false;
+      if (filterType === "unused" && referenced) return false;
       if (!normalizedSearch) return true;
 
       return (
@@ -145,21 +166,21 @@ export function MediaTab({ content, basePath, onNotify }) {
       if (sortType === "name-desc") {
         return rightName.localeCompare(leftName);
       }
-      if (sortType === "linked-first") {
-        const leftLinked = left.isLinked ?? linkedPathSet.has(left.path);
-        const rightLinked = right.isLinked ?? linkedPathSet.has(right.path);
-        if (leftLinked === rightLinked) return leftName.localeCompare(rightName);
-        return leftLinked ? -1 : 1;
+      if (sortType === "referenced-first") {
+        const leftReferenced = (left.referenceCount || 0) > 0 || referencedPathSet.has(left.path);
+        const rightReferenced = (right.referenceCount || 0) > 0 || referencedPathSet.has(right.path);
+        if (leftReferenced === rightReferenced) return leftName.localeCompare(rightName);
+        return leftReferenced ? -1 : 1;
       }
       return leftName.localeCompare(rightName);
     });
 
     return visible;
-  }, [allImages, filterType, linkedPathSet, searchText, sortType]);
+  }, [allImages, filterType, referencedPathSet, searchText, sortType]);
 
   const linkedCount = useMemo(() => {
-    return allImages.filter((image) => image.isLinked ?? linkedPathSet.has(image.path)).length;
-  }, [allImages, linkedPathSet]);
+    return allImages.filter((image) => (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path)).length;
+  }, [allImages, referencedPathSet]);
 
   async function handleAddImage(event) {
     const file = event.target.files?.[0];
@@ -184,7 +205,7 @@ export function MediaTab({ content, basePath, onNotify }) {
   }
 
   async function handleDeleteImage(pathValue) {
-    const approved = window.confirm("Delete this image from notes/images?");
+    const approved = window.confirm("Move this image to the removed folder?");
     if (!approved) return;
 
     setBusy(true);
@@ -193,8 +214,8 @@ export function MediaTab({ content, basePath, onNotify }) {
     try {
       await deleteImage(basePath, pathValue);
       setRefreshKey((value) => value + 1);
-      setActionInfo("Image deleted.");
-      onNotify?.("Image deleted.", "success");
+      setActionInfo("Image moved to removed folder.");
+      onNotify?.("Image moved to removed folder.", "success");
     } catch (error) {
       setActionError(error?.message || "Unable to delete image.");
       onNotify?.(error?.message || "Unable to delete image.", "error");
@@ -286,18 +307,18 @@ export function MediaTab({ content, basePath, onNotify }) {
         />
         <select className="media-select" value={filterType} onChange={(event) => setFilterType(event.target.value)}>
           <option value="all">All</option>
-          <option value="linked">Linked</option>
-          <option value="unlinked">Unlinked</option>
+          <option value="referenced">Referenced</option>
+          <option value="unused">Unused</option>
         </select>
         <select className="media-select" value={sortType} onChange={(event) => setSortType(event.target.value)}>
           <option value="name-asc">Name A-Z</option>
           <option value="name-desc">Name Z-A</option>
-          <option value="linked-first">Linked First</option>
+          <option value="referenced-first">Referenced First</option>
         </select>
       </div>
 
       <p className="media-summary">
-        Showing {filteredImages.length} of {allImages.length} images. {linkedCount} linked in markdown.
+        Showing {filteredImages.length} of {allImages.length} images. {linkedCount} referenced across notes.
       </p>
 
       {actionError && <p className="media-error">{actionError}</p>}
@@ -321,7 +342,7 @@ export function MediaTab({ content, basePath, onNotify }) {
         <div className="media-grid">
           {filteredImages.map((image) => {
             const imageSrc = resolvedImages[image.id] || image.path;
-            const linked = image.isLinked ?? linkedPathSet.has(image.path);
+            const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
             const showFallback = Boolean(thumbnailFailures[image.id] || image.missingFile);
 
             return (
@@ -339,8 +360,11 @@ export function MediaTab({ content, basePath, onNotify }) {
               <div className="media-info">
                 <div className="media-title-row">
                   <p className="media-alt">{image.altText}</p>
-                  <span className={`media-badge ${linked ? "linked" : "unlinked"}`}>
-                    {linked ? "Linked" : "Unlinked"}
+                  <span
+                    className={`media-badge ${referenced ? "linked" : "unlinked"}`}
+                    title={referenced ? `Referenced in ${image.referenceCount || 0} note${(image.referenceCount || 0) === 1 ? "" : "s"}` : "Not referenced in any note"}
+                  >
+                    {referenced ? `${image.referenceCount || 0} Refs` : "Unused"}
                   </span>
                 </div>
                 <p className="media-path" title={image.path}>{image.path}</p>
@@ -356,7 +380,7 @@ export function MediaTab({ content, basePath, onNotify }) {
                   >
                     <Upload size={14} />
                   </button>
-                  {!linked ? (
+                  {!referenced ? (
                     <button
                       className="small-button danger icon-only"
                       onClick={() => handleDeleteImage(image.path)}

@@ -72,6 +72,14 @@ export async function renameDocument(filePath, title) {
   return api.renameDocument({ filePath, title });
 }
 
+export async function deleteDocument(filePath) {
+  const api = getNotesApi();
+  if (typeof api.deleteDocument !== "function") {
+    throw new Error("Delete note action unavailable. Please restart the app.");
+  }
+  return api.deleteDocument({ filePath });
+}
+
 export async function listProjects() {
   const api = getNotesApi();
   if (typeof api.listProjects !== "function") {
@@ -167,6 +175,14 @@ export async function saveImage(fileName, base64Data) {
 export async function listImages(basePath) {
   const api = getNotesApi();
   return api.listImages({ basePath });
+}
+
+export async function getImageUsage(basePath) {
+  const api = getNotesApi();
+  if (typeof api.getImageUsage !== "function") {
+    throw new Error("Image usage action unavailable. Please restart the app.");
+  }
+  return api.getImageUsage({ basePath });
 }
 
 export async function readImage(basePath, assetPath) {
