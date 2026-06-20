@@ -82,12 +82,13 @@ function ensureDir(dirPath) {
 }
 
 class P2PLiveService {
-  constructor({ storageDir, logger = console, onSyncEvent = null }) {
+  constructor({ storageDir, logger = console, onSyncEvent = null, onPeerTrusted = null }) {
     this.logger = logger;
     this.storageDir = storageDir;
     this.statePath = path.join(storageDir, "p2p-live-state.json");
     this.outboxPath = path.join(storageDir, "p2p-outbox.json");
     this.onSyncEvent = typeof onSyncEvent === "function" ? onSyncEvent : null;
+    this.onPeerTrusted = typeof onPeerTrusted === "function" ? onPeerTrusted : null;
 
     this.discoverySocket = null;
     this.discoveryTimer = null;
@@ -120,7 +121,8 @@ class P2PLiveService {
     this.state = {
       deviceId: randomHex(8),
       deviceName: os.hostname() || "Notely Peer",
-      trustedPeers: []
+      trustedPeers: [],
+      incomingSyncCounters: {}
     };
   }
 
@@ -183,6 +185,17 @@ class P2PLiveService {
         }))
         .filter((peer) => peer.peerId)
       : [];
+
+    if (parsed.incomingSyncCounters && typeof parsed.incomingSyncCounters === "object") {
+      this.state.incomingSyncCounters = {};
+      for (const [peerId, val] of Object.entries(parsed.incomingSyncCounters)) {
+        const n = Number(val);
+        if (Number.isInteger(n) && n > 0) {
+          this.incomingSyncCounters.set(peerId, n);
+          this.state.incomingSyncCounters[peerId] = n;
+        }
+      }
+    }
   }
 
   persistState() {
@@ -470,6 +483,10 @@ class P2PLiveService {
         lastSeenAt: new Date().toISOString()
       });
 
+      if (this.onPeerTrusted) {
+        setImmediate(() => this.onPeerTrusted(fromPeerId));
+      }
+
       socket.write(`${JSON.stringify({
         ok: true,
         peerId: this.state.deviceId,
@@ -527,6 +544,8 @@ class P2PLiveService {
       this.receivedEventIds.add(eventId);
       if (counter > 0) {
         this.incomingSyncCounters.set(fromPeerId, counter);
+        this.state.incomingSyncCounters = Object.fromEntries(this.incomingSyncCounters);
+        this.persistState();
       }
       if (this.receivedEventIds.size > 2000) {
         const ids = Array.from(this.receivedEventIds);
@@ -750,6 +769,10 @@ class P2PLiveService {
       this.discoveredPeers.set(targetPeerId, discovered);
     }
 
+    if (this.onPeerTrusted) {
+      setImmediate(() => this.onPeerTrusted(targetPeerId));
+    }
+
     return {
       ok: true,
       peerId: targetPeerId,
@@ -789,6 +812,15 @@ class P2PLiveService {
 
     this.syncStats.queued += 1;
     this.persistOutbox();
+  }
+
+  queueSyncToPeer(peerId, event) {
+    const peer = this.state.trustedPeers.find((p) => p.peerId === peerId);
+    if (!peer) {
+      return false;
+    }
+    this.queueSyncDelivery(peer, { ...event, eventId: event.eventId || randomHex(10) });
+    return true;
   }
 
   async drainSyncOutbox() {

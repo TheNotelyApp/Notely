@@ -81,7 +81,10 @@ function applyNotesRoot(nextRootPath) {
   }
   p2pService = new P2PLiveService({
     storageDir: appDataDir,
-    onSyncEvent: handleIncomingP2PSyncEvent
+    onSyncEvent: handleIncomingP2PSyncEvent,
+    onPeerTrusted: (peerId) => {
+      setImmediate(() => initiateFullSyncForPeer(peerId));
+    }
   });
   p2pService.init();
 
@@ -426,6 +429,60 @@ function applyNoteDelta({ filePath, baseContent, delta }) {
   });
 }
 
+function initiateFullSyncForPeer(peerId) {
+  if (!p2pService || !notesRoot) {
+    return;
+  }
+
+  const targetPeerId = String(peerId || "").trim();
+  if (!targetPeerId) {
+    return;
+  }
+
+  try {
+    const allFiles = walkFiles(notesRoot, { excludeDirs: [".notes-app", "removed", "images"] });
+    const mdFiles = allFiles.filter((f) => {
+      const lower = f.toLowerCase();
+      return lower.endsWith(".md") && !path.basename(f).includes(".sync-conflict-");
+    });
+
+    for (const filePath of mdFiles) {
+      try {
+        const content = fs.readFileSync(filePath, "utf8");
+        const relativePath = normalizeToPosix(path.relative(notesRoot, filePath));
+        if (!isValidSyncRelativePath(relativePath)) {
+          continue;
+        }
+        const queued = p2pService.queueSyncToPeer(targetPeerId, {
+          eventId: randomId(10),
+          timestamp: new Date().toISOString(),
+          docId: relativePath.toLowerCase(),
+          op: "update",
+          baseHash: null,
+          newHash: hashContent(content),
+          payload: {
+            relativePath,
+            content,
+            baseContent: null,
+            delta: null
+          }
+        });
+        if (!queued) {
+          break;
+        }
+      } catch {
+        // Skip unreadable files.
+      }
+    }
+
+    p2pService.drainSyncOutbox().catch((error) => {
+      console.error("[p2p] full-sync drain failed:", error?.message);
+    });
+  } catch (error) {
+    console.error("[p2p] initiateFullSyncForPeer failed:", error?.message);
+  }
+}
+
 function emitLocalP2PSyncEvent(event) {
   if (!p2pService) {
     return;
@@ -512,6 +569,7 @@ function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
           versionPath: `p2p://${event?.eventId || "unknown"}`,
           fileHash: localHash
         });
+        pushSyncApplied({ op: "delete-conflict", relativePath, filePath: resolved, peerName: peerName || peerId });
         return;
       }
 
@@ -522,7 +580,7 @@ function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
         versionPath: result?.movedPath || `p2p://${event?.eventId || "unknown"}`,
         fileHash: localHash
       });
-      pushSyncApplied({ op: "delete", relativePath, peerName: peerName || peerId });
+      pushSyncApplied({ op: "delete", relativePath, filePath: resolved, peerName: peerName || peerId });
       return;
     }
 
@@ -554,7 +612,7 @@ function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
         versionPath: `p2p://${event?.eventId || "unknown"}`,
         fileHash: hashContent(incomingContent)
       });
-      pushSyncApplied({ op, relativePath, peerName: peerName || peerId });
+      pushSyncApplied({ op, relativePath, filePath: resolved, peerName: peerName || peerId });
       return;
     }
 
@@ -579,7 +637,7 @@ function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
         versionPath: backupPath,
         fileHash: localHash
       });
-      pushSyncApplied({ op, relativePath, peerName: peerName || peerId });
+      pushSyncApplied({ op, relativePath, filePath: resolved, peerName: peerName || peerId });
       return;
     }
 
@@ -599,7 +657,7 @@ function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
         versionPath: backupPath,
         fileHash: localHash
       });
-      pushSyncApplied({ op: "merge", relativePath, peerName: peerName || peerId });
+      pushSyncApplied({ op: "merge", relativePath, filePath: resolved, peerName: peerName || peerId });
       return;
     }
 
@@ -620,7 +678,7 @@ function handleIncomingP2PSyncEvent({ peerId, peerName, event }) {
       versionPath: conflictPath,
       fileHash: hashContent(incomingContent)
     });
-    pushSyncApplied({ op: "conflict", relativePath, peerName: peerName || peerId });
+    pushSyncApplied({ op: "conflict", relativePath, filePath: resolved, peerName: peerName || peerId });
   } catch (error) {
     console.error("P2P sync apply failed:", error?.message || error);
   }

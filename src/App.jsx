@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import { ArrowUp, FolderOpen, FolderPlus, LayoutGrid, NotebookPen, Rows3, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
@@ -105,6 +105,9 @@ export default function App() {
   const [workspaceActivityLoading, setWorkspaceActivityLoading] = useState(false);
   const [workspaceActivity, setWorkspaceActivity] = useState(null);
   const [p2pSyncHelpOpen, setP2PSyncHelpOpen] = useState(false);
+
+  const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
+  syncStateRef.current = { doc: current, dirty, openDocument };
   const [syncSelfTestOpen, setSyncSelfTestOpen] = useState(false);
   const [syncSelfTestLoading, setSyncSelfTestLoading] = useState(false);
   const [syncSelfTestResult, setSyncSelfTestResult] = useState(null);
@@ -765,14 +768,33 @@ export default function App() {
     return onP2PSyncApplied((payload) => {
       const op = payload?.op;
       const relativePath = payload?.relativePath || "";
+      const filePath = payload?.filePath || "";
       const peerName = payload?.peerName || "a peer";
+
       if (op === "delete") {
         notify(`Note deleted by ${peerName}: ${relativePath}`, "info");
+      } else if (op === "delete-conflict") {
+        notify(
+          `${peerName} tried to delete "${relativePath}" but your local version differs — check Activity for details.`,
+          "warning"
+        );
       } else if (op === "conflict") {
-        notify(`Sync conflict from ${peerName} — check Conflict Center.`, "warning");
+        notify(`Sync conflict from ${peerName} — open P2P → Conflict Center to resolve.`, "warning");
       } else {
         notify(`Note synced from ${peerName}: ${relativePath}`, "info");
       }
+
+      const { doc, dirty: isDirty, openDocument: openDoc } = syncStateRef.current;
+      const appliedToOpenNote =
+        filePath &&
+        doc?.filePath &&
+        !isDirty &&
+        filePath.toLowerCase().replace(/\\/g, "/") === doc.filePath.toLowerCase().replace(/\\/g, "/");
+
+      if (appliedToOpenNote && (op === "update" || op === "create" || op === "merge")) {
+        openDoc(doc.filePath, { preserveActiveTab: true }).catch(() => {});
+      }
+
       loadDocumentsData();
     });
   }, []);
