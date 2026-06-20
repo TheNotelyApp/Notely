@@ -11,6 +11,22 @@ function getNotesApi() {
   return window.notesApi;
 }
 
+export function onMenuAction(callback) {
+  const api = getNotesApi();
+  if (typeof api.onMenuAction !== "function") {
+    return () => {};
+  }
+  return api.onMenuAction(callback);
+}
+
+export function updateMenuContext(context) {
+  const api = getNotesApi();
+  if (typeof api.updateMenuContext !== "function") {
+    return;
+  }
+  api.updateMenuContext(context || {});
+}
+
 export async function listDocuments() {
   const api = getNotesApi();
   return api.listDocuments();

@@ -1,6 +1,16 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("notesApi", {
+  onMenuAction: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, action) => callback(action);
+    ipcRenderer.on("app-menu:action", listener);
+    return () => ipcRenderer.removeListener("app-menu:action", listener);
+  },
+  updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
   listProjects: () => ipcRenderer.invoke("projects:list"),
   createProject: (payload) => ipcRenderer.invoke("projects:create", payload),
   setActiveProject: (payload) => ipcRenderer.invoke("projects:set-active", payload),

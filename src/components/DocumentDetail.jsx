@@ -18,6 +18,8 @@ import {
   GitCompare,
   Trash2,
   X,
+  Filter,
+  Sparkles,
 } from "lucide-react";
 import { EditorPane } from "./EditorPane";
 import { MediaTab } from "./MediaTab";
@@ -25,7 +27,8 @@ import { formatDate } from "../utils/dateUtils";
 import { openInEditor } from "../services/electronService";
 import { deleteVersion, readVersion } from "../services/electronService";
 
-function buildDiffRows(latest, previous) {
+function buildDiffRows(latest, previous, options = {}) {
+  const { ignoreWhitespace = false } = options;
   const latestLines = (latest || "").replace(/\r\n/g, "\n").split("\n");
   const previousLines = (previous || "").replace(/\r\n/g, "\n").split("\n");
   const max = Math.max(latestLines.length, previousLines.length);
@@ -34,15 +37,77 @@ function buildDiffRows(latest, previous) {
   for (let index = 0; index < max; index += 1) {
     const latestLine = latestLines[index] ?? "";
     const previousLine = previousLines[index] ?? "";
+    const normalizedLatest = ignoreWhitespace ? latestLine.replace(/\s+/g, " ").trim() : latestLine;
+    const normalizedPrevious = ignoreWhitespace ? previousLine.replace(/\s+/g, " ").trim() : previousLine;
     let status = "same";
     if (index >= previousLines.length) status = "added";
     else if (index >= latestLines.length) status = "removed";
-    else if (latestLine !== previousLine) status = "changed";
+    else if (normalizedLatest !== normalizedPrevious) status = "changed";
 
     rows.push({ line: index + 1, latestLine, previousLine, status });
   }
 
   return rows;
+}
+
+function buildVisibleRows(rows, options = {}) {
+  const { showOnlyChanges = false, smartMode = false, contextLines = 2 } = options;
+
+  if (showOnlyChanges) {
+    return rows.filter((row) => row.status !== "same");
+  }
+
+  if (!smartMode) {
+    return rows;
+  }
+
+  const changeIndexes = rows
+    .map((row, index) => (row.status === "same" ? -1 : index))
+    .filter((index) => index >= 0);
+
+  if (!changeIndexes.length) {
+    return rows;
+  }
+
+  const ranges = [];
+  for (const index of changeIndexes) {
+    const start = Math.max(0, index - contextLines);
+    const end = Math.min(rows.length - 1, index + contextLines);
+
+    const last = ranges[ranges.length - 1];
+    if (!last || start > last.end + 1) {
+      ranges.push({ start, end });
+    } else {
+      last.end = Math.max(last.end, end);
+    }
+  }
+
+  const output = [];
+  let cursor = 0;
+  for (const range of ranges) {
+    if (range.start > cursor) {
+      output.push({
+        kind: "separator",
+        id: `sep-${cursor}-${range.start}`,
+        omitted: range.start - cursor,
+      });
+    }
+
+    for (let i = range.start; i <= range.end; i += 1) {
+      output.push(rows[i]);
+    }
+    cursor = range.end + 1;
+  }
+
+  if (cursor < rows.length) {
+    output.push({
+      kind: "separator",
+      id: `sep-${cursor}-${rows.length}`,
+      omitted: rows.length - cursor,
+    });
+  }
+
+  return output;
 }
 
 export function DocumentDetail({
@@ -66,6 +131,8 @@ export function DocumentDetail({
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareMeta, setCompareMeta] = useState(null);
   const [diffRows, setDiffRows] = useState([]);
+  const [showOnlyChanges, setShowOnlyChanges] = useState(false);
+  const [smartMode, setSmartMode] = useState(true);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
 
@@ -92,6 +159,8 @@ export function DocumentDetail({
   const handleCompareVersion = async (entry) => {
     setCompareLoading(true);
     setCompareModalOpen(true);
+    setShowOnlyChanges(false);
+    setSmartMode(true);
     setCompareMeta(entry);
     setDiffRows([]);
 
@@ -106,7 +175,7 @@ export function DocumentDetail({
       ].join("\n");
 
       const previous = await readVersion(document.filePath, entry.versionPath);
-      const rows = buildDiffRows(latest, previous);
+      const rows = buildDiffRows(latest, previous, { ignoreWhitespace: smartMode });
       setDiffRows(rows);
     } catch (error) {
       onNotify?.(error?.message || "Unable to load version diff.", "error");
@@ -128,6 +197,24 @@ export function DocumentDetail({
       onNotify?.(error?.message || "Unable to delete version.", "error");
     }
   };
+
+  const diffSummary = diffRows.reduce(
+    (acc, row) => {
+      if (row.status === "added") acc.added += 1;
+      if (row.status === "removed") acc.removed += 1;
+      if (row.status === "changed") acc.changed += 1;
+      return acc;
+    },
+    { added: 0, removed: 0, changed: 0 }
+  );
+
+  const visibleRows = buildVisibleRows(diffRows, {
+    showOnlyChanges,
+    smartMode,
+    contextLines: 2,
+  });
+
+  const hasSeparators = visibleRows.some((row) => row?.kind === "separator");
 
   return (
     <div className="detail-shell">
@@ -310,34 +397,75 @@ export function DocumentDetail({
               <strong>
                 Compare Latest with {compareMeta?.createdAt ? formatDate(compareMeta.createdAt) : "Version"}
               </strong>
-              <button className="small-button" onClick={() => setCompareModalOpen(false)} title="Close diff">
-                <X size={14} />
-              </button>
+              <div className="diff-modal-controls">
+                <button
+                  className={`small-button ${smartMode ? "active" : ""}`}
+                  onClick={() => setSmartMode((value) => !value)}
+                  title="Ignore whitespace and collapse unchanged blocks"
+                >
+                  <Sparkles size={14} />
+                  Smart
+                </button>
+                <button
+                  className={`small-button ${showOnlyChanges ? "active" : ""}`}
+                  onClick={() => setShowOnlyChanges((value) => !value)}
+                  title="Toggle changed lines only"
+                >
+                  <Filter size={14} />
+                  {showOnlyChanges ? "All lines" : "Changes only"}
+                </button>
+                <button className="small-button" onClick={() => setCompareModalOpen(false)} title="Close diff">
+                  <X size={14} />
+                </button>
+              </div>
             </div>
 
             {compareLoading ? (
               <p className="muted">Loading diff...</p>
             ) : (
               <div className="diff-table">
+                <div className="diff-summary">
+                  <span className="summary-pill added">+ {diffSummary.added} added</span>
+                  <span className="summary-pill removed">- {diffSummary.removed} removed</span>
+                  <span className="summary-pill changed">~ {diffSummary.changed} changed</span>
+                  <span className="summary-pill neutral">{visibleRows.length} rows shown</span>
+                  {smartMode ? <span className="summary-pill smart">Smart on</span> : null}
+                  {hasSeparators ? <span className="summary-pill neutral">Context collapsed</span> : null}
+                </div>
                 <div className="diff-table-head">
                   <span>Line</span>
                   <span>Latest</span>
                   <span>Selected Version</span>
                 </div>
                 <div className="diff-table-body">
-                  {diffRows.map((row) => (
-                    <div className={`diff-row ${row.status}`} key={`diff-${row.line}`}>
-                      <span>{row.line}</span>
-                      <pre>{row.latestLine || " "}</pre>
-                      <pre>{row.previousLine || " "}</pre>
-                    </div>
-                  ))}
+                  {visibleRows.map((row) => {
+                    if (row?.kind === "separator") {
+                      return (
+                        <div className="diff-separator" key={row.id}>
+                          ... {row.omitted} unchanged lines hidden ...
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className={`diff-row ${row.status}`} key={`diff-${row.line}`}>
+                        <span>{row.line}</span>
+                        <pre className="diff-cell latest" data-prefix={row.status === "added" ? "+" : row.status === "changed" ? "~" : ""}>
+                          {row.latestLine || " "}
+                        </pre>
+                        <pre className="diff-cell previous" data-prefix={row.status === "removed" ? "-" : row.status === "changed" ? "~" : ""}>
+                          {row.previousLine || " "}
+                        </pre>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
         </div>
       ) : null}
+
     </div>
   );
 }

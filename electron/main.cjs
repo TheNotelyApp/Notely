@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -307,6 +307,109 @@ class MetadataStore {
 let metadataStore;
 let projectRegistry;
 
+function sendMenuAction(win, action) {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send("app-menu:action", action);
+}
+
+function buildAppMenu(win, context = {}) {
+  const screen = context?.screen === "document" ? "document" : "landing";
+  const viewMode = context?.viewMode === "table" ? "table" : "tile";
+  const dirty = Boolean(context?.dirty);
+
+  const fileSubmenu = screen === "document"
+    ? [
+        {
+          label: dirty ? "Save*" : "Save",
+          accelerator: "CmdOrCtrl+S",
+          enabled: dirty,
+          click: () => sendMenuAction(win, "save-document")
+        },
+        {
+          label: "Open in VS Code",
+          accelerator: "CmdOrCtrl+Shift+O",
+          click: () => sendMenuAction(win, "open-in-editor")
+        },
+        {
+          label: "Back to Notes",
+          accelerator: "Esc",
+          click: () => sendMenuAction(win, "back-to-notes")
+        },
+        { type: "separator" },
+        {
+          label: "New Note",
+          accelerator: "CmdOrCtrl+N",
+          click: () => sendMenuAction(win, "new-note")
+        },
+        {
+          label: "New Project",
+          accelerator: "CmdOrCtrl+Shift+N",
+          click: () => sendMenuAction(win, "new-project")
+        },
+        { type: "separator" },
+        { role: "quit" }
+      ]
+    : [
+        {
+          label: "New Note",
+          accelerator: "CmdOrCtrl+N",
+          click: () => sendMenuAction(win, "new-note")
+        },
+        {
+          label: "New Project",
+          accelerator: "CmdOrCtrl+Shift+N",
+          click: () => sendMenuAction(win, "new-project")
+        },
+        { type: "separator" },
+        { role: "quit" }
+      ];
+
+  const viewSubmenu = screen === "document"
+    ? [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" }
+      ]
+    : [
+        {
+          label: "Tile Notes",
+          accelerator: "CmdOrCtrl+1",
+          type: "radio",
+          checked: viewMode === "tile",
+          click: () => sendMenuAction(win, "view-tile")
+        },
+        {
+          label: "Table Notes",
+          accelerator: "CmdOrCtrl+2",
+          type: "radio",
+          checked: viewMode === "table",
+          click: () => sendMenuAction(win, "view-table")
+        },
+        { type: "separator" },
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" }
+      ];
+
+  return Menu.buildFromTemplate([
+    {
+      label: "File",
+      submenu: fileSubmenu
+    },
+    {
+      label: "View",
+      submenu: viewSubmenu
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" }
+      ]
+    }
+  ]);
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1320,
@@ -333,6 +436,9 @@ function createWindow() {
   } else {
     win.loadFile(path.join(projectRoot, "dist", "index.html"));
   }
+
+  win.__menuContext = { screen: "landing", viewMode: "tile", dirty: false };
+  Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
 }
 
 app.whenReady().then(() => {
@@ -349,6 +455,24 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("browser-window-focus", (_event, win) => {
+  const context = win?.__menuContext || { screen: "landing", viewMode: "tile", dirty: false };
+  Menu.setApplicationMenu(buildAppMenu(win, context));
+});
+
+ipcMain.on("app-menu:update-context", (event, context) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+
+  win.__menuContext = {
+    screen: context?.screen === "document" ? "document" : "landing",
+    viewMode: context?.viewMode === "table" ? "table" : "tile",
+    dirty: Boolean(context?.dirty)
+  };
+
+  Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
 });
 
 ipcMain.handle("projects:list", () => listProjectsState());

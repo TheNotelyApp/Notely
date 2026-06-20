@@ -8,10 +8,13 @@ import {
   createProject,
   listProjects,
   listDocuments,
+  onMenuAction,
+  openInEditor,
   readDocument,
   saveDocument as saveDocumentApi,
   setActiveProject,
   getHistory,
+  updateMenuContext,
 } from "./services/electronService";
 
 mermaid.initialize({
@@ -237,6 +240,31 @@ export default function App() {
     }
   }
 
+  function handleGoHome() {
+    if (current && dirty) {
+      const confirmed = window.confirm("You have unsaved changes. Go back to notes and discard unsaved changes?");
+      if (!confirmed) return;
+    }
+
+    setCurrent(null);
+    setHistory([]);
+  }
+
+  async function handleOpenCurrentInEditor() {
+    if (!current?.filePath) return;
+
+    try {
+      const result = await openInEditor(current.filePath);
+      if (result?.openedWith === "default") {
+        notify("VS Code not available. Opened with system default app.", "info");
+      } else {
+        notify("Opened latest note file in VS Code.", "success");
+      }
+    } catch (err) {
+      notify(err?.message || "Unable to open file in editor.", "error");
+    }
+  }
+
   useEffect(() => {
     loadDocumentsData();
   }, []);
@@ -249,6 +277,54 @@ export default function App() {
     }
   }, [notesViewMode]);
 
+  useEffect(() => {
+    updateMenuContext({
+      screen: current ? "document" : "landing",
+      viewMode: notesViewMode,
+      dirty,
+    });
+  }, [current, notesViewMode, dirty]);
+
+  useEffect(() => {
+    return onMenuAction((action) => {
+      if (action === "new-note") {
+        setProjectDialogOpen(false);
+        setNoteDialogOpen(true);
+        return;
+      }
+
+      if (action === "new-project") {
+        setNoteDialogOpen(false);
+        setProjectDialogOpen(true);
+        return;
+      }
+
+      if (action === "view-tile") {
+        setNotesViewMode("tile");
+        return;
+      }
+
+      if (action === "view-table") {
+        setNotesViewMode("table");
+        return;
+      }
+
+      if (action === "save-document") {
+        saveDocument();
+        return;
+      }
+
+      if (action === "back-to-notes") {
+        handleGoHome();
+        return;
+      }
+
+      if (action === "open-in-editor") {
+        handleOpenCurrentInEditor();
+      }
+    });
+  }, [current, dirty]);
+
   return (
     <div className="app-shell">
       <div className="toast-stack" aria-live="polite" aria-atomic="true">
@@ -259,48 +335,48 @@ export default function App() {
         ))}
       </div>
       {error && <div className="error-banner">{error}</div>}
-      <section className="project-toolbar">
-        <div className="project-toolbar-left">
-          <span className="project-toolbar-label">Project</span>
-          <select
-            className="project-select"
-            value={activeProject?.slug || ""}
-            onChange={(event) => handleSwitchProject(event.target.value)}
-          >
-            {(projects || []).map((project) => (
-              <option key={project.slug} value={project.slug}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="project-toolbar-right">
-          <button
-            className="small-button"
-            onClick={() => {
-              setProjectDialogOpen(false);
-              setNoteDialogOpen(true);
-            }}
-            disabled={creatingNote}
-          >
-            <NotebookPen size={14} />
-            New Note
-          </button>
-          <button
-            className="small-button"
-            onClick={() => {
-              setNoteDialogOpen(false);
-              setProjectDialogOpen(true);
-            }}
-            disabled={creatingProject}
-          >
-            <FolderPlus size={14} />
-            Create Project
-          </button>
-        </div>
-      </section>
       {!current ? (
         <>
+          <section className="project-toolbar">
+            <div className="project-toolbar-left">
+              <span className="project-toolbar-label">Project</span>
+              <select
+                className="project-select"
+                value={activeProject?.slug || ""}
+                onChange={(event) => handleSwitchProject(event.target.value)}
+              >
+                {(projects || []).map((project) => (
+                  <option key={project.slug} value={project.slug}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="project-toolbar-right">
+              <button
+                className="small-button"
+                onClick={() => {
+                  setProjectDialogOpen(false);
+                  setNoteDialogOpen(true);
+                }}
+                disabled={creatingNote}
+              >
+                <NotebookPen size={14} />
+                New Note
+              </button>
+              <button
+                className="small-button"
+                onClick={() => {
+                  setNoteDialogOpen(false);
+                  setProjectDialogOpen(true);
+                }}
+                disabled={creatingProject}
+              >
+                <FolderPlus size={14} />
+                Create Project
+              </button>
+            </div>
+          </section>
           <header className="landing-header">
             <div>
               <p>{activeProject?.name || "Project"}</p>
@@ -351,7 +427,7 @@ export default function App() {
           onRefreshHistory={async () => setHistory(await getHistory(current.filePath))}
           saving={saving}
           dirty={dirty}
-          onHome={() => setCurrent(null)}
+          onHome={handleGoHome}
           onNotify={notify}
         />
       )}
