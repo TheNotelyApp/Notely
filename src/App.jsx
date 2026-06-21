@@ -1572,7 +1572,25 @@ export default function App() {
               {terminalCwd && <span className="terminal-status-path">{terminalCwd}</span>}
             </button>
           </div>
-          <div className="terminal-status-right" />
+          <div className="terminal-status-right" aria-label="Terminal metadata">
+            <span className="terminal-meta-pill" title="Current workspace scope">
+              {activeProject?.isRoot ? "Root" : activeProject?.name || "Project"}
+            </span>
+            {current ? (
+              <>
+                <span className="terminal-meta-pill" title="Editor mode and active tab">
+                  {mode === "split" ? "Split" : mode === "preview" ? "Preview" : "Edit"} | {activeTab === "raw" ? "Raw" : "Formal"}
+                </span>
+                <span className={`terminal-meta-pill ${dirty ? "warn" : ""}`} title="Document save status">
+                  {dirty ? "Unsaved" : "Saved"}
+                </span>
+              </>
+            ) : (
+              <span className="terminal-meta-pill" title="Current notes in list">
+                {documents.length} notes
+              </span>
+            )}
+          </div>
         </div>
       ) : null}
       {!current ? (
