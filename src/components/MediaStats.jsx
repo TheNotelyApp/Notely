@@ -74,89 +74,61 @@ export function MediaStats({ allMedia, onDeleteUnused, isDeleting = false }) {
   }, [allMedia]);
 
   return (
-    <div className="media-stats-panel">
-      <div className="stats-header">
-        <h3>📊 Media Statistics</h3>
-      </div>
+    <div className="media-stats-inline" title="Media statistics">
+      <span
+        className="inline-main"
+        title={`${stats.total} media, total size ${formatFileSize(stats.totalSize)}`}
+      >
+        📊 {stats.total} media ({formatFileSize(stats.totalSize)})
+      </span>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-value">{stats.total}</div>
-          <div className="stat-label">Total Media</div>
-        </div>
-
-        <div className="stat-card stat-used">
-          <div className="stat-value">{stats.used}</div>
-          <div className="stat-label">Used</div>
-        </div>
-
-        <div className="stat-card stat-unused">
-          <div className="stat-value">{stats.unused}</div>
-          <div className="stat-label">Unused</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-value">{formatFileSize(stats.totalSize)}</div>
-          <div className="stat-label">Total Size</div>
-        </div>
-      </div>
-
-      {stats.byType && Object.keys(stats.byType).length > 0 && (
-        <div className="stats-breakdown">
-          <div className="breakdown-title">By Type:</div>
-          <div className="breakdown-items">
-            {Object.entries(stats.byType).map(([type, data]) => (
-              <div key={type} className="breakdown-item">
-                <span className="type-icon">
-                  {type === "image" && "🖼️"}
-                  {type === "video" && "🎬"}
-                  {type === "audio" && "🎵"}
-                  {type === "pdf" && "📄"}
-                  {type === "document" && "📃"}
-                  {type === "unknown" && "📎"}
-                </span>
-                <span className="type-name">{type}</span>
-                <span className="type-count">{data.count}</span>
-                <span className="type-size">({formatFileSize(data.size)})</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {stats.byType && Object.keys(stats.byType).length > 1 && (
+        <span className="inline-types">
+          {Object.entries(stats.byType).map(([type, data]) => (
+            <span
+              key={type}
+              className="inline-chip"
+              title={`${type}: ${data.count} item${data.count === 1 ? "" : "s"}, ${formatFileSize(data.size)}`}
+            >
+              <span className="type-icon">
+                {type === "image" && "🖼️"}
+                {type === "video" && "🎬"}
+                {type === "audio" && "🎵"}
+                {type === "pdf" && "📄"}
+                {type === "document" && "📃"}
+                {type === "unknown" && "📎"}
+              </span>
+              <span>{data.count}</span>
+            </span>
+          ))}
+        </span>
       )}
 
-      {stats.unused > 0 && stats.unusedSize > 0 && (
-        <div className="stats-insights">
-          <div className="insight-card unused-insight">
-            <AlertCircle size={16} />
-            <div className="insight-content">
-              <div className="insight-text">
-                <strong>{stats.unused} unused files</strong> taking up <strong>{formatFileSize(stats.unusedSize)}</strong>
-              </div>
-              <button
-                className="cleanup-button"
-                onClick={onDeleteUnused}
-                disabled={isDeleting}
-                title="Delete all unused media files"
-              >
-                <Trash2 size={14} />
-                {isDeleting ? "Cleaning..." : "Clean Up"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {stats.unused > 0 && (
+        <span
+          className="inline-unused-group"
+          title={`${stats.unused} unused${stats.unusedSize > 0 ? `, ${formatFileSize(stats.unusedSize)}` : ""}`}
+        >
+          <span className="inline-unused">
+            <AlertCircle size={14} />
+            <span><strong>{stats.unused}</strong> unused{stats.unusedSize > 0 ? ` (${formatFileSize(stats.unusedSize)})` : ""}</span>
+          </span>
+          <button
+            className="cleanup-button icon-only"
+            onClick={onDeleteUnused}
+            disabled={isDeleting}
+            title={isDeleting ? "Cleaning unused media..." : "Delete all unused media files"}
+            aria-label={isDeleting ? "Cleaning unused media" : "Delete all unused media files"}
+          >
+            <Trash2 size={12} />
+          </button>
+        </span>
       )}
 
       {stats.duplicates.length > 0 && (
-        <div className="stats-insights">
-          <div className="insight-card duplicate-insight">
-            <AlertCircle size={16} />
-            <div className="insight-content">
-              <div className="insight-text">
-                Found <strong>{stats.duplicates.length} potential duplicates</strong> - review and remove to save space
-              </div>
-            </div>
-          </div>
-        </div>
+        <span className="inline-duplicates" title={`${stats.duplicates.length} potential duplicate group${stats.duplicates.length === 1 ? "" : "s"}`}>
+          Found <strong>{stats.duplicates.length}</strong> duplicates
+        </span>
       )}
     </div>
   );
