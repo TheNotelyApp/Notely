@@ -65,6 +65,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "src/ai/**/*",
       "scripts/launch-electron.cjs",
       "package.json"
     ],
