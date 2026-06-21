@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { X, Volume2, VolumeX, RotateCw, Download } from "lucide-react";
+import { X, Volume2, VolumeX, RotateCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
 import { ImageCropModal } from "./ImageCropModal";
@@ -16,7 +16,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage } from "../services/electronService";
+import { readImage, replaceImage } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it
@@ -48,7 +48,7 @@ function dataUrlToUint8Array(dataUrl) {
   }
 }
 
-export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalImages = false, onClose }) {
+export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalImages = false, onClose, onMediaChanged }) {
   const [error, setError] = useState(null);
   const [pdfPages, setPdfPages] = useState(0);
   const [currentPdfPage, setCurrentPdfPage] = useState(1);
@@ -160,10 +160,33 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   const handleImageRotate = async () => {
     if (!displayedImage) return;
     try {
-      const newRotation = (imageRotation + 90) % 360;
+      // Rotate the in-memory bytes; the on-screen <img> renders the rotated
+      // data URL directly (no CSS transform), and the result is persisted to
+      // disk so the rotation survives reloads.
       const rotated = await rotateImage(displayedImage, 90);
       setDisplayedImage(rotated);
-      setImageRotation(newRotation);
+      setImageRotation(0);
+
+      try {
+        const dimensions = await getImageDimensions(rotated);
+        const fileSize = getImageFileSize(rotated);
+        setImageInfo({
+          dimensions,
+          fileSize,
+          formattedSize: formatFileSize(fileSize),
+        });
+      } catch {
+        /* dimension lookup is best-effort */
+      }
+
+      if (basePath && mediaPath && !/^(data:|blob:|https?:)/i.test(mediaPath)) {
+        try {
+          await replaceImage(basePath, mediaPath, rotated);
+          onMediaChanged?.(mediaPath);
+        } catch (saveErr) {
+          setError(`Rotated, but failed to save: ${saveErr.message}`);
+        }
+      }
     } catch (err) {
       setError(`Failed to rotate image: ${err.message}`);
     }
@@ -314,11 +337,14 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       <div className="media-preview-header">
         <div className="media-preview-title">
           <span className="media-preview-icon">
-            {mediaType === "image" && "🖼️ Image"}
-            {mediaType === "video" && "🎬 Video"}
-            {mediaType === "audio" && "🎵 Audio"}
-            {mediaType === "pdf" && "📄 PDF"}
-            {mediaType === "document" && "📃 Document"}
+            {mediaType === "image" && "🖼️"}
+            {mediaType === "video" && "🎬"}
+            {mediaType === "audio" && "🎵"}
+            {mediaType === "pdf" && "📄"}
+            {mediaType === "document" && "📃"}
+          </span>
+          <span className="media-preview-filename" title={mediaPath}>
+            {(mediaPath || "").split(/[\\/]/).pop() || mediaPath}
           </span>
         </div>
         <button
@@ -354,20 +380,20 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
               </div>
               <div className="image-action-buttons">
                 <button
-                  className="image-action-button"
+                  className="image-action-button icon-only"
                   onClick={handleImageRotate}
                   title="Rotate 90°"
                   aria-label="Rotate image"
                 >
-                  <RotateCw size={16} /> Rotate
+                  <RotateCw size={14} />
                 </button>
                 <button
-                  className="image-action-button"
+                  className="image-action-button icon-only"
                   onClick={handleDownloadImage}
                   title="Download image"
                   aria-label="Download image"
                 >
-                  <Download size={16} /> Download
+                  <Download size={14} />
                 </button>
               </div>
             </div>
@@ -377,7 +403,6 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
                 ref={imageRef}
                 src={displayedImage || resolvedPath}
                 alt="Preview"
-                style={{ transform: `rotate(${imageRotation}deg)` }}
                 onError={() => setError("Failed to load image")}
                 onContextMenu={handleImageContextMenu}
                 title="Right-click to crop"
@@ -391,9 +416,6 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
                 </span>
                 <span className="info-item">
                   💾 {imageInfo.formattedSize}
-                </span>
-                <span className="info-item">
-                  🔄 {imageRotation}°
                 </span>
               </div>
             )}
@@ -438,21 +460,25 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
                 <img src={pdfContent} alt={`PDF page ${currentPdfPage}`} />
                 <div className="pdf-controls">
                   <button
+                    className="icon-only"
                     onClick={() => handlePdfPageChange(-1)}
                     disabled={currentPdfPage === 1}
                     title="Previous page"
+                    aria-label="Previous page"
                   >
-                    ← Prev
+                    <ChevronLeft size={14} />
                   </button>
                   <span className="pdf-page-info">
                     Page {currentPdfPage} of {pdfPages}
                   </span>
                   <button
+                    className="icon-only"
                     onClick={() => handlePdfPageChange(1)}
                     disabled={currentPdfPage === pdfPages}
                     title="Next page"
+                    aria-label="Next page"
                   >
-                    Next →
+                    <ChevronRight size={14} />
                   </button>
                 </div>
               </div>

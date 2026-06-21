@@ -226,6 +226,8 @@ export function MediaTab({ content, basePath, onNotify }) {
     return allImages.filter((image) => (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path)).length;
   }, [allImages, referencedPathSet]);
 
+  const unusedCount = allImages.length - linkedCount;
+
   async function handleAddImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -248,8 +250,11 @@ export function MediaTab({ content, basePath, onNotify }) {
     }
   }
 
-  async function handleDeleteImage(pathValue) {
-    const approved = window.confirm("Move this media item to the removed folder?");
+  async function handleDeleteImage(pathValue, isReferenced = false) {
+    const message = isReferenced
+      ? "This media is referenced in one or more notes. Move it to the removed folder anyway? Links in those notes will break."
+      : "Move this media item to the removed folder?";
+    const approved = window.confirm(message);
     if (!approved) return;
 
     setBusy(true);
@@ -394,6 +399,17 @@ export function MediaTab({ content, basePath, onNotify }) {
           <option value="referenced-first">Referenced First</option>
         </select>
         <div className="media-toolbar-actions">
+          {unusedCount > 0 && (
+            <button
+              className="small-button danger"
+              onClick={handleDeleteUnusedMedia}
+              disabled={busy}
+              title={`Delete ${unusedCount} unused media file${unusedCount === 1 ? "" : "s"}`}
+            >
+              <Trash2 size={14} />
+              <span>Delete unused ({unusedCount})</span>
+            </button>
+          )}
           <button
             className="small-button icon-only"
             onClick={() => addInputRef.current?.click()}
@@ -496,17 +512,8 @@ export function MediaTab({ content, basePath, onNotify }) {
                       {`${image.referenceCount || 0} Refs`}
                     </span>
                   ) : (
-                    <span className="media-unused-group" title="Not referenced in any note">
-                      <span className="media-badge unlinked">Unused</span>
-                      <button
-                        className="media-badge-action"
-                        onClick={() => handleDeleteImage(image.path)}
-                        disabled={busy}
-                        title="Delete media"
-                        aria-label="Delete media"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                    <span className="media-badge unlinked" title="Not referenced in any note">
+                      Unused
                     </span>
                   )}
                 </div>
@@ -530,6 +537,16 @@ export function MediaTab({ content, basePath, onNotify }) {
                   >
                     <Upload size={14} />
                   </button>
+                  {!referenced && (
+                    <button
+                      className="small-button danger icon-only"
+                      onClick={() => handleDeleteImage(image.path, false)}
+                      disabled={busy}
+                      title="Delete media"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -546,6 +563,7 @@ export function MediaTab({ content, basePath, onNotify }) {
               mediaType={selectedMediaPreview.type}
               basePath={basePath}
               onClose={() => setSelectedMediaPreview(null)}
+              onMediaChanged={() => setRefreshKey((value) => value + 1)}
             />
           </div>
         </div>
