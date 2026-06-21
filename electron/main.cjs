@@ -17,6 +17,10 @@ const projectRoot = app.getAppPath();
 const sessionDataPath = path.join(app.getPath("userData"), "session-data");
 const chromiumCachePath = path.join(sessionDataPath, "Cache");
 
+if (process.platform === "win32") {
+  app.setAppUserModelId("app.notely.desktop");
+}
+
 try {
   fs.mkdirSync(chromiumCachePath, { recursive: true });
   app.setPath("sessionData", sessionDataPath);
@@ -2941,6 +2945,16 @@ function buildAppMenu(win, context = {}) {
 }
 
 function createWindow() {
+  const iconCandidates = [
+    path.join(process.resourcesPath || "", "icon.ico"),
+    path.join(process.resourcesPath || "", "icon.png"),
+    path.join(process.cwd(), "build", "icon.ico"),
+    path.join(process.cwd(), "build", "icon.png"),
+    path.join(projectRoot, "build", "icon.ico"),
+    path.join(projectRoot, "build", "icon.png")
+  ];
+  const windowIconPath = iconCandidates.find((candidate) => candidate && fs.existsSync(candidate));
+
   const win = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -2948,6 +2962,7 @@ function createWindow() {
     minHeight: 640,
     show: false,
     backgroundColor: "#f5f3ef",
+    ...(windowIconPath ? { icon: windowIconPath } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
