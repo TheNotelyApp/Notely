@@ -4,7 +4,27 @@
  */
 
 const { ipcMain } = require('electron');
-const { IPC_EVENTS, AIQueryRequest, AIQueryResponse } = require('../src/ai/utils/ipcProtocol');
+const path = require('path');
+
+let IPC_EVENTS, AIQueryRequest, AIQueryResponse;
+
+try {
+  const ipcProtocolPath = path.join(__dirname, '..', 'src', 'ai', 'utils', 'ipcProtocol.js');
+  console.log('[AI] Attempting to load ipcProtocol from:', ipcProtocolPath);
+  ({ IPC_EVENTS, AIQueryRequest, AIQueryResponse } = require(ipcProtocolPath));
+  console.log('[AI] Successfully loaded ipcProtocol');
+} catch (err) {
+  console.error('[AI] Failed to load ipcProtocol:', err.message);
+  console.error('[AI] Stack:', err.stack);
+  // Fallback: define minimal IPC_EVENTS to prevent complete crash
+  IPC_EVENTS = {
+    AI_INIT: 'ai:init',
+    AI_QUERY: 'ai:query',
+    AI_DESTROY: 'ai:destroy'
+  };
+  AIQueryRequest = class {};
+  AIQueryResponse = class {};
+}
 
 let aiAgent = null;
 let aiInitialized = false;
