@@ -1,5 +1,195 @@
 /* Media Tab Styles */
 
+/* Media Stats Panel */
+.media-stats-panel {
+  background: linear-gradient(135deg, #fafbfb 0%, #f3f8f6 100%);
+  border: 1px solid #d0dbd6;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 0 12px 16px;
+  overflow: hidden;
+}
+
+.stats-header {
+  margin-bottom: 12px;
+}
+
+.stats-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a3a3e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #d0dbd6;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: #a8c2b8;
+  box-shadow: 0 2px 6px rgba(26, 58, 62, 0.1);
+}
+
+.stat-card.stat-used {
+  background: #eff6f2;
+  border-color: #a8c2b8;
+}
+
+.stat-card.stat-unused {
+  background: #fff6f1;
+  border-color: #e8b5a0;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a3a3e;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #60767c;
+  margin-top: 4px;
+}
+
+.stats-breakdown {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #d0dbd6;
+}
+
+.breakdown-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #45666b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.breakdown-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #d0dbd6;
+  color: #45666b;
+}
+
+.type-icon {
+  font-size: 12px;
+}
+
+.type-name {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.type-count {
+  color: #1a3a3e;
+  font-weight: 700;
+}
+
+.type-size {
+  color: #8aa0a7;
+  font-size: 10px;
+}
+
+.stats-insights {
+  margin-bottom: 8px;
+}
+
+.insight-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #e8b5a0;
+  background: #fff6f1;
+}
+
+.insight-card.duplicate-insight {
+  border-color: #d9dedb;
+  background: #fafbfb;
+}
+
+.insight-card svg {
+  flex-shrink: 0;
+  color: #c44e2e;
+}
+
+.duplicate-insight svg {
+  color: #60767c;
+}
+
+.insight-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 8px;
+}
+
+.insight-text {
+  font-size: 11px;
+  color: #45666b;
+  flex: 1;
+}
+
+.insight-text strong {
+  color: #1a3a3e;
+}
+
+.cleanup-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #c44e2e;
+  border-radius: 4px;
+  background: #fff6f1;
+  color: #8a3a1e;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.cleanup-button:hover:not(:disabled) {
+  background: #c44e2e;
+  color: white;
+}
+
+.cleanup-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .media-empty {
   display: flex;
   flex-direction: column;
@@ -25,6 +215,12 @@
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 16px;
   padding: 16px;
+.media-preview video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  background: #000;
+}
 }
 
 .media-actions {

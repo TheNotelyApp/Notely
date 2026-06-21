@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import {
   renderMarkdown,
   parseMermaidBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
 import { readImage, replaceImage, deleteImage, renameImage } from "../services/electronService";
-import { readFileAsDataUrl } from "../utils/imageUtils";
+import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { createImageMarkdown } from "../utils/markdownUtils";
+import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { MermaidBlock } from "./MermaidBlock";
 import { ImageCropModal } from "./ImageCropModal";
 
@@ -15,7 +16,7 @@ function replaceAllLiteral(source, needle, replacement) {
   return String(source || "").split(needle).join(replacement);
 }
 
-export function MarkdownPreview({ content, basePath, externalRef, onNotify, onContentChange }) {
+export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, basePath, externalRef, onNotify, onContentChange, onMediaClick }) {
   const previewRef = useRef(null);
   const menuRef = useRef(null);
   const menuItemsRef = useRef([]);
@@ -106,6 +107,93 @@ export function MarkdownPreview({ content, basePath, externalRef, onNotify, onCo
       observer.disconnect();
     };
   }, [content, basePath]);
+
+  useEffect(() => {
+    if (!onMediaClick) return;
+
+    const previewElement = previewRef.current;
+    if (!previewElement) return;
+
+    const handleMediaClick = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      // Handle markdown links to media files (e.g., [file](./images/file.pdf))
+      const linkElement = target.closest("a");
+      if (linkElement instanceof HTMLAnchorElement) {
+        const rawHref = linkElement.getAttribute("href") || "";
+        if (rawHref) {
+          const normalizedHref = rawHref.split(/[?#]/)[0];
+          const ext = normalizedHref.split(".").pop()?.toLowerCase();
+          const mediaType = getMediaTypeFromExtension(ext);
+          if (mediaType) {
+            event.preventDefault();
+            event.stopPropagation();
+            onMediaClick({ path: normalizedHref, type: mediaType });
+            return;
+          }
+        }
+      }
+
+      // Handle image clicks
+      if (target.tagName === "IMG") {
+        const src = target.getAttribute("data-asset-path") || target.getAttribute("src") || "";
+        if (src) {
+          const ext = src.split(".").pop()?.toLowerCase();
+          const mediaType = getMediaTypeFromExtension(ext);
+          if (mediaType) {
+            event.preventDefault();
+            event.stopPropagation();
+            onMediaClick({ path: src, type: mediaType });
+          }
+        }
+      }
+
+      // Handle audio/video element clicks
+      if (target.tagName === "AUDIO" || target.tagName === "VIDEO") {
+        const src = target.querySelector("source")?.getAttribute("src") || target.getAttribute("src") || "";
+        if (src) {
+          const ext = src.split(".").pop()?.toLowerCase();
+          const mediaType = getMediaTypeFromExtension(ext);
+          if (mediaType) {
+            event.preventDefault();
+            event.stopPropagation();
+            onMediaClick({ path: src, type: mediaType });
+          }
+        }
+      }
+    };
+
+    const images = previewElement.querySelectorAll("img");
+    const mediaElements = previewElement.querySelectorAll("audio, video");
+    const mediaLinks = previewElement.querySelectorAll("a[href]");
+
+    images.forEach((img) => {
+      img.addEventListener("click", handleMediaClick);
+      img.style.cursor = "pointer";
+    });
+
+    mediaElements.forEach((el) => {
+      el.addEventListener("click", handleMediaClick);
+    });
+
+    mediaLinks.forEach((link) => {
+      link.addEventListener("click", handleMediaClick);
+    });
+
+    return () => {
+      images.forEach((img) => {
+        img.removeEventListener("click", handleMediaClick);
+      });
+      mediaElements.forEach((el) => {
+        el.removeEventListener("click", handleMediaClick);
+      });
+
+      mediaLinks.forEach((link) => {
+        link.removeEventListener("click", handleMediaClick);
+      });
+    };
+  }, [onMediaClick]);
 
   useEffect(() => {
     if (!contextMenu) return undefined;
@@ -349,7 +437,7 @@ export function MarkdownPreview({ content, basePath, externalRef, onNotify, onCo
   const menuActions = [
     {
       key: "crop",
-      label: "Crop image",
+      label: "Edit image",
       onSelect: openCropFromMenu,
       disabled: false,
     },
@@ -524,4 +612,4 @@ export function MarkdownPreview({ content, basePath, externalRef, onNotify, onCo
       />
     </>
   );
-}
+});

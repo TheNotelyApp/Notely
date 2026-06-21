@@ -94,3 +94,20 @@ export function normalizeImagePathForMarkdown(pathValue) {
 export function createImageMarkdown(altText, imagePath) {
   return `![${altText}](${normalizeImagePathForMarkdown(imagePath)})`;
 }
+
+export function createMediaMarkdown(labelText, mediaPath) {
+  const normalizedPath = normalizeImagePathForMarkdown(mediaPath);
+  const fallbackLabel = (labelText || "media").trim();
+  const extension = String(normalizedPath || "")
+    .split(/[?#]/)[0]
+    .split(".")
+    .pop()
+    ?.toLowerCase();
+
+  const isImage = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"]).has(extension);
+  if (isImage) {
+    return `![${fallbackLabel}](${normalizedPath})`;
+  }
+
+  return `[${fallbackLabel}](${normalizedPath})`;
+}

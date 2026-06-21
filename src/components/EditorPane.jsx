@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { MarkdownValidationBanner } from "./MarkdownValidationBanner";
 import { WebViewPreview } from "./WebViewPreview";
+import { MediaPreviewPane } from "./MediaPreviewPane";
 import { useMarkdownValidation } from "../hooks/useMarkdownValidation";
 
 export function EditorPane({
@@ -26,14 +27,24 @@ export function EditorPane({
   ghostSuggestion,
   onAcceptInlineGhost,
   onRejectInlineGhost,
+  showOriginalImages = false,
 }) {
   const previewRef = useRef(null);
   const splitPaneRef = useRef(null);
   const [focusedLine, setFocusedLine] = useState(1);
   const [splitRatio, setSplitRatio] = useState(50);
   const [editorReadyTick, setEditorReadyTick] = useState(0);
-  const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
-  const { issues: validationIssues, status: validationStatus } = useMarkdownValidation(value, { spellCheck: spellCheckEnabled });
+  const [selectedMediaPreview, setSelectedMediaPreview] = useState(null);
+  const deferredValue = useDeferredValue(value);
+  // Disable spell check in split view by default to reduce validation overhead during scrolling
+  const [spellCheckEnabled, setSpellCheckEnabled] = useState(mode !== "split");
+  const isSplitMode = mode === "split";
+  const { issues: validationIssues, status: validationStatus } = useMarkdownValidation(value, {
+    spellCheck: spellCheckEnabled,
+    strategy: "debounce",
+    debounceMs: isSplitMode ? 1200 : 500,
+  });
+  const previewContent = isSplitMode ? deferredValue : value;
 
   const jumpToLine = (line) => {
     const editor = textareaRef?.current;
@@ -172,7 +183,7 @@ export function EditorPane({
   );
 
   if (mode === "preview") {
-    return <MarkdownPreview content={value} basePath={basePath} onNotify={onNotify} onContentChange={onChange} />;
+    return <MarkdownPreview content={previewContent} basePath={basePath} onNotify={onNotify} onContentChange={onChange} />;
   }
 
   if (mode === "web") {
@@ -182,9 +193,14 @@ export function EditorPane({
   if (mode === "split") {
     return (
       <div
-        className="split-pane"
+        className="split-pane-with-media"
         ref={splitPaneRef}
-        style={{ gridTemplateColumns: `minmax(0, ${splitRatio}%) 8px minmax(0, ${100 - splitRatio}%)` }}
+        style={{
+          display: "grid",
+          gridTemplateRows: selectedMediaPreview ? "1fr 8px 300px" : "1fr",
+          gridTemplateColumns: `minmax(0, ${splitRatio}%) 8px minmax(0, ${100 - splitRatio}%)`,
+          height: "100%",
+        }}
       >
         <section className="pane-block">
           <div className="pane-title toolbar-label-row">
@@ -226,13 +242,28 @@ export function EditorPane({
           </div>
           {showToolbar ? <div className="pane-toolbar-spacer" aria-hidden="true" /> : null}
           <MarkdownPreview
-            content={value}
+            content={previewContent}
             basePath={basePath}
             externalRef={previewRef}
             onNotify={onNotify}
             onContentChange={onChange}
+            onMediaClick={setSelectedMediaPreview}
           />
         </section>
+        {selectedMediaPreview && (
+          <>
+            <div className="split-resizer-horizontal" style={{ gridColumn: "1 / -1", gridRow: 2 }} />
+            <div style={{ gridColumn: "1 / -1", gridRow: 3, minHeight: 0, overflow: "hidden" }}>
+              <MediaPreviewPane
+                mediaPath={selectedMediaPreview.path}
+                mediaType={selectedMediaPreview.type}
+                basePath={basePath}
+                showOriginalImages={showOriginalImages}
+                onClose={() => setSelectedMediaPreview(null)}
+              />
+            </div>
+          </>
+        )}
       </div>
     );
   }

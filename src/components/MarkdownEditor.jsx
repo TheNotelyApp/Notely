@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
-import { createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
-import { insertImagesFromFiles } from "../services/imageService";
+import { createMediaMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
+import { insertMediaFromFiles } from "../services/imageService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 
 function getLineStartIndex(text, lineNumber) {
@@ -293,7 +293,7 @@ function createEditorAdapter(view) {
   };
 }
 
-export function MarkdownEditor({
+export const MarkdownEditor = memo(function MarkdownEditorContent({
   value,
   onChange,
   textareaRef,
@@ -435,8 +435,10 @@ export function MarkdownEditor({
 
         void (async () => {
           try {
-            const results = await insertImagesFromFiles(files);
-            const markdownImages = results.map((result) => createImageMarkdown(result.altText, result.imagePath));
+            const results = await insertMediaFromFiles(files);
+            const markdownImages = results.map((result) =>
+              createMediaMarkdown(result.altText, result.mediaPath || result.imagePath)
+            );
             const adapter = createEditorAdapter(view);
             insertTextAtCursor(
               view.state.doc.toString(),
@@ -444,10 +446,10 @@ export function MarkdownEditor({
               `${markdownImages.join("\n\n")}\n`,
               { current: adapter }
             );
-            onNotify?.(`Inserted ${results.length} image${results.length > 1 ? "s" : ""}.`, "success");
+            onNotify?.(`Inserted ${results.length} media item${results.length > 1 ? "s" : ""}.`, "success");
           } catch (error) {
-            console.error("Image drop insertion failed:", error);
-            onNotify?.(error?.message || "Failed to insert dropped images.", "error");
+            console.error("Media drop insertion failed:", error);
+            onNotify?.(error?.message || "Failed to insert dropped media.", "error");
           }
         })();
 
@@ -706,4 +708,4 @@ export function MarkdownEditor({
       ) : null}
     </div>
   );
-}
+});

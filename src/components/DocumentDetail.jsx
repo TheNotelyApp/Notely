@@ -15,6 +15,8 @@ import {
   Clock,
   MapPin,
   User,
+  Image,
+  ImageOff,
   Images,
   GitCompare,
   Trash2,
@@ -255,6 +257,7 @@ export function DocumentDetail({
   const [findMatchTotal, setFindMatchTotal] = useState(0);
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
+  const [showOriginalImages, setShowOriginalImages] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showMediaManager, setShowMediaManager] = useState(false);
 
@@ -919,6 +922,15 @@ export function DocumentDetail({
             </div>
             <div className="mode-switch">
               <button
+                className={showOriginalImages ? "active" : ""}
+                type="button"
+                title="Toggle original image rendering in media preview"
+                onClick={() => setShowOriginalImages((value) => !value)}
+              >
+                {showOriginalImages ? <Image size={16} /> : <ImageOff size={16} />}
+                <span>Show Original Images</span>
+              </button>
+              <button
                 className={showMediaManager ? "active" : ""}
                 type="button"
                 title="Open assets manager"
@@ -1001,6 +1013,7 @@ export function DocumentDetail({
             ghostSuggestion={inlineGhostSuggestion}
             onAcceptInlineGhost={onAcceptInlineGhost}
             onRejectInlineGhost={onRejectInlineGhost}
+            showOriginalImages={showOriginalImages}
           />
         </main>
 

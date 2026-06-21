@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ImageOff, ImagePlus, RefreshCw, Upload, Trash2 } from "lucide-react";
+import { Copy, ImageOff, ImagePlus, RefreshCw, Upload, Trash2, Filter } from "lucide-react";
 import { extractImagesFromMarkdown } from "../utils/mediaUtils";
+import { getMediaTypeFromExtension } from "../utils/mediaUtils";
+import { MediaStats } from "./MediaStats";
 import {
   getImageUsage,
   listImages,
@@ -9,7 +11,7 @@ import {
   deleteImage,
   replaceImage,
 } from "../services/electronService";
-import { readFileAsDataUrl } from "../utils/imageUtils";
+import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import "../styles/media.css";
 
 export function MediaTab({ content, basePath, onNotify }) {
@@ -17,6 +19,7 @@ export function MediaTab({ content, basePath, onNotify }) {
   const [allImages, setAllImages] = useState([]);
   const [imageUsage, setImageUsage] = useState({});
   const [resolvedImages, setResolvedImages] = useState({});
+  const [mediaSizes, setMediaSizes] = useState({});
   const [thumbnailFailures, setThumbnailFailures] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -110,9 +113,21 @@ export function MediaTab({ content, basePath, onNotify }) {
   useEffect(() => {
     let cancelled = false;
 
+    const getDataUrlSizeBytes = (value) => {
+      if (typeof value !== "string" || !value.startsWith("data:")) return 0;
+      const commaIndex = value.indexOf(",");
+      if (commaIndex === -1) return 0;
+      const base64 = value.slice(commaIndex + 1);
+      const padding = (base64.match(/=+$/) || [""])[0].length;
+      return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
+    };
+
     async function loadResolvedImages() {
       if (!allImages.length || !basePath) {
-        if (!cancelled) setResolvedImages({});
+        if (!cancelled) {
+          setResolvedImages({});
+          setMediaSizes({});
+        }
         return;
       }
 
@@ -128,7 +143,12 @@ export function MediaTab({ content, basePath, onNotify }) {
       );
 
       if (!cancelled) {
-        setResolvedImages(Object.fromEntries(entries));
+        const resolvedById = Object.fromEntries(entries);
+        const sizeById = Object.fromEntries(
+          entries.map(([id, src]) => [id, getDataUrlSizeBytes(src)])
+        );
+        setResolvedImages(resolvedById);
+        setMediaSizes(sizeById);
       }
     }
 
@@ -138,6 +158,13 @@ export function MediaTab({ content, basePath, onNotify }) {
       cancelled = true;
     };
   }, [allImages, basePath]);
+
+  const mediaItemsWithSize = useMemo(() => {
+    return allImages.map((item) => ({
+      ...item,
+      fileSize: mediaSizes[item.id] || item.fileSize || 0,
+    }));
+  }, [allImages, mediaSizes]);
 
   useEffect(() => {
     if (!actionInfo) return undefined;
@@ -150,8 +177,21 @@ export function MediaTab({ content, basePath, onNotify }) {
 
     const visible = allImages.filter((image) => {
       const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
+      const extension = image.path.split(".").pop()?.toLowerCase();
+      const mediaType = getMediaTypeFromExtension(extension);
+
+      // Apply usage filter
       if (filterType === "referenced" && !referenced) return false;
       if (filterType === "unused" && referenced) return false;
+
+      // Apply media type filters
+      if (filterType === "images" && mediaType !== "image") return false;
+      if (filterType === "videos" && mediaType !== "video") return false;
+      if (filterType === "audio" && mediaType !== "audio") return false;
+      if (filterType === "pdfs" && mediaType !== "pdf") return false;
+      if (filterType === "documents" && mediaType !== "document") return false;
+
+      // Search filter
       if (!normalizedSearch) return true;
 
       return (
@@ -193,11 +233,11 @@ export function MediaTab({ content, basePath, onNotify }) {
       const dataUrl = await readFileAsDataUrl(file);
       await saveImage(file.name, dataUrl);
       setRefreshKey((value) => value + 1);
-      setActionInfo("Image added successfully.");
-      onNotify?.("Image added.", "success");
+      setActionInfo("Media added successfully.");
+      onNotify?.("Media added.", "success");
     } catch (error) {
-      setActionError(error?.message || "Unable to add image.");
-      onNotify?.(error?.message || "Unable to add image.", "error");
+      setActionError(error?.message || "Unable to add media.");
+      onNotify?.(error?.message || "Unable to add media.", "error");
     } finally {
       setBusy(false);
       event.target.value = "";
@@ -205,7 +245,7 @@ export function MediaTab({ content, basePath, onNotify }) {
   }
 
   async function handleDeleteImage(pathValue) {
-    const approved = window.confirm("Move this image to the removed folder?");
+    const approved = window.confirm("Move this media item to the removed folder?");
     if (!approved) return;
 
     setBusy(true);
@@ -214,11 +254,11 @@ export function MediaTab({ content, basePath, onNotify }) {
     try {
       await deleteImage(basePath, pathValue);
       setRefreshKey((value) => value + 1);
-      setActionInfo("Image moved to removed folder.");
-      onNotify?.("Image moved to removed folder.", "success");
+      setActionInfo("Media moved to removed folder.");
+      onNotify?.("Media moved to removed folder.", "success");
     } catch (error) {
-      setActionError(error?.message || "Unable to delete image.");
-      onNotify?.(error?.message || "Unable to delete image.", "error");
+      setActionError(error?.message || "Unable to delete media.");
+      onNotify?.(error?.message || "Unable to delete media.", "error");
     } finally {
       setBusy(false);
     }
@@ -240,11 +280,11 @@ export function MediaTab({ content, basePath, onNotify }) {
       const dataUrl = await readFileAsDataUrl(file);
       await replaceImage(basePath, replaceTarget, dataUrl);
       setRefreshKey((value) => value + 1);
-      setActionInfo("Image updated.");
-      onNotify?.("Image updated.", "success");
+      setActionInfo("Media updated.");
+      onNotify?.("Media updated.", "success");
     } catch (error) {
-      setActionError(error?.message || "Unable to replace image.");
-      onNotify?.(error?.message || "Unable to replace image.", "error");
+      setActionError(error?.message || "Unable to replace media.");
+      onNotify?.(error?.message || "Unable to replace media.", "error");
     } finally {
       setBusy(false);
       setReplaceTarget("");
@@ -267,6 +307,52 @@ export function MediaTab({ content, basePath, onNotify }) {
     }
   }
 
+  async function handleDeleteUnusedMedia() {
+    const unusedFiles = allImages.filter(
+      (image) => (image.referenceCount || 0) === 0 && !referencedPathSet.has(image.path)
+    );
+
+    if (unusedFiles.length === 0) {
+      setActionInfo("No unused media to delete.");
+      return;
+    }
+
+    const approved = window.confirm(
+      `Delete ${unusedFiles.length} unused media file${unusedFiles.length === 1 ? "" : "s"}? This cannot be undone.`
+    );
+    if (!approved) return;
+
+    setBusy(true);
+    setActionError("");
+    setActionInfo("");
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const file of unusedFiles) {
+      try {
+        await deleteImage(basePath, file.path);
+        successCount += 1;
+      } catch {
+        failureCount += 1;
+      }
+    }
+
+    setBusy(false);
+
+    if (successCount > 0) {
+      setRefreshKey((value) => value + 1);
+      const message = `Deleted ${successCount} unused file${successCount === 1 ? "" : "s"}.${
+        failureCount > 0 ? ` Failed to delete ${failureCount} file${failureCount === 1 ? "" : "s"}.` : ""
+      }`;
+      setActionInfo(message);
+      onNotify?.(message, failureCount > 0 ? "warning" : "success");
+    } else {
+      setActionError("Failed to delete unused files.");
+      onNotify?.("Failed to delete unused files.", "error");
+    }
+  }
+
   function markThumbnailFailed(id) {
     setThumbnailFailures((current) => {
       if (current[id]) return current;
@@ -276,12 +362,14 @@ export function MediaTab({ content, basePath, onNotify }) {
 
   return (
     <div>
+      <MediaStats allMedia={mediaItemsWithSize} onDeleteUnused={handleDeleteUnusedMedia} isDeleting={busy} />
+
       <div className="media-actions">
         <button
           className="small-button icon-only"
           onClick={() => addInputRef.current?.click()}
           disabled={busy}
-          title="Add image"
+          title="Add media"
         >
           <ImagePlus size={16} />
         </button>
@@ -289,12 +377,12 @@ export function MediaTab({ content, basePath, onNotify }) {
           className="small-button icon-only"
           onClick={() => setRefreshKey((value) => value + 1)}
           disabled={busy}
-          title="Refresh images"
+          title="Refresh media"
         >
           <RefreshCw size={16} />
         </button>
-        <input ref={addInputRef} type="file" accept="image/*" onChange={handleAddImage} hidden />
-        <input ref={replaceInputRef} type="file" accept="image/*" onChange={handleReplaceImage} hidden />
+        <input ref={addInputRef} type="file" accept="image/*,video/*,audio/*,.pdf" onChange={handleAddImage} hidden />
+        <input ref={replaceInputRef} type="file" accept="image/*,video/*,audio/*,.pdf" onChange={handleReplaceImage} hidden />
       </div>
 
       <div className="media-toolbar">
@@ -306,9 +394,16 @@ export function MediaTab({ content, basePath, onNotify }) {
           placeholder="Search by name or path"
         />
         <select className="media-select" value={filterType} onChange={(event) => setFilterType(event.target.value)}>
-          <option value="all">All</option>
-          <option value="referenced">Referenced</option>
-          <option value="unused">Unused</option>
+          <option value="all">All Media</option>
+          <option value="referenced">Referenced Only</option>
+          <option value="unused">Unused Only</option>
+          <optgroup label="By Type">
+            <option value="images">Images Only</option>
+            <option value="videos">Videos Only</option>
+            <option value="audio">Audio Only</option>
+            <option value="pdfs">PDFs Only</option>
+            <option value="documents">Documents Only</option>
+          </optgroup>
         </select>
         <select className="media-select" value={sortType} onChange={(event) => setSortType(event.target.value)}>
           <option value="name-asc">Name A-Z</option>
@@ -318,7 +413,7 @@ export function MediaTab({ content, basePath, onNotify }) {
       </div>
 
       <p className="media-summary">
-        Showing {filteredImages.length} of {allImages.length} images. {linkedCount} referenced across notes.
+        Showing {filteredImages.length} of {allImages.length} media. {linkedCount} <strong>used</strong>, {allImages.length - linkedCount} <strong>unused</strong>.
       </p>
 
       {actionError && <p className="media-error">{actionError}</p>}
@@ -328,12 +423,12 @@ export function MediaTab({ content, basePath, onNotify }) {
         <div className="media-empty">
           {allImages.length === 0 ? (
             <>
-              <p>No images found in notes/images.</p>
-              <p className="muted">Insert images using the toolbar button or drag & drop.</p>
+              <p>No media found in notes/images.</p>
+              <p className="muted">Insert media using the toolbar button or drag and drop.</p>
             </>
           ) : (
             <>
-              <p>No images match your current filters.</p>
+              <p>No media match your current filters.</p>
               <p className="muted">Try clearing search text or changing filter/sort.</p>
             </>
           )}
@@ -342,6 +437,8 @@ export function MediaTab({ content, basePath, onNotify }) {
         <div className="media-grid">
           {filteredImages.map((image) => {
             const imageSrc = resolvedImages[image.id] || image.path;
+            const extension = image.path.split(".").pop()?.toLowerCase();
+            const mediaType = getMediaTypeFromExtension(extension) || "unknown";
             const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
             const showFallback = Boolean(thumbnailFailures[image.id] || image.missingFile);
 
@@ -353,8 +450,28 @@ export function MediaTab({ content, basePath, onNotify }) {
                     <ImageOff size={18} />
                     <span>Preview unavailable</span>
                   </div>
-                ) : (
+                ) : mediaType === "image" ? (
                   <img src={imageSrc} alt={image.altText} onError={() => markThumbnailFailed(image.id)} />
+                ) : mediaType === "video" ? (
+                  <video muted preload="metadata" onError={() => markThumbnailFailed(image.id)}>
+                    <source src={imageSrc} />
+                  </video>
+                ) : mediaType === "audio" ? (
+                  <div className="media-fallback">
+                    <span>🎵 Audio</span>
+                  </div>
+                ) : mediaType === "pdf" ? (
+                  <div className="media-fallback">
+                    <span>📄 PDF</span>
+                  </div>
+                ) : mediaType === "document" ? (
+                  <div className="media-fallback">
+                    <span>📃 Document</span>
+                  </div>
+                ) : (
+                  <div className="media-fallback">
+                    <span>📎 File</span>
+                  </div>
                 )}
               </div>
               <div className="media-info">
@@ -376,7 +493,7 @@ export function MediaTab({ content, basePath, onNotify }) {
                     className="small-button icon-only"
                     onClick={() => openReplacePicker(image.path)}
                     disabled={busy}
-                    title="Update image"
+                    title="Update media"
                   >
                     <Upload size={14} />
                   </button>
@@ -385,7 +502,7 @@ export function MediaTab({ content, basePath, onNotify }) {
                       className="small-button danger icon-only"
                       onClick={() => handleDeleteImage(image.path)}
                       disabled={busy}
-                      title="Delete image"
+                      title="Delete media"
                     >
                       <Trash2 size={14} />
                     </button>

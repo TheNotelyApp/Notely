@@ -17,8 +17,8 @@ import {
   FileText,
   SpellCheck,
 } from "lucide-react";
-import { applySnippet, createImageMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
-import { insertImageFromFile } from "../services/imageService";
+import { applySnippet, createImageMarkdown, createMediaMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
+import { insertMediaFromFile } from "../services/imageService";
 import { listDocuments, listImages } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 
@@ -170,23 +170,18 @@ export function MarkdownToolbar({
     };
   }, [showDocLinker, showImageLinker, showMermaidBuilder, showTableBuilder, showValidationPanel, showWebLinker]);
 
-  const handleImageSelect = async (event) => {
-    console.log("Image file selected:", event.target.files);
+  const handleMediaSelect = async (event) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      console.warn("No file selected");
-      return;
-    }
+    if (!file) return;
 
     try {
-      const { imagePath, altText } = await insertImageFromFile(file);
-      const markdown = createImageMarkdown(altText, imagePath);
-      console.log("Inserting markdown:", markdown);
+      const { mediaPath, altText } = await insertMediaFromFile(file);
+      const markdown = createMediaMarkdown(altText, mediaPath);
       insertTextAtCursor(value, onChange, markdown, textareaRef);
-      onNotify?.("Image inserted.", "success");
+      onNotify?.("Media inserted.", "success");
     } catch (error) {
-      console.error("Image insertion failed:", error);
-      onNotify?.(error?.message || "Failed to insert image.", "error");
+      console.error("Media insertion failed:", error);
+      onNotify?.(error?.message || "Failed to insert media.", "error");
     } finally {
       event.target.value = "";
     }
@@ -502,10 +497,10 @@ export function MarkdownToolbar({
       <button onClick={openDocLinker} title="Link to another note">
         <FileText size={18} />
       </button>
-      <button onClick={() => imageInputRef.current?.click()} title="Insert image from file">
+      <button onClick={() => imageInputRef.current?.click()} title="Insert media from file">
         <ImagePlus size={18} />
       </button>
-      <button onClick={openImageLinker} title="Insert image from existing">
+      <button onClick={openImageLinker} title="Insert media from existing">
         <Link size={18} />
       </button>
       <button onClick={() => setShowMermaidBuilder((open) => !open)} title="Mermaid Builder">
@@ -871,8 +866,8 @@ export function MarkdownToolbar({
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/*"
-        onChange={handleImageSelect}
+        accept="image/*,video/*,audio/*,.pdf"
+        onChange={handleMediaSelect}
         hidden
       />
     </div>

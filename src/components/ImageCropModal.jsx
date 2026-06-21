@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { rotateImage } from "../utils/imageProcessingUtils";
 import "./ImageCropModal.css";
 
 const ASPECT_PRESETS = [
@@ -149,14 +150,22 @@ export function ImageCropModal({
   const interactionRef = useRef(null);
   const [selection, setSelection] = useState(null);
   const [aspectPreset, setAspectPreset] = useState("free");
+  const [workingImageSrc, setWorkingImageSrc] = useState("");
+  const [rotationAngle, setRotationAngle] = useState(0);
+  const [rotating, setRotating] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setSelection(null);
       setAspectPreset("free");
+      setRotationAngle(0);
+      setWorkingImageSrc("");
       interactionRef.current = null;
       return;
     }
+
+    setWorkingImageSrc(imageSrc || "");
+    setRotationAngle(0);
 
     const focusTimer = window.setTimeout(() => {
       closeButtonRef.current?.focus();
@@ -165,7 +174,7 @@ export function ImageCropModal({
     return () => {
       window.clearTimeout(focusTimer);
     };
-  }, [open, onClose]);
+  }, [open, imageSrc, onClose]);
 
   const activeAspectRatio = ASPECT_RATIO_MAP[aspectPreset] || null;
 
@@ -254,7 +263,7 @@ export function ImageCropModal({
   };
 
   const handleSave = async () => {
-    if (!imageRef.current || !hasSelection || saving) return;
+    if (!imageRef.current || !hasSelection || saving || rotating) return;
     const image = imageRef.current;
     const naturalWidth = image.naturalWidth || image.width;
     const naturalHeight = image.naturalHeight || image.height;
@@ -283,6 +292,20 @@ export function ImageCropModal({
     const nextRatio = ASPECT_RATIO_MAP[nextPreset] || null;
     if (nextRatio && selection) {
       setSelection((current) => fitRectToAspect(current, nextRatio));
+    }
+  };
+
+  const handleRotate = async () => {
+    if (!workingImageSrc || saving || rotating) return;
+
+    setRotating(true);
+    try {
+      const rotatedDataUrl = await rotateImage(workingImageSrc, 90);
+      setWorkingImageSrc(rotatedDataUrl);
+      setRotationAngle((current) => (current + 90) % 360);
+      setSelection(null);
+    } finally {
+      setRotating(false);
     }
   };
 
@@ -358,12 +381,12 @@ export function ImageCropModal({
   };
 
   return (
-    <div className="image-crop-modal-backdrop" role="dialog" aria-modal="true" aria-label="Crop image">
+    <div className="image-crop-modal-backdrop" role="dialog" aria-modal="true" aria-label="Edit image">
       <div className="image-crop-modal" ref={modalRef} onKeyDown={handleModalKeyDown}>
         <div className="image-crop-header">
           <div>
-            <h3>Crop Image</h3>
-            <p>{imageLabel || "Draw a rectangle to crop."} Use arrows to move, Alt+arrows to resize.</p>
+            <h3>Edit Image</h3>
+            <p>{imageLabel || "Draw a rectangle to edit."} Use arrows to move, Alt+arrows to resize.</p>
           </div>
           <button ref={closeButtonRef} type="button" className="small-button" onClick={onClose} disabled={saving}>
             Close
@@ -378,7 +401,7 @@ export function ImageCropModal({
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           >
-            <img ref={imageRef} src={imageSrc} alt={imageLabel || "Image to crop"} draggable={false} />
+            <img ref={imageRef} src={workingImageSrc || imageSrc} alt={imageLabel || "Image to edit"} draggable={false} />
             {selection ? (
               <div
                 className="image-crop-selection"
@@ -400,7 +423,9 @@ export function ImageCropModal({
         </div>
 
         <div className="image-crop-footer">
-          <p className="image-crop-hint">Left click and drag over the image to select the crop area.</p>
+          <p className="image-crop-hint">
+            Left click and drag to select an area. Rotation: {rotationAngle}deg
+          </p>
           <div className="image-crop-actions">
             <label className="image-crop-aspect-label" htmlFor="crop-aspect-preset">Aspect</label>
             <select
@@ -408,7 +433,7 @@ export function ImageCropModal({
               className="image-crop-aspect-select"
               value={aspectPreset}
               onChange={handleAspectPresetChange}
-              disabled={saving}
+              disabled={saving || rotating}
             >
               {ASPECT_PRESETS.map((preset) => (
                 <option key={preset.value} value={preset.value}>{preset.label}</option>
@@ -417,8 +442,16 @@ export function ImageCropModal({
             <button
               type="button"
               className="small-button"
+              onClick={handleRotate}
+              disabled={saving || rotating}
+            >
+              {rotating ? "Rotating..." : "Rotate 90deg"}
+            </button>
+            <button
+              type="button"
+              className="small-button"
               onClick={() => setSelection(null)}
-              disabled={saving || !selection}
+              disabled={saving || rotating || !selection}
             >
               Reset
             </button>
@@ -426,9 +459,9 @@ export function ImageCropModal({
               type="button"
               className="small-button"
               onClick={handleSave}
-              disabled={!hasSelection || saving}
+              disabled={!hasSelection || saving || rotating}
             >
-              {saving ? "Saving..." : "Save Crop"}
+              {saving ? "Saving..." : "Save Edit"}
             </button>
           </div>
         </div>

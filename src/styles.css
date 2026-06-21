@@ -3259,6 +3259,12 @@ button {
   grid-template-columns: minmax(0, 50%) 8px minmax(0, 50%);
 }
 
+.split-pane-with-media {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+}
+
 .split-resizer {
   position: relative;
   cursor: col-resize;
@@ -3282,6 +3288,26 @@ button {
 .split-resizer:hover,
 .split-resizer:active {
   background: linear-gradient(180deg, #e4ece9 0%, #d8e2de 100%);
+}
+
+.split-resizer-horizontal {
+  position: relative;
+  cursor: row-resize;
+  background: linear-gradient(90deg, #eef2f0 0%, #e2e8e5 100%);
+  border-top: 1px solid #d9dedb;
+  border-bottom: 1px solid #d9dedb;
+}
+
+.split-resizer-horizontal::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 3px;
+  width: 42px;
+  border-radius: 999px;
+  background: #9cb0aa;
+  transform: translate(-50%, -50%);
 }
 
 .preview {
