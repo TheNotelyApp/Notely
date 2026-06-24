@@ -317,11 +317,21 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const menuRef = useRef(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [activeLine, setActiveLine] = useState(1);
+  const [docLength, setDocLength] = useState(String(value || "").length);
 
-  const validationDecorations = useMemo(() => buildDecorationSet(value, validationIssues), [value, validationIssues]);
+  const valueLength = String(value || "").length;
+  const decorationsSynced = docLength === valueLength;
+
+  const validationDecorations = useMemo(() => {
+    if (!decorationsSynced) return Decoration.none;
+    return buildDecorationSet(value, validationIssues);
+  }, [decorationsSynced, value, validationIssues]);
   const ghostSuggestionDecorations = useMemo(
-    () => buildGhostSuggestionDecorations(ghostSuggestion, onAcceptInlineGhost, onRejectInlineGhost, String(value || "").length),
-    [ghostSuggestion, onAcceptInlineGhost, onRejectInlineGhost, value]
+    () => {
+      if (!decorationsSynced) return Decoration.none;
+      return buildGhostSuggestionDecorations(ghostSuggestion, onAcceptInlineGhost, onRejectInlineGhost, valueLength);
+    },
+    [decorationsSynced, ghostSuggestion, onAcceptInlineGhost, onRejectInlineGhost, valueLength]
   );
 
   useEffect(() => {
@@ -504,12 +514,14 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         extensions={editorExtensions}
         onCreateEditor={(view) => {
           viewRef.current = view;
+          setDocLength(view.state.doc.length);
           if (textareaRef) {
             textareaRef.current = createEditorAdapter(view);
           }
           onEditorReady?.();
         }}
         onUpdate={(update) => {
+          setDocLength(update.state.doc.length);
           const position = update.state.selection.main.head;
           const { line } = getLineColumnFromIndex(update.state.doc.toString(), position);
           setActiveLine(line);
