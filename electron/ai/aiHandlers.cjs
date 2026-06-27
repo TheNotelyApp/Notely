@@ -10,8 +10,8 @@ const path = require('path');
 let IPC_EVENTS, AIQueryRequest, AIQueryResponse;
 
 try {
-  const distProtocolPath = path.join(__dirname, '..', 'dist', 'ai', 'utils', 'ipcProtocol.js');
-  const srcProtocolPath = path.join(__dirname, '..', 'src', 'ai', 'utils', 'ipcProtocol.js');
+  const distProtocolPath = path.join(__dirname, '..', '..', 'dist', 'ai', 'utils', 'ipcProtocol.js');
+  const srcProtocolPath = path.join(__dirname, '..', '..', 'src', 'ai', 'utils', 'ipcProtocol.js');
   const ipcProtocolPath = fs.existsSync(distProtocolPath) ? distProtocolPath : srcProtocolPath;
   console.log('[AI] Attempting to load ipcProtocol from:', ipcProtocolPath);
   ({ IPC_EVENTS, AIQueryRequest, AIQueryResponse } = require(ipcProtocolPath));
@@ -351,7 +351,7 @@ async function handleGetAPIKey(event, payload) {
   try {
     const provider = assertProvider(payload?.provider);
 
-    const AIConfig = require('../src/ai/utils/AIConfig');
+    const AIConfig = require('../../src/ai/utils/AIConfig');
     const config = new AIConfig();
     const apiKey = config.getAPIKey(provider);
 
@@ -367,7 +367,7 @@ async function handleGetAPIKey(event, payload) {
  */
 async function handleGetPreferences(_event, _payload) {
   try {
-    const AIConfig = require('../src/ai/utils/AIConfig');
+    const AIConfig = require('../../src/ai/utils/AIConfig');
     const config = new AIConfig();
     const prefs = config.loadPreferences();
     return new AIQueryResponse(true, prefs);
@@ -386,7 +386,7 @@ async function handleSetPreferences(event, payload) {
     if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
       throw new Error('Invalid preferences payload.');
     }
-    const AIConfig = require('../src/ai/utils/AIConfig');
+    const AIConfig = require('../../src/ai/utils/AIConfig');
     const config = new AIConfig();
     config.savePreferences(preferences);
     return new AIQueryResponse(true, { message: 'Preferences saved' });
@@ -406,7 +406,7 @@ async function handleTestConnection(event, payload) {
     }
 
     const providerName = assertProvider(payload?.provider || 'gemini');
-    const AIConfig = require('../src/ai/utils/AIConfig');
+    const AIConfig = require('../../src/ai/utils/AIConfig');
     const config = new AIConfig();
     const apiKey = config.getAPIKey(providerName);
 
