@@ -3,7 +3,7 @@
  * Handles communication between React frontend and AI agent backend
  */
 
-const { ipcMain } = require('electron');
+const { ipcMain, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -52,11 +52,88 @@ let aiAgent = null;
 let aiInitialized = false;
 let handlersRegistered = false;
 
+// --- Input validation & sender trust guards -------------------------------
+
+const MAX_QUERY_LENGTH = 8000;
+const MAX_CONTEXT_BYTES = 200000;
+const MAX_API_KEY_LENGTH = 512;
+const MIN_API_KEY_LENGTH = 8;
+const ALLOWED_PROVIDERS = new Set(['gemini']);
+
+/**
+ * Only accept IPC originating from a top-level application BrowserWindow frame.
+ * Rejects calls from subframes / detached / unknown senders.
+ */
+function isTrustedSender(event) {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return false;
+    }
+    const frame = event.senderFrame;
+    // A top frame has no parent; reject any embedded frame.
+    if (frame && frame.parent) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function assertProvider(provider) {
+  const name = String(provider || '').trim().toLowerCase();
+  if (!ALLOWED_PROVIDERS.has(name)) {
+    throw new Error('Unsupported AI provider.');
+  }
+  return name;
+}
+
+function assertApiKey(apiKey) {
+  if (typeof apiKey !== 'string') {
+    throw new Error('Invalid API key.');
+  }
+  const trimmed = apiKey.trim();
+  if (trimmed.length < MIN_API_KEY_LENGTH || trimmed.length > MAX_API_KEY_LENGTH) {
+    throw new Error('Invalid API key length.');
+  }
+  return trimmed;
+}
+
+function sanitizeQueryPayload(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+  const query = typeof source.query === 'string' ? source.query : '';
+  if (!query.trim()) {
+    throw new Error('Query must be a non-empty string.');
+  }
+  if (query.length > MAX_QUERY_LENGTH) {
+    throw new Error('Query is too long.');
+  }
+
+  let context = source.context && typeof source.context === 'object' ? source.context : {};
+  try {
+    if (JSON.stringify(context).length > MAX_CONTEXT_BYTES) {
+      throw new Error('Context payload is too large.');
+    }
+  } catch {
+    // Non-serializable context is dropped rather than forwarded.
+    context = {};
+  }
+
+  return { query, context };
+}
+
 function registerHandler(channel, handler) {
   if (!channel || typeof channel !== 'string') {
     throw new Error(`Invalid AI IPC channel: ${channel}`);
   }
-  ipcMain.handle(channel, handler);
+  ipcMain.handle(channel, async (event, payload) => {
+    if (!isTrustedSender(event)) {
+      console.warn(`[AI IPC] Rejected untrusted sender on channel: ${channel}`);
+      return new AIQueryResponse(false, null, 'Untrusted IPC sender rejected.');
+    }
+    return handler(event, payload);
+  });
 }
 
 /**
@@ -138,7 +215,8 @@ async function handleQuery(event, payload) {
       throw new Error('AI agent not initialized');
     }
 
-    const request = new AIQueryRequest(payload.query, payload.context);
+    const { query, context } = sanitizeQueryPayload(payload);
+    const request = new AIQueryRequest(query, context);
     const result = await aiAgent.query(request.query, request.context);
 
     return new AIQueryResponse(result.success, result);
@@ -221,11 +299,8 @@ async function handleDetectPatterns(event, payload) {
  */
 async function handleSetAPIKey(event, payload) {
   try {
-    const { provider, apiKey } = payload;
-
-    if (!provider || !apiKey) {
-      throw new Error('Provider and API key required');
-    }
+    const provider = assertProvider(payload?.provider);
+    const apiKey = assertApiKey(payload?.apiKey);
 
     // Store API key securely using Electron's safeStorage
     const { app, safeStorage } = require('electron');
@@ -274,11 +349,7 @@ async function handleSetAPIKey(event, payload) {
  */
 async function handleGetAPIKey(event, payload) {
   try {
-    const { provider } = payload;
-
-    if (!provider) {
-      throw new Error('Provider required');
-    }
+    const provider = assertProvider(payload?.provider);
 
     const AIConfig = require('../src/ai/utils/AIConfig');
     const config = new AIConfig();
@@ -311,9 +382,13 @@ async function handleGetPreferences(event, payload) {
  */
 async function handleSetPreferences(event, payload) {
   try {
+    const preferences = payload?.preferences;
+    if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
+      throw new Error('Invalid preferences payload.');
+    }
     const AIConfig = require('../src/ai/utils/AIConfig');
     const config = new AIConfig();
-    config.savePreferences(payload.preferences);
+    config.savePreferences(preferences);
     return new AIQueryResponse(true, { message: 'Preferences saved' });
   } catch (error) {
     console.error('[AI IPC] Set preferences failed:', error);
@@ -330,7 +405,7 @@ async function handleTestConnection(event, payload) {
       throw new Error('AI agent not initialized');
     }
 
-    const providerName = String(payload?.provider || 'gemini');
+    const providerName = assertProvider(payload?.provider || 'gemini');
     const AIConfig = require('../src/ai/utils/AIConfig');
     const config = new AIConfig();
     const apiKey = config.getAPIKey(providerName);

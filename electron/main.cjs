@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
@@ -198,9 +198,27 @@ function hashContent(content) {
 }
 
 function filePathWithin(rootDir, targetPath) {
-  const normalizedRoot = path.resolve(rootDir).toLowerCase();
-  const normalizedTarget = path.resolve(targetPath).toLowerCase();
-  return normalizedTarget.startsWith(normalizedRoot);
+  if (!rootDir || !targetPath) {
+    return false;
+  }
+
+  const resolvedRoot = path.resolve(rootDir);
+  const resolvedTarget = path.resolve(targetPath);
+
+  // Same path is considered "within".
+  if (resolvedRoot === resolvedTarget) {
+    return true;
+  }
+
+  // Use path.relative so confinement is evaluated on path segment boundaries.
+  // A sibling like `<root>-evil` produces a relative path starting with `..`,
+  // which a naive startsWith() prefix check would incorrectly accept.
+  const relative = path.relative(resolvedRoot, resolvedTarget);
+  if (!relative) {
+    return true;
+  }
+
+  return !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 function readP2PStatusSnapshot() {
@@ -3162,6 +3180,90 @@ function buildAppMenu(win, context = {}) {
   ]);
 }
 
+function buildContentSecurityPolicy() {
+  const isDev = Boolean(rendererUrl);
+
+  // In dev, Vite + React Fast Refresh require inline/eval scripts and a
+  // websocket connection for HMR. Production locks scripts down to 'self'.
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self'";
+
+  const connectSrc = isDev
+    ? "connect-src 'self' https://api.languagetool.org ws: http://127.0.0.1:* http://localhost:*"
+    : "connect-src 'self' https://api.languagetool.org";
+
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    // CodeMirror, Mermaid and inline positioning styles require inline styles.
+    "style-src 'self' 'unsafe-inline'",
+    // Note images and media are resolved to data:/blob: URLs, plus local files
+    // for PDF export rendering.
+    "img-src 'self' data: blob: file:",
+    "media-src 'self' data: blob: file:",
+    "font-src 'self' data:",
+    connectSrc,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'none'",
+    "frame-src 'none'"
+  ].join("; ");
+}
+
+function applyContentSecurityPolicy() {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = { ...details.responseHeaders };
+    // Strip any incoming CSP header to avoid duplicate/conflicting policies.
+    for (const headerName of Object.keys(responseHeaders)) {
+      if (headerName.toLowerCase() === "content-security-policy") {
+        delete responseHeaders[headerName];
+      }
+    }
+    responseHeaders["Content-Security-Policy"] = [buildContentSecurityPolicy()];
+    callback({ responseHeaders });
+  });
+}
+
+function isAppOriginUrl(targetUrl) {
+  try {
+    const parsed = new URL(targetUrl);
+    if (rendererUrl) {
+      return parsed.origin === new URL(rendererUrl).origin;
+    }
+    return parsed.protocol === "file:";
+  } catch {
+    return false;
+  }
+}
+
+function hardenWebContents(webContents) {
+  // Deny in-app window creation; route external http(s) links to the OS browser.
+  webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch(() => {});
+    }
+    return { action: "deny" };
+  });
+
+  // Block navigation away from the app origin (e.g. injected/clicked links).
+  webContents.on("will-navigate", (event, url) => {
+    if (isAppOriginUrl(url)) {
+      return;
+    }
+    event.preventDefault();
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch(() => {});
+    }
+  });
+
+  // Refuse attachment of <webview> elements outright.
+  webContents.on("will-attach-webview", (event) => {
+    event.preventDefault();
+  });
+}
+
 function createWindow() {
   const iconCandidates = [
     path.join(process.resourcesPath || "", "icon.ico"),
@@ -3184,9 +3286,13 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true,
+      webviewTag: false
     }
   });
+
+  hardenWebContents(win.webContents);
 
   let hasShown = false;
 
@@ -3260,6 +3366,7 @@ if (!gotSingleInstanceLock) {
 }
 
 app.whenReady().then(async () => {
+  applyContentSecurityPolicy();
   applyNotesRoot(resolveInitialNotesRoot());
   await initializeAIForWorkspace();
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -3473,98 +3580,6 @@ ipcMain.handle("terminal:kill", (event, payload) => {
   getOwnedTerminalSession(event, sessionId);
   disposeTerminalSession(sessionId);
   return true;
-});
-
-ipcMain.handle("terminal:run", async (_event, payload) => {
-  const command = String(payload?.command || "").trim();
-  if (!command) {
-    throw new Error("Command is required.");
-  }
-  if (command.length > 2000) {
-    throw new Error("Command is too long.");
-  }
-
-  const requestedCwd = String(payload?.cwd || "").trim();
-  const defaultCwd = getActiveProject()?.rootPath || notesRoot;
-  const resolvedCwd = path.resolve(requestedCwd || defaultCwd);
-
-  if (!filePathWithin(notesRoot, resolvedCwd)) {
-    throw new Error("Invalid terminal path.");
-  }
-
-  const OUTPUT_LIMIT = 120000;
-
-  return await new Promise((resolve) => {
-    let settled = false;
-    let stdout = "";
-    let stderr = "";
-
-    const child = spawn(command, {
-      cwd: resolvedCwd,
-      shell: true,
-      windowsHide: true,
-      env: { ...process.env, FORCE_COLOR: "0" }
-    });
-
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      try {
-        child.kill();
-      } catch {
-        // Ignore termination failures.
-      }
-      resolve({
-        stdout,
-        stderr,
-        exitCode: null,
-        timedOut: true,
-        cwd: resolvedCwd
-      });
-    }, 15000);
-
-    child.stdout.on("data", (chunk) => {
-      if (settled) return;
-      stdout += String(chunk || "");
-      if (stdout.length > OUTPUT_LIMIT) {
-        stdout = stdout.slice(-OUTPUT_LIMIT);
-      }
-    });
-
-    child.stderr.on("data", (chunk) => {
-      if (settled) return;
-      stderr += String(chunk || "");
-      if (stderr.length > OUTPUT_LIMIT) {
-        stderr = stderr.slice(-OUTPUT_LIMIT);
-      }
-    });
-
-    child.on("error", (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({
-        stdout,
-        stderr: `${stderr}\n${error?.message || "Unable to run command."}`.trim(),
-        exitCode: 1,
-        timedOut: false,
-        cwd: resolvedCwd
-      });
-    });
-
-    child.on("close", (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({
-        stdout,
-        stderr,
-        exitCode: Number.isInteger(code) ? code : null,
-        timedOut: false,
-        cwd: resolvedCwd
-      });
-    });
-  });
 });
 
 ipcMain.handle("projects:list", () => listProjectsState());
@@ -4063,7 +4078,11 @@ ipcMain.handle("documents:download-pdf", async (_event, payload) => {
       height: 1600,
       backgroundColor: "#ffffff",
       webPreferences: {
-        backgroundThrottling: false
+        backgroundThrottling: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webviewTag: false
       }
     });
 
@@ -4145,8 +4164,7 @@ ipcMain.handle("images:save", (_event, payload) => {
   let savedToWorkspace = saveToWorkspace;
   if (!saveToWorkspace && basePath && typeof basePath === "string") {
     const resolvedBase = path.resolve(basePath);
-    const normalizedNotesRoot = path.resolve(notesRoot).toLowerCase();
-    if (resolvedBase.toLowerCase().startsWith(normalizedNotesRoot)) {
+    if (filePathWithin(notesRoot, resolvedBase)) {
       imagesDir = path.join(path.dirname(resolvedBase), "images");
     }
   }
@@ -4187,9 +4205,8 @@ ipcMain.handle("images:list", (_event, payload) => {
     throw new Error("Invalid base path.");
   }
 
-  const resolvedBasePath = path.resolve(basePath).toLowerCase();
-  const normalizedNotesRoot = path.resolve(notesRoot).toLowerCase();
-  if (!resolvedBasePath.startsWith(normalizedNotesRoot)) {
+  const resolvedBasePath = path.resolve(basePath);
+  if (!filePathWithin(notesRoot, resolvedBasePath)) {
     throw new Error("Invalid document path.");
   }
 
@@ -4365,9 +4382,7 @@ function resolveImageAssetPath(basePath, assetPath) {
     }) || candidates[0];
   }
 
-  const normalizedNotesRoot = path.resolve(notesRoot).toLowerCase();
-  const normalizedResolvedPath = path.resolve(resolvedAssetPath).toLowerCase();
-  if (!normalizedResolvedPath.startsWith(normalizedNotesRoot)) {
+  if (!filePathWithin(notesRoot, resolvedAssetPath)) {
     return null;
   }
 

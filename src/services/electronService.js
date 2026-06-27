@@ -468,14 +468,6 @@ export async function renameImage(basePath, assetPath, nextFileName) {
   return api.renameImage({ basePath, assetPath, nextFileName });
 }
 
-export async function runTerminalCommand(command, cwd) {
-  const api = getNotesApi();
-  if (typeof api.runTerminalCommand !== "function") {
-    throw new Error("Embedded terminal is unavailable. Please restart the app.");
-  }
-  return api.runTerminalCommand({ command, cwd });
-}
-
 export async function createTerminalSession(cwd) {
   const api = getNotesApi();
   if (typeof api.createTerminalSession !== "function") {
