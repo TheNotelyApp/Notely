@@ -6,6 +6,7 @@ import { MarkdownValidationBanner } from "./MarkdownValidationBanner";
 import { WebViewPreview } from "./WebViewPreview";
 import { MediaPreviewPane } from "./MediaPreviewPane";
 import { useMarkdownValidation } from "../hooks/useMarkdownValidation";
+import { Link2, Unlink } from "lucide-react";
 
 export function EditorPane({
   value,
@@ -35,6 +36,7 @@ export function EditorPane({
   const [splitRatio, setSplitRatio] = useState(50);
   const [editorReadyTick, setEditorReadyTick] = useState(0);
   const [selectedMediaPreview, setSelectedMediaPreview] = useState(null);
+  const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const deferredValue = useDeferredValue(value);
   // Disable spell check in split view by default to reduce validation overhead during scrolling
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(mode !== "split");
@@ -72,7 +74,7 @@ export function EditorPane({
   };
 
   useEffect(() => {
-    if (mode !== "split") return undefined;
+    if (mode !== "split" || !scrollSyncEnabled) return undefined;
 
     const editorElement = textareaRef?.current;
     const previewElement = previewRef.current;
@@ -243,7 +245,7 @@ export function EditorPane({
       editorElement.removeEventListener("scroll", handleEditorScroll);
       previewElement.removeEventListener("scroll", handlePreviewScroll);
     };
-  }, [mode, textareaRef, editorReadyTick]);
+  }, [mode, textareaRef, editorReadyTick, scrollSyncEnabled]);
 
   const startSplitResize = (event) => {
     const pane = splitPaneRef.current;
@@ -296,13 +298,38 @@ export function EditorPane({
 
   if (mode === "preview") {
     return (
-      <MarkdownPreview
-        content={previewContent}
-        basePath={basePath}
-        onNotify={onNotify}
-        onContentChange={onChange}
-        showOriginalImages={showOriginalImages}
-      />
+      <div
+        className="preview-with-media"
+        style={{
+          display: "grid",
+          gridTemplateRows: selectedMediaPreview ? "1fr 8px 300px" : "1fr",
+          height: "100%",
+          minHeight: 0,
+        }}
+      >
+        <MarkdownPreview
+          content={previewContent}
+          basePath={basePath}
+          onNotify={onNotify}
+          onContentChange={onChange}
+          onMediaClick={setSelectedMediaPreview}
+          showOriginalImages={showOriginalImages}
+        />
+        {selectedMediaPreview && (
+          <>
+            <div className="split-resizer-horizontal" style={{ gridRow: 2 }} />
+            <div style={{ gridRow: 3, minHeight: 0, overflow: "hidden" }}>
+              <MediaPreviewPane
+                mediaPath={selectedMediaPreview.path}
+                mediaType={selectedMediaPreview.type}
+                basePath={basePath}
+                showOriginalImages={showOriginalImages}
+                onClose={() => setSelectedMediaPreview(null)}
+              />
+            </div>
+          </>
+        )}
+      </div>
     );
   }
 
@@ -359,6 +386,16 @@ export function EditorPane({
         <section className="pane-block">
           <div className="pane-title">
             <span className="pane-title-label">Preview</span>
+            <button
+              className={`split-sync-toggle ${scrollSyncEnabled ? "active" : ""}`}
+              type="button"
+              onClick={() => setScrollSyncEnabled((enabled) => !enabled)}
+              title={scrollSyncEnabled ? "Scroll sync is on" : "Scroll sync is off"}
+              aria-pressed={scrollSyncEnabled}
+            >
+              {scrollSyncEnabled ? <Link2 size={13} /> : <Unlink size={13} />}
+              <span>{scrollSyncEnabled ? "Sync scroll" : "Independent scroll"}</span>
+            </button>
           </div>
           {showToolbar ? <div className="pane-toolbar-spacer" aria-hidden="true" /> : null}
           <MarkdownPreview

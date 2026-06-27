@@ -688,6 +688,16 @@ export default function App() {
     }
   }
 
+  async function handleOpenReferencedDocument(filePath) {
+    if (!filePath) return;
+    if (current && dirty && current.filePath !== filePath) {
+      const confirmed = window.confirm("You have unsaved changes. Open the referenced note and discard unsaved changes?");
+      if (!confirmed) return;
+    }
+    await openDocument(filePath);
+    setLandingAssetsOpen(false);
+  }
+
   async function handleLandingNavigateUp() {
     const activeRoot = activeProject?.rootPath;
     const currentPath = landingFolderPath || activeRoot;
@@ -1686,6 +1696,7 @@ export default function App() {
                     content=""
                     basePath={`${(landingFolderPath || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
                     onNotify={notify}
+                    onOpenDocument={handleOpenReferencedDocument}
                   />
                 </div>
               </div>
@@ -1728,6 +1739,7 @@ export default function App() {
             setAiPanelVisible(true);
           }}
           onOpenAISettings={() => setAiSettingsOpen(true)}
+          onOpenDocument={handleOpenReferencedDocument}
           aiSidebar={aiPanelVisible && isAIConfigured ? (
             <AIChatPanel
               onHide={() => setAiPanelVisible(false)}

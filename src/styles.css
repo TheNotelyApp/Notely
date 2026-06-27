@@ -1455,6 +1455,23 @@ button {
   box-shadow: 0 10px 24px rgba(23, 35, 38, 0.06);
 }
 
+.document-thumb-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 10px;
+  min-height: 42px;
+}
+
+.document-thumb-strip img {
+  width: 100%;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid #d8e4df;
+  border-radius: 6px;
+  background: #f3f7f5;
+}
+
 .document-card:hover {
   border-color: #1a3a3e;
 }
@@ -1678,7 +1695,7 @@ button {
 
 .metadata-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -1717,6 +1734,27 @@ button {
   font-size: 11px;
   line-height: 1.1;
   overflow-wrap: anywhere;
+}
+
+.metadata-card-input input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #cfd8d4;
+  background: transparent;
+  color: #172326;
+  font-size: 11px;
+  line-height: 1.1;
+  padding: 1px 0 2px;
+  outline: none;
+}
+
+.metadata-card-input input:focus {
+  border-bottom-color: #1a3a3e;
+}
+
+.metadata-card-input input::placeholder {
+  color: #9a9188;
 }
 
 .workspace {
@@ -2718,6 +2756,32 @@ button {
   white-space: nowrap;
 }
 
+.split-sync-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  border: 1px solid #cfd9d5;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #56666b;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.split-sync-toggle:hover {
+  border-color: #9fb2ad;
+  color: #1a3a3e;
+}
+
+.split-sync-toggle.active {
+  border-color: #9ebdb2;
+  background: #eef7f3;
+  color: #1a5c4b;
+}
+
 .toolbar-label-row .pane-title-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3410,6 +3474,43 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.preview .markdown-image-annotation {
+  position: absolute;
+  z-index: 3;
+  max-width: min(60%, 420px);
+  padding: 6px 9px;
+  border-radius: 4px;
+  background: rgba(10, 23, 27, 0.72);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.preview .markdown-image-annotation.bottom-left {
+  left: 10px;
+  bottom: 38px;
+}
+
+.preview .markdown-image-annotation.bottom-right {
+  right: 10px;
+  bottom: 38px;
+}
+
+.preview .markdown-image-annotation.top-left {
+  left: 10px;
+  top: 10px;
+}
+
+.preview .markdown-image-annotation.top-right {
+  right: 10px;
+  top: 10px;
 }
 
 .preview .markdown-image-frame {

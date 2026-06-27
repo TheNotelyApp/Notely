@@ -15,6 +15,7 @@ import {
   Clock,
   MapPin,
   User,
+  Tag,
   Image,
   ImageOff,
   Images,
@@ -194,6 +195,73 @@ function isTextInputLike(target) {
   return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
 
+function getHeaderField(header, fieldName) {
+  const normalizedField = String(fieldName || "").trim().toLowerCase();
+  const line = String(header || "").split(/\r?\n/).find((item) => {
+    const match = item.match(/^([^:]+):\s*(.*)$/);
+    return match && match[1].trim().toLowerCase() === normalizedField;
+  });
+  return line?.replace(/^[^:]+:\s*/, "") || "";
+}
+
+function setHeaderField(header, fieldName, value) {
+  const normalizedField = String(fieldName || "").trim().toLowerCase();
+  const label = String(fieldName || "").trim();
+  const nextValue = String(value || "").trim();
+  const lines = String(header || "").split(/\r?\n/);
+  let replaced = false;
+  const nextLines = lines.filter((line) => line.trim() || lines.length > 1).map((line) => {
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (match && match[1].trim().toLowerCase() === normalizedField) {
+      replaced = true;
+      return nextValue ? `${label}: ${nextValue}` : "";
+    }
+    return line;
+  }).filter(Boolean);
+
+  if (!replaced && nextValue) {
+    nextLines.push(`${label}: ${nextValue}`);
+  }
+
+  return nextLines.join("\n").trim();
+}
+
+function normalizeTagInput(value) {
+  return String(value || "")
+    .split(/[,#]/)
+    .map((tag) => tag.trim().replace(/^#+/, ""))
+    .filter(Boolean)
+    .filter((tag, index, tags) => tags.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index)
+    .join(", ");
+}
+
+function parseVersionDocumentContent(value, fallbackDocument = {}) {
+  const lines = String(value || "").split(/\r?\n/);
+  const rawIndex = lines.findIndex((line) => line.trim().toLowerCase() === "# rawnotes");
+  const cleansedIndex = lines.findIndex((line) => line.trim().toLowerCase() === "# cleansed");
+
+  if (rawIndex === -1 && cleansedIndex === -1) {
+    return {
+      header: fallbackDocument.header || "",
+      rawNotes: fallbackDocument.rawNotes || "",
+      cleansed: String(value || "").trim(),
+    };
+  }
+
+  const firstSectionIndex = Math.min(
+    rawIndex === -1 ? Number.POSITIVE_INFINITY : rawIndex,
+    cleansedIndex === -1 ? Number.POSITIVE_INFINITY : cleansedIndex
+  );
+  const header = lines.slice(0, firstSectionIndex).join("\n").trim();
+  const rawEnd = cleansedIndex > rawIndex && rawIndex !== -1 ? cleansedIndex : lines.length;
+
+  return {
+    header: header || fallbackDocument.header || "",
+    rawNotes: rawIndex === -1 ? fallbackDocument.rawNotes || "" : lines.slice(rawIndex + 1, rawEnd).join("\n").trim(),
+    cleansed: cleansedIndex === -1 ? fallbackDocument.cleansed || "" : lines.slice(cleansedIndex + 1).join("\n").trim(),
+  };
+}
+
 export function DocumentDetail({
   document,
   history,
@@ -220,6 +288,7 @@ export function DocumentDetail({
   aiPanelVisible = true,
   onShowAI,
   onOpenAISettings,
+  onOpenDocument,
   aiSidebar = null,
 }) {
   const MAX_EDITOR_HISTORY = 200;
@@ -240,7 +309,7 @@ export function DocumentDetail({
   const [pdfExporting, setPdfExporting] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfExportMode, setPdfExportMode] = useState("formal");
-  const [pdfDownsampleImages, setPdfDownsampleImages] = useState(false);
+  const [pdfQualityPreset, setPdfQualityPreset] = useState("full");
   const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -264,6 +333,7 @@ export function DocumentDetail({
 
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
+  const tagText = getHeaderField(document.header, "Tags");
 
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
@@ -440,6 +510,7 @@ export function DocumentDetail({
 
     if (menuAction.action === "export-pdf") {
       setPdfExportMode("formal");
+      setPdfQualityPreset("full");
       setPdfOptionsOpen(true);
       return;
     }
@@ -509,6 +580,20 @@ export function DocumentDetail({
       setFindQuery(selectedText);
     }
     onNotify?.("Find panel opened.", "info");
+  };
+
+  const handleTagsChange = (event) => {
+    onChange({
+      ...document,
+      header: setHeaderField(document.header, "Tags", event.target.value),
+    });
+  };
+
+  const handleTagsBlur = (event) => {
+    onChange({
+      ...document,
+      header: setHeaderField(document.header, "Tags", normalizeTagInput(event.target.value)),
+    });
   };
 
   const handleManualSave = async () => {
@@ -748,7 +833,7 @@ export function DocumentDetail({
         cleansed: document.cleansed,
         includeRawNotes,
         includeCleansed,
-        downsampleImages: pdfDownsampleImages,
+        pdfQualityPreset,
       });
       if (!result?.canceled) {
         onNotify?.("PDF downloaded.", "success");
@@ -801,6 +886,26 @@ export function DocumentDetail({
   const handleDeleteVersion = async (entry) => {
     const confirmed = window.confirm("Delete this older version? This cannot be undone.");
     if (!confirmed) return;
+  const handleRestoreVersion = async (entry) => {
+    const confirmed = window.confirm("Restore this version into the editor? Review it, then save to keep the restored content.");
+    if (!confirmed) return;
+
+    try {
+      const previous = await readVersion(document.filePath, entry.versionPath);
+      const restored = parseVersionDocumentContent(previous, document);
+      onChange({
+        ...document,
+        header: restored.header,
+        rawNotes: restored.rawNotes,
+        cleansed: restored.cleansed,
+      });
+      setActiveTab("cleansed");
+      setShowHistoryPopover(false);
+      onNotify?.("Version restored to editor. Save to keep it.", "success");
+    } catch (error) {
+      onNotify?.(error?.message || "Unable to restore version.", "error");
+    }
+  };
 
     try {
       await deleteVersion(document.filePath, entry.versionPath);
@@ -892,6 +997,18 @@ export function DocumentDetail({
             <span>Location</span>
             <strong>{document.metadata?.location || "Not captured"}</strong>
           </div>
+          <label className="metadata-card metadata-card-input">
+            <Tag size={16} />
+            <span>Tags</span>
+            <input
+              type="text"
+              value={tagText}
+              onChange={handleTagsChange}
+              onBlur={handleTagsBlur}
+              placeholder="Add tags"
+              aria-label="Note tags"
+            />
+          </label>
         </div>
       ) : null}
 
@@ -1190,6 +1307,15 @@ export function DocumentDetail({
                       </button>
                       <button
                         className="small-button"
+                        onClick={() => handleRestoreVersion(entry)}
+                        title="Restore this version into the editor"
+                        type="button"
+                      >
+                        <RotateCcw size={14} />
+                        Restore
+                      </button>
+                      <button
+                        className="small-button"
                         onClick={() => handleDeleteVersion(entry)}
                         title="Delete this version"
                         type="button"
@@ -1226,7 +1352,15 @@ export function DocumentDetail({
               </button>
             </div>
             <div className="assets-dialog-body">
-              <MediaTab content={mediaContent} basePath={document.filePath} onNotify={onNotify} />
+              <MediaTab
+                content={mediaContent}
+                basePath={document.filePath}
+                onNotify={onNotify}
+                onOpenDocument={async (filePath) => {
+                  setShowMediaManager(false);
+                  await onOpenDocument?.(filePath);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -1253,16 +1387,17 @@ export function DocumentDetail({
                 <option value="both">Both Raw and Formal</option>
               </select>
             </label>
-            <label className="overlay-dialog-checkbox">
-              <input
-                type="checkbox"
-                checked={pdfDownsampleImages}
-                onChange={(event) => setPdfDownsampleImages(event.target.checked)}
-              />
-              <span>
-                <strong>Downsample images</strong>
-                <small>Use cached thumbnails for a smaller PDF. Leave off for original image quality.</small>
-              </span>
+            <label className="overlay-dialog-field">
+              <span>Quality</span>
+              <select
+                value={pdfQualityPreset}
+                onChange={(event) => setPdfQualityPreset(event.target.value)}
+                className="topbar-popover-select"
+              >
+                <option value="full">Full quality</option>
+                <option value="balanced">Balanced size</option>
+                <option value="compact">Compact file</option>
+              </select>
             </label>
             <div className="overlay-dialog-actions">
               <button
