@@ -23,14 +23,14 @@ const {
   encodePathForUrl,
   decodeUrlPath,
   contentTypeForFile
-} = require("./lib/utils.cjs");
-const { buildPdfExportMarkdown, buildPdfStyles } = require("./lib/pdf.cjs");
+} = require("./lib/shared/utils.cjs");
+const { buildPdfExportMarkdown, buildPdfStyles } = require("./lib/media/pdf.cjs");
 const { buildWebsiteHtml } = require("./lib/web/websiteTemplate.cjs");
 const { buildAppMenu } = require("./lib/core/appMenu.cjs");
 const { createWebsiteRenderer } = require("./lib/web/websiteRenderer.cjs");
-const { createImageMedia } = require("./lib/imageMedia.cjs");
-const { createTerminalIpc } = require("./lib/terminalIpc.cjs");
-const { registerCoreIpcHandlers } = require("./lib/coreIpc.cjs");
+const { createImageMedia } = require("./lib/media/imageMedia.cjs");
+const { createTerminalIpc } = require("./lib/ipc/terminalIpc.cjs");
+const { registerCoreIpcHandlers } = require("./lib/ipc/coreIpc.cjs");
 const { registerDocumentIpcHandlers } = require("./lib/documents/documentIpc.cjs");
 const { registerSyncIpcHandlers } = require("./lib/sync/syncIpc.cjs");
 const { createWebPreview } = require("./lib/web/webPreview.cjs");

@@ -1,4 +1,4 @@
-const { escapeHtml } = require("./utils.cjs");
+const { escapeHtml } = require("../shared/utils.cjs");
 
 function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "", scopeLabel = "Project" }) {
   return `<!doctype html>
