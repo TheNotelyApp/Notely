@@ -66,7 +66,19 @@ export function DocumentList({ documents, onOpen, loading, viewMode = "tile" }) 
           </thead>
           <tbody>
             {documents.map((doc) => (
-              <tr key={doc.filePath} onClick={() => onOpen(doc)}>
+              <tr
+                key={doc.filePath}
+                onClick={() => onOpen(doc)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onOpen(doc);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={doc.entryType === "folder" ? `Open folder ${doc.title}` : `Open note ${doc.title}`}
+              >
                 <td>{doc.entryType === "folder" ? `/${doc.title}` : doc.title}</td>
                 <td>{doc.entryType === "folder" ? "Folder" : "Markdown"}</td>
                 <td>
