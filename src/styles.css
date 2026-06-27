@@ -27,9 +27,14 @@ button {
 }
 
 .app-shell {
+  --terminal-status-height: 28px;
+  --app-shell-pad-x: 14px;
+  --app-shell-pad-top: 14px;
+  --app-shell-pad-bottom: 32px;
   min-height: 100vh;
-  padding: 14px;
-  padding-bottom: 44px;
+  height: 100vh;
+  padding: var(--app-shell-pad-top) var(--app-shell-pad-x) var(--app-shell-pad-bottom);
+  overflow: hidden;
 }
 
 .toast-stack {
@@ -1266,7 +1271,7 @@ button {
   left: 0;
   right: 0;
   z-index: 1700;
-  min-height: 28px;
+  min-height: var(--terminal-status-height);
   border-top: 1px solid #1f5057;
   background: linear-gradient(180deg, #1f5057 0%, #173b40 100%);
   color: #ffffff;
@@ -1481,7 +1486,7 @@ button {
 
 .detail-shell {
   display: flex;
-  height: calc(100vh - 28px);
+  height: calc(100vh - var(--app-shell-pad-top) - var(--app-shell-pad-bottom));
   min-height: 0;
   flex-direction: column;
   gap: 8px;
@@ -3603,7 +3608,9 @@ button {
   }
 
   .app-shell {
-    padding: 20px;
+    --app-shell-pad-x: 20px;
+    --app-shell-pad-top: 20px;
+    --app-shell-pad-bottom: 32px;
   }
 }
 
