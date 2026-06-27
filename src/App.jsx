@@ -65,6 +65,7 @@ import {
   normalizePaletteIntent,
   resolveAITarget,
 } from "./utils/aiContext";
+import { useToast } from "./hooks/useToast";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -108,7 +109,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("raw");
   const [mode, setMode] = useState(initialEditorMode);
   const [error, setError] = useState("");
-  const [toasts, setToasts] = useState([]);
+  const { toasts, notify } = useToast();
   const [_projects, setProjects] = useState([]);
   const [activeProject, setActiveProjectState] = useState(null);
   const [newNoteTitle, setNewNoteTitle] = useState("");
@@ -215,14 +216,6 @@ export default function App() {
       setIsAIConfigured(false);
     }
   }
-
-  const notify = (message, type = "info") => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setToasts((currentToasts) => [...currentToasts, { id, message, type }]);
-    window.setTimeout(() => {
-      setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
-    }, 3000);
-  };
 
   function applyProjectState(result) {
     setProjects(result?.projects || []);
@@ -1219,7 +1212,7 @@ export default function App() {
         notify(payload?.error || `Initial sync failed for ${peerId}.`, "error");
       }
     });
-  }, []);
+  }, [notify]);
 
   useEffect(() => {
     refreshAIConfiguration();
