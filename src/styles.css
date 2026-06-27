@@ -3869,3 +3869,12 @@ button {
 .error-boundary-retry:hover {
   background: #095a74;
 }
+
+.lazy-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #5a6b70;
+  font-size: 13px;
+}

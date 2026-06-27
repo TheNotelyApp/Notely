@@ -1,16 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import { ArrowUp, FolderOpen, FolderPlus, Image as ImageIcon, LayoutGrid, NotebookPen, Rows3, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { DocumentDetail } from "./components/DocumentDetail";
-import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { P2PStatusPanel } from "./components/P2PStatusPanel";
 import { WorkspaceActivityPanel } from "./components/WorkspaceActivityPanel";
 import { ConflictResolutionPanel } from "./components/ConflictResolutionPanel";
-import AIChatPanel from "./components/AIChatPanel";
-import AISettings from "./components/AISettings";
-import { MediaTab } from "./components/MediaTab";
+
+// Heavy / rarely-used surfaces are code-split so they don't bloat startup.
+const EmbeddedTerminal = lazy(() =>
+  import("./components/EmbeddedTerminal").then((m) => ({ default: m.EmbeddedTerminal }))
+);
+const MediaTab = lazy(() =>
+  import("./components/MediaTab").then((m) => ({ default: m.MediaTab }))
+);
+const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
+const AISettings = lazy(() => import("./components/AISettings"));
 import {
   aiGetApiKey,
   aiQuery,
@@ -278,6 +284,7 @@ export default function App() {
   });
   const [inlineGhostSuggestion, setInlineGhostSuggestion] = useState(null);
   const aiEditorRef = useRef(null);
+  const loadDocumentsRequestRef = useRef(0);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -328,20 +335,28 @@ export default function App() {
   }
 
   async function loadDocumentsData() {
+    const requestId = ++loadDocumentsRequestRef.current;
     setLoading(true);
     setError("");
     try {
       const projectState = await listProjects();
+      if (loadDocumentsRequestRef.current !== requestId) return;
       applyProjectState(projectState);
       const baseFolder = projectState?.activeProject?.rootPath || "";
       setLandingFolderPath(baseFolder);
-      setDocuments(await listDocuments(baseFolder));
+      const docs = await listDocuments(baseFolder);
+      if (loadDocumentsRequestRef.current !== requestId) return;
+      setDocuments(docs);
       const notesSetting = await getNotesRootSetting();
+      if (loadDocumentsRequestRef.current !== requestId) return;
       setNotesFolderPath(notesSetting?.notesRoot || "");
     } catch (err) {
+      if (loadDocumentsRequestRef.current !== requestId) return;
       setError(err?.message || "Unable to load documents.");
     } finally {
-      setLoading(false);
+      if (loadDocumentsRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }
 
@@ -1693,12 +1708,14 @@ export default function App() {
                   </button>
                 </div>
                 <div className="assets-dialog-body">
-                  <MediaTab
-                    content=""
-                    basePath={`${(landingFolderPath || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
-                    onNotify={notify}
-                    onOpenDocument={handleOpenReferencedDocument}
-                  />
+                  <Suspense fallback={<div className="lazy-loading">Loading media…</div>}>
+                    <MediaTab
+                      content=""
+                      basePath={`${(landingFolderPath || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
+                      onNotify={notify}
+                      onOpenDocument={handleOpenReferencedDocument}
+                    />
+                  </Suspense>
                 </div>
               </div>
             </div>
@@ -1743,18 +1760,20 @@ export default function App() {
           onOpenDocument={handleOpenReferencedDocument}
           aiSidebar={aiPanelVisible && isAIConfigured ? (
             <ErrorBoundary label="AI chat">
-              <AIChatPanel
-                onHide={() => setAiPanelVisible(false)}
-                onClear={handleClearAIChat}
-                onSend={handleAIChatSend}
-                onApply={handleApplyAIResult}
-                isLoading={aiQueryLoading}
-                error={aiQueryError || null}
-                contextSummary={aiContextSummary}
-                intent={aiPaletteIntent}
-                messages={aiChatMessages}
-                noteTitle={current?.title || "Current Note"}
-              />
+              <Suspense fallback={<div className="lazy-loading">Loading AI…</div>}>
+                <AIChatPanel
+                  onHide={() => setAiPanelVisible(false)}
+                  onClear={handleClearAIChat}
+                  onSend={handleAIChatSend}
+                  onApply={handleApplyAIResult}
+                  isLoading={aiQueryLoading}
+                  error={aiQueryError || null}
+                  contextSummary={aiContextSummary}
+                  intent={aiPaletteIntent}
+                  messages={aiChatMessages}
+                  noteTitle={current?.title || "Current Note"}
+                />
+              </Suspense>
             </ErrorBoundary>
           ) : null}
         />
@@ -1763,7 +1782,9 @@ export default function App() {
       {showTerminal ? (
         <div className="terminal-dock open">
           <ErrorBoundary label="Terminal">
-            <EmbeddedTerminal cwd={terminalCwd} onClose={() => setShowTerminal(false)} />
+            <Suspense fallback={<div className="lazy-loading">Loading terminal…</div>}>
+              <EmbeddedTerminal cwd={terminalCwd} onClose={() => setShowTerminal(false)} />
+            </Suspense>
           </ErrorBoundary>
         </div>
       ) : null}
@@ -1933,13 +1954,15 @@ export default function App() {
       ) : null}
 
       {aiSettingsOpen ? (
-        <AISettings
-          isOpen={aiSettingsOpen}
-          onClose={() => {
-            setAiSettingsOpen(false);
-            refreshAIConfiguration();
-          }}
-        />
+        <Suspense fallback={<div className="lazy-loading">Loading settings…</div>}>
+          <AISettings
+            isOpen={aiSettingsOpen}
+            onClose={() => {
+              setAiSettingsOpen(false);
+              refreshAIConfiguration();
+            }}
+          />
+        </Suspense>
       ) : null}
 
       {p2pSyncHelpOpen ? (
