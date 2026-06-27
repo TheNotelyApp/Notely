@@ -10,6 +10,7 @@ import {
   saveImage,
   deleteImage,
   replaceImage,
+  setImageAnnotation,
 } from "../services/electronService";
 import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { formatFileSize } from "../utils/imageProcessingUtils";
@@ -56,7 +57,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
 
       try {
         const [folderPaths, usage] = await Promise.all([
-          listImages(basePath),
+          listImages(basePath, { includeAnnotations: true }),
           getImageUsage(basePath),
         ]);
         if (!cancelled) {
@@ -64,13 +65,21 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
         }
         const linkedByPath = new Map(linkedImages.map((image) => [image.path, image]));
 
-        const merged = folderPaths.map((pathValue) => {
+        const folderRecords = folderPaths.map((entry) => {
+          return typeof entry === "string" ? { path: entry, annotation: null } : entry;
+        });
+        const folderPathValues = folderRecords.map((entry) => entry.path);
+        const annotationByPath = new Map(folderRecords.map((entry) => [entry.path, entry.annotation]));
+
+        const merged = folderRecords.map((record) => {
+          const pathValue = record.path;
           const linked = linkedByPath.get(pathValue);
           const usageEntry = usage?.[pathValue];
           if (linked) {
             return {
               ...linked,
               isLinkedInCurrent: true,
+              annotation: record.annotation || null,
               referenceCount: usageEntry?.referenceCount || 0,
               referencedBy: usageEntry?.documents || [],
             };
@@ -83,17 +92,19 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
             path: pathValue,
             id: pathValue,
             isLinkedInCurrent: false,
+            annotation: record.annotation || null,
             referenceCount: usageEntry?.referenceCount || 0,
             referencedBy: usageEntry?.documents || [],
           };
         });
 
         for (const linked of linkedImages) {
-          if (!folderPaths.includes(linked.path)) {
+          if (!folderPathValues.includes(linked.path)) {
             const usageEntry = usage?.[linked.path];
             merged.push({
               ...linked,
               isLinkedInCurrent: true,
+              annotation: annotationByPath.get(linked.path) || null,
               referenceCount: usageEntry?.referenceCount || 0,
               referencedBy: usageEntry?.documents || [],
               missingFile: true,
@@ -181,10 +192,11 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
           total: summary.total + 1,
           used: summary.used + (referenced ? 1 : 0),
           unused: summary.unused + (referenced ? 0 : 1),
+          annotated: summary.annotated + (String(image.annotation?.text || "").trim() ? 1 : 0),
           size: summary.size + (image.fileSize || 0),
         };
       },
-      { total: 0, used: 0, unused: 0, size: 0 }
+      { total: 0, used: 0, unused: 0, annotated: 0, size: 0 }
     );
   }, [mediaItemsWithSize, referencedPathSet]);
 
@@ -234,10 +246,12 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
       const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
       const extension = image.path.split(".").pop()?.toLowerCase();
       const mediaType = getMediaTypeFromExtension(extension);
+      const annotationText = String(image.annotation?.text || "").trim();
 
       // Apply usage filter
       if (filterType === "referenced" && !referenced) return false;
       if (filterType === "unused" && referenced) return false;
+      if (filterType === "annotated" && !annotationText) return false;
       if (filterType === "missing" && !image.missingFile) return false;
       if (filterType === "duplicates" && !healthReport.duplicatePathSet.has(image.path)) return false;
       if (filterType === "preview-failed" && !thumbnailFailures[image.id]) return false;
@@ -254,7 +268,8 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
 
       return (
         image.altText.toLowerCase().includes(normalizedSearch) ||
-        image.path.toLowerCase().includes(normalizedSearch)
+        image.path.toLowerCase().includes(normalizedSearch) ||
+        annotationText.toLowerCase().includes(normalizedSearch)
       );
     });
 
@@ -372,6 +387,26 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
     }
   }
 
+  async function handleClearAnnotation(image) {
+    if (!basePath || !image?.path) return;
+    setBusy(true);
+    setActionError("");
+    setActionInfo("");
+    try {
+      await setImageAnnotation(basePath, image.path, null);
+      setAllImages((current) => current.map((item) => (
+        item.path === image.path ? { ...item, annotation: null } : item
+      )));
+      setActionInfo("Annotation cleared.");
+      onNotify?.("Annotation cleared.", "success");
+    } catch (error) {
+      setActionError(error?.message || "Unable to clear annotation.");
+      onNotify?.(error?.message || "Unable to clear annotation.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleDeleteUnusedMedia() {
     const unusedFiles = allImages.filter(
       (image) => (image.referenceCount || 0) === 0 && !referencedPathSet.has(image.path)
@@ -442,7 +477,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
               {healthReport.issueCount ? `${healthReport.issueCount} item${healthReport.issueCount === 1 ? "" : "s"} to review` : "No issues"}
             </span>
             <span className="media-health-summary">
-              {mediaSummary.total} media · {formatFileSize(mediaSummary.size)} · {mediaSummary.used} used · {mediaSummary.unused} unused
+              {mediaSummary.total} media · {formatFileSize(mediaSummary.size)} · {mediaSummary.used} used · {mediaSummary.unused} unused · {mediaSummary.annotated} annotated
             </span>
           </div>
         </div>
@@ -473,6 +508,15 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
             title="Show files with duplicate names"
           >
             Duplicates {healthReport.duplicateGroups.length}
+          </button>
+          <button
+            className="media-health-chip"
+            type="button"
+            onClick={() => setFilterType("annotated")}
+            disabled={!mediaSummary.annotated}
+            title="Show media with annotations"
+          >
+            Annotated {mediaSummary.annotated}
           </button>
           <button
             className="media-health-chip"
@@ -510,6 +554,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
           <option value="all">All Media</option>
           <option value="referenced">Referenced Only</option>
           <option value="unused">Unused Only</option>
+          <option value="annotated">Annotated Only</option>
           <option value="missing">Missing Files</option>
           <option value="duplicates">Duplicate Names</option>
           <option value="preview-failed">Preview Failed</option>
@@ -573,7 +618,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
       </div>
 
       <p className="media-summary">
-        Showing {filteredImages.length} of {allImages.length} media. {linkedCount} <strong>used</strong>, {allImages.length - linkedCount} <strong>unused</strong>.
+        Showing {filteredImages.length} of {allImages.length} media. {linkedCount} <strong>used</strong>, {allImages.length - linkedCount} <strong>unused</strong>, {mediaSummary.annotated} <strong>annotated</strong>.
       </p>
 
       {actionError && <p className="media-error">{actionError}</p>}
@@ -601,6 +646,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
             const mediaType = getMediaTypeFromExtension(extension) || "unknown";
             const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
             const fileName = image.path.split(/[\\/]/).pop() || image.altText || "Image";
+            const annotationText = String(image.annotation?.text || "").trim();
             const isResolving = basePath && resolvedSrc === undefined;
             const isDataUrl = typeof resolvedSrc === "string" && resolvedSrc.startsWith("data:");
             const canRender = !isResolving && (isDataUrl || !basePath);
@@ -642,6 +688,11 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
                     <span>📎 File</span>
                   </div>
                 )}
+                {annotationText ? (
+                  <span className="media-annotation-badge" title={`Annotation: ${annotationText}`}>
+                    Note
+                  </span>
+                ) : null}
                 <span className="media-preview-name" title={fileName}>{fileName}</span>
               </div>
               <div className="media-info">
@@ -660,6 +711,21 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
                     </span>
                   )}
                 </div>
+                {annotationText ? (
+                  <div className="media-annotation-row" title={annotationText}>
+                    <p className="media-annotation-text">{annotationText}</p>
+                    <button
+                      className="media-annotation-clear"
+                      type="button"
+                      onClick={() => handleClearAnnotation(image)}
+                      disabled={busy}
+                      title="Clear annotation"
+                      aria-label="Clear annotation"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : null}
                 <p className="media-path" title={image.path}>{image.path}</p>
                 {referenced ? (
                   <button
