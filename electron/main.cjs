@@ -1159,16 +1159,18 @@ function buildWebsiteMarkdownRenderer() {
 
   markdown.renderer.rules.image = (tokens, idx, options, env, self) => {
     const srcIndex = tokens[idx].attrIndex("src");
+    let annotation = null;
     if (srcIndex >= 0) {
       const src = String(tokens[idx].attrs[srcIndex][1] || "").trim();
       if (src && !/^(https?:|data:|blob:)/i.test(src)) {
         const [pathPart, queryPart = ""] = src.split("?");
+        annotation = getImageAnnotationForMarkdownAsset(path.resolve(notesRoot, env?.relMdPath || "__notely__.md"), pathPart);
         const rewritten = rewriteAssetPath(pathPart, env);
         tokens[idx].attrs[srcIndex][1] = queryPart ? `${rewritten}?${queryPart}` : rewritten;
       }
     }
 
-    return defaultImage(tokens, idx, options, env, self);
+    return renderImageHtmlWithAnnotation(defaultImage(tokens, idx, options, env, self), annotation);
   };
 
   return markdown;
@@ -1616,6 +1618,35 @@ function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "" }) {
         border: 1px solid var(--border);
       }
 
+      .notely-image-frame {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        vertical-align: top;
+      }
+
+      .notely-image-frame img {
+        margin: 12px 0;
+      }
+
+      .notely-image-annotation {
+        position: absolute;
+        z-index: 2;
+        max-width: min(60%, 420px);
+        padding: 6px 9px;
+        border-radius: 4px;
+        background: rgba(10, 23, 27, 0.72);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.25;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .notely-image-annotation { left: 10px; top: 22px; }
+
       .prose table {
         width: 100%;
         border-collapse: collapse;
@@ -2014,6 +2045,10 @@ function renderPdfNotePage(relMdPath, markdownContent, options = {}) {
       .content pre code { background: transparent; border: 0; padding: 0; color: inherit; font-size: inherit; }
       .content blockquote { border-left: 3px solid var(--accent); padding-left: 14px; margin: 14px 0; color: var(--ink-2); font-style: italic; }
       .content img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 12px 0; border: 1px solid var(--border); }
+      .notely-image-frame { position: relative; display: inline-block; max-width: 100%; vertical-align: top; }
+      .notely-image-frame img { margin: 12px 0; }
+      .notely-image-annotation { position: absolute; z-index: 2; max-width: min(60%, 420px); padding: 6px 9px; border-radius: 4px; background: rgba(10, 23, 27, 0.72); color: #ffffff; font-size: 12px; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .notely-image-annotation { left: 10px; top: 22px; }
       .content table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13.5px; }
       .content th { background: var(--surface2); font-weight: 600; border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
       .content td { border: 1px solid var(--border); padding: 7px 12px; }
@@ -2368,16 +2403,19 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
     typographer: true
   });
 
-  if (downsampleImages) {
-    const defaultImage = markdown.renderer.rules.image
-      || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+  const defaultImage = markdown.renderer.rules.image
+    || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
 
-    markdown.renderer.rules.image = (tokens, idx, options, env, self) => {
-      const srcIndex = tokens[idx].attrIndex("src");
-      if (srcIndex >= 0) {
-        const rawSrc = String(tokens[idx].attrs[srcIndex][1] || "").trim();
-        if (rawSrc && !/^(https?:|data:|blob:|file:)/i.test(rawSrc)) {
-          const pathPart = rawSrc.split(/[?#]/)[0];
+  markdown.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const srcIndex = tokens[idx].attrIndex("src");
+    let annotation = null;
+    if (srcIndex >= 0) {
+      const rawSrc = String(tokens[idx].attrs[srcIndex][1] || "").trim();
+      if (rawSrc && !/^(https?:|data:|blob:)/i.test(rawSrc)) {
+        const pathPart = rawSrc.split(/[?#]/)[0];
+        annotation = getImageAnnotationForMarkdownAsset(path.join(sourceDir || notesRoot, "__notely_export__.md"), pathPart);
+
+        if (downsampleImages && !/^file:/i.test(rawSrc)) {
           const normalizedSrc = safeDecode(pathPart.replace(/\\/g, "/"));
           const resolvedImagePath = path.isAbsolute(normalizedSrc)
             ? path.resolve(notesRoot, normalizedSrc.replace(/^[/\\]+/, ""))
@@ -2391,10 +2429,10 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
           }
         }
       }
+    }
 
-      return defaultImage(tokens, idx, options, env, self);
-    };
-  }
+    return renderImageHtmlWithAnnotation(defaultImage(tokens, idx, options, env, self), annotation);
+  };
 
   const bodyHtml = markdown.render(markdownContent || "");
 
@@ -2517,6 +2555,31 @@ function buildPdfStyles({ compact = false } = {}) {
       max-width: 100%;
       height: auto;
     }
+
+    .notely-image-frame {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      vertical-align: top;
+    }
+
+    .notely-image-annotation {
+      position: absolute;
+      z-index: 2;
+      max-width: min(60%, 420px);
+      padding: 6px 9px;
+      border-radius: 4px;
+      background: rgba(10, 23, 27, 0.72);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .notely-image-annotation { left: 10px; top: 10px; }
   `;
 }
 
@@ -4119,7 +4182,7 @@ ipcMain.handle("images:save", (_event, payload) => {
 });
 
 ipcMain.handle("images:list", (_event, payload) => {
-  const { basePath } = payload || {};
+  const { basePath, includeAnnotations = false } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
   }
@@ -4158,10 +4221,21 @@ ipcMain.handle("images:list", (_event, payload) => {
   const seen = new Set(localNames.map((name) => name.toLowerCase()));
   const rootNames = readImagesIn(rootImagesDir).filter((name) => !seen.has(name.toLowerCase()));
 
-  return [
+  const paths = [
     ...localNames.map((name) => `./images/${name}`),
     ...rootNames.map((name) => `/images/${name}`),
   ];
+
+  if (!includeAnnotations) return paths;
+
+  const annotations = readImageAnnotations();
+  return paths.map((assetPath) => {
+    const resolvedAssetPath = resolveImageAssetPath(basePath, assetPath);
+    const annotation = resolvedAssetPath
+      ? normalizeImageAnnotation(annotations[getImageAnnotationKey(resolvedAssetPath)])
+      : null;
+    return { path: assetPath, annotation };
+  });
 });
 
 function collectImageUsage(basePath) {
@@ -4385,9 +4459,20 @@ function writeImageAnnotations(annotations) {
 
 function normalizeImageAnnotation(annotation) {
   const text = String(annotation?.text || "").trim().slice(0, 80);
-  const allowedPositions = new Set(["bottom-left", "bottom-right", "top-left", "top-right"]);
-  const position = allowedPositions.has(annotation?.position) ? annotation.position : "bottom-left";
-  return text ? { text, position } : null;
+  return text ? { text, position: "top-left" } : null;
+}
+
+function getImageAnnotationForMarkdownAsset(basePath, assetPath) {
+  const resolvedAssetPath = resolveImageAssetPath(basePath, assetPath);
+  if (!resolvedAssetPath) return null;
+  const annotations = readImageAnnotations();
+  return normalizeImageAnnotation(annotations[getImageAnnotationKey(resolvedAssetPath)]);
+}
+
+function renderImageHtmlWithAnnotation(imageHtml, annotation) {
+  const normalized = normalizeImageAnnotation(annotation);
+  if (!normalized) return imageHtml;
+  return `<span class="notely-image-frame">${imageHtml}<span class="notely-image-annotation">${escapeHtml(normalized.text)}</span></span>`;
 }
 
 function removeImageReferencesForAsset(resolvedAssetPath, options = {}) {

@@ -414,9 +414,9 @@ export async function saveImage(fileName, base64Data, basePath, options = {}) {
   });
 }
 
-export async function listImages(basePath) {
+export async function listImages(basePath, options = {}) {
   const api = getNotesApi();
-  return api.listImages({ basePath });
+  return api.listImages({ basePath, includeAnnotations: Boolean(options.includeAnnotations) });
 }
 
 export async function getImageUsage(basePath) {
