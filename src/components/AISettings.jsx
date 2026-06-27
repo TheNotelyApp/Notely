@@ -38,6 +38,17 @@ const AISettings = ({ isOpen, onClose }) => {
     }
   }, [isOpen, selectedProvider]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   const loadSettings = async () => {
     try {
       setLoading(true);
