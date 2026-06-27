@@ -25,15 +25,15 @@ const {
   contentTypeForFile
 } = require("./lib/utils.cjs");
 const { buildPdfExportMarkdown, buildPdfStyles } = require("./lib/pdf.cjs");
-const { buildWebsiteHtml } = require("./lib/websiteTemplate.cjs");
+const { buildWebsiteHtml } = require("./lib/web/websiteTemplate.cjs");
 const { buildAppMenu } = require("./lib/appMenu.cjs");
-const { createWebsiteRenderer } = require("./lib/websiteRenderer.cjs");
+const { createWebsiteRenderer } = require("./lib/web/websiteRenderer.cjs");
 const { createImageMedia } = require("./lib/imageMedia.cjs");
 const { createTerminalIpc } = require("./lib/terminalIpc.cjs");
 const { registerCoreIpcHandlers } = require("./lib/coreIpc.cjs");
 const { registerDocumentIpcHandlers } = require("./lib/documents/documentIpc.cjs");
 const { registerSyncIpcHandlers } = require("./lib/sync/syncIpc.cjs");
-const { createWebPreview } = require("./lib/webPreview.cjs");
+const { createWebPreview } = require("./lib/web/webPreview.cjs");
 const { createWindowLifecycle } = require("./lib/windowLifecycle.cjs");
 const { createP2PSyncEngine } = require("./lib/sync/p2pSyncEngine.cjs");
 const { createWorkspaceEntries, DEFAULT_WALK_EXCLUDE_DIRS } = require("./lib/documents/workspaceEntries.cjs");
