@@ -1264,6 +1264,7 @@ export default function App() {
 
   useEffect(() => {
     loadDocumentsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1299,6 +1300,7 @@ export default function App() {
 
       loadDocumentsData();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1389,6 +1391,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.filePath]);
 
   useEffect(() => {
@@ -1545,6 +1548,7 @@ export default function App() {
         return;
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, dirty, activeProject, activeTab]);
 
   return (

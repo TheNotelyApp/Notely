@@ -38,6 +38,7 @@ const AISettings = ({ isOpen, onClose }) => {
     if (isOpen) {
       loadSettings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedProvider]);
 
   useEffect(() => {

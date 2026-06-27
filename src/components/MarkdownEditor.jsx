@@ -505,7 +505,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
     ]),
-  ], [ghostSuggestionDecorations, onChange, onNotify, onOpenFind, onRedo, onUndo, textareaRef, validationDecorations, validationIssues]);
+  ], [ghostSuggestionDecorations, onChange, onNotify, onOpenFind, onRedo, onUndo, validationDecorations, validationIssues]);
 
   return (
     <div className="markdown-editor">

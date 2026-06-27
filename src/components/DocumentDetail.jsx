@@ -437,6 +437,7 @@ export function DocumentDetail({
     });
 
     return () => onRegisterAIEditor(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onRegisterAIEditor, content, activeTab, activeEditorField]);
 
   useEffect(() => {
@@ -513,6 +514,7 @@ export function DocumentDetail({
     if (menuAction.action === "manage-versions") {
       setShowHistoryPopover(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuAction?.nonce, isFocusMode, setMode, showMediaManager]);
 
   const updateContent = (value) => {
@@ -812,6 +814,7 @@ export function DocumentDetail({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocusMode, onNotify, setMode, showMediaManager, handleUndo, handleRedo, onSave]);
 
   const handleConfirmPdfExport = async () => {

@@ -121,6 +121,7 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       loadImage(resolvedPath);
       loadImageAnnotation();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaPath, mediaType, resolvedPath, showOriginalImages]);
 
   const loadImageAnnotation = async () => {

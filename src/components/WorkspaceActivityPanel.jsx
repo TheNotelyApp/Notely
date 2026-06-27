@@ -52,7 +52,7 @@ export function WorkspaceActivityPanel({ data, loading, onRefresh }) {
     }
   }, [actionFilter, fileQuery, fromDate, toDate]);
 
-  const activity = Array.isArray(currentData.activity) ? currentData.activity : [];
+  const activity = useMemo(() => (Array.isArray(data?.activity) ? data.activity : []), [data]);
   const actionTypes = useMemo(() => {
     const unique = new Set(activity.map((item) => String(item.reason || "unknown").trim()).filter(Boolean));
     return ["all", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];

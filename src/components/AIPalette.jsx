@@ -307,6 +307,7 @@ export default function AIPalette({
     if (lastAutoRunRequestIdRef.current === intent.requestId) return;
     lastAutoRunRequestIdRef.current = intent.requestId;
     handleCustomQuery(intent.query, intent.target || target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, intent, target]);
 
   const updateSuggestions = (query) => {

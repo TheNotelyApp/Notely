@@ -36,9 +36,12 @@ export function P2PStatusPanel({
   const [showDebugDetails, setShowDebugDetails] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const currentStatus = status || {};
+  const currentStatus = useMemo(() => status || {}, [status]);
   const peers = Array.isArray(currentStatus.peers) ? currentStatus.peers : [];
-  const discoveredPeers = Array.isArray(currentStatus.discoveredPeers) ? currentStatus.discoveredPeers : [];
+  const discoveredPeers = useMemo(
+    () => (Array.isArray(currentStatus.discoveredPeers) ? currentStatus.discoveredPeers : []),
+    [currentStatus]
+  );
   const trustedPeers = Array.isArray(currentStatus.trustedPeers) ? currentStatus.trustedPeers : [];
   const invites = Array.isArray(currentStatus.invites) ? currentStatus.invites : [];
   const discoveryRunning = Boolean(currentStatus?.discovery?.running);
