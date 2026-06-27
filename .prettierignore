@@ -7,3 +7,4 @@ node_modules
 .versions
 package-lock.json
 *.md
+THIRD_PARTY_NOTICES.txt
