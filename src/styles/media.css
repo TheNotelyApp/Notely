@@ -378,6 +378,7 @@
 }
 
 .media-preview {
+  position: relative;
   width: 100%;
   height: 120px;
   background: #f7f9f8;
@@ -398,6 +399,24 @@
   max-height: 100%;
   object-fit: cover;
   background: #000;
+}
+
+.media-preview-name {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(10, 28, 32, 0.74);
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .media-fallback {

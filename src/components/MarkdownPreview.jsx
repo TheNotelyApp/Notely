@@ -8,6 +8,8 @@ import { readImage, replaceImage, deleteImage, renameImage } from "../services/e
 import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { createImageMarkdown } from "../utils/markdownUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
+import { formatImageDeleteResult } from "../utils/imageDeleteResult";
+import { removeImageReferenceFromMarkdown } from "../utils/imageMarkdownReferences";
 import { MermaidBlock } from "./MermaidBlock";
 import { ImageCropModal } from "./ImageCropModal";
 
@@ -16,7 +18,19 @@ function replaceAllLiteral(source, needle, replacement) {
   return String(source || "").split(needle).join(replacement);
 }
 
-export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, basePath, externalRef, onNotify, onContentChange, onMediaClick }) {
+function imageCacheKey(assetPath, variant = "thumbnail") {
+  return `${variant}:${assetPath}`;
+}
+
+function getImageActionElement(target) {
+  if (!(target instanceof HTMLElement)) return null;
+  if (target.tagName === "IMG") return target;
+  const frame = target.closest?.(".markdown-image-frame");
+  const framedImage = frame?.querySelector?.("img");
+  return framedImage instanceof HTMLImageElement ? framedImage : null;
+}
+
+export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, basePath, externalRef, onNotify, onContentChange, onMediaClick, showOriginalImages = false }) {
   const previewRef = useRef(null);
   const menuRef = useRef(null);
   const menuItemsRef = useRef([]);
@@ -57,16 +71,18 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
       image.setAttribute("data-asset-path", assetPath);
 
       const cache = imageResolveCacheRef.current;
-      if (cache.has(assetPath)) {
-        const cached = cache.get(assetPath);
+      const variant = showOriginalImages ? "original" : "thumbnail";
+      const cacheKey = imageCacheKey(assetPath, variant);
+      if (cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
         if (!cancelled && cached) image.src = cached;
         return;
       }
 
       try {
-        const resolved = await readImage(basePath, assetPath);
+        const resolved = await readImage(basePath, assetPath, { thumbnail: !showOriginalImages });
         if (!cancelled && resolved) {
-          cache.set(assetPath, resolved);
+          cache.set(cacheKey, resolved);
           image.src = resolved;
         }
       } catch {
@@ -106,7 +122,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
       window.clearTimeout(timer);
       observer.disconnect();
     };
-  }, [content, basePath]);
+  }, [content, basePath, showOriginalImages]);
 
   useEffect(() => {
     if (!onMediaClick) return;
@@ -135,9 +151,9 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
         }
       }
 
-      // Handle image clicks
-      if (target.tagName === "IMG") {
-        const src = target.getAttribute("data-asset-path") || target.getAttribute("src") || "";
+      const imageElement = getImageActionElement(target);
+      if (imageElement) {
+        const src = imageElement.getAttribute("data-asset-path") || imageElement.getAttribute("src") || "";
         if (src) {
           const ext = src.split(".").pop()?.toLowerCase();
           const mediaType = getMediaTypeFromExtension(ext);
@@ -235,7 +251,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
   };
 
   const openImageContextMenu = (event, sourceImage = null, x = null, y = null) => {
-    const imageElement = sourceImage || event.target.closest("img");
+    const imageElement = sourceImage || getImageActionElement(event.target);
     if (!imageElement) {
       closeContextMenu();
       return;
@@ -271,17 +287,25 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
     openImageContextMenu(event, imageElement, bounds.left + bounds.width / 2, bounds.top + Math.min(bounds.height / 2, 80));
   };
 
-  const openCropFromMenu = () => {
+  const openCropFromMenu = async () => {
     if (!contextMenu?.isWorkspaceImage) {
       onNotify?.("Crop is available for workspace images only.", "info");
       closeContextMenu();
       return;
     }
 
+    const assetPath = contextMenu.assetPath;
+    let fullSizeSrc = contextMenu.src;
+    try {
+      fullSizeSrc = await readImage(basePath, assetPath);
+    } catch {
+      // Fall back to the rendered preview image if the full-size read fails.
+    }
+
     setCropState({
       open: true,
-      src: contextMenu.src,
-      assetPath: contextMenu.assetPath,
+      src: fullSizeSrc,
+      assetPath,
       imageLabel: contextMenu.imageLabel,
     });
     closeContextMenu();
@@ -327,7 +351,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
     try {
       const dataUrl = await readFileAsDataUrl(file);
       await replaceImage(basePath, replaceState.assetPath, dataUrl);
-      imageResolveCacheRef.current.set(replaceState.assetPath, dataUrl);
+      imageResolveCacheRef.current.delete(imageCacheKey(replaceState.assetPath));
 
       if (previewRef.current) {
         previewRef.current.querySelectorAll("img").forEach((image) => {
@@ -353,15 +377,15 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
       return;
     }
 
-    const approved = window.confirm("Delete this image asset? Markdown links will remain and may render as missing.");
+    const approved = window.confirm("Remove this image? Links are removed first; the image file is kept if it is referenced elsewhere.");
     if (!approved) {
       closeContextMenu();
       return;
     }
 
     try {
-      await deleteImage(basePath, contextMenu.assetPath);
-      imageResolveCacheRef.current.delete(contextMenu.assetPath);
+      const result = await deleteImage(basePath, contextMenu.assetPath);
+      imageResolveCacheRef.current.delete(imageCacheKey(contextMenu.assetPath));
 
       if (previewRef.current) {
         previewRef.current.querySelectorAll("img").forEach((image) => {
@@ -371,7 +395,15 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
         });
       }
 
-      onNotify?.("Image deleted.", "success");
+      if (typeof onContentChange === "function" && Number(result?.referencesRemoved || 0) > 0) {
+        const nextContent = removeImageReferenceFromMarkdown(content, contextMenu.assetPath);
+        if (nextContent !== String(content || "")) {
+          onContentChange(nextContent);
+        }
+      }
+
+      const message = formatImageDeleteResult(result);
+      onNotify?.(message, "success");
     } catch (error) {
       onNotify?.(error?.message || "Unable to delete image.", "error");
     } finally {
@@ -398,7 +430,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
       const renamedAssetPath = await renameImage(basePath, oldAssetPath, nextFileName.trim());
       const normalizedNewAssetPath = encodeURI(String(renamedAssetPath || "").trim());
 
-      imageResolveCacheRef.current.delete(oldAssetPath);
+      imageResolveCacheRef.current.delete(imageCacheKey(oldAssetPath));
       if (previewRef.current) {
         previewRef.current.querySelectorAll("img").forEach((image) => {
           if ((image.getAttribute("data-asset-path") || "") === oldAssetPath) {
@@ -518,8 +550,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
     setCropSaving(true);
     const targetAssetPath = cropState.assetPath;
 
-    // Optimistically update preview and cache so the crop appears immediately.
-    imageResolveCacheRef.current.set(targetAssetPath, croppedDataUrl);
+    // Optimistically update preview so the edit appears immediately.
+    imageResolveCacheRef.current.delete(imageCacheKey(targetAssetPath));
     if (previewRef.current) {
       previewRef.current.querySelectorAll("img").forEach((image) => {
         if ((image.getAttribute("data-asset-path") || "") === targetAssetPath) {
@@ -533,7 +565,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
       onNotify?.("Image cropped and saved.", "success");
       setCropState({ open: false, src: "", assetPath: "", imageLabel: "" });
     } catch (error) {
-      imageResolveCacheRef.current.delete(targetAssetPath);
+      imageResolveCacheRef.current.delete(imageCacheKey(targetAssetPath));
       onNotify?.(error?.message || "Unable to save cropped image.", "error");
     } finally {
       setCropSaving(false);

@@ -153,6 +153,7 @@ export function ImageCropModal({
   const [workingImageSrc, setWorkingImageSrc] = useState("");
   const [rotationAngle, setRotationAngle] = useState(0);
   const [rotating, setRotating] = useState(false);
+  const [hasImageEdits, setHasImageEdits] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -160,12 +161,14 @@ export function ImageCropModal({
       setAspectPreset("free");
       setRotationAngle(0);
       setWorkingImageSrc("");
+      setHasImageEdits(false);
       interactionRef.current = null;
       return;
     }
 
     setWorkingImageSrc(imageSrc || "");
     setRotationAngle(0);
+    setHasImageEdits(false);
 
     const focusTimer = window.setTimeout(() => {
       closeButtonRef.current?.focus();
@@ -181,8 +184,6 @@ export function ImageCropModal({
   const hasSelection = useMemo(() => {
     return Boolean(selection && selection.width > 0.01 && selection.height > 0.01);
   }, [selection]);
-
-  if (!open) return null;
 
   const getRelativePoint = (event) => {
     if (!imageRef.current) return null;
@@ -263,7 +264,13 @@ export function ImageCropModal({
   };
 
   const handleSave = async () => {
-    if (!imageRef.current || !hasSelection || saving || rotating) return;
+    if (!imageRef.current || saving || rotating) return;
+    if (!hasSelection && !hasImageEdits) return;
+    if (!hasSelection) {
+      await onSave?.(workingImageSrc || imageSrc);
+      return;
+    }
+
     const image = imageRef.current;
     const naturalWidth = image.naturalWidth || image.width;
     const naturalHeight = image.naturalHeight || image.height;
@@ -295,19 +302,44 @@ export function ImageCropModal({
     }
   };
 
-  const handleRotate = async () => {
-    if (!workingImageSrc || saving || rotating) return;
-
-    setRotating(true);
-    try {
-      const rotatedDataUrl = await rotateImage(workingImageSrc, 90);
-      setWorkingImageSrc(rotatedDataUrl);
-      setRotationAngle((current) => (current + 90) % 360);
-      setSelection(null);
-    } finally {
-      setRotating(false);
-    }
+  const handleRotationAngleChange = (event) => {
+    const nextAngle = Math.max(0, Math.min(360, Math.round(Number(event.target.value) || 0)));
+    setRotationAngle(nextAngle);
   };
+
+  useEffect(() => {
+    if (!open || !imageSrc) return undefined;
+
+    const angle = Math.max(0, Math.min(360, Math.round(Number(rotationAngle) || 0)));
+    if (angle === 0 || angle === 360) {
+      setRotating(false);
+      setWorkingImageSrc(imageSrc);
+      setHasImageEdits(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setRotating(true);
+      try {
+        const rotatedDataUrl = await rotateImage(imageSrc, angle);
+        if (!cancelled) {
+          setWorkingImageSrc(rotatedDataUrl);
+          setHasImageEdits(true);
+          setSelection(null);
+        }
+      } finally {
+        if (!cancelled) setRotating(false);
+      }
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [imageSrc, open, rotationAngle]);
+
+  if (!open) return null;
 
   const handleModalKeyDown = (event) => {
     if (event.key === "Escape") {
@@ -339,7 +371,7 @@ export function ImageCropModal({
 
     if (!selection) return;
 
-    if (event.key === "Enter" && hasSelection && !saving) {
+    if (event.key === "Enter" && (hasSelection || hasImageEdits) && !saving && !rotating) {
       event.preventDefault();
       void handleSave();
       return;
@@ -424,7 +456,7 @@ export function ImageCropModal({
 
         <div className="image-crop-footer">
           <p className="image-crop-hint">
-            Left click and drag to select an area. Rotation: {rotationAngle}deg
+            Left click and drag to select an area.
           </p>
           <div className="image-crop-actions">
             <label className="image-crop-aspect-label" htmlFor="crop-aspect-preset">Aspect</label>
@@ -439,19 +471,37 @@ export function ImageCropModal({
                 <option key={preset.value} value={preset.value}>{preset.label}</option>
               ))}
             </select>
-            <button
-              type="button"
-              className="small-button"
-              onClick={handleRotate}
+            <label className="image-crop-aspect-label" htmlFor="image-rotation-angle">Rotate</label>
+            <input
+              id="image-rotation-angle"
+              className="image-crop-rotation-range"
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              value={rotationAngle}
+              onChange={handleRotationAngleChange}
               disabled={saving || rotating}
-            >
-              {rotating ? "Rotating..." : "Rotate 90deg"}
-            </button>
+            />
+            <input
+              className="image-crop-rotation-number"
+              type="number"
+              min="0"
+              max="360"
+              step="1"
+              value={rotationAngle}
+              onChange={handleRotationAngleChange}
+              disabled={saving || rotating}
+              aria-label="Rotation degrees"
+            />
             <button
               type="button"
               className="small-button"
-              onClick={() => setSelection(null)}
-              disabled={saving || rotating || !selection}
+              onClick={() => {
+                setSelection(null);
+                setRotationAngle(0);
+              }}
+              disabled={saving || rotating || (!selection && rotationAngle === 0)}
             >
               Reset
             </button>
@@ -459,9 +509,9 @@ export function ImageCropModal({
               type="button"
               className="small-button"
               onClick={handleSave}
-              disabled={!hasSelection || saving || rotating}
+              disabled={(!hasSelection && !hasImageEdits) || saving || rotating}
             >
-              {saving ? "Saving..." : "Save Edit"}
+              {saving ? "Saving..." : rotating ? "Previewing..." : "Apply"}
             </button>
           </div>
         </div>

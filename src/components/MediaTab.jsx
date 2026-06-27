@@ -13,6 +13,7 @@ import {
   replaceImage,
 } from "../services/electronService";
 import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
+import { formatImageDeleteResult } from "../utils/imageDeleteResult";
 import "../styles/media.css";
 
 export function MediaTab({ content, basePath, onNotify }) {
@@ -136,7 +137,7 @@ export function MediaTab({ content, basePath, onNotify }) {
       const entries = await Promise.all(
         allImages.map(async (image) => {
           try {
-            const src = await readImage(basePath, image.path);
+            const src = await readImage(basePath, image.path, { thumbnail: true });
             return [image.id, src];
           } catch {
             return [image.id, image.path];
@@ -252,7 +253,7 @@ export function MediaTab({ content, basePath, onNotify }) {
 
   async function handleDeleteImage(pathValue, isReferenced = false) {
     const message = isReferenced
-      ? "This media is referenced in one or more notes. Move it to the removed folder anyway? Links in those notes will break."
+      ? "This media is referenced in one or more notes. Remove matching links from the current note? The file is kept when other references remain."
       : "Move this media item to the removed folder?";
     const approved = window.confirm(message);
     if (!approved) return;
@@ -261,10 +262,11 @@ export function MediaTab({ content, basePath, onNotify }) {
     setActionError("");
     setActionInfo("");
     try {
-      await deleteImage(basePath, pathValue);
+      const result = await deleteImage(basePath, pathValue);
       setRefreshKey((value) => value + 1);
-      setActionInfo("Media moved to removed folder.");
-      onNotify?.("Media moved to removed folder.", "success");
+      const deleteMessage = formatImageDeleteResult(result, "Media moved to removed folder.");
+      setActionInfo(deleteMessage);
+      onNotify?.(deleteMessage, "success");
     } catch (error) {
       setActionError(error?.message || "Unable to delete media.");
       onNotify?.(error?.message || "Unable to delete media.", "error");
@@ -459,6 +461,7 @@ export function MediaTab({ content, basePath, onNotify }) {
             const extension = image.path.split(".").pop()?.toLowerCase();
             const mediaType = getMediaTypeFromExtension(extension) || "unknown";
             const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
+            const fileName = image.path.split(/[\\/]/).pop() || image.altText || "Image";
             const isResolving = basePath && resolvedSrc === undefined;
             const isDataUrl = typeof resolvedSrc === "string" && resolvedSrc.startsWith("data:");
             const canRender = !isResolving && (isDataUrl || !basePath);
@@ -500,6 +503,7 @@ export function MediaTab({ content, basePath, onNotify }) {
                     <span>📎 File</span>
                   </div>
                 )}
+                <span className="media-preview-name" title={fileName}>{fileName}</span>
               </div>
               <div className="media-info">
                 <div className="media-title-row">
@@ -537,16 +541,14 @@ export function MediaTab({ content, basePath, onNotify }) {
                   >
                     <Upload size={14} />
                   </button>
-                  {!referenced && (
-                    <button
-                      className="small-button danger icon-only"
-                      onClick={() => handleDeleteImage(image.path, false)}
-                      disabled={busy}
-                      title="Delete media"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button
+                    className="small-button danger icon-only"
+                    onClick={() => handleDeleteImage(image.path, referenced)}
+                    disabled={busy}
+                    title={referenced ? "Remove media links" : "Delete media"}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             </div>

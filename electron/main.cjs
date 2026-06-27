@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
@@ -48,6 +48,10 @@ let p2pService = null;
 let aiAgent = null;
 const FULL_SYNC_BATCH_SIZE = 25;
 const FULL_SYNC_MAX_FILES = 1000;
+const THUMBNAIL_DIR_NAME = "thumbnails";
+const THUMBNAIL_MAX_WIDTH = 360;
+const THUMBNAIL_JPEG_QUALITY = 72;
+const RASTER_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".bmp", ".ico"]);
 
 async function initializeAIForWorkspace() {
   try {
@@ -2242,12 +2246,40 @@ function buildPdfExportMarkdown(document, options = {}) {
   ].filter(Boolean).join("\n");
 }
 
-function buildPdfExportHtml({ title, markdownContent, baseHref }) {
+function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downsampleImages = false }) {
   const markdown = new MarkdownIt({
     html: false,
     linkify: true,
     typographer: true
   });
+
+  if (downsampleImages) {
+    const defaultImage = markdown.renderer.rules.image
+      || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+
+    markdown.renderer.rules.image = (tokens, idx, options, env, self) => {
+      const srcIndex = tokens[idx].attrIndex("src");
+      if (srcIndex >= 0) {
+        const rawSrc = String(tokens[idx].attrs[srcIndex][1] || "").trim();
+        if (rawSrc && !/^(https?:|data:|blob:|file:)/i.test(rawSrc)) {
+          const pathPart = rawSrc.split(/[?#]/)[0];
+          const normalizedSrc = safeDecode(pathPart.replace(/\\/g, "/"));
+          const resolvedImagePath = path.isAbsolute(normalizedSrc)
+            ? path.resolve(notesRoot, normalizedSrc.replace(/^[/\\]+/, ""))
+            : path.resolve(sourceDir || notesRoot, normalizedSrc);
+
+          if (filePathWithin(notesRoot, resolvedImagePath) && fs.existsSync(resolvedImagePath) && isRasterImagePath(resolvedImagePath)) {
+            const thumbnailPath = ensureImageThumbnail(resolvedImagePath);
+            if (thumbnailPath) {
+              tokens[idx].attrs[srcIndex][1] = pathToFileURL(thumbnailPath).href;
+            }
+          }
+        }
+      }
+
+      return defaultImage(tokens, idx, options, env, self);
+    };
+  }
 
   const bodyHtml = markdown.render(markdownContent || "");
 
@@ -3799,6 +3831,7 @@ ipcMain.handle("documents:download-pdf", async (_event, payload) => {
 
   const includeRawNotes = Boolean(payload?.includeRawNotes);
   const includeCleansed = Boolean(payload?.includeCleansed);
+  const downsampleImages = Boolean(payload?.downsampleImages);
   if (!includeRawNotes && !includeCleansed) {
     throw new Error("Select at least one section to export.");
   }
@@ -3826,7 +3859,9 @@ ipcMain.handle("documents:download-pdf", async (_event, payload) => {
     const html = buildPdfExportHtml({
       title: payload?.title || path.basename(resolved, ".md"),
       markdownContent,
-      baseHref
+      baseHref,
+      sourceDir: path.dirname(resolved),
+      downsampleImages
     });
     fs.writeFileSync(tempHtmlPath, html, "utf8");
 
@@ -3944,6 +3979,7 @@ ipcMain.handle("images:save", (_event, payload) => {
     throw new Error("Image data is empty.");
   }
   fs.writeFileSync(imagePath, buffer);
+  ensureImageThumbnail(imagePath);
 
   // Return relative path for markdown insertion
   return `./images/${finalName}`;
@@ -4124,6 +4160,121 @@ function resolveImageAssetPath(basePath, assetPath) {
   return path.resolve(resolvedAssetPath);
 }
 
+function isRasterImagePath(filePath) {
+  return RASTER_IMAGE_EXTENSIONS.has(path.extname(filePath || "").toLowerCase());
+}
+
+function getThumbnailPathForImage(imagePath) {
+  const stat = fs.statSync(imagePath);
+  const imageDir = path.dirname(imagePath);
+  const thumbnailDir = path.join(imageDir, THUMBNAIL_DIR_NAME);
+  const ext = path.extname(imagePath);
+  const baseName = path.basename(imagePath, ext).replace(/[<>:"/\\|?*]+/g, "-") || "image";
+  const cacheKey = crypto
+    .createHash("sha1")
+    .update(`${path.resolve(imagePath)}:${stat.size}:${Math.round(stat.mtimeMs)}`)
+    .digest("hex")
+    .slice(0, 12);
+  return path.join(thumbnailDir, `${baseName}-${cacheKey}.jpg`);
+}
+
+function ensureImageThumbnail(imagePath) {
+  if (!imagePath || !fs.existsSync(imagePath) || !isRasterImagePath(imagePath)) {
+    return null;
+  }
+
+  const thumbnailPath = getThumbnailPathForImage(imagePath);
+  if (fs.existsSync(thumbnailPath)) {
+    return thumbnailPath;
+  }
+
+  ensureDir(path.dirname(thumbnailPath));
+  const image = nativeImage.createFromPath(imagePath);
+  if (image.isEmpty()) {
+    return null;
+  }
+
+  const size = image.getSize();
+  const width = Math.min(THUMBNAIL_MAX_WIDTH, Math.max(1, size.width || THUMBNAIL_MAX_WIDTH));
+  const resized = image.resize({ width, quality: "good" });
+  fs.writeFileSync(thumbnailPath, resized.toJPEG(THUMBNAIL_JPEG_QUALITY));
+  return thumbnailPath;
+}
+
+function clearThumbnailCacheForImage(imagePath) {
+  if (!imagePath) return;
+  const thumbnailDir = path.join(path.dirname(imagePath), THUMBNAIL_DIR_NAME);
+  if (!fs.existsSync(thumbnailDir)) return;
+
+  const ext = path.extname(imagePath);
+  const baseName = path.basename(imagePath, ext).replace(/[<>:"/\\|?*]+/g, "-") || "image";
+  for (const entry of fs.readdirSync(thumbnailDir, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.startsWith(`${baseName}-`) && entry.name.toLowerCase().endsWith(".jpg")) {
+      try {
+        fs.unlinkSync(path.join(thumbnailDir, entry.name));
+      } catch {
+        // Cache cleanup is best-effort.
+      }
+    }
+  }
+}
+
+function removeImageReferencesForAsset(resolvedAssetPath, options = {}) {
+  const normalizedTarget = path.resolve(resolvedAssetPath).toLowerCase();
+  const normalizedBasePath = options.basePath
+    ? path.resolve(options.basePath).toLowerCase()
+    : "";
+  const removeAllReferences = Boolean(options.removeAllReferences);
+  const activeProject = getActiveProject();
+  const scopeRoot = path.resolve(activeProject?.rootPath || notesRoot);
+  const markdownFiles = walkFiles(scopeRoot, { excludeDirs: Array.from(WALK_EXCLUDE_DIRS) })
+    .filter((item) => path.extname(item).toLowerCase() === ".md");
+  const markdownImagePattern = /!\[[^\]]*\]\((<[^>]+>|[^)]+)\)/g;
+  let referencesFound = 0;
+  let referencesRemoved = 0;
+  let remainingReferences = 0;
+  const documentsUpdated = [];
+
+  for (const markdownFile of markdownFiles) {
+    const content = fs.readFileSync(markdownFile, "utf8");
+    let removedInDocument = 0;
+    const normalizedMarkdownFile = path.resolve(markdownFile).toLowerCase();
+    const nextContent = content.replace(markdownImagePattern, (match, rawPath) => {
+      const assetPath = String(rawPath || "").trim();
+      const unwrapped = assetPath.startsWith("<") && assetPath.endsWith(">")
+        ? assetPath.slice(1, -1)
+        : assetPath;
+      const resolved = resolveImageAssetPath(markdownFile, unwrapped);
+      if (!resolved || path.resolve(resolved).toLowerCase() !== normalizedTarget) {
+        return match;
+      }
+
+      referencesFound += 1;
+      const shouldRemoveReference = removeAllReferences || normalizedMarkdownFile === normalizedBasePath;
+      if (!shouldRemoveReference) {
+        remainingReferences += 1;
+        return match;
+      }
+
+      removedInDocument += 1;
+      referencesRemoved += 1;
+      return "";
+    });
+
+    if (removedInDocument > 0 && nextContent !== content) {
+      fs.writeFileSync(markdownFile, nextContent, "utf8");
+      documentsUpdated.push({
+        filePath: markdownFile,
+        fileName: path.basename(markdownFile),
+        title: path.basename(markdownFile, ".md"),
+        removed: removedInDocument,
+      });
+    }
+  }
+
+  return { referencesFound, referencesRemoved, remainingReferences, documentsUpdated };
+}
+
 ipcMain.handle("images:usage", (_event, payload) => {
   const { basePath } = payload || {};
   if (!basePath || typeof basePath !== "string") {
@@ -4134,7 +4285,7 @@ ipcMain.handle("images:usage", (_event, payload) => {
 });
 
 ipcMain.handle("images:delete", (_event, payload) => {
-  const { basePath, assetPath } = payload || {};
+  const { basePath, assetPath, removeAllReferences } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
   }
@@ -4144,11 +4295,29 @@ ipcMain.handle("images:delete", (_event, payload) => {
 
   const resolvedAssetPath = resolveImageAssetPath(basePath, assetPath);
   if (!resolvedAssetPath || !fs.existsSync(resolvedAssetPath)) {
-    return false;
+    return { deletedFile: false, referencesRemoved: 0, documentsUpdated: [] };
   }
 
-  moveFileToRemoved(resolvedAssetPath, "images");
-  return true;
+  const referenceResult = removeImageReferencesForAsset(resolvedAssetPath, {
+    basePath,
+    removeAllReferences,
+  });
+  const shouldDeleteFile = referenceResult.remainingReferences === 0;
+  let movedPath = null;
+  if (shouldDeleteFile) {
+    clearThumbnailCacheForImage(resolvedAssetPath);
+    movedPath = moveFileToRemoved(resolvedAssetPath, "images");
+  }
+
+  return {
+    deletedFile: Boolean(movedPath),
+    movedPath,
+    referencesFound: referenceResult.referencesFound,
+    referencesRemoved: referenceResult.referencesRemoved,
+    remainingReferences: referenceResult.remainingReferences,
+    documentsUpdated: referenceResult.documentsUpdated,
+    keptFileBecauseReferencedElsewhere: !shouldDeleteFile,
+  };
 });
 
 ipcMain.handle("images:replace", (_event, payload) => {
@@ -4173,7 +4342,9 @@ ipcMain.handle("images:replace", (_event, payload) => {
     throw new Error("Image data is empty.");
   }
 
+  clearThumbnailCacheForImage(resolvedAssetPath);
   fs.writeFileSync(resolvedAssetPath, buffer);
+  ensureImageThumbnail(resolvedAssetPath);
   return true;
 });
 
@@ -4217,7 +4388,7 @@ ipcMain.handle("images:rename", (_event, payload) => {
 });
 
 ipcMain.handle("images:read", (_event, payload) => {
-  const { basePath, assetPath } = payload || {};
+  const { basePath, assetPath, thumbnail } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
   }
@@ -4238,7 +4409,8 @@ ipcMain.handle("images:read", (_event, payload) => {
     return rawAsset;
   }
 
-  const ext = path.extname(resolvedAssetPath).toLowerCase();
+  const fileToRead = thumbnail ? (ensureImageThumbnail(resolvedAssetPath) || resolvedAssetPath) : resolvedAssetPath;
+  const ext = path.extname(fileToRead).toLowerCase();
   const mimeMap = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
@@ -4259,6 +4431,6 @@ ipcMain.handle("images:read", (_event, payload) => {
     ".pdf": "application/pdf"
   };
   const mimeType = mimeMap[ext] || "application/octet-stream";
-  const buffer = fs.readFileSync(resolvedAssetPath);
+  const buffer = fs.readFileSync(fileToRead);
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 });

@@ -4,14 +4,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { X, Volume2, VolumeX, RotateCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Volume2, VolumeX, Pencil, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
 import { ImageCropModal } from "./ImageCropModal";
 import {
-  rotateImage,
-  downsampleImage,
-  IMAGE_DOWNSAMPLE_OPTIONS,
   getImageDimensions,
   getImageFileSize,
   formatFileSize,
@@ -54,11 +51,10 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   const [currentPdfPage, setCurrentPdfPage] = useState(1);
   const [pdfContent, setPdfContent] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [imageRotation, setImageRotation] = useState(0);
   const [displayedImage, setDisplayedImage] = useState(null);
-  const [imageQuality, setImageQuality] = useState("ORIGINAL");
   const [imageInfo, setImageInfo] = useState(null);
   const [showCropModal, setShowCropModal] = useState(false);
+  const [editImageSrc, setEditImageSrc] = useState("");
   const [contextMenu, setContextMenu] = useState(null);
   const imageRef = useRef(null);
   const menuRef = useRef(null);
@@ -87,7 +83,9 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       }
 
       try {
-        const result = await readImage(basePath, mediaPath);
+        const result = await readImage(basePath, mediaPath, {
+          thumbnail: mediaType === "image" && !showOriginalImages,
+        });
         if (!cancelled) setResolvedPath(result || mediaPath);
       } catch {
         if (!cancelled) setResolvedPath(mediaPath);
@@ -98,18 +96,17 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     return () => {
       cancelled = true;
     };
-  }, [basePath, mediaPath]);
+  }, [basePath, mediaPath, mediaType, showOriginalImages]);
 
   useEffect(() => {
     setError(null);
     setPdfPages(0);
     setCurrentPdfPage(1);
     setPdfContent(null);
-    setImageRotation(0);
     setDisplayedImage(null);
-    setImageQuality("ORIGINAL");
     setImageInfo(null);
     setShowCropModal(false);
+    setEditImageSrc("");
     setContextMenu(null);
 
     if (!resolvedPath) return;
@@ -119,28 +116,13 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     }
 
     if (mediaType === "image" && mediaPath) {
-      loadImage(resolvedPath, showOriginalImages);
+      loadImage(resolvedPath);
     }
   }, [mediaPath, mediaType, resolvedPath, showOriginalImages]);
 
-  const loadImage = async (path, preferOriginal = false) => {
+  const loadImage = async (path) => {
     try {
-      if (preferOriginal) {
-        setImageQuality("ORIGINAL");
-        setDisplayedImage(path);
-      } else {
-        const defaultQuality = "MEDIUM";
-        const option = IMAGE_DOWNSAMPLE_OPTIONS[defaultQuality];
-        try {
-          const downsampled = await downsampleImage(path, option.scale, option.quality);
-          setImageQuality(defaultQuality);
-          setDisplayedImage(downsampled);
-        } catch {
-          // Downsample failed (e.g. unsupported format), fall back to original.
-          setImageQuality("ORIGINAL");
-          setDisplayedImage(path);
-        }
-      }
+      setDisplayedImage(path);
       try {
         const dimensions = await getImageDimensions(path);
         const fileSize = getImageFileSize(path);
@@ -157,63 +139,19 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     }
   };
 
-  const handleImageRotate = async () => {
-    if (!displayedImage) return;
-    try {
-      // Rotate the in-memory bytes; the on-screen <img> renders the rotated
-      // data URL directly (no CSS transform), and the result is persisted to
-      // disk so the rotation survives reloads.
-      const rotated = await rotateImage(displayedImage, 90);
-      setDisplayedImage(rotated);
-      setImageRotation(0);
-
-      try {
-        const dimensions = await getImageDimensions(rotated);
-        const fileSize = getImageFileSize(rotated);
-        setImageInfo({
-          dimensions,
-          fileSize,
-          formattedSize: formatFileSize(fileSize),
-        });
-      } catch {
-        /* dimension lookup is best-effort */
-      }
-
-      if (basePath && mediaPath && !/^(data:|blob:|https?:)/i.test(mediaPath)) {
-        try {
-          await replaceImage(basePath, mediaPath, rotated);
-          onMediaChanged?.(mediaPath);
-        } catch (saveErr) {
-          setError(`Rotated, but failed to save: ${saveErr.message}`);
-        }
-      }
-    } catch (err) {
-      setError(`Failed to rotate image: ${err.message}`);
+  const readFullImage = async () => {
+    if (!basePath || !mediaPath || /^(data:|blob:|https?:)/i.test(mediaPath)) {
+      return displayedImage || resolvedPath;
     }
+
+    return await readImage(basePath, mediaPath);
   };
 
-  const handleQualityChange = async (newQuality) => {
-    if (!displayedImage) return;
-    if (newQuality === imageQuality) return;
-
-    try {
-      setImageQuality(newQuality);
-      const option = IMAGE_DOWNSAMPLE_OPTIONS[newQuality];
-      if (option.scale === 1) {
-        setDisplayedImage(resolvedPath);
-      } else {
-        const downsampled = await downsampleImage(resolvedPath, option.scale, option.quality);
-        setDisplayedImage(downsampled);
-      }
-    } catch (err) {
-      setError(`Failed to adjust quality: ${err.message}`);
-    }
-  };
-
-  const handleDownloadImage = () => {
-    if (!displayedImage) return;
+  const handleDownloadImage = async () => {
+    const fullImage = await readFullImage();
+    if (!fullImage) return;
     const link = document.createElement("a");
-    link.href = displayedImage;
+    link.href = fullImage;
     link.download = mediaPath.split("/").pop() || "image.png";
     document.body.appendChild(link);
     link.click();
@@ -232,24 +170,42 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     });
   };
 
-  const handleOpenCrop = () => {
-    setShowCropModal(true);
-    setContextMenu(null);
+  const handleOpenCrop = async () => {
+    try {
+      const fullImage = await readFullImage();
+      setEditImageSrc(fullImage || displayedImage || resolvedPath || "");
+      setShowCropModal(true);
+      setContextMenu(null);
+    } catch (err) {
+      setError(`Failed to open full image: ${err.message}`);
+    }
   };
 
-  const handleSaveCrop = async (croppedDataUrl) => {
+  const handleSaveCrop = async (editedDataUrl) => {
     try {
-      setDisplayedImage(croppedDataUrl);
+      setDisplayedImage(editedDataUrl);
       setShowCropModal(false);
-      const dimensions = await getImageDimensions(croppedDataUrl);
+      const dimensions = await getImageDimensions(editedDataUrl);
       setImageInfo({
         ...imageInfo,
         dimensions,
-        fileSize: getImageFileSize(croppedDataUrl),
-        formattedSize: formatFileSize(getImageFileSize(croppedDataUrl)),
+        fileSize: getImageFileSize(editedDataUrl),
+        formattedSize: formatFileSize(getImageFileSize(editedDataUrl)),
       });
+      if (basePath && mediaPath && !/^(data:|blob:|https?:)/i.test(mediaPath)) {
+        await replaceImage(basePath, mediaPath, editedDataUrl);
+        if (!showOriginalImages) {
+          try {
+            const thumbnail = await readImage(basePath, mediaPath, { thumbnail: true });
+            setDisplayedImage(thumbnail || editedDataUrl);
+          } catch {
+            setDisplayedImage(editedDataUrl);
+          }
+        }
+        onMediaChanged?.(mediaPath);
+      }
     } catch (err) {
-      setError(`Failed to apply crop: ${err.message}`);
+      setError(`Failed to save image edit: ${err.message}`);
     }
   };
 
@@ -363,29 +319,14 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
         {mediaType === "image" && !error && (
           <div className="media-preview-image-full">
             <div className="media-preview-image-controls">
-              <div className="image-quality-selector">
-                <label htmlFor="quality-select">Quality:</label>
-                <select
-                  id="quality-select"
-                  value={imageQuality}
-                  onChange={(e) => handleQualityChange(e.target.value)}
-                  className="quality-select"
-                >
-                  {Object.entries(IMAGE_DOWNSAMPLE_OPTIONS).map(([key, option]) => (
-                    <option key={key} value={key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div className="image-action-buttons">
                 <button
                   className="image-action-button icon-only"
-                  onClick={handleImageRotate}
-                  title="Rotate 90°"
-                  aria-label="Rotate image"
+                  onClick={handleOpenCrop}
+                  title="Edit image"
+                  aria-label="Edit image"
                 >
-                  <RotateCw size={14} />
+                  <Pencil size={14} />
                 </button>
                 <button
                   className="image-action-button icon-only"
@@ -496,12 +437,15 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
         )}
       </div>
 
-      {showCropModal && displayedImage && (
+      {showCropModal && editImageSrc && (
         <ImageCropModal
           open={showCropModal}
-          imageSrc={resolvedPath}
+          imageSrc={editImageSrc}
           imageLabel={mediaPath.split("/").pop()}
-          onClose={() => setShowCropModal(false)}
+          onClose={() => {
+            setShowCropModal(false);
+            setEditImageSrc("");
+          }}
           onSave={handleSaveCrop}
         />
       )}

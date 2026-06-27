@@ -170,3 +170,18 @@
   padding: 4px 8px;
   min-height: 30px;
 }
+
+.image-crop-rotation-range {
+  width: 130px;
+  accent-color: #2f8f6a;
+}
+
+.image-crop-rotation-number {
+  width: 64px;
+  border: 1px solid #c9d9d3;
+  background: #ffffff;
+  color: #17343a;
+  border-radius: 6px;
+  padding: 4px 6px;
+  min-height: 30px;
+}

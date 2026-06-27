@@ -82,7 +82,7 @@ describe("MarkdownPreview image behaviors", () => {
     expect(image.getAttribute("src")).toContain("data:image/png;base64,TEST123");
     expect(image.getAttribute("data-asset-path")).toBe("./images/photo.png");
     expect(externalRef.current).toBeTruthy();
-    expect(readImageMock).toHaveBeenCalledWith("C:/notes/doc.md", "./images/photo.png");
+    expect(readImageMock).toHaveBeenCalledWith("C:/notes/doc.md", "./images/photo.png", { thumbnail: true });
 
     view.unmount();
   });

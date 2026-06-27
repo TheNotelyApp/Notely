@@ -422,14 +422,18 @@ export async function getImageUsage(basePath) {
   return api.getImageUsage({ basePath });
 }
 
-export async function readImage(basePath, assetPath) {
+export async function readImage(basePath, assetPath, options = {}) {
   const api = getNotesApi();
-  return api.readImage({ basePath, assetPath });
+  return api.readImage({ basePath, assetPath, thumbnail: Boolean(options.thumbnail) });
 }
 
-export async function deleteImage(basePath, assetPath) {
+export async function deleteImage(basePath, assetPath, options = {}) {
   const api = getNotesApi();
-  return api.deleteImage({ basePath, assetPath });
+  return api.deleteImage({
+    basePath,
+    assetPath,
+    removeAllReferences: Boolean(options.removeAllReferences),
+  });
 }
 
 export async function replaceImage(basePath, assetPath, base64Data) {

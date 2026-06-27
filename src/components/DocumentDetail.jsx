@@ -240,6 +240,7 @@ export function DocumentDetail({
   const [pdfExporting, setPdfExporting] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfExportMode, setPdfExportMode] = useState("formal");
+  const [pdfDownsampleImages, setPdfDownsampleImages] = useState(false);
   const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -747,6 +748,7 @@ export function DocumentDetail({
         cleansed: document.cleansed,
         includeRawNotes,
         includeCleansed,
+        downsampleImages: pdfDownsampleImages,
       });
       if (!result?.canceled) {
         onNotify?.("PDF downloaded.", "success");
@@ -1250,6 +1252,17 @@ export function DocumentDetail({
                 <option value="raw">Raw Notes</option>
                 <option value="both">Both Raw and Formal</option>
               </select>
+            </label>
+            <label className="overlay-dialog-checkbox">
+              <input
+                type="checkbox"
+                checked={pdfDownsampleImages}
+                onChange={(event) => setPdfDownsampleImages(event.target.checked)}
+              />
+              <span>
+                <strong>Downsample images</strong>
+                <small>Use cached thumbnails for a smaller PDF. Leave off for original image quality.</small>
+              </span>
             </label>
             <div className="overlay-dialog-actions">
               <button

@@ -46,16 +46,13 @@ export async function rotateImage(dataUrl, degrees = 90) {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const radians = (degrees * Math.PI) / 180;
+      const normalizedDegrees = ((Number(degrees) || 0) % 360 + 360) % 360;
+      const radians = (normalizedDegrees * Math.PI) / 180;
+      const sin = Math.abs(Math.sin(radians));
+      const cos = Math.abs(Math.cos(radians));
 
-      // Swap dimensions for 90/270 degree rotations
-      if (degrees === 90 || degrees === 270) {
-        canvas.width = img.height;
-        canvas.height = img.width;
-      } else {
-        canvas.width = img.width;
-        canvas.height = img.height;
-      }
+      canvas.width = Math.max(1, Math.ceil(img.width * cos + img.height * sin));
+      canvas.height = Math.max(1, Math.ceil(img.width * sin + img.height * cos));
 
       const ctx = canvas.getContext("2d");
       if (!ctx) {

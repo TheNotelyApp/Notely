@@ -10,6 +10,35 @@ const md = new MarkdownIt({
   typographer: true,
 });
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getImageDisplayName(src, fallback) {
+  const cleanSrc = String(src || "").split(/[?#]/)[0];
+  const rawName = cleanSrc.split(/[\\/]/).pop() || fallback || "Image";
+  try {
+    return decodeURIComponent(rawName) || rawName;
+  } catch {
+    return rawName;
+  }
+}
+
+const defaultImageRenderer = md.renderer.rules.image
+  || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+
+md.renderer.rules.image = (tokens, idx, options, env, self) => {
+  const token = tokens[idx];
+  const src = token.attrGet("src") || "";
+  const label = getImageDisplayName(src, token.content || token.attrGet("alt") || "Image");
+  const imageHtml = defaultImageRenderer(tokens, idx, options, env, self);
+  return `<span class="markdown-image-frame">${imageHtml}<span class="markdown-image-name" title="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
+};
+
 export function renderMarkdown(content) {
   return md.render(content || "");
 }

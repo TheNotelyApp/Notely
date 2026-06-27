@@ -183,7 +183,15 @@ export function EditorPane({
   );
 
   if (mode === "preview") {
-    return <MarkdownPreview content={previewContent} basePath={basePath} onNotify={onNotify} onContentChange={onChange} />;
+    return (
+      <MarkdownPreview
+        content={previewContent}
+        basePath={basePath}
+        onNotify={onNotify}
+        onContentChange={onChange}
+        showOriginalImages={showOriginalImages}
+      />
+    );
   }
 
   if (mode === "web") {
@@ -248,6 +256,7 @@ export function EditorPane({
             onNotify={onNotify}
             onContentChange={onChange}
             onMediaClick={setSelectedMediaPreview}
+            showOriginalImages={showOriginalImages}
           />
         </section>
         {selectedMediaPreview && (
