@@ -27,7 +27,7 @@
 
 .workspace-graph-header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-text, #172326);
   flex: 0;
@@ -78,7 +78,7 @@
   padding: 10px 14px;
   border: 1px solid #d9d9d9;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   background: #fafafa;
   color: #172326;
   width: 240px;
@@ -110,7 +110,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--color-text-muted, #506b70);
   font-weight: 500;
   white-space: nowrap;
@@ -129,6 +129,15 @@
   flex: 1;
   min-height: 0;
   position: relative;
+  background: #ffffff !important;
+}
+
+.workspace-graph-canvas .react-flow {
+  background: #ffffff !important;
+}
+
+.workspace-graph-canvas .react-flow__viewport {
+  background: #ffffff !important;
 }
 
 /* ── Loading / Empty ── */
@@ -140,7 +149,7 @@
   height: 100%;
   gap: 16px;
   color: var(--color-text-muted, #506b70);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 
@@ -162,7 +171,7 @@
   padding: 14px 18px;
   border-radius: 11px;
   border: 2px solid transparent;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #172326;
   cursor: pointer;
@@ -260,7 +269,7 @@
   border: 1px solid #e5e5e5;
   border-radius: 10px;
   padding: 12px 16px;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #172326;
   pointer-events: none;
   z-index: 10;
@@ -281,7 +290,7 @@
   border-radius: 8px;
   background: #ffffff;
   color: #666666;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -311,7 +320,7 @@
   background: rgba(255, 193, 7, 0.12);
   border: 1px solid rgba(255, 193, 7, 0.4);
   color: #d4a500;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   flex-shrink: 0;
   pointer-events: none;

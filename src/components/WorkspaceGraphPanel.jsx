@@ -286,14 +286,14 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters }) {
         onNodeDoubleClick={handleNodeDoubleClick}
         onPaneClick={handlePaneClick}
         fitView
-        minZoom={0.05}
-        maxZoom={2}
+        minZoom={0.1}
+        maxZoom={3}
         nodesDraggable
         nodesConnectable={false}
         elementsSelectable
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={24} size={1} color="#d0cbc0" />
+        <Background gap={32} size={1.5} color="#f0f0f0" />
         {/* Render semantic cluster backgrounds */}
         {clusters && clusters.map((_, idx) => (
           <ClusterBackground key={idx} clusters={clusters} nodes={baseNodes} clusterIdx={idx} />
@@ -301,7 +301,7 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters }) {
         <Controls />
         <MiniMap
           nodeColor={(n) => n.data?.color || "#ccc"}
-          maskColor="rgba(244,241,234,0.7)"
+          maskColor="rgba(255,255,255,0.8)"
           style={{ width: 140, height: 90 }}
         />
       </ReactFlow>
