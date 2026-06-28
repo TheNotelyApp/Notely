@@ -1579,6 +1579,7 @@ button {
 
 .dashboard-panels.rail {
   margin-bottom: 0;
+  gap: 0;
 }
 
 .landing-workspace-layout {
@@ -1590,6 +1591,13 @@ button {
 
 .landing-dashboard-rail {
   min-width: 0;
+  border: 1px solid #c8d7d1;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top left, rgba(161, 196, 181, 0.22), transparent 38%),
+    linear-gradient(180deg, #f8fcfa 0%, #eef5f2 100%);
+  box-shadow: 0 14px 28px rgba(16, 34, 36, 0.1);
+  padding: 8px;
 }
 
 .landing-notes-pane {
@@ -1628,6 +1636,19 @@ button {
 
 .dashboard-panels.rail .dashboard-panel {
   min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 10px 8px;
+}
+
+.dashboard-panels.rail .dashboard-panel + .dashboard-panel {
+  border-top: 1px solid #d3e0db;
+}
+
+.dashboard-panels.rail .dashboard-panel-head {
+  margin-bottom: 6px;
 }
 
 .dashboard-panel-head {
