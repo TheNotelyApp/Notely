@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from "react";
+import { memo, useRef, useState, useEffect, useMemo } from "react";
 import {
   Save,
   RotateCcw,
@@ -257,6 +257,156 @@ function parseVersionDocumentContent(value, fallbackDocument = {}) {
     cleansed: cleansedIndex === -1 ? fallbackDocument.cleansed || "" : lines.slice(cleansedIndex + 1).join("\n").trim(),
   };
 }
+
+const MetadataPanel = memo(function MetadataPanel({
+  showMetadataPanel,
+  isFocusMode,
+  document,
+  tagText,
+  onTagsChange,
+  onTagsBlur,
+}) {
+  if (!showMetadataPanel || isFocusMode) return null;
+
+  return (
+    <div className="metadata-grid">
+      <div className="metadata-card">
+        <User size={16} />
+        <span>Name</span>
+        <strong>{document.metadata?.name || "Not captured"}</strong>
+      </div>
+      <div className="metadata-card">
+        <Clock size={16} />
+        <span>Time</span>
+        <strong>{document.metadata?.time || "Not captured"}</strong>
+      </div>
+      <div className="metadata-card">
+        <MapPin size={16} />
+        <span>Location</span>
+        <strong>{document.metadata?.location || "Not captured"}</strong>
+      </div>
+      <label className="metadata-card metadata-card-input">
+        <Tag size={16} />
+        <span>Tags</span>
+        <input
+          type="text"
+          value={tagText}
+          onChange={onTagsChange}
+          onBlur={onTagsBlur}
+          placeholder="Add tags"
+          aria-label="Note tags"
+        />
+      </label>
+    </div>
+  );
+});
+
+const FindReplacePanel = memo(function FindReplacePanel({
+  showFindReplace,
+  findQuery,
+  setFindQuery,
+  replaceValue,
+  setReplaceValue,
+  findCaseSensitive,
+  setFindCaseSensitive,
+  onFindPrevious,
+  onFindNext,
+  onReplace,
+  onReplaceAll,
+  findMatchIndex,
+  findMatchTotal,
+}) {
+  if (!showFindReplace) return null;
+
+  return (
+    <div className="find-replace-panel" role="region" aria-label="Find and replace">
+      <input
+        value={findQuery}
+        onChange={(event) => setFindQuery(event.target.value)}
+        placeholder="Find"
+      />
+      <input
+        value={replaceValue}
+        onChange={(event) => setReplaceValue(event.target.value)}
+        placeholder="Replace"
+      />
+      <label className="find-toggle">
+        <input
+          type="checkbox"
+          checked={findCaseSensitive}
+          onChange={(event) => setFindCaseSensitive(event.target.checked)}
+        />
+        Case
+      </label>
+      <button className="small-button" type="button" onClick={onFindPrevious}>Prev</button>
+      <button className="small-button" type="button" onClick={onFindNext}>Next</button>
+      <button className="small-button" type="button" onClick={onReplace}>Replace</button>
+      <button className="small-button" type="button" onClick={onReplaceAll}>Replace All</button>
+      <span className="find-count">{findMatchTotal ? `${Math.max(findMatchIndex + 1, 1)}/${findMatchTotal}` : "0/0"}</span>
+    </div>
+  );
+});
+
+const OutlinePanel = memo(function OutlinePanel({
+  isOutlineEnabled,
+  isOutlineCollapsed,
+  setIsOutlineCollapsed,
+  outlineHeadings,
+  onJumpToLine,
+}) {
+  if (!isOutlineEnabled) return null;
+
+  return (
+    <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
+      {isOutlineCollapsed ? (
+        <div className="outline-collapsed-actions">
+          <button
+            className="small-button"
+            onClick={() => setIsOutlineCollapsed(false)}
+            title="Open outline panel"
+            aria-expanded="false"
+          >
+            <ListTree size={16} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="panel-title-row">
+            <h2>Outline</h2>
+            <div className="panel-actions">
+              <button
+                className="small-button"
+                onClick={() => setIsOutlineCollapsed(true)}
+                title="Close outline panel"
+                aria-expanded="true"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+          {outlineHeadings.length ? (
+            <div className="outline-list">
+              {outlineHeadings.map((entry) => (
+                <button
+                  key={`${entry.line}-${entry.text}`}
+                  type="button"
+                  className={`outline-item level-${entry.level}`}
+                  onClick={() => onJumpToLine(entry.line)}
+                  title={`Go to line ${entry.line}`}
+                >
+                  <span>{entry.text}</span>
+                  <em>L{entry.line}</em>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No headings in this section yet.</p>
+          )}
+        </>
+      )}
+    </aside>
+  );
+});
 
 export function DocumentDetail({
   document,
@@ -904,37 +1054,14 @@ export function DocumentDetail({
         </div>
       </header>
 
-      {showMetadataPanel && !isFocusMode ? (
-        <div className="metadata-grid">
-          <div className="metadata-card">
-            <User size={16} />
-            <span>Name</span>
-            <strong>{document.metadata?.name || "Not captured"}</strong>
-          </div>
-          <div className="metadata-card">
-            <Clock size={16} />
-            <span>Time</span>
-            <strong>{document.metadata?.time || "Not captured"}</strong>
-          </div>
-          <div className="metadata-card">
-            <MapPin size={16} />
-            <span>Location</span>
-            <strong>{document.metadata?.location || "Not captured"}</strong>
-          </div>
-          <label className="metadata-card metadata-card-input">
-            <Tag size={16} />
-            <span>Tags</span>
-            <input
-              type="text"
-              value={tagText}
-              onChange={handleTagsChange}
-              onBlur={handleTagsBlur}
-              placeholder="Add tags"
-              aria-label="Note tags"
-            />
-          </label>
-        </div>
-      ) : null}
+      <MetadataPanel
+        showMetadataPanel={showMetadataPanel}
+        isFocusMode={isFocusMode}
+        document={document}
+        tagText={tagText}
+        onTagsChange={handleTagsChange}
+        onTagsBlur={handleTagsBlur}
+      />
 
       <div className={`workspace ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
         <main className="editor-panel">
@@ -1000,33 +1127,21 @@ export function DocumentDetail({
             </div>
           </div>
 
-          {showFindReplace ? (
-            <div className="find-replace-panel" role="region" aria-label="Find and replace">
-              <input
-                value={findQuery}
-                onChange={(event) => setFindQuery(event.target.value)}
-                placeholder="Find"
-              />
-              <input
-                value={replaceValue}
-                onChange={(event) => setReplaceValue(event.target.value)}
-                placeholder="Replace"
-              />
-              <label className="find-toggle">
-                <input
-                  type="checkbox"
-                  checked={findCaseSensitive}
-                  onChange={(event) => setFindCaseSensitive(event.target.checked)}
-                />
-                Case
-              </label>
-              <button className="small-button" type="button" onClick={handleFindPrevious}>Prev</button>
-              <button className="small-button" type="button" onClick={handleFindNext}>Next</button>
-              <button className="small-button" type="button" onClick={replaceCurrentMatch}>Replace</button>
-              <button className="small-button" type="button" onClick={replaceAllMatches}>Replace All</button>
-              <span className="find-count">{findMatchTotal ? `${Math.max(findMatchIndex + 1, 1)}/${findMatchTotal}` : "0/0"}</span>
-            </div>
-          ) : null}
+          <FindReplacePanel
+            showFindReplace={showFindReplace}
+            findQuery={findQuery}
+            setFindQuery={setFindQuery}
+            replaceValue={replaceValue}
+            setReplaceValue={setReplaceValue}
+            findCaseSensitive={findCaseSensitive}
+            setFindCaseSensitive={setFindCaseSensitive}
+            onFindPrevious={handleFindPrevious}
+            onFindNext={handleFindNext}
+            onReplace={replaceCurrentMatch}
+            onReplaceAll={replaceAllMatches}
+            findMatchIndex={findMatchIndex}
+            findMatchTotal={findMatchTotal}
+          />
 
           <EditorPane
             value={content}
@@ -1058,56 +1173,13 @@ export function DocumentDetail({
           />
         </main>
 
-        {isOutlineEnabled ? (
-          <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
-            {isOutlineCollapsed ? (
-              <div className="outline-collapsed-actions">
-                <button
-                  className="small-button"
-                  onClick={() => setIsOutlineCollapsed(false)}
-                  title="Open outline panel"
-                  aria-expanded="false"
-                >
-                  <ListTree size={16} />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="panel-title-row">
-                  <h2>Outline</h2>
-                  <div className="panel-actions">
-                    <button
-                      className="small-button"
-                      onClick={() => setIsOutlineCollapsed(true)}
-                      title="Close outline panel"
-                      aria-expanded="true"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-                {outlineHeadings.length ? (
-                  <div className="outline-list">
-                    {outlineHeadings.map((entry) => (
-                      <button
-                        key={`${entry.line}-${entry.text}`}
-                        type="button"
-                        className={`outline-item level-${entry.level}`}
-                        onClick={() => jumpToLine(entry.line)}
-                        title={`Go to line ${entry.line}`}
-                      >
-                        <span>{entry.text}</span>
-                        <em>L{entry.line}</em>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="muted">No headings in this section yet.</p>
-                )}
-              </>
-            )}
-          </aside>
-        ) : null}
+        <OutlinePanel
+          isOutlineEnabled={isOutlineEnabled}
+          isOutlineCollapsed={isOutlineCollapsed}
+          setIsOutlineCollapsed={setIsOutlineCollapsed}
+          outlineHeadings={outlineHeadings}
+          onJumpToLine={jumpToLine}
+        />
         {aiSidebar}
         {!aiPanelVisible && aiEnabled ? (
           <button
