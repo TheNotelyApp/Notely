@@ -44,7 +44,7 @@ button {
   overflow: hidden;
 }
 
-.app-shell.terminal-open {
+.app-shell.terminal-open.document-screen {
   /* Keep content clear of the fixed terminal dock when it is expanded. */
   --terminal-dock-height: min(240px, 30vh);
   padding-bottom: calc(var(--app-shell-pad-bottom) + var(--terminal-dock-height) + 16px);
@@ -2032,10 +2032,47 @@ button {
   text-overflow: ellipsis;
 }
 
+.embedded-terminal-error {
+  color: #ffb7b0;
+  border: 1px solid rgba(255, 116, 102, 0.45);
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: rgba(64, 17, 14, 0.52);
+  max-width: min(36vw, 360px);
+}
+
 .embedded-terminal-header .small-button {
   min-height: 22px;
   padding: 0 8px;
   font-size: 10px;
+}
+
+.embedded-terminal-shell-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.embedded-terminal-shell-switch .small-button.active {
+  border-color: #9fd6bc;
+  background: #153238;
+  color: #d7f1e6;
+}
+
+.embedded-terminal-shell-label {
+  color: #9fd6bc;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.embedded-terminal-shell-hint {
+  color: #9bb6bf;
+  font-size: 10px;
+  max-width: min(28vw, 280px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .embedded-terminal-xterm {

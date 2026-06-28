@@ -15,9 +15,48 @@ export function EmbeddedTerminal({ cwd, onClose }) {
   const mountRef = useRef(null);
   const sessionIdRef = useRef("");
   const initialCwdRef = useRef(String(cwd || ""));
+  const [selectedShell, setSelectedShell] = useState(() => {
+    if (typeof window === "undefined") return "auto";
+    try {
+      const saved = String(window.localStorage.getItem("notely:terminal-shell") || "").trim().toLowerCase();
+      return saved === "bash" || saved === "cmd" ? saved : "auto";
+    } catch {
+      return "auto";
+    }
+  });
   const [sessionPath, setSessionPath] = useState("");
+  const [sessionShellLabel, setSessionShellLabel] = useState("");
+  const [sessionError, setSessionError] = useState("");
+  const [retryTick, setRetryTick] = useState(0);
+
+  const shellHint = (() => {
+    const normalized = String(sessionShellLabel || "").trim().toLowerCase();
+    if (selectedShell === "auto") {
+      if (normalized === "bash") return "Default: Bash (auto-detected)";
+      if (normalized === "cmd") return "Default: CMD (fallback)";
+      return "Default shell (auto)";
+    }
+    if (selectedShell === "bash") return "Manual: Bash";
+    if (selectedShell === "cmd") return "Manual: CMD";
+    return "";
+  })();
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (selectedShell === "bash" || selectedShell === "cmd") {
+        window.localStorage.setItem("notely:terminal-shell", selectedShell);
+      } else {
+        window.localStorage.removeItem("notely:terminal-shell");
+      }
+    } catch {
+      // Ignore preference persistence errors.
+    }
+  }, [selectedShell]);
+
+  useEffect(() => {
+    setSessionError("");
+
     const terminal = new Terminal({
       cursorBlink: true,
       convertEol: true,
@@ -67,14 +106,20 @@ export function EmbeddedTerminal({ cwd, onClose }) {
 
     window.addEventListener("resize", handleResize);
 
-    createTerminalSession(initialCwdRef.current, { role: "developer" })
+    createTerminalSession(initialCwdRef.current, {
+      role: "developer",
+      shell: selectedShell === "auto" ? undefined : selectedShell,
+    })
       .then((session) => {
         sessionIdRef.current = String(session?.sessionId || "");
         setSessionPath(String(session?.cwd || initialCwdRef.current || ""));
+        setSessionShellLabel(String(session?.shellLabel || selectedShell || ""));
         handleResize();
       })
       .catch((error) => {
-        terminal.writeln(`\x1b[31m${error?.message || "Unable to start terminal session."}\x1b[0m`);
+        const message = error?.message || "Unable to start terminal session.";
+        setSessionError(message);
+        terminal.writeln(`\x1b[31m${message}\x1b[0m`);
       });
 
     return () => {
@@ -90,13 +135,41 @@ export function EmbeddedTerminal({ cwd, onClose }) {
       terminal.dispose();
       sessionIdRef.current = "";
     };
-  }, []);
+  }, [retryTick, selectedShell]);
 
   return (
     <section className="embedded-terminal" aria-label="Embedded terminal">
       <div className="embedded-terminal-header">
         <strong>Terminal</strong>
         <div className="embedded-terminal-header-right">
+          <div className="embedded-terminal-shell-switch" role="group" aria-label="Terminal shell selector">
+            <button
+              className={`small-button ${selectedShell === "bash" ? "active" : ""}`}
+              type="button"
+              onClick={() => setSelectedShell("bash")}
+              title="Use Bash shell"
+            >
+              Bash
+            </button>
+            <button
+              className={`small-button ${selectedShell === "cmd" ? "active" : ""}`}
+              type="button"
+              onClick={() => setSelectedShell("cmd")}
+              title="Use CMD shell"
+            >
+              CMD
+            </button>
+          </div>
+          {sessionShellLabel ? <span className="embedded-terminal-shell-label">{sessionShellLabel.toUpperCase()}</span> : null}
+          {shellHint ? <span className="embedded-terminal-shell-hint">{shellHint}</span> : null}
+          {sessionError ? (
+            <span className="embedded-terminal-error" title={sessionError}>{sessionError}</span>
+          ) : null}
+          {sessionError ? (
+            <button className="small-button" type="button" onClick={() => setRetryTick((value) => value + 1)}>
+              Retry
+            </button>
+          ) : null}
           <span title={sessionPath || initialCwdRef.current || ""}>{sessionPath || initialCwdRef.current || ""}</span>
           <button className="small-button" type="button" onClick={onClose}>Close</button>
         </div>

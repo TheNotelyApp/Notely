@@ -483,7 +483,8 @@ export async function createTerminalSession(cwd, options = {}) {
   }
   return api.createTerminalSession({
     cwd,
-    role: typeof options.role === "string" ? options.role : undefined
+    role: typeof options.role === "string" ? options.role : undefined,
+    shell: options.shell === "bash" || options.shell === "cmd" ? options.shell : undefined,
   });
 }
 

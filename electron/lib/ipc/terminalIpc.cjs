@@ -1,4 +1,7 @@
 const { assertTrustedIpcSender } = require("./ipcSecurity.cjs");
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 function createTerminalIpc(deps) {
   const {
@@ -78,6 +81,63 @@ function createTerminalIpc(deps) {
     }
   }
 
+  function detectBashPathOnWindows() {
+    const envCandidates = [
+      process.env.NOTELY_BASH_PATH,
+      process.env.GIT_BASH_PATH,
+    ].filter(Boolean);
+
+    const installCandidates = [
+      "C:/Program Files/Git/bin/bash.exe",
+      "C:/Program Files/Git/usr/bin/bash.exe",
+      "C:/Program Files (x86)/Git/bin/bash.exe",
+      "C:/Program Files (x86)/Git/usr/bin/bash.exe",
+    ].map((item) => path.normalize(item));
+
+    const absoluteCandidates = [...envCandidates, ...installCandidates]
+      .map((item) => path.normalize(String(item || "")))
+      .filter(Boolean);
+
+    for (const candidate of absoluteCandidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    const where = spawnSync("where", ["bash"], { encoding: "utf8", shell: false });
+    if (where.status === 0) {
+      const hit = String(where.stdout || "")
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .find(Boolean);
+      if (hit) return hit;
+    }
+
+    return "";
+  }
+
+  function resolveTerminalShell(payloadShell) {
+    const preferred = String(payloadShell || "").trim().toLowerCase();
+
+    if (process.platform !== "win32") {
+      const command = process.env.SHELL || "bash";
+      return { command, args: ["-l"], shellLabel: "bash" };
+    }
+
+    const bashPath = detectBashPathOnWindows();
+    const shouldUseBash = preferred === "bash" || (!preferred && Boolean(bashPath));
+
+    if (shouldUseBash) {
+      if (!bashPath) {
+        throw new Error("Bash is not installed or not available in PATH.");
+      }
+      return { command: bashPath, args: ["-l"], shellLabel: "bash" };
+    }
+
+    const command = process.env.ComSpec || "cmd.exe";
+    return { command, args: [], shellLabel: "cmd" };
+  }
+
   function getOwnedTerminalSession(event, sessionId) {
     assertTrustedIpcSender(BrowserWindow, event, "terminal:session");
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -108,9 +168,8 @@ function createTerminalIpc(deps) {
 
       const cwd = resolveTerminalCwd(payload?.cwd);
       const sessionId = String(nextTerminalSessionId++);
-      const shell = process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : (process.env.SHELL || "bash");
-      const shellArgs = process.platform === "win32" ? [] : ["-l"];
-      const child = pty.spawn(shell, shellArgs, {
+      const shellConfig = resolveTerminalShell(payload?.shell);
+      const child = pty.spawn(shellConfig.command, shellConfig.args, {
         cwd,
         env: { ...process.env, TERM: "xterm-256color" },
         name: "xterm-256color",
@@ -143,7 +202,8 @@ function createTerminalIpc(deps) {
       return {
         sessionId,
         cwd,
-        policy: terminalPolicy
+        policy: terminalPolicy,
+        shellLabel: shellConfig.shellLabel,
       };
     });
 
