@@ -481,6 +481,16 @@ export default function App() {
     current && currentNoteParentPath
       && (!rootComparable || currentNoteParentComparable === rootComparable || currentNoteParentComparable.startsWith(`${rootComparable}/`))
   );
+  const siblingPaletteNotes = current
+    ? documents
+      .filter((entry) => entry.entryType === "file" && entry.filePath !== current.filePath)
+      .sort((left, right) => {
+        const leftTime = new Date(left.updatedAt || 0).getTime();
+        const rightTime = new Date(right.updatedAt || 0).getTime();
+        return rightTime - leftTime;
+      })
+      .slice(0, 8)
+    : [];
   const recentPaletteNotes = [...documents]
     .filter((entry) => entry.entryType === "file")
     .sort((left, right) => {
@@ -549,6 +559,11 @@ export default function App() {
       group: "Navigation",
       disabled: !canOpenCurrentNoteParent,
     },
+    ...siblingPaletteNotes.map((note) => ({
+      id: `open-sibling-note:${encodeURIComponent(note.filePath)}`,
+      label: `Open Sibling Note: ${note.title}`,
+      group: "Current Folder",
+    })),
     ...recentPaletteNotes.map((note) => ({
       id: `open-note:${encodeURIComponent(note.filePath)}`,
       label: `Open Note: ${note.title}`,
@@ -565,6 +580,18 @@ export default function App() {
       const target = documents.find((entry) => entry.filePath === filePath && entry.entryType === "file");
       if (!target) {
         notify("That note is no longer available in this view.", "warning");
+        return;
+      }
+      await handleOpenListItem(target);
+      return;
+    }
+
+    if (String(commandId || "").startsWith("open-sibling-note:")) {
+      const encodedPath = String(commandId).slice("open-sibling-note:".length);
+      const filePath = decodeURIComponent(encodedPath || "");
+      const target = documents.find((entry) => entry.filePath === filePath && entry.entryType === "file");
+      if (!target) {
+        notify("That sibling note is no longer available in this folder.", "warning");
         return;
       }
       await handleOpenListItem(target);
