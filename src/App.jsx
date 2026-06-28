@@ -487,6 +487,30 @@ export default function App() {
       group: "View",
     },
     {
+      id: "set-view-tile",
+      label: "Use Tile View",
+      group: "View",
+      disabled: notesViewMode === "tile",
+    },
+    {
+      id: "set-view-table",
+      label: "Use Table View",
+      group: "View",
+      disabled: notesViewMode === "table",
+    },
+    {
+      id: "set-density-comfortable",
+      label: "Use Comfortable Density",
+      group: "View",
+      disabled: notesDensityMode === "comfortable",
+    },
+    {
+      id: "set-density-compact",
+      label: "Use Compact Density",
+      group: "View",
+      disabled: notesDensityMode === "compact",
+    },
+    {
       id: "find-in-note",
       label: "Find in Current Note",
       group: "Editor",
@@ -550,6 +574,26 @@ export default function App() {
 
     if (commandId === "toggle-view-mode") {
       setNotesViewMode((value) => (value === "tile" ? "table" : "tile"));
+      return;
+    }
+
+    if (commandId === "set-view-tile") {
+      setNotesViewMode("tile");
+      return;
+    }
+
+    if (commandId === "set-view-table") {
+      setNotesViewMode("table");
+      return;
+    }
+
+    if (commandId === "set-density-comfortable") {
+      setNotesDensityMode("comfortable");
+      return;
+    }
+
+    if (commandId === "set-density-compact") {
+      setNotesDensityMode("compact");
       return;
     }
 
