@@ -22,6 +22,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     createFolderInProject,
     renameDocumentFile,
     deleteDocumentFile,
+    deleteFolderInProject,
     parseDocument,
     buildDocumentContent,
     emitLocalP2PSyncEvent,
@@ -98,6 +99,12 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;
     return createFolderInProject(rootDir, payload);
+  });
+
+  registerTrustedHandler("folders:delete", (_event, payload) => {
+    const activeProject = getActiveProject();
+    const rootDir = activeProject.rootPath;
+    return deleteFolderInProject(rootDir, payload?.folderPath);
   });
 
   registerTrustedHandler("documents:rename", (_event, payload) => {

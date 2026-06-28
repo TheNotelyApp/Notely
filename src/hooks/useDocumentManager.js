@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   createFolder,
   createDocument,
+  deleteFolder as deleteFolderApi,
   deleteDocument as deleteDocumentApi,
   getNotesRootSetting,
   listProjects,
@@ -224,6 +225,39 @@ export function useDocumentManager({ notify }) {
       setError(err?.message || "Unable to delete note.");
       notify(err?.message || "Unable to delete note.", "error");
       return false;
+    }
+  }
+
+  async function handleDeleteCurrentFolder() {
+    const projectRoot = String(activeProject?.rootPath || "").replace(/[\\/]+$/, "");
+    const currentFolder = String(landingFolderPath || projectRoot).replace(/[\\/]+$/, "");
+    if (!projectRoot || !currentFolder) return false;
+    if (projectRoot.toLowerCase() === currentFolder.toLowerCase()) {
+      notify("Project root folder cannot be removed.", "info");
+      return false;
+    }
+
+    const folderName = currentFolder.replace(/^.*[\\/]/, "") || "current folder";
+    const confirmed = window.confirm(`Move folder "${folderName}" to the removed folder?`);
+    if (!confirmed) return false;
+
+    const parentPath = currentFolder.replace(/[\\/][^\\/]+$/, "") || projectRoot;
+    try {
+      await deleteFolderApi(currentFolder);
+      setCurrent(null);
+      setHistory([]);
+      setError("");
+      setLoading(true);
+      setLandingFolderPath(parentPath);
+      setDocuments(await listDocuments(parentPath));
+      notify("Folder moved to removed folder.", "success");
+      return true;
+    } catch (err) {
+      setError(err?.message || "Unable to remove folder.");
+      notify(err?.message || "Unable to remove folder.", "error");
+      return false;
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -518,6 +552,7 @@ export function useDocumentManager({ notify }) {
     handleReloadCurrentFromDisk,
     handleRenameCurrentDocument,
     handleDeleteCurrentDocument,
+    handleDeleteCurrentFolder,
     handleCreateNote,
     handleCreateFolder,
     handlePickNotesFolder,

@@ -123,6 +123,7 @@ export default function App() {
     saveDocument,
     handleReloadCurrentFromDisk,
     handleDeleteCurrentDocument,
+    handleDeleteCurrentFolder,
     handleCreateNote,
     handleCreateFolder,
     handlePickNotesFolder,
@@ -293,13 +294,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const rootPath = String(activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "");
+    const currentPath = String(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
+    const canRemoveFolder = Boolean(rootPath && currentPath && rootPath.toLowerCase() !== currentPath.toLowerCase());
+
     updateMenuContext({
       screen: current ? "document" : "landing",
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       dirty,
+      canRemoveFolder,
+      currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
     });
-  }, [current, notesViewMode, notesDensityMode, dirty]);
+  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -432,6 +439,11 @@ export default function App() {
 
       if (action === "remove-document") {
         handleDeleteCurrentDocument();
+        return;
+      }
+
+      if (action === "remove-folder") {
+        handleDeleteCurrentFolder();
         return;
       }
 

@@ -152,6 +152,14 @@ export async function createFolder(name, parentPath) {
   return api.createFolder({ name, parentPath });
 }
 
+export async function deleteFolder(folderPath) {
+  const api = getNotesApi();
+  if (typeof api.deleteFolder !== "function") {
+    throw new Error("Delete folder action unavailable. Please restart the app.");
+  }
+  return api.deleteFolder({ folderPath });
+}
+
 export async function renameDocument(filePath, title) {
   const api = getNotesApi();
   if (typeof api.renameDocument !== "function") {

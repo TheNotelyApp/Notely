@@ -13,6 +13,8 @@ function buildAppMenu(win, context = {}) {
   const densityMode = context?.densityMode === "compact" ? "compact" : "comfortable";
   const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
+  const canRemoveFolder = Boolean(context?.canRemoveFolder);
+  const currentFolderLabel = String(context?.currentFolderLabel || "Current Folder").trim() || "Current Folder";
 
   const fileSubmenu = screen === "document"
     ? [
@@ -99,6 +101,13 @@ function buildAppMenu(win, context = {}) {
           label: "Notes Folder",
           accelerator: "CmdOrCtrl+Shift+N",
           click: () => sendMenuAction(win, "open-notes-folder-settings")
+        },
+        { type: "separator" },
+        {
+          label: `Move ${currentFolderLabel} to Removed`,
+          accelerator: "CmdOrCtrl+Shift+Delete",
+          enabled: canRemoveFolder,
+          click: () => sendMenuAction(win, "remove-folder")
         },
         { type: "separator" },
         {

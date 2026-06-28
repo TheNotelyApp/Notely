@@ -180,11 +180,37 @@ function createDocumentFileOps(deps) {
     return { movedPath };
   }
 
+  function deleteFolderInProject(rootDir, folderPath) {
+    const resolvedRoot = path.resolve(String(rootDir || ""));
+    const resolved = path.resolve(String(folderPath || ""));
+    if (!resolvedRoot || !resolved || !filePathWithin(resolvedRoot, resolved)) {
+      throw new Error("Invalid folder path.");
+    }
+    if (resolved.toLowerCase() === resolvedRoot.toLowerCase()) {
+      throw new Error("Project root folder cannot be removed.");
+    }
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+      throw new Error("Folder does not exist.");
+    }
+
+    const folderName = path.basename(resolved);
+    if (shouldHideDirectory(folderName)) {
+      throw new Error("This folder is protected.");
+    }
+
+    const movedPath = moveFileToRemoved(resolved, "folders");
+    return {
+      movedPath,
+      parentPath: path.dirname(resolved),
+    };
+  }
+
   return {
     createDocumentInProject,
     createFolderInProject,
     renameDocumentFile,
     deleteDocumentFile,
+    deleteFolderInProject,
   };
 }
 

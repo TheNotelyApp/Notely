@@ -348,6 +348,10 @@ function deleteDocumentFile(filePath) {
   return documentFileOps.deleteDocumentFile(filePath);
 }
 
+function deleteFolderInProject(rootDir, folderPath) {
+  return documentFileOps.deleteFolderInProject(rootDir, folderPath);
+}
+
 let metadataStore;
 
 const windowLifecycle = createWindowLifecycle({
@@ -480,6 +484,7 @@ registerDocumentIpcHandlers(ipcMain, {
   createFolderInProject,
   renameDocumentFile,
   deleteDocumentFile,
+  deleteFolderInProject,
   parseDocument,
   buildDocumentContent,
   emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
