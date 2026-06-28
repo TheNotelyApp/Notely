@@ -3,6 +3,7 @@
  */
 
 const LLMProvider = require('../LLMProvider');
+const HttpClient  = require('../HttpClient');
 const { createLogger } = require('../../utils/logger');
 
 const log = createLogger('GeminiProvider');
@@ -14,7 +15,7 @@ class GeminiProvider extends LLMProvider {
     this.apiKey = apiKey;
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
     this.models = {
-      text: 'gemini-2.0-flash',
+      text: config.model || 'gemini-2.0-flash',
       embedding: 'text-embedding-004'
     };
     this.usageStats = {
@@ -22,8 +23,7 @@ class GeminiProvider extends LLMProvider {
       requestsTotal: 0,
       cacheHits: 0
     };
-    this.requestTimeoutMs = Number(config.requestTimeoutMs) || 30000;
-    this.maxRetries = Number.isInteger(config.maxRetries) ? config.maxRetries : 2;
+    this.http = new HttpClient(config);
   }
 
   /**
@@ -33,56 +33,6 @@ class GeminiProvider extends LLMProvider {
    * so callers can inspect response.ok.
    * @private
    */
-  async _fetchWithRetry(url, init = {}, { retries = this.maxRetries, timeoutMs = this.requestTimeoutMs } = {}) {
-    let lastError;
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const response = await fetch(url, { ...init, signal: controller.signal });
-        clearTimeout(timer);
-        if ((response.status === 429 || response.status >= 500) && attempt < retries) {
-          await this._delay(this._backoffDelay(attempt, response));
-          continue;
-        }
-        return response;
-      } catch (error) {
-        clearTimeout(timer);
-        lastError = error?.name === 'AbortError'
-          ? new Error(`Gemini request timed out after ${timeoutMs}ms`)
-          : error;
-        if (attempt < retries) {
-          await this._delay(this._backoffDelay(attempt));
-          continue;
-        }
-        throw lastError;
-      }
-    }
-    throw lastError || new Error('Gemini request failed');
-  }
-
-  /**
-   * Compute backoff delay (ms), honoring Retry-After when provided.
-   * @private
-   */
-  _backoffDelay(attempt, response) {
-    if (response && typeof response.headers?.get === 'function') {
-      const retryAfter = Number(response.headers.get('retry-after'));
-      if (Number.isFinite(retryAfter) && retryAfter > 0) {
-        return Math.min(retryAfter * 1000, 20000);
-      }
-    }
-    const base = Math.min(1000 * 2 ** attempt, 8000);
-    return base + Math.floor(Math.random() * 250);
-  }
-
-  /**
-   * @private
-   */
-  _delay(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
   /**
    * Initialize Gemini provider
    */
@@ -121,7 +71,7 @@ class GeminiProvider extends LLMProvider {
    */
   async _testConnection() {
     try {
-      const response = await this._fetchWithRetry(
+      const response = await this.http.fetchWithRetry(
         `${this.baseUrl}/${this.models.text}:generateContent`,
         {
           method: 'POST',
@@ -179,7 +129,7 @@ class GeminiProvider extends LLMProvider {
         parts: [{ text: prompt }]
       });
 
-      const response = await this._fetchWithRetry(
+      const response = await this.http.fetchWithRetry(
         `${this.baseUrl}/${this.models.text}:generateContent`,
         {
           method: 'POST',
@@ -237,7 +187,7 @@ class GeminiProvider extends LLMProvider {
     const textArray = Array.isArray(texts) ? texts : [texts];
 
     try {
-      const response = await this._fetchWithRetry(
+      const response = await this.http.fetchWithRetry(
         `${this.baseUrl}/${this.models.embedding}:batchEmbedContent`,
         {
           method: 'POST',
@@ -310,7 +260,7 @@ class GeminiProvider extends LLMProvider {
         });
       });
 
-      const response = await this._fetchWithRetry(
+      const response = await this.http.fetchWithRetry(
         `${this.baseUrl}/${this.models.text}:generateContent`,
         {
           method: 'POST',

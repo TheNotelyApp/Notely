@@ -7,31 +7,45 @@ const DatabaseManager = require('./database/DatabaseManager');
 const LLMRegistry = require('./llm/LLMRegistry');
 const Agent = require('./core/Agent');
 const AIConfig = require('./utils/AIConfig');
+const { HuggingFaceEmbeddingProvider } = require('./llm/providers/HuggingFaceEmbeddingProvider');
 
 let aiAgent = null;
 let aiConfig = null;
 
 /**
  * Initialize AI agent system
+ * @param {string} appDataDir
+ * @param {string} workspaceRoot
+ * @param {object|null} llmProvider   - { name, config } for text generation
+ * @param {object|null} embeddingConfig - { token, model? } for HuggingFace embeddings
  */
-async function initializeAISystem(appDataDir, workspaceRoot, llmProvider) {
+async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embeddingConfig = null) {
   try {
     console.log('[AI System] Initializing...');
 
-    // Initialize configuration
     aiConfig = new AIConfig();
 
-    // Initialize database
     const databaseManager = new DatabaseManager(appDataDir);
     databaseManager.initialize();
 
-    // Initialize LLM registry
     const llmRegistry = new LLMRegistry();
-
-    // Create agent
     aiAgent = new Agent(databaseManager, llmRegistry);
 
-    // Initialize agent
+    // Initialize embedding provider independently of the text provider.
+    if (embeddingConfig?.token) {
+      try {
+        const hfProvider = new HuggingFaceEmbeddingProvider(embeddingConfig.token, {
+          model: embeddingConfig.model,
+        });
+        await hfProvider.initialize();
+        aiAgent.setEmbeddingProvider(hfProvider);
+        console.log('[AI System] HuggingFace embedding provider ready');
+      } catch (embErr) {
+        // Non-fatal — text generation and other features still work.
+        console.warn('[AI System] HuggingFace embedding provider failed to initialize:', embErr.message);
+      }
+    }
+
     const result = await aiAgent.initialize(workspaceRoot, llmProvider);
 
     console.log('[AI System] Initialized successfully');

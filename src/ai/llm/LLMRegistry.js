@@ -1,9 +1,13 @@
 /**
  * LLMRegistry - Central registry for LLM providers
- * Manages provider instantiation and selection
+ * Manages provider instantiation and selection.
+ *
+ * Provider definitions live in providerRegistry.js — this class simply reads
+ * that registry and exposes activate/get/list operations. Adding a new provider
+ * no longer requires touching this file.
  */
 
-const GeminiProvider = require('./providers/GeminiProvider');
+const { PROVIDER_REGISTRY } = require('./providerRegistry');
 
 class LLMRegistry {
   constructor() {
@@ -13,11 +17,15 @@ class LLMRegistry {
   }
 
   /**
-   * Register built-in providers
+   * Auto-register all available providers from the central registry.
    * @private
    */
   _registerBuiltInProviders() {
-    this.register('gemini', (config) => new GeminiProvider(config.apiKey, config));
+    for (const entry of Object.values(PROVIDER_REGISTRY)) {
+      if (entry.available) {
+        this.register(entry.id, entry.factory);
+      }
+    }
   }
 
   /**

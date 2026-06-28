@@ -77,15 +77,35 @@ const VERSION_HISTORY_LIMIT = 50;
 async function initializeAIForWorkspace() {
   try {
     const AIConfig = require("../src/ai/utils/AIConfig");
+    const { PROVIDER_REGISTRY } = require("../src/ai/llm/providerRegistry");
     const config = new AIConfig();
-    const geminiKey = config.getAPIKey("gemini");
-    const llmProvider = geminiKey
-      ? { name: "gemini", config: { apiKey: geminiKey } }
-      : null;
 
-    const result = await initializeAISystem(appDataDir, notesRoot, llmProvider);
+    // Pick the first text provider that has a configured API key.
+    let llmProvider = null;
+    for (const entry of Object.values(PROVIDER_REGISTRY)) {
+      if (!entry.available) continue;
+      const apiKey = config.getAPIKey(entry.id);
+      if (apiKey) {
+        const savedModel = config.getProviderModel(entry.id);
+        llmProvider = {
+          name: entry.id,
+          config: { apiKey, model: savedModel || entry.defaultModel },
+        };
+        break;
+      }
+    }
+
+    // Resolve HuggingFace embedding token (independent of text provider).
+    const hfToken = config.getAPIKey("huggingface");
+    const embeddingConfig = hfToken ? { token: hfToken } : null;
+
+    const result = await initializeAISystem(appDataDir, notesRoot, llmProvider, embeddingConfig);
     aiAgent = result.agent;
-    console.log("[AI] System initialized");
+    console.log(
+      "[AI] System initialized",
+      llmProvider ? `text: ${llmProvider.name}` : "(no text provider)",
+      embeddingConfig ? "| embeddings: HuggingFace" : "| embeddings: unavailable"
+    );
   } catch (error) {
     aiAgent = null;
     console.error("[AI] Initialization failed:", error?.message || error);

@@ -14,9 +14,11 @@ class Agent {
     this.db = databaseManager;
     this.llmRegistry = llmRegistry;
 
-    // Initialize services
+    // Initialize services — EmbeddingService receives null here; the actual
+    // embeddingProvider is injected after construction via setEmbeddingProvider()
+    // (called from initializeAISystem once the HF token is resolved).
     this.documentService = new DocumentService(this.db, '');
-    this.embeddingService = new EmbeddingService(this.db, this.llmRegistry);
+    this.embeddingService = new EmbeddingService(this.db, null);
     this.relationshipService = new RelationshipService(
       this.db,
       this.embeddingService,
@@ -28,6 +30,14 @@ class Agent {
 
     this.isInitialized = false;
     this.workspaceRoot = null;
+  }
+
+  /**
+   * Inject (or replace) the embedding provider after construction.
+   * Called by initializeAISystem once the HuggingFace token is resolved.
+   */
+  setEmbeddingProvider(provider) {
+    this.embeddingService.setProvider(provider);
   }
 
   /**
@@ -194,6 +204,8 @@ class Agent {
       initialized: this.isInitialized,
       workspaceRoot: this.workspaceRoot,
       llmProvider: this.llmRegistry.activeProvider?.name || null,
+      embeddingProvider: this.embeddingService.embeddingProvider?.name || null,
+      embeddingsAvailable: this.embeddingService.isAvailable(),
       documentCount: this.documentService.getAllDocuments().length,
       sessionInfo: this.memoryManager.getSessionSummary(),
       timestamp: new Date().toISOString()

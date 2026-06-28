@@ -1,21 +1,46 @@
 /**
- * EmbeddingService - Manages vector embeddings and semantic search
+ * EmbeddingService - Manages vector embeddings and semantic search.
+ *
+ * Accepts a dedicated embeddingProvider rather than the LLMRegistry so that
+ * embeddings always work regardless of which text-generation provider is active.
+ * If no embeddingProvider is configured the service degrades gracefully.
  */
 
 class EmbeddingService {
-  constructor(databaseManager, llmRegistry) {
+  /**
+   * @param {import('../database/DatabaseManager')} databaseManager
+   * @param {object|null} embeddingProvider
+   *   Any object with a generateEmbeddings(texts) method.
+   *   Typically HuggingFaceEmbeddingProvider; falls back to null (graceful degradation).
+   */
+  constructor(databaseManager, embeddingProvider) {
     this.db = databaseManager;
-    this.llmRegistry = llmRegistry;
+    this.embeddingProvider = embeddingProvider || null;
     this.embeddingCache = new Map();
+  }
+
+  /**
+   * Whether embedding operations are available.
+   */
+  isAvailable() {
+    return Boolean(this.embeddingProvider?.isInitialized);
+  }
+
+  /**
+   * Replace the embedding provider at runtime (e.g. after the user saves a token).
+   */
+  setProvider(provider) {
+    this.embeddingProvider = provider;
   }
 
   /**
    * Generate and store embedding for document
    */
   async generateEmbedding(filePath, content, forceRefresh = false) {
+    if (!this.isAvailable()) {
+      throw new Error('Embedding provider not configured. Add a HuggingFace token in AI Settings.');
+    }
     try {
-      const llm = this.llmRegistry.getActiveProvider();
-
       // Check cache
       if (!forceRefresh) {
         const cached = this.db.getEmbedding(filePath);
@@ -26,7 +51,7 @@ class EmbeddingService {
       }
 
       // Generate new embedding
-      const vector = await llm.generateEmbeddings(content);
+      const vector = await this.embeddingProvider.generateEmbeddings(content);
       const hash = this._hashContent(content);
 
       // Store in database
@@ -36,7 +61,7 @@ class EmbeddingService {
       return {
         vector,
         contentHash: hash,
-        model: llm.name
+        model: this.embeddingProvider.model || this.embeddingProvider.name
       };
     } catch (error) {
       console.error(`[EmbeddingService] Failed to generate embedding for ${filePath}:`, error.message);
@@ -68,11 +93,12 @@ class EmbeddingService {
    * Semantic search - find similar documents
    */
   async semanticSearch(query, topK = 10) {
+    if (!this.isAvailable()) {
+      throw new Error('Embedding provider not configured. Add a HuggingFace token in AI Settings.');
+    }
     try {
-      const llm = this.llmRegistry.getActiveProvider();
-
       // Generate query embedding
-      const queryVector = await llm.generateEmbeddings(query);
+      const queryVector = await this.embeddingProvider.generateEmbeddings(query);
 
       // Get all stored embeddings
       const allDocs = this.db.query(`

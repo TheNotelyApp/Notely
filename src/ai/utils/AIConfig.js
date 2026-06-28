@@ -150,14 +150,45 @@ class AIConfig {
           enableEmbeddings: true,
           enableRelationshipDiscovery: true,
           maxTokensPerQuery: 2048,
-          temperature: 0.7
+          temperature: 0.7,
+          providerModels: {},
         };
       }
 
-      return JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+      const prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+      if (!prefs.providerModels || typeof prefs.providerModels !== 'object') {
+        prefs.providerModels = {};
+      }
+      return prefs;
     } catch (error) {
       console.error('[AIConfig] Failed to load preferences:', error.message);
       return {};
+    }
+  }
+
+  /**
+   * Get saved model id for a provider (returns null if not set).
+   */
+  getProviderModel(providerId) {
+    const prefs = this.loadPreferences();
+    const model = prefs.providerModels?.[providerId];
+    return typeof model === 'string' && model.trim() ? model.trim() : null;
+  }
+
+  /**
+   * Save selected model for a provider.
+   */
+  saveProviderModel(providerId, modelId) {
+    try {
+      const prefsPath = path.join(this.configDir, 'ai-preferences.json');
+      const prefs = this.loadPreferences();
+      if (!prefs.providerModels) prefs.providerModels = {};
+      prefs.providerModels[providerId] = modelId;
+      fs.writeFileSync(prefsPath, JSON.stringify(prefs, null, 2));
+      return true;
+    } catch (error) {
+      console.error('[AIConfig] Failed to save provider model:', error.message);
+      throw error;
     }
   }
 }

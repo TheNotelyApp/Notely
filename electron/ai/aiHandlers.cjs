@@ -58,7 +58,9 @@ const MAX_QUERY_LENGTH = 8000;
 const MAX_CONTEXT_BYTES = 200000;
 const MAX_API_KEY_LENGTH = 512;
 const MIN_API_KEY_LENGTH = 8;
-const ALLOWED_PROVIDERS = new Set(['gemini']);
+
+// Derived from providerRegistry — the single source of truth for valid provider ids.
+const { ALLOWED_PROVIDER_IDS: ALLOWED_PROVIDERS } = require('../../src/ai/llm/providerRegistry');
 
 /**
  * Only accept IPC originating from a top-level application BrowserWindow frame.
@@ -178,6 +180,8 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_GET_API_KEY, handleGetAPIKey);
   registerHandler('ai:config:get-preferences', handleGetPreferences);
   registerHandler('ai:config:set-preferences', handleSetPreferences);
+  registerHandler('ai:config:get-provider-model', handleGetProviderModel);
+  registerHandler('ai:config:set-provider-model', handleSetProviderModel);
   registerHandler('ai:config:test-connection', handleTestConnection);
   registerHandler('ai:config:clear-data', handleClearData);
 
@@ -338,7 +342,15 @@ async function handleSetAPIKey(event, payload) {
 
     if (aiAgent?.isInitialized) {
       try {
-        await aiAgent.llmRegistry.activateProvider(provider, { apiKey });
+        if (provider === 'huggingface') {
+          // HuggingFace is an embedding-only provider — wire it directly.
+          const { HuggingFaceEmbeddingProvider } = require('../../src/ai/llm/providers/HuggingFaceEmbeddingProvider');
+          const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
+          await hfProvider.initialize();
+          aiAgent.setEmbeddingProvider(hfProvider);
+        } else {
+          await aiAgent.llmRegistry.activateProvider(provider, { apiKey });
+        }
       } catch (activationError) {
         console.warn('[AI IPC] Provider activation after key save failed:', activationError.message);
       }
@@ -411,6 +423,53 @@ async function handleSetPreferences(event, payload) {
 }
 
 /**
+ * Get saved model for a provider
+ */
+async function handleGetProviderModel(_event, payload) {
+  try {
+    const provider = assertProvider(payload?.provider);
+    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const config = new AIConfig();
+    const model = config.getProviderModel(provider);
+    return new AIQueryResponse(true, { model });
+  } catch (error) {
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Save model selection for a provider and activate it immediately
+ */
+async function handleSetProviderModel(_event, payload) {
+  try {
+    const provider = assertProvider(payload?.provider);
+    const modelId = typeof payload?.model === 'string' ? payload.model.trim() : '';
+    if (!modelId) throw new Error('Model id is required.');
+
+    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const config = new AIConfig();
+    config.saveProviderModel(provider, modelId);
+
+    // Re-activate with the new model if the agent is running
+    if (aiAgent?.isInitialized && provider !== 'huggingface') {
+      const apiKey = config.getAPIKey(provider);
+      if (apiKey) {
+        try {
+          await aiAgent.llmRegistry.activateProvider(provider, { apiKey, model: modelId });
+        } catch (activationError) {
+          console.warn('[AI IPC] Re-activation with new model failed:', activationError.message);
+        }
+      }
+    }
+
+    return new AIQueryResponse(true, { message: 'Model saved' });
+  } catch (error) {
+    console.error('[AI IPC] Set provider model failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
  * Handle connection test
  */
 async function handleTestConnection(event, payload) {
@@ -426,6 +485,14 @@ async function handleTestConnection(event, payload) {
 
     if (!apiKey) {
       throw new Error(`No API key configured for ${providerName}`);
+    }
+
+    // HuggingFace is an embedding-only provider tested separately.
+    if (providerName === 'huggingface') {
+      const { HuggingFaceEmbeddingProvider } = require('../../src/ai/llm/providers/HuggingFaceEmbeddingProvider');
+      const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
+      await hfProvider.initialize(); // throws on failure
+      return new AIQueryResponse(true, { message: 'HuggingFace embeddings connected successfully' });
     }
 
     const provider = await aiAgent.llmRegistry.activateProvider(providerName, { apiKey });
