@@ -710,9 +710,7 @@ export default function App() {
         <div className="landing-shell">
           <header className="landing-header">
             <div className="landing-header-main">
-              <p className="landing-eyebrow">Workspace Overview</p>
               <h1>{activeProject?.isRoot ? "All Notes" : `${activeProject?.name || "Folder"} Notes`}</h1>
-              <p className="landing-subtitle">Browse, search, and continue work from your current notes scope.</p>
               <div className="landing-stats" aria-label="Current folder metrics">
                 <span><em>Folders</em><strong>{folderCount}</strong></span>
                 <span><em>Notes</em><strong>{noteCount}</strong></span>
@@ -743,17 +741,6 @@ export default function App() {
               ) : (
                 <div className="landing-path">Path unavailable</div>
               )}
-            </div>
-            <div className="landing-header-meta" aria-label="Landing scope metadata">
-              <span className="landing-meta-pill">
-                {activeProject?.isRoot ? "Root Workspace" : (activeProject?.name || "Project")}
-              </span>
-              <span className="landing-meta-pill">
-                {isRootLandingView ? "Top Level" : "Inside Folder"}
-              </span>
-              <span className="landing-meta-path" title={currentLandingPath || "Path unavailable"}>
-                {currentLandingPath || "Path unavailable"}
-              </span>
             </div>
           </header>
           {isRootLandingView ? (

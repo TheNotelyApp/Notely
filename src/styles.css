@@ -1429,27 +1429,11 @@ button {
   flex: 1;
 }
 
-.landing-eyebrow {
-  margin: 0 0 5px;
-  color: #446068;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .landing-header h1 {
   margin: 0;
   font-size: 26px;
   color: #0f2a2f;
   line-height: 1.1;
-}
-
-.landing-subtitle {
-  margin: 6px 0 0;
-  color: #47626a;
-  font-size: 12px;
-  line-height: 1.35;
 }
 
 .landing-path {
@@ -1513,42 +1497,6 @@ button {
   flex-wrap: wrap;
 }
 
-.landing-header-meta {
-  min-width: 240px;
-  max-width: min(36vw, 420px);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 7px;
-}
-
-.landing-meta-pill {
-  min-height: 24px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid #d4dfdb;
-  background: #ffffff;
-  color: #305058;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.landing-meta-path {
-  max-width: 100%;
-  font-size: 11px;
-  color: #4f6770;
-  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border: 1px solid #d4dfdb;
-  background: #ffffff;
-  border-radius: 999px;
-  padding: 4px 10px;
-}
 
 .landing-stats span {
   display: inline-flex;
@@ -1628,6 +1576,12 @@ button {
   height: 100%;
   overflow: auto;
   padding-right: 2px;
+  scrollbar-width: none;
+}
+
+.landing-notes-pane::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .landing-notes-pane.standalone {
@@ -1850,12 +1804,6 @@ button {
   .landing-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .landing-header-meta {
-    min-width: 0;
-    max-width: 100%;
-    align-items: flex-start;
   }
 
   .dashboard-panels {
