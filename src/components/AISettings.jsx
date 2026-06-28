@@ -1,20 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Key, Save, Trash2, X, Zap } from 'lucide-react';
 import './AISettings.css';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   aiClearData,
   aiGetApiKey,
   aiGetPreferences,
+  aiGetProviderModel,
   aiSetApiKey,
   aiSetPreferences,
+  aiSetProviderModel,
   aiTestConnection,
 } from '../services/electronService';
 
 const providers = [
-  { id: 'gemini', name: 'Google Gemini', description: 'Fast, multimodal AI' },
-  { id: 'openai', name: 'OpenAI', description: 'Planned provider' },
-  { id: 'local', name: 'Local LLM', description: 'Planned provider' }
+  {
+    id: 'gemini', name: 'Google Gemini', description: 'Multimodal — supports semantic search & embeddings', available: true,
+    models: [
+      { id: 'gemini-2.0-flash',      label: 'Gemini 2.0 Flash',      note: 'Fast · default' },
+      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite', note: 'Lightest' },
+      { id: 'gemini-1.5-pro',        label: 'Gemini 1.5 Pro',        note: 'Highest quality' },
+      { id: 'gemini-1.5-flash',      label: 'Gemini 1.5 Flash',      note: 'Balanced' },
+    ],
+    defaultModel: 'gemini-2.0-flash',
+  },
+  {
+    id: 'groq', name: 'Groq', description: 'Free tier — ultra-fast llama-3, gemma, mixtral', available: true,
+    models: [
+      { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B',  note: 'Best quality · default' },
+      { id: 'llama3-8b-8192',          label: 'Llama 3 8B',    note: 'Fast · lightweight' },
+      { id: 'gemma2-9b-it',            label: 'Gemma 2 9B',    note: 'Google open model' },
+      { id: 'mixtral-8x7b-32768',      label: 'Mixtral 8×7B', note: '32k context' },
+    ],
+    defaultModel: 'llama-3.3-70b-versatile',
+  },
+  { id: 'openai', name: 'OpenAI',    description: 'Planned provider', available: false, models: [], defaultModel: '' },
+  { id: 'local',  name: 'Local LLM', description: 'Planned provider', available: false, models: [], defaultModel: '' },
 ];
 
 const defaultPreferences = {
@@ -32,6 +53,10 @@ const AISettings = ({ isOpen, onClose }) => {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [hfToken, setHfToken] = useState('');
+  const [hfConfigured, setHfConfigured] = useState(false);
+  const [hfTestResult, setHfTestResult] = useState(null);
+  const [selectedModel, setSelectedModel] = useState('');
   const dialogRef = useFocusTrap(isOpen);
 
   useEffect(() => {
@@ -56,12 +81,30 @@ const AISettings = ({ isOpen, onClose }) => {
     try {
       setLoading(true);
       setTestResult(null);
+      setHfTestResult(null);
 
       const keyResponse = await aiGetApiKey(selectedProvider);
       if (keyResponse.success && keyResponse.data?.configured) {
         setApiKey(String(keyResponse.data?.maskedKey || 'configured'));
       } else {
         setApiKey('');
+      }
+
+      const modelResponse = await aiGetProviderModel(selectedProvider);
+      const providerEntry = providers.find((p) => p.id === selectedProvider);
+      setSelectedModel(
+        (modelResponse?.success && modelResponse?.data?.model) ||
+        providerEntry?.defaultModel ||
+        ''
+      );
+
+      const hfResponse = await aiGetApiKey('huggingface');
+      if (hfResponse.success && hfResponse.data?.configured) {
+        setHfToken(String(hfResponse.data?.maskedKey || 'configured'));
+        setHfConfigured(true);
+      } else {
+        setHfToken('');
+        setHfConfigured(false);
       }
 
       const prefsResponse = await aiGetPreferences();
@@ -117,8 +160,45 @@ const AISettings = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleTestConnection = async () => {
+  const handleSaveHfToken = async () => {
+    if (!hfToken || hfToken.includes('...')) {
+      setStatus('Please enter a complete HuggingFace token.');
+      return;
+    }
     try {
+      setLoading(true);
+      const response = await aiSetApiKey('huggingface', hfToken);
+      if (response.success) {
+        setHfConfigured(true);
+        setHfToken(hfToken.substring(0, 5) + '...' + hfToken.substring(hfToken.length - 4));
+        setStatus('HuggingFace token saved.');
+      } else {
+        setStatus(`Failed to save token: ${response.error}`);
+      }
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestHfConnection = async () => {
+    try {
+      setLoading(true);
+      setHfTestResult(null);
+      const response = await aiTestConnection('huggingface');
+      setHfTestResult({
+        success: response.success,
+        message: response.success ? 'Embeddings connected successfully.' : `Failed: ${response.error}`,
+      });
+    } catch (error) {
+      setHfTestResult({ success: false, message: `Error: ${error.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {    try {
       setLoading(true);
       setTestResult(null);
 
@@ -197,21 +277,73 @@ const AISettings = ({ isOpen, onClose }) => {
         ) : null}
 
         <div className="ai-settings-content">
+          <section className="ai-settings-section ai-settings-embeddings-card">
+            <div className="ai-settings-setup-head">
+              <h3>Embeddings</h3>
+              <span className={`ai-settings-badge ${hfConfigured ? 'badge-ok' : 'badge-off'}`}>
+                {hfConfigured ? 'Active' : 'Not configured'}
+              </span>
+            </div>
+            <p className="ai-settings-embeddings-info">
+              Powers semantic search and the workspace graph — works with any text provider (Groq or Gemini).
+              Uses <strong>HuggingFace Inference API</strong> free tier. Get a token at <strong>huggingface.co</strong>.
+            </p>
+            <div className="api-key-group compact">
+              <label htmlFor="hf-token">HuggingFace Token (hf_…)</label>
+              <div className="api-key-input-group">
+                <input
+                  id="hf-token"
+                  type="password"
+                  className="api-key-input"
+                  placeholder="hf_xxxxxxxxxxxxxxxxxx"
+                  value={hfToken}
+                  onChange={(e) => setHfToken(e.target.value)}
+                  disabled={loading}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSaveHfToken}
+                  disabled={loading || !hfToken}
+                  type="button"
+                >
+                  <Save size={12} /> Save
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleTestHfConnection}
+                  disabled={loading || !hfConfigured}
+                  type="button"
+                >
+                  <Zap size={12} /> Test
+                </button>
+              </div>
+            </div>
+            {hfTestResult ? (
+              <div className={`test-result ${hfTestResult.success ? 'success' : 'error'}`}>
+                {hfTestResult.message}
+              </div>
+            ) : null}
+          </section>
+
           <section className="ai-settings-section ai-settings-setup-card">
             <div className="ai-settings-setup-head">
-              <h3>Provider Setup</h3>
+              <h3>Text Provider</h3>
               <span className="ai-settings-badge">On device</span>
             </div>
             <div className="provider-grid">
               {providers.map((provider) => (
                 <button
                   key={provider.id}
-                  className={`provider-card ${selectedProvider === provider.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedProvider(provider.id)}
-                  disabled={loading}
+                  className={`provider-card ${selectedProvider === provider.id ? 'selected' : ''} ${!provider.available ? 'planned' : ''}`}
+                  onClick={() => provider.available && setSelectedProvider(provider.id)}
+                  disabled={loading || !provider.available}
                   type="button"
+                  title={!provider.available ? 'Coming soon' : undefined}
                 >
-                  <div className="provider-name">{provider.name}</div>
+                  <div className="provider-name">
+                    {provider.name}
+                    {!provider.available && <span className="provider-planned-badge">Soon</span>}
+                  </div>
                   <div className="provider-description">{provider.description}</div>
                 </button>
               ))}
@@ -220,7 +352,7 @@ const AISettings = ({ isOpen, onClose }) => {
               <label htmlFor="api-key">
                 {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
               </label>
-              <div className="api-key-input-group">
+              <div className="api-key-combined-row">
                 <input
                   id="api-key"
                   type="password"
@@ -230,13 +362,36 @@ const AISettings = ({ isOpen, onClose }) => {
                   onChange={(event) => setApiKey(event.target.value)}
                   disabled={loading}
                 />
+                {(() => {
+                  const providerEntry = providers.find((p) => p.id === selectedProvider);
+                  if (!providerEntry?.models?.length) return null;
+                  return (
+                    <select
+                      id="provider-model"
+                      className="provider-model-select"
+                      value={selectedModel}
+                      onChange={async (e) => {
+                        const model = e.target.value;
+                        setSelectedModel(model);
+                        await aiSetProviderModel(selectedProvider, model);
+                      }}
+                      disabled={loading}
+                    >
+                      {providerEntry.models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label} — {m.note}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()}
                 <button
                   className="btn btn-primary"
                   onClick={handleSaveAPIKey}
                   disabled={loading || !apiKey}
                   type="button"
                 >
-                  Save Key
+                  <Key size={12} /> Save
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -244,7 +399,7 @@ const AISettings = ({ isOpen, onClose }) => {
                   disabled={loading || !apiKey}
                   type="button"
                 >
-                  Test
+                  <Zap size={12} /> Test
                 </button>
               </div>
             </div>
@@ -329,7 +484,7 @@ const AISettings = ({ isOpen, onClose }) => {
                 disabled={loading}
                 type="button"
               >
-                Save Preferences
+                <Save size={12} /> Save
               </button>
             </div>
           </section>
@@ -352,7 +507,7 @@ const AISettings = ({ isOpen, onClose }) => {
                 disabled={loading}
                 type="button"
               >
-                Clear AI Data
+                <Trash2 size={12} /> Clear AI Data
               </button>
             </div>
           </section>
@@ -360,7 +515,7 @@ const AISettings = ({ isOpen, onClose }) => {
 
         <div className="ai-settings-footer">
           <button className="btn btn-secondary" onClick={onClose} type="button">
-            Close
+            <X size={12} /> Close
           </button>
         </div>
       </div>
