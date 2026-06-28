@@ -711,7 +711,7 @@ export default function App() {
           <header className="landing-header">
             <div className="landing-header-main">
               <div className="landing-title-row">
-                <h1>{activeProject?.isRoot ? "All Notes" : `${activeProject?.name || "Folder"} Notes`}</h1>
+                <h1>{activeProject?.isRoot ? "Workspace" : (activeProject?.name || "Project")}</h1>
                 <div className="landing-stats" aria-label="Current folder metrics">
                   <span><em>Folders</em><strong>{folderCount}</strong></span>
                   <span><em>Notes</em><strong>{noteCount}</strong></span>
