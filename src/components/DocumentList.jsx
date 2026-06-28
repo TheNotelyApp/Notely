@@ -1,6 +1,7 @@
 import { formatDate } from "../utils/dateUtils";
 import { useEffect, useMemo, useState } from "react";
 import { readImage } from "../services/electronService";
+import { Star } from "lucide-react";
 
 function EntryIcon({ entryType }) {
   if (entryType === "folder") {
@@ -26,8 +27,17 @@ function CalendarIcon() {
   );
 }
 
-export function DocumentList({ documents, onOpen, loading, viewMode = "tile", density = "comfortable" }) {
+export function DocumentList({
+  documents,
+  onOpen,
+  loading,
+  viewMode = "tile",
+  density = "comfortable",
+  favorites = [],
+  onToggleFavorite,
+}) {
   const [resolvedPreviewImages, setResolvedPreviewImages] = useState({});
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
   const previewRequests = useMemo(() => {
     return documents.flatMap((doc) => (doc.previewImages || []).slice(0, 4).map((image, index) => ({
@@ -106,6 +116,21 @@ export function DocumentList({ documents, onOpen, loading, viewMode = "tile", de
                   <span className="document-name-cell">
                     <EntryIcon entryType={doc.entryType} />
                     <span>{doc.title}</span>
+                    {doc.entryType === "file" ? (
+                      <button
+                        type="button"
+                        className={`favorite-toggle ${favoriteSet.has(doc.filePath) ? "active" : ""}`}
+                        aria-label={favoriteSet.has(doc.filePath) ? `Remove ${doc.title} from favorites` : `Add ${doc.title} to favorites`}
+                        title={favoriteSet.has(doc.filePath) ? "Remove from favorites" : "Add to favorites"}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onToggleFavorite?.(doc.filePath);
+                        }}
+                      >
+                        <Star size={12} />
+                      </button>
+                    ) : null}
                   </span>
                 </td>
                 <td>
@@ -140,6 +165,29 @@ export function DocumentList({ documents, onOpen, loading, viewMode = "tile", de
                 <EntryIcon entryType={doc.entryType} />
                 <span className="document-title">{doc.title}</span>
               </span>
+              {doc.entryType === "file" ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={`favorite-toggle ${favoriteSet.has(doc.filePath) ? "active" : ""}`}
+                  aria-label={favoriteSet.has(doc.filePath) ? `Remove ${doc.title} from favorites` : `Add ${doc.title} to favorites`}
+                  title={favoriteSet.has(doc.filePath) ? "Remove from favorites" : "Add to favorites"}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onToggleFavorite?.(doc.filePath);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onToggleFavorite?.(doc.filePath);
+                    }
+                  }}
+                >
+                  <Star size={12} />
+                </span>
+              ) : null}
             </span>
             <span className="document-meta">
               {doc.entryType === "folder"

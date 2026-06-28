@@ -1572,7 +1572,7 @@ button {
 
 .dashboard-panels {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -2089,6 +2089,31 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.favorite-toggle {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #d3ddda;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #6a7e84;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.favorite-toggle:hover {
+  border-color: #2a5961;
+  background: #f0f7f4;
+  color: #2a5961;
+}
+
+.favorite-toggle.active {
+  border-color: #b28022;
+  background: #fff4de;
+  color: #a46f12;
 }
 
 .document-title-wrap {

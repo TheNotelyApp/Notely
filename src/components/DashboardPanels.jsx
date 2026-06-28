@@ -11,12 +11,14 @@ function getRecentNotes(documents) {
     });
 }
 
-export function DashboardPanels({ documents, loading, onOpen, onAction }) {
+export function DashboardPanels({ documents, loading, onOpen, onAction, favorites = [] }) {
   if (loading) return null;
 
   const recentNotes = getRecentNotes(documents);
   const continueNote = recentNotes[0] || null;
   const recentSlice = recentNotes.slice(0, 5);
+  const favoriteSet = new Set(favorites);
+  const favoriteSlice = recentNotes.filter((note) => favoriteSet.has(note.filePath)).slice(0, 5);
 
   return (
     <section className="dashboard-panels" aria-label="Workspace dashboard">
@@ -81,6 +83,26 @@ export function DashboardPanels({ documents, loading, onOpen, onAction }) {
             Search
           </button>
         </div>
+      </article>
+
+      <article className="dashboard-panel favorites">
+        <div className="dashboard-panel-head">
+          <h2>Favorites</h2>
+        </div>
+        {favoriteSlice.length ? (
+          <ul className="dashboard-recent-list">
+            {favoriteSlice.map((note) => (
+              <li key={note.filePath}>
+                <button type="button" onClick={() => onOpen(note)}>
+                  <span>{note.title}</span>
+                  <small>{formatDate(note.updatedAt)}</small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="dashboard-empty">No favorites yet. Star notes from the list.</p>
+        )}
       </article>
     </section>
   );

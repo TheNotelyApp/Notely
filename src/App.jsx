@@ -66,10 +66,20 @@ export default function App() {
     }
   })();
 
+  const initialFavorites = (() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("notes:favorites") || "[]");
+      return Array.isArray(stored) ? stored.filter((item) => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  })();
+
   const [mode, setMode] = useState(initialEditorMode);
   const { toasts, notify } = useToast();
   const [notesViewMode, setNotesViewMode] = useState(initialViewMode);
   const [notesDensityMode, setNotesDensityMode] = useState(initialDensityMode);
+  const [favoriteNotes, setFavoriteNotes] = useState(initialFavorites);
   const [showTerminal, setShowTerminal] = useState(false);
   const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -239,6 +249,14 @@ export default function App() {
       // Ignore storage failures.
     }
   }, [notesDensityMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("notes:favorites", JSON.stringify(favoriteNotes));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [favoriteNotes]);
 
   useEffect(() => {
     function onGlobalKeyDown(event) {
@@ -576,6 +594,16 @@ export default function App() {
       setGlobalSearchOpen(true);
     }
   }
+
+  function handleToggleFavorite(filePath) {
+    if (!filePath) return;
+    setFavoriteNotes((currentFavorites) => {
+      if (currentFavorites.includes(filePath)) {
+        return currentFavorites.filter((item) => item !== filePath);
+      }
+      return [...currentFavorites, filePath];
+    });
+  }
   const rootPath = activeProject?.rootPath || notesFolderPath || "";
   const currentLandingPath = landingFolderPath || rootPath;
   const normalizedRootPath = String(rootPath || "").replace(/[\\/]+$/, "");
@@ -741,6 +769,7 @@ export default function App() {
             loading={loading}
             onOpen={handleOpenListItem}
             onAction={handleDashboardAction}
+            favorites={favoriteNotes}
           />
           <DocumentList
             documents={documents}
@@ -748,6 +777,8 @@ export default function App() {
             loading={loading}
             viewMode={notesViewMode}
             density={notesDensityMode}
+            favorites={favoriteNotes}
+            onToggleFavorite={handleToggleFavorite}
           />
           {landingAssetsOpen ? (
             <div
