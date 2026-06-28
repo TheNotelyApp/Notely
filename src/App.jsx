@@ -608,6 +608,7 @@ export default function App() {
   const currentLandingPath = landingFolderPath || rootPath;
   const normalizedRootPath = String(rootPath || "").replace(/[\\/]+$/, "");
   const normalizedLandingPath = String(currentLandingPath || "").replace(/[\\/]+$/, "");
+  const isRootLandingView = Boolean(normalizedRootPath) && normalizedRootPath.toLowerCase() === normalizedLandingPath.toLowerCase();
   const breadcrumbSegments = [];
   if (normalizedRootPath) {
     breadcrumbSegments.push({
@@ -764,13 +765,15 @@ export default function App() {
             </div>
             </div>
           </header>
-          <DashboardPanels
-            documents={documents}
-            loading={loading}
-            onOpen={handleOpenListItem}
-            onAction={handleDashboardAction}
-            favorites={favoriteNotes}
-          />
+          {isRootLandingView ? (
+            <DashboardPanels
+              documents={documents}
+              loading={loading}
+              onOpen={handleOpenListItem}
+              onAction={handleDashboardAction}
+              favorites={favoriteNotes}
+            />
+          ) : null}
           <DocumentList
             documents={documents}
             onOpen={handleOpenListItem}
