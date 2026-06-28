@@ -38,6 +38,20 @@ import { useP2PSync } from "./hooks/useP2PSync";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
 
+function getPaletteUsageKey(commandId) {
+  const rawId = String(commandId || "");
+  if (rawId.startsWith("frequent:")) {
+    return getPaletteUsageKey(rawId.slice("frequent:".length));
+  }
+  if (rawId.startsWith("open-sibling-note:")) {
+    return "open-sibling-note";
+  }
+  if (rawId.startsWith("open-note:")) {
+    return "open-note";
+  }
+  return rawId;
+}
+
 export default function App() {
   const initialViewMode = (() => {
     try {
@@ -85,6 +99,17 @@ export default function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+  const [paletteCommandUsage, setPaletteCommandUsage] = useState(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("notes:palette-command-usage") || "{}");
+      if (!stored || typeof stored !== "object" || Array.isArray(stored)) return {};
+      return Object.fromEntries(
+        Object.entries(stored).filter(([key, value]) => typeof key === "string" && Number.isFinite(value) && value > 0)
+      );
+    } catch {
+      return {};
+    }
+  });
 
   const {
     documents,
@@ -258,6 +283,14 @@ export default function App() {
       // Ignore storage failures.
     }
   }, [favoriteNotes]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("notes:palette-command-usage", JSON.stringify(paletteCommandUsage));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [paletteCommandUsage]);
 
   useEffect(() => {
     function onGlobalKeyDown(event) {
@@ -524,7 +557,13 @@ export default function App() {
     })
     .slice(0, 8);
 
-  const paletteCommands = [
+  const hasPaletteUsage = Object.keys(paletteCommandUsage).length > 0;
+  function getPaletteUsageCount(commandId) {
+    const usageKey = getPaletteUsageKey(commandId);
+    return Number(paletteCommandUsage[usageKey] || 0);
+  }
+
+  const paletteCommandsBase = [
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N" },
     { id: "new-folder", label: "Create New Folder", group: "Notes" },
     { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F" },
@@ -597,13 +636,64 @@ export default function App() {
       keywords: `${note.title} ${note.filePath || ""}`,
       priority: 30,
     })),
+    {
+      id: "clear-command-usage",
+      label: "Clear Command Usage History",
+      group: "Help",
+      disabled: !hasPaletteUsage,
+      priority: 200,
+    },
+  ];
+
+  const frequentPaletteCommands = Object.entries(paletteCommandUsage)
+    .filter(([id, count]) => id && Number.isFinite(count) && count > 1)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 6)
+    .map(([id, count]) => {
+      const source = paletteCommandsBase.find((command) => command.id === id && !command.disabled);
+      if (!source) return null;
+      return {
+        id: `frequent:${id}`,
+        label: source.label,
+        group: "Frequent",
+        keywords: `${source.keywords || ""} ${source.group || ""}`,
+        priority: 0,
+        usageBoost: Math.min(count, 20),
+      };
+    })
+    .filter(Boolean);
+
+  const paletteCommands = [
+    ...frequentPaletteCommands,
+    ...paletteCommandsBase.map((command) => ({
+      ...command,
+      usageBoost: getPaletteUsageCount(command.id),
+    })),
   ];
 
   async function handleRunPaletteCommand(commandId) {
     setCommandPaletteOpen(false);
 
-    if (String(commandId || "").startsWith("open-note:")) {
-      const encodedPath = String(commandId).slice("open-note:".length);
+    const resolvedCommandId = String(commandId || "").startsWith("frequent:")
+      ? String(commandId).slice("frequent:".length)
+      : String(commandId || "");
+
+    if (resolvedCommandId && resolvedCommandId !== "clear-command-usage") {
+      const usageKey = getPaletteUsageKey(resolvedCommandId);
+      setPaletteCommandUsage((currentUsage) => ({
+        ...currentUsage,
+        [usageKey]: Number(currentUsage[usageKey] || 0) + 1,
+      }));
+    }
+
+    if (resolvedCommandId === "clear-command-usage") {
+      setPaletteCommandUsage({});
+      notify("Command usage history cleared.", "success");
+      return;
+    }
+
+    if (resolvedCommandId.startsWith("open-note:")) {
+      const encodedPath = String(resolvedCommandId).slice("open-note:".length);
       const filePath = decodeURIComponent(encodedPath || "");
       const target = documents.find((entry) => entry.filePath === filePath && entry.entryType === "file");
       if (!target) {
@@ -614,8 +704,8 @@ export default function App() {
       return;
     }
 
-    if (String(commandId || "").startsWith("open-sibling-note:")) {
-      const encodedPath = String(commandId).slice("open-sibling-note:".length);
+    if (resolvedCommandId.startsWith("open-sibling-note:")) {
+      const encodedPath = String(resolvedCommandId).slice("open-sibling-note:".length);
       const filePath = decodeURIComponent(encodedPath || "");
       const target = documents.find((entry) => entry.filePath === filePath && entry.entryType === "file");
       if (!target) {
@@ -626,82 +716,82 @@ export default function App() {
       return;
     }
 
-    if (commandId === "new-note") {
+    if (resolvedCommandId === "new-note") {
       setNoteDialogOpen(true);
       return;
     }
 
-    if (commandId === "new-folder") {
+    if (resolvedCommandId === "new-folder") {
       setFolderDialogOpen(true);
       return;
     }
 
-    if (commandId === "open-notes-folder") {
+    if (resolvedCommandId === "open-notes-folder") {
       setNotesFolderDialogOpen(true);
       return;
     }
 
-    if (commandId === "open-global-search") {
+    if (resolvedCommandId === "open-global-search") {
       setGlobalSearchOpen(true);
       return;
     }
 
-    if (commandId === "open-shortcuts") {
+    if (resolvedCommandId === "open-shortcuts") {
       setShortcutsModalOpen(true);
       return;
     }
 
-    if (commandId === "open-assets") {
+    if (resolvedCommandId === "open-assets") {
       setLandingAssetsOpen(true);
       return;
     }
 
-    if (commandId === "open-workspace-activity") {
+    if (resolvedCommandId === "open-workspace-activity") {
       await handleOpenWorkspaceActivity();
       return;
     }
 
-    if (commandId === "open-p2p-status") {
+    if (resolvedCommandId === "open-p2p-status") {
       await handleOpenP2PStatus();
       return;
     }
 
-    if (commandId === "open-ai-settings") {
+    if (resolvedCommandId === "open-ai-settings") {
       setAiSettingsOpen(true);
       return;
     }
 
-    if (commandId === "toggle-terminal") {
+    if (resolvedCommandId === "toggle-terminal") {
       setShowTerminal((open) => !open);
       return;
     }
 
-    if (commandId === "toggle-view-mode") {
+    if (resolvedCommandId === "toggle-view-mode") {
       setNotesViewMode((value) => (value === "tile" ? "table" : "tile"));
       return;
     }
 
-    if (commandId === "set-view-tile") {
+    if (resolvedCommandId === "set-view-tile") {
       setNotesViewMode("tile");
       return;
     }
 
-    if (commandId === "set-view-table") {
+    if (resolvedCommandId === "set-view-table") {
       setNotesViewMode("table");
       return;
     }
 
-    if (commandId === "set-density-comfortable") {
+    if (resolvedCommandId === "set-density-comfortable") {
       setNotesDensityMode("comfortable");
       return;
     }
 
-    if (commandId === "set-density-compact") {
+    if (resolvedCommandId === "set-density-compact") {
       setNotesDensityMode("compact");
       return;
     }
 
-    if (commandId === "find-in-note") {
+    if (resolvedCommandId === "find-in-note") {
       if (!current) {
         notify("Open a note to search within it.", "info");
         return;
@@ -710,7 +800,7 @@ export default function App() {
       return;
     }
 
-    if (commandId === "open-current-note-parent-folder") {
+    if (resolvedCommandId === "open-current-note-parent-folder") {
       if (!canOpenCurrentNoteParent) {
         notify("Current note is outside the active workspace path.", "info");
         return;
@@ -721,7 +811,7 @@ export default function App() {
       return;
     }
 
-    if (commandId === "reveal-current-note-in-list") {
+    if (resolvedCommandId === "reveal-current-note-in-list") {
       if (!canOpenCurrentNoteParent) {
         notify("Current note is outside the active workspace path.", "info");
         return;

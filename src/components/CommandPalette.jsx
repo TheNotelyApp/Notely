@@ -13,9 +13,10 @@ function getCommandScore(command, query) {
   const group = String(command.group || "").toLowerCase();
   const keywords = String(command.keywords || "").toLowerCase();
   const priority = Number.isFinite(command.priority) ? command.priority : 100;
+  const usageBoost = Number.isFinite(command.usageBoost) ? command.usageBoost : 0;
 
   if (!needle) {
-    return -priority;
+    return (usageBoost * 5) - priority;
   }
 
   let score = 0;
@@ -23,7 +24,7 @@ function getCommandScore(command, query) {
   if (label.includes(needle)) score += 30;
   if (keywords.includes(needle)) score += 35;
   if (group.includes(needle)) score += 10;
-  return score - priority;
+  return score + (usageBoost * 4) - priority;
 }
 
 function escapeRegExp(text) {
