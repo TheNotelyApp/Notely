@@ -58,9 +58,8 @@ const AISettings = ({ isOpen, onClose }) => {
       setTestResult(null);
 
       const keyResponse = await aiGetApiKey(selectedProvider);
-      if (keyResponse.success && keyResponse.data?.apiKey) {
-        const key = keyResponse.data.apiKey;
-        setApiKey(key.substring(0, 5) + '...' + key.substring(key.length - 5));
+      if (keyResponse.success && keyResponse.data?.configured) {
+        setApiKey(String(keyResponse.data?.maskedKey || 'configured'));
       } else {
         setApiKey('');
       }

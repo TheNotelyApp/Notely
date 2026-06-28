@@ -122,10 +122,13 @@ class GeminiProvider extends LLMProvider {
   async _testConnection() {
     try {
       const response = await this._fetchWithRetry(
-        `${this.baseUrl}/${this.models.text}:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/${this.models.text}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.apiKey
+          },
           body: JSON.stringify({
             contents: [{ parts: [{ text: 'test' }] }]
           })
@@ -177,10 +180,13 @@ class GeminiProvider extends LLMProvider {
       });
 
       const response = await this._fetchWithRetry(
-        `${this.baseUrl}/${this.models.text}:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/${this.models.text}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.apiKey
+          },
           body: JSON.stringify({
             contents,
             generationConfig: {
@@ -232,10 +238,13 @@ class GeminiProvider extends LLMProvider {
 
     try {
       const response = await this._fetchWithRetry(
-        `${this.baseUrl}/${this.models.embedding}:batchEmbedContent?key=${this.apiKey}`,
+        `${this.baseUrl}/${this.models.embedding}:batchEmbedContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.apiKey
+          },
           body: JSON.stringify({
             requests: textArray.map(text => ({
               model: `models/${this.models.embedding}`,
@@ -302,10 +311,13 @@ class GeminiProvider extends LLMProvider {
       });
 
       const response = await this._fetchWithRetry(
-        `${this.baseUrl}/${this.models.text}:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/${this.models.text}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.apiKey
+          },
           body: JSON.stringify({
             contents,
             generationConfig: {

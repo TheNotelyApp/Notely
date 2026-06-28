@@ -59,7 +59,7 @@ export function useAIAssistant({
         providers.map(async (provider) => {
           try {
             const result = await aiGetApiKey(provider);
-            return Boolean(result?.success && result?.data?.apiKey);
+            return Boolean(result?.success && (result?.data?.configured || result?.data?.maskedKey));
           } catch {
             return false;
           }
