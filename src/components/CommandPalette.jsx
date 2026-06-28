@@ -250,6 +250,14 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
             ))
           )}
         </div>
+
+        <footer className="command-palette-footer" aria-label="Keyboard shortcuts">
+          <span className="command-palette-footer-item"><kbd>↑</kbd><kbd>↓</kbd> Move</span>
+          <span className="command-palette-footer-item"><kbd>PgUp</kbd><kbd>PgDn</kbd> Jump</span>
+          <span className="command-palette-footer-item"><kbd>Home</kbd><kbd>End</kbd> First/Last</span>
+          <span className="command-palette-footer-item"><kbd>Enter</kbd> Run</span>
+          <span className="command-palette-footer-item"><kbd>Esc</kbd> Close</span>
+        </footer>
       </div>
     </div>
   );

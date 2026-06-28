@@ -293,6 +293,35 @@ button {
   font-size: 13px;
 }
 
+.command-palette-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
+  padding: 8px 2px 0;
+  border-top: 1px solid #e2eae7;
+}
+
+.command-palette-footer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #5a6f76;
+}
+
+.command-palette-footer-item kbd {
+  min-height: 20px;
+  padding: 0 6px;
+  border: 1px solid #cfdbd7;
+  border-radius: 5px;
+  background: #f7fbf9;
+  color: #4b6770;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+}
+
 .global-search-card {
   width: min(760px, calc(100vw - 32px));
   max-height: calc(100vh - 120px);
