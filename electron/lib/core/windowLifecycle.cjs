@@ -92,6 +92,7 @@ function createWindowLifecycle(deps) {
   }
 
   function createWindow() {
+    const isDevMode = Boolean(rendererUrl) || !app.isPackaged;
     const iconCandidates = [
       path.join(process.resourcesPath || "", "icon.ico"),
       path.join(process.resourcesPath || "", "icon.png"),
@@ -155,7 +156,13 @@ function createWindowLifecycle(deps) {
       win.loadFile(path.join(projectRoot, "dist", "index.html"));
     }
 
-    win.__menuContext = { screen: "landing", viewMode: "tile", dirty: false };
+    win.__menuContext = {
+      screen: "landing",
+      viewMode: "tile",
+      densityMode: "comfortable",
+      isDevMode,
+      dirty: false,
+    };
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
     mainWindow = win;
 
@@ -182,7 +189,13 @@ function createWindowLifecycle(deps) {
   }
 
   function handleBrowserWindowFocus(_event, win) {
-    const context = win?.__menuContext || { screen: "landing", viewMode: "tile", dirty: false };
+    const context = win?.__menuContext || {
+      screen: "landing",
+      viewMode: "tile",
+      densityMode: "comfortable",
+      isDevMode: Boolean(rendererUrl) || !app.isPackaged,
+      dirty: false,
+    };
     Menu.setApplicationMenu(buildAppMenu(win, context));
   }
 
@@ -193,6 +206,8 @@ function createWindowLifecycle(deps) {
     win.__menuContext = {
       screen: context?.screen === "document" ? "document" : "landing",
       viewMode: context?.viewMode === "table" ? "table" : "tile",
+      densityMode: context?.densityMode === "compact" ? "compact" : "comfortable",
+      isDevMode: Boolean(rendererUrl) || !app.isPackaged,
       dirty: Boolean(context?.dirty)
     };
 

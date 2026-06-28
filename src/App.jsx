@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { FolderOpen, FolderPlus, Image as ImageIcon, LayoutGrid, NotebookPen, Rows3, Search, Terminal, X } from "lucide-react";
+import { FolderOpen, FolderPlus, Image as ImageIcon, NotebookPen, Search, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CommandPalette } from "./components/CommandPalette";
@@ -277,9 +277,10 @@ export default function App() {
     updateMenuContext({
       screen: current ? "document" : "landing",
       viewMode: notesViewMode,
+      densityMode: notesDensityMode,
       dirty,
     });
-  }, [current, notesViewMode, dirty]);
+  }, [current, notesViewMode, notesDensityMode, dirty]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -335,6 +336,16 @@ export default function App() {
 
       if (action === "view-table") {
         setNotesViewMode("table");
+        return;
+      }
+
+      if (action === "view-density-comfortable") {
+        setNotesDensityMode("comfortable");
+        return;
+      }
+
+      if (action === "view-density-compact") {
+        setNotesDensityMode("compact");
         return;
       }
 
@@ -681,40 +692,6 @@ export default function App() {
               )}
             </div>
             <div className="landing-header-controls">
-              <div className="document-view-toggle" role="group" aria-label="Landing notes view mode">
-                <button
-                  className={notesViewMode === "tile" ? "active" : ""}
-                  onClick={() => setNotesViewMode("tile")}
-                  type="button"
-                >
-                  <LayoutGrid size={14} />
-                  Tile
-                </button>
-                <button
-                  className={notesViewMode === "table" ? "active" : ""}
-                  onClick={() => setNotesViewMode("table")}
-                  type="button"
-                >
-                  <Rows3 size={14} />
-                  Table
-                </button>
-              </div>
-              <div className="document-density-toggle" role="group" aria-label="Landing notes density mode">
-                <button
-                  className={notesDensityMode === "comfortable" ? "active" : ""}
-                  onClick={() => setNotesDensityMode("comfortable")}
-                  type="button"
-                >
-                  Comfortable
-                </button>
-                <button
-                  className={notesDensityMode === "compact" ? "active" : ""}
-                  onClick={() => setNotesDensityMode("compact")}
-                  type="button"
-                >
-                  Compact
-                </button>
-              </div>
               <div className="landing-header-actions">
               <div className="landing-primary-actions">
                 <button className="small-button" type="button" onClick={() => setGlobalSearchOpen(true)}>

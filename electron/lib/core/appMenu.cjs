@@ -10,6 +10,8 @@ function sendMenuAction(win, action) {
 function buildAppMenu(win, context = {}) {
   const screen = context?.screen === "document" ? "document" : "landing";
   const viewMode = context?.viewMode === "table" ? "table" : "tile";
+  const densityMode = context?.densityMode === "compact" ? "compact" : "comfortable";
+  const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
 
   const fileSubmenu = screen === "document"
@@ -152,7 +154,7 @@ function buildAppMenu(win, context = {}) {
     ? [
         { role: "reload" },
         { role: "forceReload" },
-        { role: "toggleDevTools" }
+        ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
       ]
     : [
         {
@@ -170,12 +172,27 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "view-table")
         },
         { type: "separator" },
+        {
+          label: "Comfortable Density",
+          accelerator: "CmdOrCtrl+3",
+          type: "radio",
+          checked: densityMode === "comfortable",
+          click: () => sendMenuAction(win, "view-density-comfortable")
+        },
+        {
+          label: "Compact Density",
+          accelerator: "CmdOrCtrl+4",
+          type: "radio",
+          checked: densityMode === "compact",
+          click: () => sendMenuAction(win, "view-density-compact")
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
-        { role: "toggleDevTools" }
+        ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
       ];
 
-  return Menu.buildFromTemplate([
+  const template = [
     {
       label: "File",
       submenu: fileSubmenu
@@ -254,14 +271,19 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "ai-clear-cache")
         }
       ]
-    },
-    {
+    }
+  ];
+
+  if (isDevMode) {
+    template.push({
       label: "Help",
       submenu: [
         { role: "toggleDevTools" }
       ]
-    }
-  ]);
+    });
+  }
+
+  return Menu.buildFromTemplate(template);
 }
 
 module.exports = { buildAppMenu, sendMenuAction };
