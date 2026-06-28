@@ -161,11 +161,21 @@ function buildAppMenu(win, context = {}) {
 
   const viewSubmenu = screen === "document"
     ? [
+        {
+          label: "Open Command Palette",
+          click: () => sendMenuAction(win, "open-command-palette")
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
         ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
       ]
     : [
+        {
+          label: "Open Command Palette",
+          click: () => sendMenuAction(win, "open-command-palette")
+        },
+        { type: "separator" },
         {
           label: "Tile Notes",
           accelerator: "CmdOrCtrl+1",

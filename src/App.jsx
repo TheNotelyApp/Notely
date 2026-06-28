@@ -325,6 +325,13 @@ export default function App() {
         return;
       }
 
+      if (action === "open-command-palette") {
+        setGlobalSearchOpen(false);
+        setShortcutsModalOpen(false);
+        setCommandPaletteOpen(true);
+        return;
+      }
+
       if (action === "open-p2p-status") {
         handleOpenP2PStatus();
         return;
