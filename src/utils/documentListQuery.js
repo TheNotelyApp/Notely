@@ -57,6 +57,7 @@ function matchesQuery(entry, query) {
     entry?.metadata?.time,
     entry?.metadata?.location,
     entry?.filePath,
+    entry?.searchText,
   ].filter(Boolean).join(" "));
 
   return haystack.includes(needle);

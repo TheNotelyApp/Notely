@@ -118,6 +118,7 @@ function createWorkspaceEntries(deps) {
           fileName: parsed.fileName,
           title: parsed.title,
           metadata: parsed.metadata,
+          searchText: [parsed.header, parsed.rawNotes, parsed.cleansed].filter(Boolean).join("\n"),
           updatedAt: stat.mtime.toISOString(),
           previewImages: extractPreviewImagesFromMarkdown(content, entryPath),
           hash: parsed.hash

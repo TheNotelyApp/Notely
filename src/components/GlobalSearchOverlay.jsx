@@ -11,6 +11,44 @@ function normalizeRecentSearches(rawValue) {
     .slice(0, RECENT_SEARCHES_LIMIT);
 }
 
+function buildMatchPreview(text, needle, contextLength = 36) {
+  const source = String(text || "");
+  const normalizedNeedle = String(needle || "").trim().toLowerCase();
+  if (!source || !normalizedNeedle) return "";
+
+  const normalizedSource = source.toLowerCase();
+  const at = normalizedSource.indexOf(normalizedNeedle);
+  if (at === -1) return "";
+
+  const start = Math.max(0, at - contextLength);
+  const end = Math.min(source.length, at + normalizedNeedle.length + contextLength);
+  const rawSnippet = source.slice(start, end).replace(/\s+/g, " ").trim();
+  const leading = start > 0 ? "..." : "";
+  const trailing = end < source.length ? "..." : "";
+  return `${leading}${rawSnippet}${trailing}`;
+}
+
+function buildResultMatch(entry, query) {
+  const needle = String(query || "").trim();
+  if (!needle) return { where: "", preview: "" };
+
+  const candidates = [
+    { where: "title", value: entry?.title },
+    { where: "path", value: entry?.filePath },
+    { where: "metadata", value: [entry?.metadata?.time, entry?.metadata?.location].filter(Boolean).join(" ") },
+    { where: "content", value: entry?.searchText },
+  ];
+
+  for (const candidate of candidates) {
+    const preview = buildMatchPreview(candidate.value, needle);
+    if (preview) {
+      return { where: candidate.where, preview };
+    }
+  }
+
+  return { where: "", preview: "" };
+}
+
 function buildSearchResults({ documents, currentDocument, query, typeFilter }) {
   const needle = String(query || "").trim().toLowerCase();
 
@@ -25,26 +63,35 @@ function buildSearchResults({ documents, currentDocument, query, typeFilter }) {
         entry.filePath,
         entry.metadata?.time,
         entry.metadata?.location,
+        entry.searchText,
       ].filter(Boolean).join(" ").toLowerCase();
       return haystack.includes(needle);
     })
-    .map((entry) => ({
-      id: `doc:${entry.filePath}`,
-      kind: "document",
-      entry,
-      label: entry.title,
-      subtitle: entry.entryType === "folder" ? "Folder" : "Note",
-    }));
+    .map((entry) => {
+      const match = buildResultMatch(entry, query);
+      return {
+        id: `doc:${entry.filePath}`,
+        kind: "document",
+        entry,
+        label: entry.title,
+        subtitle: entry.entryType === "folder" ? "Folder" : "Note",
+        matchWhere: match.where,
+        matchPreview: match.preview,
+      };
+    });
 
   const contentResults = [];
   if (currentDocument && needle && (typeFilter === "all" || typeFilter === "current")) {
     const source = `${currentDocument.rawNotes || ""}\n${currentDocument.cleansed || ""}`.toLowerCase();
     if (source.includes(needle)) {
+      const sourceText = `${currentDocument.rawNotes || ""}\n${currentDocument.cleansed || ""}`;
       contentResults.push({
         id: `current:${currentDocument.filePath}`,
         kind: "current-note-match",
         label: `Find "${query}" in ${currentDocument.title}`,
         subtitle: "Current note content",
+        matchWhere: "content",
+        matchPreview: buildMatchPreview(sourceText, query),
       });
     }
   }
@@ -215,6 +262,11 @@ export function GlobalSearchOverlay({
               >
                 <span className="global-search-item-label">{result.label}</span>
                 <small>{result.subtitle}</small>
+                {result.matchPreview ? (
+                  <small>
+                    Match in {result.matchWhere || "text"}: {result.matchPreview}
+                  </small>
+                ) : null}
               </button>
             ))
           )}

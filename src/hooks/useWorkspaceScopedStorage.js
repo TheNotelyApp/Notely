@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useWorkspaceScopedStorage({
   workspaceScope,
@@ -7,7 +7,18 @@ export function useWorkspaceScopedStorage({
   normalize = (value) => value,
   fallbackKey,
 }) {
-  const [value, setValue] = useState(defaultValue);
+  const normalizeRef = useRef(normalize);
+  const defaultValueRef = useRef(defaultValue);
+  normalizeRef.current = normalize;
+  defaultValueRef.current = defaultValue;
+
+  const [value, setValue] = useState(() => {
+    try {
+      return normalize(defaultValue);
+    } catch {
+      return defaultValue;
+    }
+  });
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -17,14 +28,14 @@ export function useWorkspaceScopedStorage({
       const scopedKey = `${key}:${workspaceScope}`;
       const scopedRaw = window.localStorage.getItem(scopedKey);
       const fallbackRaw = fallbackKey ? window.localStorage.getItem(fallbackKey) : null;
-      const parsed = JSON.parse(scopedRaw ?? fallbackRaw ?? JSON.stringify(defaultValue));
-      setValue(normalize(parsed));
+      const parsed = JSON.parse(scopedRaw ?? fallbackRaw ?? JSON.stringify(defaultValueRef.current));
+      setValue(normalizeRef.current(parsed));
     } catch {
-      setValue(normalize(defaultValue));
+      setValue(normalizeRef.current(defaultValueRef.current));
     } finally {
       setIsReady(true);
     }
-  }, [workspaceScope, key, fallbackKey, defaultValue, normalize]);
+  }, [workspaceScope, key, fallbackKey]);
 
   useEffect(() => {
     if (!isReady) return;
