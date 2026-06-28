@@ -3,8 +3,27 @@ import { useEffect, useMemo, useRef, useState } from "react";
 function matchesQuery(command, query) {
   const needle = String(query || "").trim().toLowerCase();
   if (!needle) return true;
-  const haystack = `${command.label} ${command.group || ""}`.toLowerCase();
+  const haystack = `${command.label} ${command.group || ""} ${command.keywords || ""}`.toLowerCase();
   return haystack.includes(needle);
+}
+
+function getCommandScore(command, query) {
+  const needle = String(query || "").trim().toLowerCase();
+  const label = String(command.label || "").toLowerCase();
+  const group = String(command.group || "").toLowerCase();
+  const keywords = String(command.keywords || "").toLowerCase();
+  const priority = Number.isFinite(command.priority) ? command.priority : 100;
+
+  if (!needle) {
+    return -priority;
+  }
+
+  let score = 0;
+  if (label.startsWith(needle)) score += 60;
+  if (label.includes(needle)) score += 30;
+  if (keywords.includes(needle)) score += 35;
+  if (group.includes(needle)) score += 10;
+  return score - priority;
 }
 
 export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
@@ -12,7 +31,16 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
 
-  const filtered = useMemo(() => commands.filter((command) => matchesQuery(command, query)), [commands, query]);
+  const filtered = useMemo(() => {
+    return commands
+      .map((command, index) => ({ command, index, score: getCommandScore(command, query) }))
+      .filter(({ command }) => matchesQuery(command, query))
+      .sort((left, right) => {
+        if (right.score !== left.score) return right.score - left.score;
+        return left.index - right.index;
+      })
+      .map(({ command }) => command);
+  }, [commands, query]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -68,7 +96,7 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
               if (event.key === "Enter") {
                 event.preventDefault();
                 const selected = filtered[activeIndex];
-                if (selected) onRun(selected.id);
+                if (selected && !selected.disabled) onRun(selected.id);
               }
             }}
             placeholder="Type a command or action"
@@ -88,6 +116,8 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
                 type="button"
                 role="option"
                 aria-selected={index === activeIndex}
+                aria-disabled={command.disabled ? "true" : "false"}
+                disabled={Boolean(command.disabled)}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => onRun(command.id)}
               >

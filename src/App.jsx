@@ -491,8 +491,13 @@ export default function App() {
       })
       .slice(0, 8)
     : [];
+  const siblingPaletteNotePaths = new Set(siblingPaletteNotes.map((entry) => entry.filePath));
   const recentPaletteNotes = [...documents]
-    .filter((entry) => entry.entryType === "file")
+    .filter((entry) => {
+      if (entry.entryType !== "file") return false;
+      if (current?.filePath && entry.filePath === current.filePath) return false;
+      return !siblingPaletteNotePaths.has(entry.filePath);
+    })
     .sort((left, right) => {
       const leftTime = new Date(left.updatedAt || 0).getTime();
       const rightTime = new Date(right.updatedAt || 0).getTime();
@@ -561,13 +566,17 @@ export default function App() {
     },
     ...siblingPaletteNotes.map((note) => ({
       id: `open-sibling-note:${encodeURIComponent(note.filePath)}`,
-      label: `Open Sibling Note: ${note.title}`,
+      label: `Open: ${note.title}`,
       group: "Current Folder",
+      keywords: `${note.title} ${note.filePath || ""}`,
+      priority: 10,
     })),
     ...recentPaletteNotes.map((note) => ({
       id: `open-note:${encodeURIComponent(note.filePath)}`,
-      label: `Open Note: ${note.title}`,
+      label: `Open: ${note.title}`,
       group: "Recent",
+      keywords: `${note.title} ${note.filePath || ""}`,
+      priority: 30,
     })),
   ];
 
