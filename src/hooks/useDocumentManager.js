@@ -277,11 +277,15 @@ export function useDocumentManager({ notify }) {
     setError("");
     try {
       const basePath = landingFolderPath || activeProject?.rootPath;
-      await createFolder(name, basePath);
+      const created = await createFolder(name, basePath);
       setNewFolderName("");
       setFolderDialogOpen(false);
       setDocuments(await listDocuments(basePath));
-      notify("Folder created.", "success");
+      if (created?.title && created.title !== name) {
+        notify(`Folder name exists. Created "${created.title}" instead.`, "info");
+      } else {
+        notify("Folder created.", "success");
+      }
     } catch (err) {
       setError(err?.message || "Unable to create folder.");
       notify(err?.message || "Unable to create folder.", "error");

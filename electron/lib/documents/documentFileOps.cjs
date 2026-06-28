@@ -76,12 +76,19 @@ function createDocumentFileOps(deps) {
 
     ensureDir(parentPath);
 
-    const nextFolderPath = path.join(parentPath, folderName);
+    let nextFolderPath = path.join(parentPath, folderName);
     if (!filePathWithin(resolvedRoot, nextFolderPath)) {
       throw new Error("Invalid folder path.");
     }
-    if (fs.existsSync(nextFolderPath)) {
-      throw new Error("A file or folder with that name already exists.");
+
+    // Mirror note creation behavior: create a unique suffixed folder name
+    // instead of failing when a sibling already exists.
+    let finalFolderName = folderName;
+    let counter = 2;
+    while (fs.existsSync(nextFolderPath)) {
+      finalFolderName = `${folderName}-${counter}`;
+      nextFolderPath = path.join(parentPath, finalFolderName);
+      counter += 1;
     }
 
     fs.mkdirSync(nextFolderPath, { recursive: false });
@@ -90,7 +97,7 @@ function createDocumentFileOps(deps) {
     return {
       entryType: "folder",
       filePath: nextFolderPath,
-      title: folderName,
+      title: finalFolderName,
       metadata: {},
       updatedAt: stat.mtime.toISOString(),
       previewImages: []
