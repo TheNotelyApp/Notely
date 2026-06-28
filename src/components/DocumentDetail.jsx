@@ -28,6 +28,8 @@ import { MediaTab } from "./MediaTab";
 import { formatDate } from "../utils/dateUtils";
 import { downloadPdf } from "../services/electronService";
 import { deleteVersion, readVersion } from "../services/electronService";
+import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
+import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -189,12 +191,6 @@ function collectMatches(text, query, caseSensitive) {
   return output;
 }
 
-function isTextInputLike(target) {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
-}
-
 function getHeaderField(header, fieldName) {
   const normalizedField = String(fieldName || "").trim().toLowerCase();
   const line = String(header || "").split(/\r?\n/).find((item) => {
@@ -290,6 +286,7 @@ export function DocumentDetail({
   onShowAI,
   onOpenAISettings,
   onOpenDocument,
+  workspaceStorageScope = "default",
   outlineEnabled = true,
   onOutlineEnabledChange,
   aiSidebar = null,
@@ -313,13 +310,12 @@ export function DocumentDetail({
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfExportMode, setPdfExportMode] = useState("formal");
   const [pdfQualityPreset, setPdfQualityPreset] = useState("full");
-  const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return window.localStorage.getItem(AUTOSAVE_PREF_KEY) === "true";
-    } catch {
-      return false;
-    }
+  const [autosaveEnabled, setAutosaveEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:autosave-enabled",
+    defaultValue: false,
+    normalize: (value) => value === true,
+    fallbackKey: AUTOSAVE_PREF_KEY,
   });
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(0);
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -474,15 +470,6 @@ export function DocumentDetail({
   }, [document.filePath]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(AUTOSAVE_PREF_KEY, autosaveEnabled ? "true" : "false");
-    } catch {
-      // Ignore preference persistence failures.
-    }
-  }, [autosaveEnabled]);
-
-  useEffect(() => {
     if (!autosaveEnabled || !dirty || saving || showMediaManager) return undefined;
 
     const timer = window.setTimeout(async () => {
@@ -502,49 +489,6 @@ export function DocumentDetail({
       setFindMatchIndex(total - 1);
     }
   }, [content, findQuery, findCaseSensitive, findMatchIndex]);
-
-  useEffect(() => {
-    if (!menuAction?.action) return;
-
-    if (menuAction.action === "find-in-note" || menuAction.action === "find-replace") {
-      if (typeof menuAction.query === "string" && menuAction.query.trim()) {
-        setFindQuery(menuAction.query.trim());
-      }
-      openFindReplacePanel();
-      return;
-    }
-
-    if (menuAction.action === "toggle-outline" || menuAction.action === "toggle-outline-enabled") {
-      if (!isFocusMode) {
-        onOutlineEnabledChange?.((value) => value === false);
-      }
-      return;
-    }
-
-    if (menuAction.action === "toggle-split-preview") {
-      if (!showMediaManager) {
-        setMode((value) => (value === "split" ? "edit" : "split"));
-      }
-      return;
-    }
-
-    if (menuAction.action === "toggle-focus-mode") {
-      setIsFocusMode((value) => !value);
-      return;
-    }
-
-    if (menuAction.action === "export-pdf") {
-      setPdfExportMode("formal");
-      setPdfQualityPreset("full");
-      setPdfOptionsOpen(true);
-      return;
-    }
-
-    if (menuAction.action === "manage-versions") {
-      setShowHistoryPopover(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuAction?.nonce, isFocusMode, setMode, showMediaManager]);
 
   const updateContent = (value) => {
     if (value === content) return;
@@ -758,76 +702,33 @@ export function DocumentDetail({
     return true;
   };
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      const key = event.key.toLowerCase();
-      const hasPrimaryModifier = event.ctrlKey || event.metaKey;
-      const inInput = isTextInputLike(event.target);
-
-      if (!hasPrimaryModifier) return;
-
-      if (event.shiftKey && key === "f") {
-        if (showMediaManager) return;
-        event.preventDefault();
-        setIsFocusMode((value) => !value);
-        onNotify?.("Focus mode toggled.", "info");
-        return;
-      }
-
-      if (key === "s") {
-        event.preventDefault();
-        handleManualSave();
-        return;
-      }
-
-      if (key === "f") {
-        event.preventDefault();
-        openFindReplacePanel();
-        return;
-      }
-
-      if (key === "z") {
-        if (inInput && event.target !== textareaRef.current) return;
-        event.preventDefault();
-        const changed = event.shiftKey ? handleRedo() : handleUndo();
-        if (changed) {
-          onNotify?.(event.shiftKey ? "Redo applied." : "Undo applied.", "info");
-        } else {
-          onNotify?.(event.shiftKey ? "Nothing to redo." : "Nothing to undo.", "info");
-        }
-        return;
-      }
-
-      if (key === "1") {
-        event.preventDefault();
-        setEditorMode("edit");
-        return;
-      }
-
-      if (key === "2") {
-        event.preventDefault();
-        setEditorMode("split");
-        return;
-      }
-
-      if (key === "3") {
-        event.preventDefault();
-        setEditorMode("preview");
-        return;
-      }
-
-      if (key === "\\") {
-        if (showMediaManager) return;
-        event.preventDefault();
+  useDocumentEditorActions({
+    menuAction,
+    isFocusMode,
+    showMediaManager,
+    textareaRef,
+    setFindQuery,
+    openFindReplacePanel,
+    toggleOutlineEnabled: () => onOutlineEnabledChange?.((value) => value === false),
+    toggleSplitPreview: () => {
+      if (!showMediaManager) {
         setMode((value) => (value === "split" ? "edit" : "split"));
         onNotify?.("Split preview toggled.", "info");
       }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFocusMode, onNotify, setMode, showMediaManager, handleUndo, handleRedo, onSave, mode]);
+    },
+    toggleFocusMode: () => setIsFocusMode((value) => !value),
+    openPdfOptions: () => {
+      setPdfExportMode("formal");
+      setPdfQualityPreset("full");
+      setPdfOptionsOpen(true);
+    },
+    openHistoryVersions: () => setShowHistoryPopover(true),
+    setEditorMode,
+    handleManualSave,
+    handleUndo,
+    handleRedo,
+    onNotify,
+  });
 
   const handleConfirmPdfExport = async () => {
     const includeRawNotes = pdfExportMode === "raw" || pdfExportMode === "both";

@@ -86,6 +86,23 @@ function normalizeLandingListPrefs(rawValue) {
   };
 }
 
+function normalizeNotesViewMode(rawValue) {
+  return rawValue === "table" ? "table" : "tile";
+}
+
+function normalizeEditorMode(rawValue) {
+  return ["edit", "split", "preview"].includes(rawValue) ? rawValue : "edit";
+}
+
+function normalizeDensityMode(rawValue) {
+  return rawValue === "compact" ? "compact" : "comfortable";
+}
+
+function normalizeFavoriteNotes(rawValue) {
+  if (!Array.isArray(rawValue)) return [];
+  return rawValue.filter((item) => typeof item === "string");
+}
+
 function normalizeOutlineEnabled(rawValue) {
   return rawValue !== false;
 }
@@ -95,47 +112,7 @@ const EMPTY_OBJECT = {};
 const EMPTY_ARRAY = [];
 
 export default function App() {
-  const initialViewMode = (() => {
-    try {
-      const stored = window.localStorage.getItem("notes:view-mode");
-      return stored === "table" ? "table" : "tile";
-    } catch {
-      return "tile";
-    }
-  })();
-
-  const initialEditorMode = (() => {
-    try {
-      const stored = window.localStorage.getItem("notes:editor-mode");
-      return ["edit", "split", "preview"].includes(stored) ? stored : "edit";
-    } catch {
-      return "edit";
-    }
-  })();
-
-  const initialDensityMode = (() => {
-    try {
-      const stored = window.localStorage.getItem("notes:density-mode");
-      return stored === "compact" ? "compact" : "comfortable";
-    } catch {
-      return "comfortable";
-    }
-  })();
-
-  const initialFavorites = (() => {
-    try {
-      const stored = JSON.parse(window.localStorage.getItem("notes:favorites") || "[]");
-      return Array.isArray(stored) ? stored.filter((item) => typeof item === "string") : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  const [mode, setMode] = useState(initialEditorMode);
   const { toasts, notify } = useToast();
-  const [notesViewMode, setNotesViewMode] = useState(initialViewMode);
-  const [notesDensityMode, setNotesDensityMode] = useState(initialDensityMode);
-  const [favoriteNotes, setFavoriteNotes] = useState(initialFavorites);
   const [showTerminal, setShowTerminal] = useState(false);
   const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -253,6 +230,34 @@ export default function App() {
     defaultValue: true,
     normalize: normalizeOutlineEnabled,
   });
+  const [notesViewMode, setNotesViewMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:view-mode",
+    defaultValue: "tile",
+    normalize: normalizeNotesViewMode,
+    fallbackKey: "notes:view-mode",
+  });
+  const [mode, setMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:editor-mode",
+    defaultValue: "edit",
+    normalize: normalizeEditorMode,
+    fallbackKey: "notes:editor-mode",
+  });
+  const [notesDensityMode, setNotesDensityMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:density-mode",
+    defaultValue: "comfortable",
+    normalize: normalizeDensityMode,
+    fallbackKey: "notes:density-mode",
+  });
+  const [favoriteNotes, setFavoriteNotes] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:favorites",
+    defaultValue: EMPTY_ARRAY,
+    normalize: normalizeFavoriteNotes,
+    fallbackKey: "notes:favorites",
+  });
 
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
   syncStateRef.current = { doc: current, dirty, openDocument };
@@ -342,38 +347,6 @@ export default function App() {
     await handleOpenReferencedDocument(filePath);
     setLandingAssetsOpen(false);
   }
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("notes:view-mode", notesViewMode);
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [notesViewMode]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("notes:editor-mode", mode);
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [mode]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("notes:density-mode", notesDensityMode);
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [notesDensityMode]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("notes:favorites", JSON.stringify(favoriteNotes));
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [favoriteNotes]);
 
   useEffect(() => {
     function onGlobalKeyDown(event) {
@@ -1323,6 +1296,7 @@ export default function App() {
             }}
             onOpenAISettings={() => setAiSettingsOpen(true)}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
+            workspaceStorageScope={workspaceStorageScope}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={setOutlineEnabled}
             aiSidebar={aiPanelVisible && isAIConfigured ? (

@@ -53,7 +53,7 @@ function buildSearchResults({ documents, currentDocument, query, typeFilter }) {
       contentResults.push({
         id: `current:${currentDocument.filePath}`,
         kind: "current-note-match",
-        label: `Find \"${query}\" in ${currentDocument.title}`,
+        label: `Find "${query}" in ${currentDocument.title}`,
         subtitle: "Current note content",
       });
     }
