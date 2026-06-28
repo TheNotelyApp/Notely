@@ -1,4 +1,5 @@
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
+const { buildWorkspaceGraph } = require("./workspaceGraph.cjs");
 
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
@@ -399,6 +400,13 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     }
     metadataStore.deleteHistoryVersion(resolvedFilePath, resolvedVersionPath);
     return true;
+  });
+
+  registerTrustedHandler("workspace:graph-data", () => {
+    const activeProject = getActiveProject();
+    const notesRoot = getNotesRoot();
+    const workspaceRoot = path.resolve(activeProject?.rootPath || notesRoot);
+    return buildWorkspaceGraph(fs, path, workspaceRoot);
   });
 }
 

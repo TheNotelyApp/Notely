@@ -209,6 +209,12 @@ function buildAppMenu(win, context = {}) {
           ],
         },
         { type: "separator" },
+        {
+          label: "Workspace Graph",
+          accelerator: "CmdOrCtrl+Shift+G",
+          click: () => sendMenuAction(win, "open-workspace-graph")
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
         ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
@@ -247,6 +253,12 @@ function buildAppMenu(win, context = {}) {
               click: () => sendMenuAction(win, "terminal-shell-cmd")
             },
           ],
+        },
+        { type: "separator" },
+        {
+          label: "Workspace Graph",
+          accelerator: "CmdOrCtrl+Shift+G",
+          click: () => sendMenuAction(win, "open-workspace-graph")
         },
         { type: "separator" },
         {

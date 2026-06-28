@@ -28,6 +28,9 @@ const ConflictResolutionPanel = lazy(() =>
 );
 const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
 const AISettings = lazy(() => import("./components/AISettings"));
+const WorkspaceGraphPanel = lazy(() =>
+  import("./components/WorkspaceGraphPanel").then((m) => ({ default: m.WorkspaceGraphPanel }))
+);
 import {
   onMenuAction,
   getHistory,
@@ -126,6 +129,7 @@ export default function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+  const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
 
   const {
     documents,
@@ -460,6 +464,11 @@ export default function App() {
 
       if (action === "open-workspace-activity") {
         handleOpenWorkspaceActivity();
+        return;
+      }
+
+      if (action === "open-workspace-graph") {
+        setWorkspaceGraphOpen(true);
         return;
       }
 
@@ -1776,6 +1785,19 @@ export default function App() {
         isOpen={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
       />
+
+      {workspaceGraphOpen && (
+        <Suspense fallback={null}>
+          <WorkspaceGraphPanel
+            onClose={() => setWorkspaceGraphOpen(false)}
+            onOpenDocument={async (filePath) => {
+              setWorkspaceGraphOpen(false);
+              const target = documents.find((d) => d.filePath === filePath && d.entryType === "file");
+              if (target) await handleOpenListItem(target);
+            }}
+          />
+        </Suspense>
+      )}
 
     </div>
   );

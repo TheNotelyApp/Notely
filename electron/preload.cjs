@@ -15,8 +15,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
   aiSetApiKey: (payload) => ipcRenderer.invoke("ai:config:set-api-key", payload),
   aiGetPreferences: (payload) => ipcRenderer.invoke("ai:config:get-preferences", payload),
-  aiSetPreferences: (payload) => ipcRenderer.invoke("ai:config:set-preferences", payload),
-  aiTestConnection: (payload) => ipcRenderer.invoke("ai:config:test-connection", payload),
+  aiSetPreferences: (payload) => ipcRenderer.invoke("ai:config:set-preferences", payload),  aiGetProviderModel: (payload) => ipcRenderer.invoke('ai:config:get-provider-model', payload),
+  aiSetProviderModel: (payload) => ipcRenderer.invoke('ai:config:set-provider-model', payload),  aiTestConnection: (payload) => ipcRenderer.invoke("ai:config:test-connection", payload),
   aiClearData: (payload) => ipcRenderer.invoke("ai:config:clear-data", payload),
   aiGenerateEmbeddings: (payload) => ipcRenderer.invoke("ai:embeddings:generate", payload),
   aiBuildGraph: (payload) => ipcRenderer.invoke("ai:graph:build", payload),
@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld("notesApi", {
     return () => ipcRenderer.removeListener("p2p:full-sync-progress", listener);
   },
   getWorkspaceActivity: (payload) => ipcRenderer.invoke("activity:get-workspace", payload),
+  getWorkspaceGraph: () => ipcRenderer.invoke("workspace:graph-data"),
   listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
   createFolder: (payload) => ipcRenderer.invoke("folders:create", payload),
