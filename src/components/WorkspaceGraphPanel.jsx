@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, RefreshCw, Zap } from "lucide-react";
 import {
   ReactFlow,
   Background,
@@ -14,6 +14,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { getSemanticGraph } from "../services/electronService.js";
 import "./WorkspaceGraphPanel.css";
 
 // ── Colour palette ────────────────────────────────────────────────────────────
@@ -26,6 +27,15 @@ const PALETTE = [
 function folderColor(folder, folderIndex) {
   const idx = folderIndex % PALETTE.length;
   return PALETTE[idx];
+}
+
+const CLUSTER_COLORS = [
+  "rgba(168, 213, 186, 0.08)", "rgba(244, 199, 168, 0.08)", "rgba(170, 196, 224, 0.08)",
+  "rgba(232, 180, 184, 0.08)", "rgba(197, 184, 232, 0.08)", "rgba(246, 228, 154, 0.08)",
+];
+
+function clusterBgColor(idx) {
+  return CLUSTER_COLORS[idx % CLUSTER_COLORS.length];
 }
 
 // ── Custom node component ─────────────────────────────────────────────────────
@@ -134,8 +144,47 @@ function computeLayout(rawNodes, folderColorMap) {
   return positioned;
 }
 
+// ── Semantic cluster visualization ────────────────────────────────────────────
+function ClusterBackground({ clusters, nodes, clusterIdx }) {
+  if (!clusters || !nodes || clusters.length === 0) return null;
+
+  const cluster = clusters[clusterIdx];
+  if (!cluster) return null;
+
+  // Find bounding box of all cluster members
+  const memberNodes = nodes.filter((n) => cluster.members.includes(n.id));
+  if (memberNodes.length === 0) return null;
+
+  const xs = memberNodes.map((n) => n.position.x);
+  const ys = memberNodes.map((n) => n.position.y);
+  const minX = Math.min(...xs) - 15;
+  const minY = Math.min(...ys) - 15;
+  const maxX = Math.max(...xs) + NODE_WIDTH + 15;
+  const maxY = Math.max(...ys) + NODE_HEIGHT + 15;
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: minX,
+        top: minY,
+        width,
+        height,
+        background: clusterBgColor(clusterIdx),
+        border: `1px dashed rgba(100, 130, 140, 0.3)`,
+        borderRadius: 4,
+        pointerEvents: "none",
+        zIndex: -1,
+      }}
+      title={`Semantic cluster: ${cluster.members.length} notes, strength ${(cluster.strength * 100).toFixed(0)}%`}
+    />
+  );
+}
+
 // ── Inner graph (needs ReactFlowProvider context) ─────────────────────────────
-function GraphCanvas({ rawData, filter, onOpenDocument }) {
+function GraphCanvas({ rawData, filter, onOpenDocument, clusters }) {
   const { fitView } = useReactFlow();
   const [selectedId, setSelectedId] = useState(null);
   const initialised = useRef(false);
@@ -238,6 +287,10 @@ function GraphCanvas({ rawData, filter, onOpenDocument }) {
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={24} size={1} color="#d0cbc0" />
+        {/* Render semantic cluster backgrounds */}
+        {clusters && clusters.map((_, idx) => (
+          <ClusterBackground key={idx} clusters={clusters} nodes={baseNodes} clusterIdx={idx} />
+        ))}
         <Controls />
         <MiniMap
           nodeColor={(n) => n.data?.color || "#ccc"}
@@ -270,10 +323,14 @@ function isConnectedTo(edges, nodeId, otherId) {
 // ── Public panel component ────────────────────────────────────────────────────
 export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
   const [rawData, setRawData] = useState(null);
+  const [clusters, setClusters] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [semanticLoading, setSemanticLoading] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("");
+  const [embeddingsAvailable, setEmbeddingsAvailable] = useState(false);
 
+  // Load base graph data
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -291,6 +348,46 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  // Load semantic graph (clusters)
+  useEffect(() => {
+    if (!rawData) return;
+    let cancelled = false;
+    setSemanticLoading(true);
+    (async () => {
+      try {
+        const data = await getSemanticGraph();
+        if (!cancelled) {
+          setClusters(data.clusters || []);
+          setEmbeddingsAvailable(data.clusters.length > 0);
+        }
+      } catch (err) {
+        // Embeddings unavailable is not an error, just graceful degradation
+        if (!cancelled) {
+          console.log('Semantic clustering unavailable:', err.message);
+          setClusters([]);
+          setEmbeddingsAvailable(false);
+        }
+      } finally {
+        if (!cancelled) setSemanticLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rawData]);
+
+  // Refresh semantic clusters
+  const handleRefreshSemantic = useCallback(async () => {
+    setSemanticLoading(true);
+    try {
+      const data = await getSemanticGraph();
+      setClusters(data.clusters || []);
+      setEmbeddingsAvailable(data.clusters.length > 0);
+    } catch (err) {
+      console.error('Failed to refresh semantic clusters:', err.message);
+    } finally {
+      setSemanticLoading(false);
+    }
   }, []);
 
   // Keyboard: Escape closes
@@ -314,6 +411,7 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
 
   const nodeCount = rawData?.nodes?.length ?? 0;
   const edgeCount = rawData?.edges?.length ?? 0;
+  const clusterCount = clusters?.filter((c) => c.members && c.members.length > 1).length ?? 0;
 
   return (
     <div className="workspace-graph-overlay" role="dialog" aria-modal="true" aria-label="Workspace Graph">
@@ -322,12 +420,29 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
         <h2>Workspace Graph</h2>
         {!loading && !error && (
           <span className="workspace-graph-meta">
-            {nodeCount} notes &nbsp;·&nbsp; {edgeCount} links &nbsp;·&nbsp; {folders.length} folder{folders.length !== 1 ? "s" : ""}
+            {nodeCount} notes &nbsp;·&nbsp; {edgeCount} links &nbsp;·&nbsp; {folders.length} folder{folders.length !== 1 ? "s" : ""}{clusterCount > 0 ? ` &nbsp;·&nbsp; ${clusterCount} clusters` : ""}
           </span>
         )}
-        <button className="workspace-graph-close" onClick={onClose} title="Close (Esc)">
-          <X size={18} />
-        </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {embeddingsAvailable && !loading && (
+            <button
+              className="small-button"
+              onClick={handleRefreshSemantic}
+              disabled={semanticLoading}
+              title="Refresh semantic clustering"
+            >
+              <RefreshCw size={14} />
+            </button>
+          )}
+          {!embeddingsAvailable && !loading && !error && (
+            <span className="embedding-status-badge" title="Semantic clustering unavailable">
+              <Zap size={12} /> Embeddings off
+            </span>
+          )}
+          <button className="workspace-graph-close" onClick={onClose} title="Close (Esc)">
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -370,7 +485,7 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
         )}
         {!loading && !error && nodeCount > 0 && (
           <ReactFlowProvider>
-            <GraphCanvas rawData={rawData} filter={filter} onOpenDocument={onOpenDocument} />
+            <GraphCanvas rawData={rawData} filter={filter} onOpenDocument={onOpenDocument} clusters={clusters} />
           </ReactFlowProvider>
         )}
       </div>

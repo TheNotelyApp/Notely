@@ -500,6 +500,7 @@ registerDocumentIpcHandlers(ipcMain, {
   getNotesRoot: () => notesRoot,
   getVersionsRoot: () => versionsRoot,
   getActiveProject,
+  getAIAgent: () => aiAgent,
   createDocumentInProject,
   createFolderInProject,
   renameDocumentFile,

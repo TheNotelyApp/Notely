@@ -52,11 +52,6 @@ function buildAppMenu(win, context = {}) {
           accelerator: "CmdOrCtrl+Shift+H",
           click: () => sendMenuAction(win, "manage-versions")
         },
-        {
-          label: "Workspace Activity",
-          accelerator: "CmdOrCtrl+Shift+A",
-          click: () => sendMenuAction(win, "open-workspace-activity")
-        },
         { type: "separator" },
         {
           label: "Open",
@@ -209,12 +204,6 @@ function buildAppMenu(win, context = {}) {
           ],
         },
         { type: "separator" },
-        {
-          label: "Workspace Graph",
-          accelerator: "CmdOrCtrl+Shift+G",
-          click: () => sendMenuAction(win, "open-workspace-graph")
-        },
-        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
         ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
@@ -253,12 +242,6 @@ function buildAppMenu(win, context = {}) {
               click: () => sendMenuAction(win, "terminal-shell-cmd")
             },
           ],
-        },
-        { type: "separator" },
-        {
-          label: "Workspace Graph",
-          accelerator: "CmdOrCtrl+Shift+G",
-          click: () => sendMenuAction(win, "open-workspace-graph")
         },
         { type: "separator" },
         {
@@ -373,6 +356,22 @@ function buildAppMenu(win, context = {}) {
         {
           label: "Clear Cache",
           click: () => sendMenuAction(win, "ai-clear-cache")
+        }
+      ]
+    },
+    {
+      label: "Workspace",
+      submenu: [
+        {
+          label: "Workspace Graph",
+          accelerator: "CmdOrCtrl+Shift+G",
+          click: () => sendMenuAction(win, "open-workspace-graph")
+        },
+        { type: "separator" },
+        {
+          label: "Workspace Activity",
+          accelerator: "CmdOrCtrl+Shift+A",
+          click: () => sendMenuAction(win, "open-workspace-activity")
         }
       ]
     }

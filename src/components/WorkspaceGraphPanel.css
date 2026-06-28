@@ -230,3 +230,45 @@
   max-width: 340px;
   text-align: center;
 }
+
+/* ── Header buttons ── */
+.small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border, #d0cbc0);
+  border-radius: 6px;
+  background: var(--color-surface, #fffdf8);
+  color: var(--color-text, #172326);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.small-button:hover:not(:disabled) {
+  background: var(--color-hover, #e8e3d8);
+  border-color: var(--color-accent, #2f5d62);
+}
+
+.small-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Embedding status badge ── */
+.embedding-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #ffc107;
+  font-size: 0.75rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  pointer-events: none;
+}

@@ -361,6 +361,14 @@ export async function getWorkspaceGraph() {
   return api.getWorkspaceGraph();
 }
 
+export async function getSemanticGraph() {
+  const api = getNotesApi();
+  if (typeof api.getSemanticGraph !== "function") {
+    throw new Error("Semantic graph unavailable. Please restart the app.");
+  }
+  return api.getSemanticGraph();
+}
+
 export async function readDocument(filePath) {
   const api = getNotesApi();
   return api.readDocument(filePath);
