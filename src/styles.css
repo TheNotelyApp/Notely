@@ -2315,6 +2315,21 @@ button {
   color: #3f5961;
 }
 
+@media (hover: hover) {
+  .document-card .remove-toggle,
+  .document-table tbody tr .remove-toggle {
+    opacity: 0;
+    transition: opacity 0.14s ease;
+  }
+
+  .document-card:hover .remove-toggle,
+  .document-card:focus-within .remove-toggle,
+  .document-table tbody tr:hover .remove-toggle,
+  .document-table tbody tr:focus-within .remove-toggle {
+    opacity: 1;
+  }
+}
+
 .favorite-toggle:hover {
   border-color: #2a5961;
   background: #f0f7f4;
