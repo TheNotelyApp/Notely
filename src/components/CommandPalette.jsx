@@ -63,6 +63,7 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
+  const resultsRef = useRef(null);
 
   const filtered = useMemo(() => {
     return commands
@@ -110,6 +111,16 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
       return previous >= 0 ? previous : clamped;
     });
   }, [filtered, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const container = resultsRef.current;
+    if (!container) return;
+    const activeElement = container.querySelector(`[data-command-index="${activeIndex}"]`);
+    if (activeElement && typeof activeElement.scrollIntoView === "function") {
+      activeElement.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeIndex, isOpen, filtered.length]);
 
   if (!isOpen) return null;
 
@@ -209,7 +220,7 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
           <span className="command-palette-hint">Esc</span>
         </div>
 
-        <div className="command-palette-results" role="listbox" aria-label="Command results">
+        <div className="command-palette-results" role="listbox" aria-label="Command results" ref={resultsRef}>
           {!filtered.length ? (
             <div className="command-palette-empty">No matching command</div>
           ) : (
@@ -225,6 +236,7 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
                     aria-selected={index === activeIndex}
                     aria-disabled={command.disabled ? "true" : "false"}
                     disabled={Boolean(command.disabled)}
+                    data-command-index={index}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => onRun(command.id)}
                   >
