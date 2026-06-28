@@ -35,6 +35,7 @@ const { registerDocumentIpcHandlers } = require("./lib/documents/documentIpc.cjs
 const { registerSyncIpcHandlers } = require("./lib/sync/syncIpc.cjs");
 const { createWebPreview } = require("./lib/web/webPreview.cjs");
 const { createWindowLifecycle } = require("./lib/core/windowLifecycle.cjs");
+const { assertTrustedIpcSender } = require("./lib/ipc/ipcSecurity.cjs");
 const { createP2PSyncEngine } = require("./lib/sync/p2pSyncEngine.cjs");
 const { createWorkspaceEntries, DEFAULT_WALK_EXCLUDE_DIRS } = require("./lib/documents/workspaceEntries.cjs");
 const { createMetadataStore } = require("./lib/core/metadataStore.cjs");
@@ -256,6 +257,7 @@ const documentFileOps = createDocumentFileOps({
 });
 
 const imageMedia = createImageMedia({
+  BrowserWindow,
   fs,
   path,
   crypto,
@@ -416,7 +418,10 @@ app.on("before-quit", () => {
   }
 });
 
-ipcMain.on("app-menu:update-context", windowLifecycle.handleMenuContextUpdate);
+ipcMain.on("app-menu:update-context", (event, context) => {
+  assertTrustedIpcSender(BrowserWindow, event, "app-menu:update-context");
+  windowLifecycle.handleMenuContextUpdate(event, context);
+});
 
 registerCoreIpcHandlers(ipcMain, {
   BrowserWindow,
@@ -438,6 +443,7 @@ registerCoreIpcHandlers(ipcMain, {
 terminalIpc.registerHandlers(ipcMain);
 
 registerSyncIpcHandlers(ipcMain, {
+  BrowserWindow,
   fs,
   path,
   filePathWithin,

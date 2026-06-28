@@ -67,7 +67,7 @@ export function EmbeddedTerminal({ cwd, onClose }) {
 
     window.addEventListener("resize", handleResize);
 
-    createTerminalSession(initialCwdRef.current)
+    createTerminalSession(initialCwdRef.current, { role: "developer" })
       .then((session) => {
         sessionIdRef.current = String(session?.sessionId || "");
         setSessionPath(String(session?.cwd || initialCwdRef.current || ""));

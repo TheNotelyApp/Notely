@@ -1,5 +1,8 @@
+const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
+
 function registerSyncIpcHandlers(ipcMain, deps) {
   const {
+    BrowserWindow,
     fs,
     path,
     filePathWithin,
@@ -15,7 +18,14 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     readP2PStatusSnapshot,
   } = deps;
 
-  ipcMain.handle("p2p:start-discovery", () => {
+  function registerTrustedHandler(channel, handler) {
+    ipcMain.handle(channel, (event, payload) => {
+      assertTrustedIpcSender(BrowserWindow, event, channel);
+      return handler(event, payload);
+    });
+  }
+
+  registerTrustedHandler("p2p:start-discovery", () => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -24,7 +34,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return p2pService.getStatus();
   });
 
-  ipcMain.handle("p2p:stop-discovery", () => {
+  registerTrustedHandler("p2p:stop-discovery", () => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -33,7 +43,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return p2pService.getStatus();
   });
 
-  ipcMain.handle("p2p:set-device-name", (_event, payload) => {
+  registerTrustedHandler("p2p:set-device-name", (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -42,7 +52,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return p2pService.getStatus();
   });
 
-  ipcMain.handle("p2p:create-invite", (_event, payload) => {
+  registerTrustedHandler("p2p:create-invite", (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -50,7 +60,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return p2pService.createInvite({ targetPeerId: payload?.peerId });
   });
 
-  ipcMain.handle("p2p:pair-with-code", async (_event, payload) => {
+  registerTrustedHandler("p2p:pair-with-code", async (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -62,7 +72,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     });
   });
 
-  ipcMain.handle("p2p:set-key-policy", (_event, payload) => {
+  registerTrustedHandler("p2p:set-key-policy", (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -71,7 +81,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return p2pService.getStatus();
   });
 
-  ipcMain.handle("p2p:manual-connect", async (_event, payload) => {
+  registerTrustedHandler("p2p:manual-connect", async (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -82,7 +92,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     });
   });
 
-  ipcMain.handle("p2p:remove-trusted-peer", (_event, payload) => {
+  registerTrustedHandler("p2p:remove-trusted-peer", (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -91,7 +101,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return p2pService.getStatus();
   });
 
-  ipcMain.handle("p2p:rotate-workspace-keys", async (_event, payload) => {
+  registerTrustedHandler("p2p:rotate-workspace-keys", async (_event, payload) => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -100,7 +110,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return await p2pService.rotateWorkspaceKeys(payload?.peerId);
   });
 
-  ipcMain.handle("p2p:run-sync-self-test", async () => {
+  registerTrustedHandler("p2p:run-sync-self-test", async () => {
     const p2pService = getP2PService();
     if (!p2pService) {
       throw new Error("P2P service unavailable.");
@@ -108,7 +118,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return await p2pService.runSyncSelfTest();
   });
 
-  ipcMain.handle("p2p:get-status", () => {
+  registerTrustedHandler("p2p:get-status", () => {
     const p2pService = getP2PService();
     if (p2pService) {
       return p2pService.getStatus();
@@ -116,7 +126,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return readP2PStatusSnapshot();
   });
 
-  ipcMain.handle("sync:list-conflicts", (_event, payload) => {
+  registerTrustedHandler("sync:list-conflicts", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const activeProject = getActiveProject();
     const workspaceRoot = path.resolve(activeProject?.rootPath || notesRoot);
@@ -141,7 +151,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     };
   });
 
-  ipcMain.handle("sync:read-conflict-files", (_event, payload) => {
+  registerTrustedHandler("sync:read-conflict-files", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const localPath = path.resolve(String(payload?.filePath || ""));
     const conflictPath = path.resolve(String(payload?.conflictPath || ""));
@@ -177,7 +187,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     };
   });
 
-  ipcMain.handle("sync:resolve-conflict", (_event, payload) => {
+  registerTrustedHandler("sync:resolve-conflict", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const localPath = path.resolve(String(payload?.filePath || ""));
     const conflictPath = path.resolve(String(payload?.conflictPath || ""));
@@ -223,7 +233,7 @@ function registerSyncIpcHandlers(ipcMain, deps) {
     return { ok: true, movedPath };
   });
 
-  ipcMain.handle("activity:get-workspace", (_event, payload) => {
+  registerTrustedHandler("activity:get-workspace", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const activeProject = getActiveProject();
     const workspaceRoot = path.resolve(activeProject?.rootPath || notesRoot);

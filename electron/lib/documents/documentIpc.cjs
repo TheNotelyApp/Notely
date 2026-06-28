@@ -1,3 +1,5 @@
+const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
+
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
     BrowserWindow,
@@ -46,7 +48,14 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return store;
   }
 
-  ipcMain.handle("documents:list", (_event, payload) => {
+  function registerTrustedHandler(channel, handler) {
+    ipcMain.handle(channel, (event, payload) => {
+      assertTrustedIpcSender(BrowserWindow, event, channel);
+      return handler(event, payload);
+    });
+  }
+
+  registerTrustedHandler("documents:list", (_event, payload) => {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
@@ -64,7 +73,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return listDirectoryEntries(targetDir, { includeProjectSlug: false });
   });
 
-  ipcMain.handle("documents:create", (_event, payload) => {
+  registerTrustedHandler("documents:create", (_event, payload) => {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;
     const created = createDocumentInProject(rootDir, payload);
@@ -85,17 +94,17 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return created;
   });
 
-  ipcMain.handle("folders:create", (_event, payload) => {
+  registerTrustedHandler("folders:create", (_event, payload) => {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;
     return createFolderInProject(rootDir, payload);
   });
 
-  ipcMain.handle("documents:rename", (_event, payload) => {
+  registerTrustedHandler("documents:rename", (_event, payload) => {
     return renameDocumentFile(payload?.filePath, payload);
   });
 
-  ipcMain.handle("documents:delete", (_event, payload) => {
+  registerTrustedHandler("documents:delete", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const resolved = path.resolve(String(payload?.filePath || ""));
     if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
@@ -121,7 +130,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return result;
   });
 
-  ipcMain.handle("documents:read", (_event, filePath) => {
+  registerTrustedHandler("documents:read", (_event, filePath) => {
     const notesRoot = getNotesRoot();
     const resolved = path.resolve(filePath);
     if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
@@ -130,7 +139,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
   });
 
-  ipcMain.handle("documents:save", (_event, payload) => {
+  registerTrustedHandler("documents:save", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const resolved = path.resolve(payload.filePath);
     if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
@@ -181,12 +190,12 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return parseDocument(next, resolved);
   });
 
-  ipcMain.handle("documents:history", (_event, filePath) => {
+  registerTrustedHandler("documents:history", (_event, filePath) => {
     const resolved = path.resolve(filePath);
     return resolveMetadataStore().getHistory(resolved);
   });
 
-  ipcMain.handle("documents:restore", (_event, payload) => {
+  registerTrustedHandler("documents:restore", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const versionsRoot = getVersionsRoot();
     const resolved = path.resolve(payload.filePath);
@@ -215,7 +224,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return parseDocument(restored, resolved);
   });
 
-  ipcMain.handle("documents:open-in-editor", async (_event, filePath) => {
+  registerTrustedHandler("documents:open-in-editor", async (_event, filePath) => {
     const notesRoot = getNotesRoot();
     const resolved = path.resolve(filePath || "");
     if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
@@ -238,7 +247,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     }
   });
 
-  ipcMain.handle("documents:open-web-view", async (_event, payload) => {
+  registerTrustedHandler("documents:open-web-view", async (_event, payload) => {
     let previewUrl = `${await ensureWebPreviewServer()}/`;
     if (payload?.filePath) {
       const prepared = await prepareDocumentPreview(payload.filePath, payload.content);
@@ -257,7 +266,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     };
   });
 
-  ipcMain.handle("documents:download-pdf", async (_event, payload) => {
+  registerTrustedHandler("documents:download-pdf", async (_event, payload) => {
     const notesRoot = getNotesRoot();
     const resolved = path.resolve(String(payload?.filePath || ""));
     if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
@@ -346,7 +355,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     }
   });
 
-  ipcMain.handle("documents:read-version", (_event, payload) => {
+  registerTrustedHandler("documents:read-version", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const versionsRoot = getVersionsRoot();
     const resolvedFilePath = path.resolve(payload?.filePath || "");
@@ -365,7 +374,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return fs.readFileSync(resolvedVersionPath, "utf8");
   });
 
-  ipcMain.handle("documents:delete-version", (_event, payload) => {
+  registerTrustedHandler("documents:delete-version", (_event, payload) => {
     const notesRoot = getNotesRoot();
     const versionsRoot = getVersionsRoot();
     const resolvedFilePath = path.resolve(payload?.filePath || "");

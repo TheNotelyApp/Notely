@@ -89,8 +89,8 @@ function createReadableInviteCode() {
     "ion", "jungle", "kepler", "lotus", "matrix", "nova", "onyx", "pulse",
     "quartz", "raven", "solace", "tidal", "ultra", "vector", "willow", "zenith"
   ];
-  const pick = () => words[Math.floor(Math.random() * words.length)];
-  const digits = String(Math.floor(Math.random() * 100)).padStart(2, "0");
+  const pick = () => words[crypto.randomInt(0, words.length)];
+  const digits = String(crypto.randomInt(0, 100)).padStart(2, "0");
   return `${pick()}-${pick()}-${digits}-${pick()}`;
 }
 
