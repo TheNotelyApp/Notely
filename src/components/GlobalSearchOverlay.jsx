@@ -1,24 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 
 const RECENT_SEARCHES_KEY = "notely:recent-searches";
 const RECENT_SEARCHES_LIMIT = 6;
 
-function loadRecentSearches() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => typeof item === "string" && item.trim()).slice(0, RECENT_SEARCHES_LIMIT);
-  } catch {
-    return [];
-  }
-}
-
-function saveRecentSearches(nextValues) {
-  try {
-    window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(nextValues.slice(0, RECENT_SEARCHES_LIMIT)));
-  } catch {
-    // Ignore storage failures.
-  }
+function normalizeRecentSearches(rawValue) {
+  if (!Array.isArray(rawValue)) return [];
+  return rawValue
+    .filter((item) => typeof item === "string" && item.trim())
+    .slice(0, RECENT_SEARCHES_LIMIT);
 }
 
 function buildSearchResults({ documents, currentDocument, query, typeFilter }) {
@@ -70,13 +60,20 @@ export function GlobalSearchOverlay({
   isOpen,
   documents = [],
   currentDocument = null,
+  workspaceStorageScope = "default",
   onClose,
   onOpenResult,
 }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [typeFilter, setTypeFilter] = useState("all");
-  const [recentSearches, setRecentSearches] = useState(() => loadRecentSearches());
+  const [recentSearches, setRecentSearches] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:recent-searches",
+    defaultValue: [],
+    normalize: normalizeRecentSearches,
+    fallbackKey: RECENT_SEARCHES_KEY,
+  });
   const inputRef = useRef(null);
 
   const results = useMemo(() => buildSearchResults({
@@ -102,7 +99,6 @@ export function GlobalSearchOverlay({
     const next = [trimmed, ...recentSearches.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())]
       .slice(0, RECENT_SEARCHES_LIMIT);
     setRecentSearches(next);
-    saveRecentSearches(next);
   }
 
   if (!isOpen) return null;

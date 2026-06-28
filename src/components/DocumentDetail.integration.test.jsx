@@ -102,6 +102,32 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
+  it("does not process the same menu nonce twice", () => {
+    const view = renderDetail(baseProps);
+    const onOutlineEnabledChange = vi.fn();
+    const nonce = Date.now();
+
+    act(() => {
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "toggle-outline-enabled", nonce },
+        onOutlineEnabledChange,
+      });
+    });
+
+    act(() => {
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "toggle-outline-enabled", nonce },
+        onOutlineEnabledChange,
+      });
+    });
+
+    expect(onOutlineEnabledChange).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+  });
+
   it("opens find panel from menu action", () => {
     const view = renderDetail(baseProps);
 

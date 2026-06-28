@@ -8,11 +8,9 @@ import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
 import { DashboardPanels } from "./components/DashboardPanels";
 import { LandingListControls } from "./components/LandingListControls";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
+import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
-const EmbeddedTerminal = lazy(() =>
-  import("./components/EmbeddedTerminal").then((m) => ({ default: m.EmbeddedTerminal }))
-);
 const MediaTab = lazy(() =>
   import("./components/MediaTab").then((m) => ({ default: m.MediaTab }))
 );
@@ -105,6 +103,9 @@ function normalizeFavoriteNotes(rawValue) {
 
 function normalizeOutlineEnabled(rawValue) {
   return rawValue !== false;
+}
+function normalizeFocusModeEnabled(rawValue) {
+  return rawValue === true;
 }
 
 const DEFAULT_LANDING_LIST_PREFS = { query: "", typeFilter: "all", sortBy: "updated-desc" };
@@ -229,6 +230,12 @@ export default function App() {
     key: "notes:outline-enabled",
     defaultValue: true,
     normalize: normalizeOutlineEnabled,
+  });
+  const [focusModeEnabled, setFocusModeEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:focus-mode-enabled",
+    defaultValue: false,
+    normalize: normalizeFocusModeEnabled,
   });
   const [notesViewMode, setNotesViewMode] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
@@ -393,10 +400,12 @@ export default function App() {
       densityMode: notesDensityMode,
       dirty,
       outlineEnabled,
+      splitPreviewEnabled: current ? mode === "split" : false,
+      focusModeEnabled: current ? focusModeEnabled : false,
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
     });
-  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, outlineEnabled]);
+  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, outlineEnabled, mode, focusModeEnabled]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -1069,7 +1078,7 @@ export default function App() {
     : (activeProject?.isRoot ? "Workspace" : (activeProject?.name || "Project"));
 
   return (
-    <div className={`app-shell${showTerminal ? " terminal-open" : ""}`}>
+    <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}`}>
       <div className="toast-stack" aria-live="polite" aria-atomic="true">
         {toasts.map((toast) => (
           <div className={`toast-item ${toast.type}`} key={toast.id}>
@@ -1299,6 +1308,8 @@ export default function App() {
             workspaceStorageScope={workspaceStorageScope}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={setOutlineEnabled}
+            focusModeEnabled={focusModeEnabled}
+            onFocusModeChange={setFocusModeEnabled}
             aiSidebar={aiPanelVisible && isAIConfigured ? (
               <ErrorBoundary label="AI chat">
                 <Suspense fallback={<div className="lazy-loading">Loading AI…</div>}>
@@ -1324,9 +1335,7 @@ export default function App() {
       {showTerminal ? (
         <div className="terminal-dock open">
           <ErrorBoundary label="Terminal">
-            <Suspense fallback={<div className="lazy-loading">Loading terminal…</div>}>
-              <EmbeddedTerminal cwd={terminalCwd} onClose={() => setShowTerminal(false)} />
-            </Suspense>
+            <EmbeddedTerminal cwd={terminalCwd} onClose={() => setShowTerminal(false)} />
           </ErrorBoundary>
         </div>
       ) : null}
@@ -1712,6 +1721,7 @@ export default function App() {
         documents={documents}
         currentDocument={current}
         onClose={() => setGlobalSearchOpen(false)}
+        workspaceStorageScope={workspaceStorageScope}
         onOpenResult={handleOpenGlobalSearchResult}
       />
 

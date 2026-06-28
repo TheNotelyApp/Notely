@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 function isTextInputLike(target) {
   if (!(target instanceof HTMLElement)) return false;
@@ -24,8 +24,14 @@ export function useDocumentEditorActions({
   handleRedo,
   onNotify,
 }) {
+  const lastProcessedMenuNonceRef = useRef(null);
+
   useEffect(() => {
     if (!menuAction?.action) return;
+    if (menuAction?.nonce && lastProcessedMenuNonceRef.current === menuAction.nonce) return;
+    if (menuAction?.nonce) {
+      lastProcessedMenuNonceRef.current = menuAction.nonce;
+    }
 
     if (menuAction.action === "find-in-note" || menuAction.action === "find-replace") {
       if (typeof menuAction.query === "string" && menuAction.query.trim()) {

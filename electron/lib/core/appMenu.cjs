@@ -12,6 +12,8 @@ function buildAppMenu(win, context = {}) {
   const viewMode = context?.viewMode === "table" ? "table" : "tile";
   const densityMode = context?.densityMode === "compact" ? "compact" : "comfortable";
   const outlineEnabled = context?.outlineEnabled !== false;
+  const splitPreviewEnabled = context?.splitPreviewEnabled === true;
+  const focusModeEnabled = context?.focusModeEnabled === true;
   const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
   const canRemoveFolder = Boolean(context?.canRemoveFolder);
@@ -149,12 +151,16 @@ function buildAppMenu(win, context = {}) {
             click: () => sendMenuAction(win, "toggle-outline-enabled")
           },
           {
-            label: "Toggle Split Preview",
+            label: "Split Preview",
+            type: "checkbox",
+            checked: splitPreviewEnabled,
             accelerator: "CmdOrCtrl+\\",
             click: () => sendMenuAction(win, "toggle-split-preview")
           },
           {
-            label: "Toggle Focus Mode",
+            label: "Focus Mode",
+            type: "checkbox",
+            checked: focusModeEnabled,
             accelerator: "CmdOrCtrl+Shift+F",
             click: () => sendMenuAction(win, "toggle-focus-mode")
           }

@@ -289,6 +289,8 @@ export function DocumentDetail({
   workspaceStorageScope = "default",
   outlineEnabled = true,
   onOutlineEnabledChange,
+  focusModeEnabled = false,
+  onFocusModeChange,
   aiSidebar = null,
 }) {
   const MAX_EDITOR_HISTORY = 200;
@@ -327,7 +329,6 @@ export function DocumentDetail({
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
   const [showOriginalImages, setShowOriginalImages] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
   const [showMediaManager, setShowMediaManager] = useState(false);
 
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
@@ -337,6 +338,7 @@ export function DocumentDetail({
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
   const isOutlineEnabled = outlineEnabled !== false;
+  const isFocusMode = focusModeEnabled === true;
   const setEditorMode = (nextMode, options = {}) => {
     const { announce = true, force = false } = options;
     if (!force && showMediaManager) {
@@ -716,7 +718,7 @@ export function DocumentDetail({
         onNotify?.("Split preview toggled.", "info");
       }
     },
-    toggleFocusMode: () => setIsFocusMode((value) => !value),
+    toggleFocusMode: () => onFocusModeChange?.((value) => value !== true),
     openPdfOptions: () => {
       setPdfExportMode("formal");
       setPdfQualityPreset("full");
