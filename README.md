@@ -22,7 +22,7 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 
 Open **Workspace → Workspace Graph** (`Ctrl+Shift+G`) to visualise all notes in the active workspace as an interactive node-edge graph.
 
-- Nodes represent notes, coloured by folder.
+- Nodes represent Markdown notes only (`.md` files); media files are not graphed.
 - Edges represent explicit document links (`[[wiki links]]` and `[text](./file.md)`).
 - Click a node to highlight its connections.
 - Double-click a node to open that note directly.
