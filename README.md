@@ -259,6 +259,40 @@ Windows packaging scripts are included in the repo:
 - `npm run dist:win` builds distributable Windows installers.
 - `./build-windows-exe.sh` is available for the current packaging flow.
 
+### Windows code-signing strategy
+
+Notely uses `electron-builder` certificate-based signing for Windows outputs.
+
+- Preferred: PFX-based signing via environment variables:
+	- `CSC_LINK` (path or base64/data URL to a `.pfx` certificate)
+	- `CSC_KEY_PASSWORD` (password for the certificate)
+- Alternative: system certificate store identity:
+	- `CSC_NAME` (certificate subject name)
+
+For Azure Trusted Signing workflows, provide your Azure signing environment variables in CI/runner configuration.
+
+Before publishing binaries, verify:
+
+- signing material is configured in the build environment
+- signed artifacts validate in Windows file properties and `signtool verify`
+
+The packaging wrapper emits a warning when Windows build commands run without obvious signing material.
+
+### Embedded terminal hardening options
+
+The embedded terminal supports stricter runtime controls through environment variables:
+
+- `NOTELY_TERMINAL_REQUIRED_ROLE` (default: `developer`)
+	- Renderer must request this role to create a session.
+- `NOTELY_TERMINAL_POLICY`
+	- `permissive` (default): no command filtering
+	- `strict`: commands are checked against allowlist on each submitted line
+- `NOTELY_TERMINAL_ALLOWLIST`
+	- Comma-separated command names allowed in strict mode
+	- Example: `pwd,ls,dir,cat,type,git,node,npm`
+
+If strict mode is enabled and a command is not allowed, it is blocked in-session.
+
 ## Project structure
 
 - `electron/` Electron main process and preload bridge
