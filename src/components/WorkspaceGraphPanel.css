@@ -18,89 +18,93 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e5e5;
-  background: #ffffff;
+  gap: 18px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #dbe6e1;
+  background: linear-gradient(135deg, #17343a 0%, #2f5d62 100%);
+  color: #f4fbf8;
   flex-shrink: 0;
 }
 
 .workspace-graph-header h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--color-text, #172326);
+  color: #f4fbf8;
   flex: 0;
-  letter-spacing: -0.3px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .workspace-graph-meta {
-  font-size: 0.9rem;
-  color: var(--color-text-muted, #506b70);
-  flex-shrink: 0;
+  font-size: 12px;
+  color: rgba(244, 251, 248, 0.72);
+  flex: 1 1 auto;
   font-weight: 500;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .workspace-graph-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: transparent;
+  background: rgba(244, 251, 248, 0.15);
   cursor: pointer;
-  border-radius: 8px;
-  color: var(--color-text-muted, #506b70);
-  transition: background 0.15s ease, color 0.15s ease;
+  border-radius: 6px;
+  color: #f4fbf8;
+  transition: background 0.15s ease, transform 0.15s ease;
   flex-shrink: 0;
 }
 
 .workspace-graph-close:hover {
-  background: var(--color-hover, #e8e3d8);
-  color: var(--color-text, #172326);
+  background: rgba(244, 251, 248, 0.25);
+  transform: scale(1.08);
 }
 
 /* ── Filter bar ── */
 .workspace-graph-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e5e5;
-  background: #ffffff;
-  flex-wrap: nowrap;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #e8ebe8;
+  background: #f9faf9;
+  flex-wrap: wrap;
   flex-shrink: 0;
 }
 
 .workspace-graph-filter-input {
-  padding: 10px 14px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  background: #fafafa;
+  padding: 8px 12px;
+  border: 1px solid #d9dedb;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #ffffff;
   color: #172326;
-  width: 240px;
+  width: 220px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   font-weight: 500;
 }
 
 .workspace-graph-filter-input::placeholder {
-  color: #999999;
+  color: #888888;
 }
 
 .workspace-graph-filter-input:focus {
   border-color: #2f5d62;
-  box-shadow: 0 0 0 3px rgba(47, 93, 98, 0.1);
+  box-shadow: 0 0 0 3px rgba(47, 93, 98, 0.08);
   background: #ffffff;
 }
 
 .workspace-graph-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   margin-left: auto;
   flex-shrink: 0;
@@ -109,11 +113,13 @@
 .workspace-graph-legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  color: var(--color-text-muted, #506b70);
-  font-weight: 500;
+  gap: 6px;
+  font-size: 11px;
+  color: #556b6f;
+  font-weight: 600;
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .workspace-graph-legend-dot {
@@ -284,25 +290,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #666666;
-  font-size: 0.8rem;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(244, 251, 248, 0.25);
+  border-radius: 6px;
+  background: rgba(244, 251, 248, 0.12);
+  color: #f4fbf8;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .small-button:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #2f5d62;
-  color: #2f5d62;
-  box-shadow: 0 2px 8px rgba(47, 93, 98, 0.15);
+  background: rgba(244, 251, 248, 0.22);
+  border-color: rgba(244, 251, 248, 0.4);
+  transform: scale(1.04);
 }
 
 .small-button:disabled {
@@ -314,15 +320,16 @@
 .embedding-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  background: rgba(255, 193, 7, 0.12);
-  border: 1px solid rgba(255, 193, 7, 0.4);
-  color: #d4a500;
-  font-size: 0.8rem;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(244, 251, 248, 0.15);
+  border: 1px solid rgba(244, 251, 248, 0.25);
+  color: #f4fbf8;
+  font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
   pointer-events: none;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
