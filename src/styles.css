@@ -261,6 +261,13 @@ button {
   font-weight: 700;
 }
 
+.command-palette-match {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: #d9ece4;
+  color: #0f2c32;
+}
+
 .command-palette-item kbd {
   min-height: 22px;
   padding: 0 8px;

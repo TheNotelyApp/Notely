@@ -26,6 +26,27 @@ function getCommandScore(command, query) {
   return score - priority;
 }
 
+function escapeRegExp(text) {
+  return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renderHighlightedLabel(label, query) {
+  const source = String(label || "");
+  const needle = String(query || "").trim();
+  if (!needle) return source;
+
+  const matcher = new RegExp(`(${escapeRegExp(needle)})`, "ig");
+  const parts = source.split(matcher);
+  if (parts.length <= 1) return source;
+
+  return parts.map((part, index) => {
+    if (part.toLowerCase() === needle.toLowerCase()) {
+      return <mark className="command-palette-match" key={`${part}-${index}`}>{part}</mark>;
+    }
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
+}
+
 export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -108,6 +129,18 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
                 return;
               }
 
+              if (event.key === "Home") {
+                event.preventDefault();
+                setActiveIndex(0);
+                return;
+              }
+
+              if (event.key === "End") {
+                event.preventDefault();
+                setActiveIndex(Math.max(filtered.length - 1, 0));
+                return;
+              }
+
               if (event.key === "Enter") {
                 event.preventDefault();
                 const selected = filtered[activeIndex];
@@ -140,7 +173,7 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
                     onClick={() => onRun(command.id)}
                   >
                     <span className="command-palette-item-text">
-                      <strong>{command.label}</strong>
+                      <strong>{renderHighlightedLabel(command.label, query)}</strong>
                     </span>
                     {command.shortcut ? <kbd>{command.shortcut}</kbd> : null}
                   </button>
