@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FolderOpen, NotebookPen, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -6,6 +6,8 @@ import { CommandPalette } from "./components/CommandPalette";
 import { GlobalSearchOverlay } from "./components/GlobalSearchOverlay";
 import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
 import { DashboardPanels } from "./components/DashboardPanels";
+import { LandingListControls } from "./components/LandingListControls";
+import { applyDocumentListQuery } from "./utils/documentListQuery";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
 const EmbeddedTerminal = lazy(() =>
@@ -37,6 +39,7 @@ import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
+import { useWorkspaceScopedStorage } from "./hooks/useWorkspaceScopedStorage";
 
 function getPaletteUsageKey(commandId) {
   const rawId = resolvePaletteCommandId(commandId);
@@ -71,6 +74,25 @@ function normalizePalettePins(rawValue) {
   if (!Array.isArray(rawValue)) return [];
   return rawValue.filter((item) => typeof item === "string");
 }
+
+function normalizeLandingListPrefs(rawValue) {
+  const source = rawValue && typeof rawValue === "object" ? rawValue : {};
+  return {
+    query: typeof source.query === "string" ? source.query : "",
+    typeFilter: source.typeFilter === "notes" || source.typeFilter === "folders" ? source.typeFilter : "all",
+    sortBy: ["updated-desc", "updated-asc", "title-asc", "title-desc"].includes(source.sortBy)
+      ? source.sortBy
+      : "updated-desc",
+  };
+}
+
+function normalizeOutlineEnabled(rawValue) {
+  return rawValue !== false;
+}
+
+const DEFAULT_LANDING_LIST_PREFS = { query: "", typeFilter: "all", sortBy: "updated-desc" };
+const EMPTY_OBJECT = {};
+const EMPTY_ARRAY = [];
 
 export default function App() {
   const initialViewMode = (() => {
@@ -119,9 +141,6 @@ export default function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
-  const [paletteCommandUsage, setPaletteCommandUsage] = useState({});
-  const [palettePinnedCommandKeys, setPalettePinnedCommandKeys] = useState([]);
-  const [palettePrefsScope, setPalettePrefsScope] = useState("");
 
   const {
     documents,
@@ -175,6 +194,65 @@ export default function App() {
     handleOpenReferencedDocument,
     handleLandingNavigateTo,
   } = useDocumentManager({ notify });
+
+  const workspaceStorageScope = useMemo(() => {
+    const rawWorkspaceId = activeProject?.slug || activeProject?.rootPath || notesFolderPath || "default";
+    return encodeURIComponent(String(rawWorkspaceId));
+  }, [activeProject, notesFolderPath]);
+
+  const [landingListPreferences, setLandingListPreferences] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:landing-list-preferences",
+    defaultValue: DEFAULT_LANDING_LIST_PREFS,
+    normalize: normalizeLandingListPrefs,
+  });
+  const landingListQuery = landingListPreferences.query;
+  const landingEntryFilter = landingListPreferences.typeFilter;
+  const landingSortMode = landingListPreferences.sortBy;
+
+  function setLandingListQuery(nextValue) {
+    setLandingListPreferences((currentValue) => ({
+      ...normalizeLandingListPrefs(currentValue),
+      query: String(nextValue || ""),
+    }));
+  }
+
+  function setLandingEntryFilter(nextValue) {
+    setLandingListPreferences((currentValue) => ({
+      ...normalizeLandingListPrefs(currentValue),
+      typeFilter: nextValue === "notes" || nextValue === "folders" ? nextValue : "all",
+    }));
+  }
+
+  function setLandingSortMode(nextValue) {
+    setLandingListPreferences((currentValue) => ({
+      ...normalizeLandingListPrefs(currentValue),
+      sortBy: ["updated-desc", "updated-asc", "title-asc", "title-desc"].includes(nextValue)
+        ? nextValue
+        : "updated-desc",
+    }));
+  }
+
+  const [paletteCommandUsage, setPaletteCommandUsage] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:palette-command-usage",
+    defaultValue: EMPTY_OBJECT,
+    normalize: normalizePaletteUsageMap,
+    fallbackKey: "notes:palette-command-usage",
+  });
+  const [palettePinnedCommandKeys, setPalettePinnedCommandKeys] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:palette-pinned-commands",
+    defaultValue: EMPTY_ARRAY,
+    normalize: normalizePalettePins,
+    fallbackKey: "notes:palette-pinned-commands",
+  });
+  const [outlineEnabled, setOutlineEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:outline-enabled",
+    defaultValue: true,
+    normalize: normalizeOutlineEnabled,
+  });
 
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
   syncStateRef.current = { doc: current, dirty, openDocument };
@@ -298,51 +376,6 @@ export default function App() {
   }, [favoriteNotes]);
 
   useEffect(() => {
-    const rawWorkspaceId = activeProject?.slug || activeProject?.rootPath || notesFolderPath || "default";
-    const workspaceId = encodeURIComponent(String(rawWorkspaceId));
-    const usageStorageKey = `notes:palette-command-usage:${workspaceId}`;
-    const pinsStorageKey = `notes:palette-pinned-commands:${workspaceId}`;
-
-    try {
-      const scopedUsageRaw = window.localStorage.getItem(usageStorageKey);
-      const fallbackUsageRaw = window.localStorage.getItem("notes:palette-command-usage");
-      const usage = normalizePaletteUsageMap(JSON.parse(scopedUsageRaw ?? fallbackUsageRaw ?? "{}"));
-      setPaletteCommandUsage(usage);
-    } catch {
-      setPaletteCommandUsage({});
-    }
-
-    try {
-      const scopedPinsRaw = window.localStorage.getItem(pinsStorageKey);
-      const fallbackPinsRaw = window.localStorage.getItem("notes:palette-pinned-commands");
-      const pins = normalizePalettePins(JSON.parse(scopedPinsRaw ?? fallbackPinsRaw ?? "[]"));
-      setPalettePinnedCommandKeys(pins);
-    } catch {
-      setPalettePinnedCommandKeys([]);
-    }
-
-    setPalettePrefsScope(workspaceId);
-  }, [activeProject, notesFolderPath]);
-
-  useEffect(() => {
-    if (!palettePrefsScope) return;
-    try {
-      window.localStorage.setItem(`notes:palette-command-usage:${palettePrefsScope}`, JSON.stringify(paletteCommandUsage));
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [paletteCommandUsage, palettePrefsScope]);
-
-  useEffect(() => {
-    if (!palettePrefsScope) return;
-    try {
-      window.localStorage.setItem(`notes:palette-pinned-commands:${palettePrefsScope}`, JSON.stringify(palettePinnedCommandKeys));
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [palettePinnedCommandKeys, palettePrefsScope]);
-
-  useEffect(() => {
     function onGlobalKeyDown(event) {
       const isCmdK = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
       const isGlobalSearch = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f";
@@ -386,10 +419,11 @@ export default function App() {
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       dirty,
+      outlineEnabled,
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
     });
-  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath]);
+  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, outlineEnabled]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -492,9 +526,12 @@ export default function App() {
         return;
       }
 
-      if (action === "toggle-outline" || action === "toggle-split-preview" || action === "toggle-focus-mode") {
+      if (action === "toggle-outline" || action === "toggle-outline-enabled" || action === "toggle-split-preview" || action === "toggle-focus-mode") {
         if (current) {
-          setDocumentMenuAction({ action, nonce: Date.now() });
+          setDocumentMenuAction({
+            action: action === "toggle-outline" ? "toggle-outline-enabled" : action,
+            nonce: Date.now(),
+          });
         }
         return;
       }
@@ -572,6 +609,11 @@ export default function App() {
 
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
+  const visibleDocuments = applyDocumentListQuery(documents, {
+    query: landingListQuery,
+    typeFilter: landingEntryFilter,
+    sortBy: landingSortMode,
+  });
   const paletteRootPath = activeProject?.rootPath || notesFolderPath || "";
   const normalizedPaletteRootPath = String(paletteRootPath || "").replace(/[\\/]+$/, "");
   const currentNoteParentPath = current?.filePath
@@ -1150,8 +1192,18 @@ export default function App() {
                 />
               </aside>
               <div className="landing-notes-pane">
+                <LandingListControls
+                  query={landingListQuery}
+                  onQueryChange={setLandingListQuery}
+                  typeFilter={landingEntryFilter}
+                  onTypeFilterChange={setLandingEntryFilter}
+                  sortBy={landingSortMode}
+                  onSortByChange={setLandingSortMode}
+                  visibleCount={visibleDocuments.length}
+                  totalCount={documents.length}
+                />
                 <DocumentList
-                  documents={documents}
+                  documents={visibleDocuments}
                   onOpen={handleOpenListItem}
                   onRemove={handleRemoveListEntry}
                   loading={loading}
@@ -1159,13 +1211,24 @@ export default function App() {
                   density={notesDensityMode}
                   favorites={favoriteNotes}
                   onToggleFavorite={handleToggleFavorite}
+                  emptyMessage="No notes or folders match your current filters."
                 />
               </div>
             </div>
           ) : (
             <div className="landing-notes-pane standalone">
+              <LandingListControls
+                query={landingListQuery}
+                onQueryChange={setLandingListQuery}
+                typeFilter={landingEntryFilter}
+                onTypeFilterChange={setLandingEntryFilter}
+                sortBy={landingSortMode}
+                onSortByChange={setLandingSortMode}
+                visibleCount={visibleDocuments.length}
+                totalCount={documents.length}
+              />
               <DocumentList
-                documents={documents}
+                documents={visibleDocuments}
                 onOpen={handleOpenListItem}
                 onRemove={handleRemoveListEntry}
                 loading={loading}
@@ -1173,6 +1236,7 @@ export default function App() {
                 density={notesDensityMode}
                 favorites={favoriteNotes}
                 onToggleFavorite={handleToggleFavorite}
+                emptyMessage="No notes or folders match your current filters."
               />
             </div>
           )}
@@ -1259,6 +1323,8 @@ export default function App() {
             }}
             onOpenAISettings={() => setAiSettingsOpen(true)}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
+            outlineEnabled={outlineEnabled}
+            onOutlineEnabledChange={setOutlineEnabled}
             aiSidebar={aiPanelVisible && isAIConfigured ? (
               <ErrorBoundary label="AI chat">
                 <Suspense fallback={<div className="lazy-loading">Loading AI…</div>}>

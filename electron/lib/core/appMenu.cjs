@@ -11,6 +11,7 @@ function buildAppMenu(win, context = {}) {
   const screen = context?.screen === "document" ? "document" : "landing";
   const viewMode = context?.viewMode === "table" ? "table" : "tile";
   const densityMode = context?.densityMode === "compact" ? "compact" : "comfortable";
+  const outlineEnabled = context?.outlineEnabled !== false;
   const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
   const canRemoveFolder = Boolean(context?.canRemoveFolder);
@@ -141,9 +142,11 @@ function buildAppMenu(win, context = {}) {
             click: () => sendMenuAction(win, "find-replace")
           },
           {
-            label: "Toggle Outline",
+            label: "Show Outline",
+            type: "checkbox",
+            checked: outlineEnabled,
             accelerator: "CmdOrCtrl+Shift+L",
-            click: () => sendMenuAction(win, "toggle-outline")
+            click: () => sendMenuAction(win, "toggle-outline-enabled")
           },
           {
             label: "Toggle Split Preview",

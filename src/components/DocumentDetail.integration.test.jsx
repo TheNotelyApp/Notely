@@ -82,20 +82,22 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
-  it("toggles outline collapsed state from menu action", () => {
+  it("requests outline toggle from menu action", () => {
     const view = renderDetail(baseProps);
-    const workspace = view.host.querySelector('.workspace');
+    const onOutlineEnabledChange = vi.fn();
 
-    expect(workspace.className).not.toContain("outline-panel-collapsed");
+    expect(onOutlineEnabledChange).not.toHaveBeenCalled();
 
     act(() => {
       view.rerender({
         ...baseProps,
-        menuAction: { action: "toggle-outline", nonce: Date.now() },
+        menuAction: { action: "toggle-outline-enabled", nonce: Date.now() },
+        outlineEnabled: true,
+        onOutlineEnabledChange,
       });
     });
 
-    expect(workspace.className).toContain("outline-panel-collapsed");
+    expect(onOutlineEnabledChange).toHaveBeenCalledTimes(1);
 
     view.unmount();
   });
@@ -105,6 +107,20 @@ describe("DocumentDetail popup and panel toggles", () => {
     const removeButton = view.host.querySelector('button[title="Move note to removed folder"]');
 
     expect(removeButton).toBeFalsy();
+
+    view.unmount();
+  });
+
+  it("hides outline panel when outline is disabled", () => {
+    const view = renderDetail({
+      ...baseProps,
+      outlineEnabled: false,
+      onOutlineEnabledChange: vi.fn(),
+    });
+
+    const workspace = view.host.querySelector(".workspace");
+    expect(workspace?.className).toContain("outline-panel-disabled");
+    expect(view.host.querySelector("aside.outline-panel")).toBeFalsy();
 
     view.unmount();
   });

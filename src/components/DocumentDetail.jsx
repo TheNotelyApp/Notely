@@ -159,6 +159,11 @@ function buildVisibleRows(rows, options = {}) {
 
 const AUTOSAVE_PREF_KEY = "notely:autosave-enabled";
 const AUTOSAVE_DELAY_MS = 1200;
+const EDITOR_MODE_OPTIONS = [
+  { key: "edit", label: "Edit", icon: PenLine, announceLabel: "Edit" },
+  { key: "split", label: "Split", icon: SplitSquareHorizontal, announceLabel: "Split" },
+  { key: "preview", label: "Preview", icon: Eye, announceLabel: "Preview" },
+];
 
 function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -285,6 +290,8 @@ export function DocumentDetail({
   onShowAI,
   onOpenAISettings,
   onOpenDocument,
+  outlineEnabled = true,
+  onOutlineEnabledChange,
   aiSidebar = null,
 }) {
   const MAX_EDITOR_HISTORY = 200;
@@ -333,6 +340,24 @@ export function DocumentDetail({
 
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
+  const isOutlineEnabled = outlineEnabled !== false;
+  const setEditorMode = (nextMode, options = {}) => {
+    const { announce = true, force = false } = options;
+    if (!force && showMediaManager) {
+      if (announce) {
+        onNotify?.("Close Assets view to switch editor mode.", "info");
+      }
+      return false;
+    }
+
+    setMode(nextMode);
+    if (announce) {
+      const activeMode = EDITOR_MODE_OPTIONS.find((item) => item.key === nextMode);
+      onNotify?.(`Editor mode: ${activeMode?.announceLabel || nextMode}.`, "info");
+    }
+    return true;
+  };
+
   const outlineHeadings = useMemo(() => {
     if (showMediaManager) return [];
     const lines = String(content || "").split(/\r?\n/);
@@ -489,9 +514,9 @@ export function DocumentDetail({
       return;
     }
 
-    if (menuAction.action === "toggle-outline") {
+    if (menuAction.action === "toggle-outline" || menuAction.action === "toggle-outline-enabled") {
       if (!isFocusMode) {
-        setIsOutlineCollapsed((value) => !value);
+        onOutlineEnabledChange?.((value) => value === false);
       }
       return;
     }
@@ -545,7 +570,7 @@ export function DocumentDetail({
   const jumpToLine = (line) => {
     const safeLine = Math.max(Number(line) || 1, 1);
     if (mode !== "edit" && mode !== "split") {
-      setMode("edit");
+      setEditorMode("edit", { announce: false, force: true });
       requestAnimationFrame(() => jumpToLine(safeLine));
       return;
     }
@@ -620,7 +645,7 @@ export function DocumentDetail({
     const match = matches[safeIndex];
 
     if (mode !== "edit" && mode !== "split") {
-      setMode("edit");
+      setEditorMode("edit", { announce: false, force: true });
     }
 
     editor.focus();
@@ -774,37 +799,20 @@ export function DocumentDetail({
       }
 
       if (key === "1") {
-        if (showMediaManager) return;
         event.preventDefault();
-        setMode("edit");
-        onNotify?.("Editor mode: Edit.", "info");
+        setEditorMode("edit");
         return;
       }
 
       if (key === "2") {
-        if (showMediaManager) return;
         event.preventDefault();
-        setMode("split");
-        onNotify?.("Editor mode: Split.", "info");
+        setEditorMode("split");
         return;
       }
 
       if (key === "3") {
-        if (showMediaManager) return;
         event.preventDefault();
-        setMode("preview");
-        onNotify?.("Editor mode: Preview.", "info");
-        return;
-      }
-
-      if (event.shiftKey && key === "l") {
-        event.preventDefault();
-        if (!isFocusMode) {
-          setIsOutlineCollapsed((value) => !value);
-          onNotify?.("Outline visibility toggled.", "info");
-        } else {
-          onNotify?.("Disable Focus mode to toggle outline.", "info");
-        }
+        setEditorMode("preview");
         return;
       }
 
@@ -819,7 +827,7 @@ export function DocumentDetail({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFocusMode, onNotify, setMode, showMediaManager, handleUndo, handleRedo, onSave]);
+  }, [isFocusMode, onNotify, setMode, showMediaManager, handleUndo, handleRedo, onSave, mode]);
 
   const handleConfirmPdfExport = async () => {
     const includeRawNotes = pdfExportMode === "raw" || pdfExportMode === "both";
@@ -1025,7 +1033,7 @@ export function DocumentDetail({
         </div>
       ) : null}
 
-      <div className={`workspace ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
+      <div className={`workspace ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
         <main className="editor-panel">
           <div className="tab-row">
             <div className="tabs">
@@ -1073,15 +1081,13 @@ export function DocumentDetail({
               </button>
               <div className="button-group-separator" />
               <div className="button-group">
-                {[
-                  { key: "edit", label: "Edit", icon: PenLine },
-                  { key: "split", label: "Split", icon: SplitSquareHorizontal },
-                  { key: "preview", label: "Preview", icon: Eye },
-                ].map((item) => (
+                {EDITOR_MODE_OPTIONS.map((item) => (
                   <button
                     className={mode === item.key ? "active" : ""}
                     key={item.key}
-                    onClick={() => setMode(item.key)}
+                    disabled={showMediaManager}
+                    onClick={() => setEditorMode(item.key, { announce: false })}
+                    title={showMediaManager ? "Close Assets view to switch mode" : `Switch to ${item.label} mode`}
                   >
                     <item.icon size={16} />
                     <span>{item.label}</span>
@@ -1149,54 +1155,56 @@ export function DocumentDetail({
           />
         </main>
 
-        <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
-          {isOutlineCollapsed ? (
-            <div className="outline-collapsed-actions">
-              <button
-                className="small-button"
-                onClick={() => setIsOutlineCollapsed(false)}
-                title="Open outline panel"
-                aria-expanded="false"
-              >
-                <ListTree size={16} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="panel-title-row">
-                <h2>Outline</h2>
-                <div className="panel-actions">
-                  <button
-                    className="small-button"
-                    onClick={() => setIsOutlineCollapsed(true)}
-                    title="Close outline panel"
-                    aria-expanded="true"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
+        {isOutlineEnabled ? (
+          <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
+            {isOutlineCollapsed ? (
+              <div className="outline-collapsed-actions">
+                <button
+                  className="small-button"
+                  onClick={() => setIsOutlineCollapsed(false)}
+                  title="Open outline panel"
+                  aria-expanded="false"
+                >
+                  <ListTree size={16} />
+                </button>
               </div>
-              {outlineHeadings.length ? (
-                <div className="outline-list">
-                  {outlineHeadings.map((entry) => (
+            ) : (
+              <>
+                <div className="panel-title-row">
+                  <h2>Outline</h2>
+                  <div className="panel-actions">
                     <button
-                      key={`${entry.line}-${entry.text}`}
-                      type="button"
-                      className={`outline-item level-${entry.level}`}
-                      onClick={() => jumpToLine(entry.line)}
-                      title={`Go to line ${entry.line}`}
+                      className="small-button"
+                      onClick={() => setIsOutlineCollapsed(true)}
+                      title="Close outline panel"
+                      aria-expanded="true"
                     >
-                      <span>{entry.text}</span>
-                      <em>L{entry.line}</em>
+                      <ChevronRight size={16} />
                     </button>
-                  ))}
+                  </div>
                 </div>
-              ) : (
-                <p className="muted">No headings in this section yet.</p>
-              )}
-            </>
-          )}
-        </aside>
+                {outlineHeadings.length ? (
+                  <div className="outline-list">
+                    {outlineHeadings.map((entry) => (
+                      <button
+                        key={`${entry.line}-${entry.text}`}
+                        type="button"
+                        className={`outline-item level-${entry.level}`}
+                        onClick={() => jumpToLine(entry.line)}
+                        title={`Go to line ${entry.line}`}
+                      >
+                        <span>{entry.text}</span>
+                        <em>L{entry.line}</em>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">No headings in this section yet.</p>
+                )}
+              </>
+            )}
+          </aside>
+        ) : null}
         {aiSidebar}
         {!aiPanelVisible && aiEnabled ? (
           <button
