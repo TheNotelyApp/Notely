@@ -257,6 +257,144 @@ button {
   font-size: 13px;
 }
 
+.global-search-card {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.global-search-header {
+  display: flex;
+  align-items: center;
+}
+
+.global-search-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d2ddd9;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #163238;
+}
+
+.global-search-input:focus {
+  outline: 2px solid #4f7f8a;
+  outline-offset: 1px;
+}
+
+.global-search-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.global-search-filters button {
+  min-height: 28px;
+  border: 1px solid #d2ddd9;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #314e56;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.global-search-filters button.active {
+  border-color: #1a3a3e;
+  background: #edf5f2;
+  color: #143136;
+}
+
+.global-search-filters button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.global-search-recents {
+  display: grid;
+  gap: 6px;
+}
+
+.global-search-recents span {
+  color: #5f767e;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.global-search-recents div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.global-search-recents button {
+  min-height: 24px;
+  border: 1px solid #d2ddd9;
+  border-radius: 999px;
+  background: #f7fbf9;
+  color: #3f5d66;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.global-search-recents button:hover {
+  border-color: #1a3a3e;
+  background: #edf5f2;
+}
+
+.global-search-results {
+  border: 1px solid #d2ddd9;
+  border-radius: 10px;
+  background: #ffffff;
+  min-height: 120px;
+  max-height: min(58vh, 440px);
+  overflow: auto;
+}
+
+.global-search-item {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #e6eeeb;
+  background: #ffffff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.global-search-item:last-child {
+  border-bottom: 0;
+}
+
+.global-search-item:hover,
+.global-search-item.active {
+  background: #eff6f3;
+}
+
+.global-search-item-label {
+  font-size: 13px;
+  color: #163238;
+  font-weight: 700;
+}
+
+.global-search-item small {
+  font-size: 11px;
+  color: #60757b;
+}
+
+.global-search-empty {
+  padding: 14px;
+  color: #60757b;
+  font-size: 13px;
+}
+
 .assets-dialog-card {
   width: min(980px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);

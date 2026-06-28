@@ -482,6 +482,9 @@ export function DocumentDetail({
     if (!menuAction?.action) return;
 
     if (menuAction.action === "find-in-note" || menuAction.action === "find-replace") {
+      if (typeof menuAction.query === "string" && menuAction.query.trim()) {
+        setFindQuery(menuAction.query.trim());
+      }
       openFindReplacePanel();
       return;
     }

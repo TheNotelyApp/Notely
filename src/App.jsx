@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { FolderOpen, FolderPlus, Image as ImageIcon, LayoutGrid, NotebookPen, Rows3, Terminal, X } from "lucide-react";
+import { FolderOpen, FolderPlus, Image as ImageIcon, LayoutGrid, NotebookPen, Rows3, Search, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CommandPalette } from "./components/CommandPalette";
+import { GlobalSearchOverlay } from "./components/GlobalSearchOverlay";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
 const EmbeddedTerminal = lazy(() =>
@@ -60,6 +61,7 @@ export default function App() {
   const [showTerminal, setShowTerminal] = useState(false);
   const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
   const {
     documents,
@@ -220,9 +222,20 @@ export default function App() {
   useEffect(() => {
     function onGlobalKeyDown(event) {
       const isCmdK = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
-      if (!isCmdK) return;
-      event.preventDefault();
-      setCommandPaletteOpen(true);
+      const isGlobalSearch = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f";
+
+      if (isCmdK) {
+        event.preventDefault();
+        setGlobalSearchOpen(false);
+        setCommandPaletteOpen(true);
+        return;
+      }
+
+      if (isGlobalSearch) {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+        setGlobalSearchOpen(true);
+      }
     }
 
     window.addEventListener("keydown", onGlobalKeyDown);
@@ -399,6 +412,7 @@ export default function App() {
   const paletteCommands = [
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N" },
     { id: "new-folder", label: "Create New Folder", group: "Notes" },
+    { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F" },
     { id: "open-notes-folder", label: "Open Notes Folder Settings", group: "Workspace" },
     { id: "open-assets", label: "Open Assets Library", group: "Workspace" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync" },
@@ -434,6 +448,11 @@ export default function App() {
 
     if (commandId === "open-notes-folder") {
       setNotesFolderDialogOpen(true);
+      return;
+    }
+
+    if (commandId === "open-global-search") {
+      setGlobalSearchOpen(true);
       return;
     }
 
@@ -473,6 +492,23 @@ export default function App() {
         return;
       }
       setDocumentMenuAction({ action: "find-replace", nonce: Date.now() });
+    }
+  }
+
+  async function handleOpenGlobalSearchResult(result, query) {
+    setGlobalSearchOpen(false);
+
+    if (result?.kind === "current-note-match") {
+      if (!current) {
+        notify("Open a note to search inside it.", "info");
+        return;
+      }
+      setDocumentMenuAction({ action: "find-replace", query, nonce: Date.now() });
+      return;
+    }
+
+    if (result?.kind === "document" && result.entry) {
+      await handleOpenListItem(result.entry);
     }
   }
   const rootPath = activeProject?.rootPath || notesFolderPath || "";
@@ -628,6 +664,10 @@ export default function App() {
               </div>
               <div className="landing-header-actions">
               <div className="landing-primary-actions">
+                <button className="small-button" type="button" onClick={() => setGlobalSearchOpen(true)}>
+                  <Search size={14} />
+                  Search
+                </button>
                 <button className="small-button" type="button" onClick={() => setFolderDialogOpen(true)}>
                   <FolderPlus size={14} />
                   New Folder
@@ -1142,6 +1182,14 @@ export default function App() {
         commands={paletteCommands.filter((command) => !command.disabled)}
         onClose={() => setCommandPaletteOpen(false)}
         onRun={handleRunPaletteCommand}
+      />
+
+      <GlobalSearchOverlay
+        isOpen={globalSearchOpen}
+        documents={documents}
+        currentDocument={current}
+        onClose={() => setGlobalSearchOpen(false)}
+        onOpenResult={handleOpenGlobalSearchResult}
       />
 
     </div>
