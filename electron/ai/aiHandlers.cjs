@@ -100,6 +100,13 @@ function assertApiKey(apiKey) {
   return trimmed;
 }
 
+function maskApiKey(apiKey) {
+  const key = String(apiKey || "").trim();
+  if (!key) return "";
+  if (key.length <= 8) return `${key.slice(0, 2)}***${key.slice(-2)}`;
+  return `${key.slice(0, 5)}...${key.slice(-5)}`;
+}
+
 function sanitizeQueryPayload(payload) {
   const source = payload && typeof payload === 'object' ? payload : {};
   const query = typeof source.query === 'string' ? source.query : '';
@@ -351,7 +358,7 @@ async function handleGetAPIKey(event, payload) {
   try {
     const requestedProvider = String(payload?.provider || '').trim().toLowerCase();
     if (!requestedProvider || !ALLOWED_PROVIDERS.has(requestedProvider)) {
-      return new AIQueryResponse(true, { apiKey: null });
+      return new AIQueryResponse(true, { configured: false, maskedKey: "" });
     }
     const provider = requestedProvider;
 
@@ -359,7 +366,10 @@ async function handleGetAPIKey(event, payload) {
     const config = new AIConfig();
     const apiKey = config.getAPIKey(provider);
 
-    return new AIQueryResponse(true, { apiKey: apiKey || null });
+    return new AIQueryResponse(true, {
+      configured: Boolean(apiKey),
+      maskedKey: maskApiKey(apiKey)
+    });
   } catch (error) {
     console.error('[AI IPC] API key retrieval failed:', error);
     return new AIQueryResponse(false, null, error.message);

@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
   createFolder: (payload) => ipcRenderer.invoke("folders:create", payload),
+  deleteFolder: (payload) => ipcRenderer.invoke("folders:delete", payload),
   renameDocument: (payload) => ipcRenderer.invoke("documents:rename", payload),
   deleteDocument: (payload) => ipcRenderer.invoke("documents:delete", payload),
   readDocument: (filePath) => ipcRenderer.invoke("documents:read", filePath),

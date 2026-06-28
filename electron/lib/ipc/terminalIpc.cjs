@@ -1,3 +1,8 @@
+const { assertTrustedIpcSender } = require("./ipcSecurity.cjs");
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+
 function createTerminalIpc(deps) {
   const {
     BrowserWindow,
@@ -10,6 +15,46 @@ function createTerminalIpc(deps) {
 
   const terminalSessions = new Map();
   let nextTerminalSessionId = 1;
+  const terminalPolicy = String(process.env.NOTELY_TERMINAL_POLICY || "permissive").trim().toLowerCase();
+  const requiredRole = String(process.env.NOTELY_TERMINAL_REQUIRED_ROLE || "developer").trim().toLowerCase();
+  const allowlistRaw = String(process.env.NOTELY_TERMINAL_ALLOWLIST || "").trim();
+  const commandAllowlist = allowlistRaw
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  function splitCommandTokens(rawLine) {
+    const normalized = String(rawLine || "").trim();
+    if (!normalized) {
+      return [];
+    }
+    return normalized.split(/\s+/g);
+  }
+
+  function isAllowedStrictCommand(rawLine) {
+    const tokens = splitCommandTokens(rawLine);
+    if (tokens.length === 0) {
+      return true;
+    }
+
+    const command = tokens[0].toLowerCase();
+    if (commandAllowlist.length === 0) {
+      return false;
+    }
+
+    return commandAllowlist.includes(command);
+  }
+
+  function enforceRolePolicy(payload) {
+    if (!requiredRole) {
+      return;
+    }
+
+    const role = String(payload?.role || "").trim().toLowerCase();
+    if (role !== requiredRole) {
+      throw new Error(`Terminal requires role: ${requiredRole}.`);
+    }
+  }
 
   function resolveTerminalCwd(rawCwd) {
     const requested = String(rawCwd || "").trim();
@@ -36,7 +81,65 @@ function createTerminalIpc(deps) {
     }
   }
 
+  function detectBashPathOnWindows() {
+    const envCandidates = [
+      process.env.NOTELY_BASH_PATH,
+      process.env.GIT_BASH_PATH,
+    ].filter(Boolean);
+
+    const installCandidates = [
+      "C:/Program Files/Git/bin/bash.exe",
+      "C:/Program Files/Git/usr/bin/bash.exe",
+      "C:/Program Files (x86)/Git/bin/bash.exe",
+      "C:/Program Files (x86)/Git/usr/bin/bash.exe",
+    ].map((item) => path.normalize(item));
+
+    const absoluteCandidates = [...envCandidates, ...installCandidates]
+      .map((item) => path.normalize(String(item || "")))
+      .filter(Boolean);
+
+    for (const candidate of absoluteCandidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    const where = spawnSync("where", ["bash"], { encoding: "utf8", shell: false });
+    if (where.status === 0) {
+      const hit = String(where.stdout || "")
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .find(Boolean);
+      if (hit) return hit;
+    }
+
+    return "";
+  }
+
+  function resolveTerminalShell(payloadShell) {
+    const preferred = String(payloadShell || "").trim().toLowerCase();
+
+    if (process.platform !== "win32") {
+      const command = process.env.SHELL || "bash";
+      return { command, args: ["-l"], shellLabel: "bash" };
+    }
+
+    const bashPath = detectBashPathOnWindows();
+    const shouldUseBash = preferred === "bash" || (!preferred && Boolean(bashPath));
+
+    if (shouldUseBash) {
+      if (!bashPath) {
+        throw new Error("Bash is not installed or not available in PATH.");
+      }
+      return { command: bashPath, args: ["-l"], shellLabel: "bash" };
+    }
+
+    const command = process.env.ComSpec || "cmd.exe";
+    return { command, args: [], shellLabel: "cmd" };
+  }
+
   function getOwnedTerminalSession(event, sessionId) {
+    assertTrustedIpcSender(BrowserWindow, event, "terminal:session");
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win || win.isDestroyed()) {
       throw new Error("Terminal window is unavailable.");
@@ -56,6 +159,8 @@ function createTerminalIpc(deps) {
 
   function registerHandlers(ipcMain) {
     ipcMain.handle("terminal:create", (event, payload) => {
+      assertTrustedIpcSender(BrowserWindow, event, "terminal:create");
+      enforceRolePolicy(payload);
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win || win.isDestroyed()) {
         throw new Error("Terminal window is unavailable.");
@@ -63,9 +168,8 @@ function createTerminalIpc(deps) {
 
       const cwd = resolveTerminalCwd(payload?.cwd);
       const sessionId = String(nextTerminalSessionId++);
-      const shell = process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : (process.env.SHELL || "bash");
-      const shellArgs = process.platform === "win32" ? [] : ["-l"];
-      const child = pty.spawn(shell, shellArgs, {
+      const shellConfig = resolveTerminalShell(payload?.shell);
+      const child = pty.spawn(shellConfig.command, shellConfig.args, {
         cwd,
         env: { ...process.env, TERM: "xterm-256color" },
         name: "xterm-256color",
@@ -89,13 +193,17 @@ function createTerminalIpc(deps) {
       terminalSessions.set(sessionId, {
         process: child,
         windowId: win.id,
+        strictPolicy: terminalPolicy === "strict",
+        inputBuffer: "",
         onDataDisposable,
         onExitDisposable
       });
 
       return {
         sessionId,
-        cwd
+        cwd,
+        policy: terminalPolicy,
+        shellLabel: shellConfig.shellLabel,
       };
     });
 
@@ -103,6 +211,24 @@ function createTerminalIpc(deps) {
       const sessionId = String(payload?.sessionId || "").trim();
       const data = String(payload?.data || "");
       const session = getOwnedTerminalSession(event, sessionId);
+
+      if (session.strictPolicy && data) {
+        session.inputBuffer += data;
+        const normalized = session.inputBuffer.replace(/\r/g, "");
+        const lines = normalized.split("\n");
+        const trailing = lines.pop();
+
+        for (const line of lines) {
+          if (!isAllowedStrictCommand(line)) {
+            session.inputBuffer = "";
+            session.process.write("\r\n[terminal] command blocked by strict policy\r\n");
+            return true;
+          }
+        }
+
+        session.inputBuffer = trailing || "";
+      }
+
       session.process.write(data);
       return true;
     });

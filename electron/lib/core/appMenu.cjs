@@ -10,7 +10,18 @@ function sendMenuAction(win, action) {
 function buildAppMenu(win, context = {}) {
   const screen = context?.screen === "document" ? "document" : "landing";
   const viewMode = context?.viewMode === "table" ? "table" : "tile";
+  const densityMode = context?.densityMode === "compact" ? "compact" : "comfortable";
+  const outlineEnabled = context?.outlineEnabled !== false;
+  const splitPreviewEnabled = context?.splitPreviewEnabled === true;
+  const focusModeEnabled = context?.focusModeEnabled === true;
+  const terminalOpen = context?.terminalOpen === true;
+  const terminalShell = context?.terminalShell === "bash" || context?.terminalShell === "cmd"
+    ? context.terminalShell
+    : "auto";
+  const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
+  const canRemoveFolder = Boolean(context?.canRemoveFolder);
+  const currentFolderLabel = String(context?.currentFolderLabel || "Current Folder").trim() || "Current Folder";
 
   const fileSubmenu = screen === "document"
     ? [
@@ -100,6 +111,13 @@ function buildAppMenu(win, context = {}) {
         },
         { type: "separator" },
         {
+          label: `Move ${currentFolderLabel} to Removed`,
+          accelerator: "CmdOrCtrl+Shift+Delete",
+          enabled: canRemoveFolder,
+          click: () => sendMenuAction(win, "remove-folder")
+        },
+        { type: "separator" },
+        {
           label: "Open Website View",
           accelerator: "CmdOrCtrl+Shift+W",
           click: () => sendMenuAction(win, "open-website")
@@ -130,17 +148,23 @@ function buildAppMenu(win, context = {}) {
             click: () => sendMenuAction(win, "find-replace")
           },
           {
-            label: "Toggle Outline",
+            label: "Show Outline",
+            type: "checkbox",
+            checked: outlineEnabled,
             accelerator: "CmdOrCtrl+Shift+L",
-            click: () => sendMenuAction(win, "toggle-outline")
+            click: () => sendMenuAction(win, "toggle-outline-enabled")
           },
           {
-            label: "Toggle Split Preview",
+            label: "Split Preview",
+            type: "checkbox",
+            checked: splitPreviewEnabled,
             accelerator: "CmdOrCtrl+\\",
             click: () => sendMenuAction(win, "toggle-split-preview")
           },
           {
-            label: "Toggle Focus Mode",
+            label: "Focus Mode",
+            type: "checkbox",
+            checked: focusModeEnabled,
             accelerator: "CmdOrCtrl+Shift+F",
             click: () => sendMenuAction(win, "toggle-focus-mode")
           }
@@ -150,11 +174,81 @@ function buildAppMenu(win, context = {}) {
 
   const viewSubmenu = screen === "document"
     ? [
+        {
+          label: "Open Command Palette",
+          click: () => sendMenuAction(win, "open-command-palette")
+        },
+        { type: "separator" },
+        {
+          label: "Show Terminal",
+          type: "checkbox",
+          checked: terminalOpen,
+          click: () => sendMenuAction(win, "toggle-terminal")
+        },
+        {
+          label: "Terminal Shell",
+          submenu: [
+            {
+              label: "Auto",
+              type: "radio",
+              checked: terminalShell === "auto",
+              click: () => sendMenuAction(win, "terminal-shell-auto")
+            },
+            {
+              label: "Bash",
+              type: "radio",
+              checked: terminalShell === "bash",
+              click: () => sendMenuAction(win, "terminal-shell-bash")
+            },
+            {
+              label: "CMD",
+              type: "radio",
+              checked: terminalShell === "cmd",
+              click: () => sendMenuAction(win, "terminal-shell-cmd")
+            },
+          ],
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
-        { role: "toggleDevTools" }
+        ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
       ]
     : [
+        {
+          label: "Open Command Palette",
+          click: () => sendMenuAction(win, "open-command-palette")
+        },
+        { type: "separator" },
+        {
+          label: "Show Terminal",
+          type: "checkbox",
+          checked: terminalOpen,
+          click: () => sendMenuAction(win, "toggle-terminal")
+        },
+        {
+          label: "Terminal Shell",
+          submenu: [
+            {
+              label: "Auto",
+              type: "radio",
+              checked: terminalShell === "auto",
+              click: () => sendMenuAction(win, "terminal-shell-auto")
+            },
+            {
+              label: "Bash",
+              type: "radio",
+              checked: terminalShell === "bash",
+              click: () => sendMenuAction(win, "terminal-shell-bash")
+            },
+            {
+              label: "CMD",
+              type: "radio",
+              checked: terminalShell === "cmd",
+              click: () => sendMenuAction(win, "terminal-shell-cmd")
+            },
+          ],
+        },
+        { type: "separator" },
         {
           label: "Tile Notes",
           accelerator: "CmdOrCtrl+1",
@@ -170,12 +264,27 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "view-table")
         },
         { type: "separator" },
+        {
+          label: "Comfortable Density",
+          accelerator: "CmdOrCtrl+3",
+          type: "radio",
+          checked: densityMode === "comfortable",
+          click: () => sendMenuAction(win, "view-density-comfortable")
+        },
+        {
+          label: "Compact Density",
+          accelerator: "CmdOrCtrl+4",
+          type: "radio",
+          checked: densityMode === "compact",
+          click: () => sendMenuAction(win, "view-density-compact")
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
-        { role: "toggleDevTools" }
+        ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
       ];
 
-  return Menu.buildFromTemplate([
+  const template = [
     {
       label: "File",
       submenu: fileSubmenu
@@ -254,14 +363,19 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "ai-clear-cache")
         }
       ]
-    },
-    {
+    }
+  ];
+
+  if (isDevMode) {
+    template.push({
       label: "Help",
       submenu: [
         { role: "toggleDevTools" }
       ]
-    }
-  ]);
+    });
+  }
+
+  return Menu.buildFromTemplate(template);
 }
 
 module.exports = { buildAppMenu, sendMenuAction };

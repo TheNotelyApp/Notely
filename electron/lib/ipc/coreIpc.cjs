@@ -1,3 +1,5 @@
+const { assertTrustedIpcSender } = require("./ipcSecurity.cjs");
+
 function registerCoreIpcHandlers(ipcMain, deps) {
   const {
     BrowserWindow,
@@ -14,12 +16,19 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     setActiveProjectSlug,
   } = deps;
 
-  ipcMain.handle("settings:get-notes-root", () => ({
+  function registerTrustedHandler(channel, handler) {
+    ipcMain.handle(channel, (event, payload) => {
+      assertTrustedIpcSender(BrowserWindow, event, channel);
+      return handler(event, payload);
+    });
+  }
+
+  registerTrustedHandler("settings:get-notes-root", () => ({
     notesRoot: getNotesRoot(),
     notesRootSource: process.env.NOTES_ROOT ? "env" : "config"
   }));
 
-  ipcMain.handle("settings:pick-folder", async () => {
+  registerTrustedHandler("settings:pick-folder", async () => {
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
     const result = await dialog.showOpenDialog(win, {
       properties: ["openDirectory", "createDirectory"],
@@ -33,7 +42,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return result.filePaths[0];
   });
 
-  ipcMain.handle("settings:set-notes-root", (_event, payload) => {
+  registerTrustedHandler("settings:set-notes-root", (_event, payload) => {
     const nextPath = String(payload?.notesRoot || "").trim();
     if (!nextPath) {
       throw new Error("Notes folder path is required.");
@@ -57,9 +66,9 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     };
   });
 
-  ipcMain.handle("projects:list", () => listProjectsState());
+  registerTrustedHandler("projects:list", () => listProjectsState());
 
-  ipcMain.handle("projects:set-active", (_event, payload) => {
+  registerTrustedHandler("projects:set-active", (_event, payload) => {
     const slug = String(payload?.slug || "").trim();
     const exists = listProjectsState().projects.some((item) => item.slug === slug);
     if (!exists) {

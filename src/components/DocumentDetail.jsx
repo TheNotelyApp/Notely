@@ -1,6 +1,5 @@
-import { useRef, useState, useEffect, useMemo } from "react";
+import { memo, useRef, useState, useEffect, useMemo } from "react";
 import {
-  Home,
   Save,
   RotateCcw,
   ChevronRight,
@@ -29,6 +28,8 @@ import { MediaTab } from "./MediaTab";
 import { formatDate } from "../utils/dateUtils";
 import { downloadPdf } from "../services/electronService";
 import { deleteVersion, readVersion } from "../services/electronService";
+import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
+import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -160,6 +161,11 @@ function buildVisibleRows(rows, options = {}) {
 
 const AUTOSAVE_PREF_KEY = "notely:autosave-enabled";
 const AUTOSAVE_DELAY_MS = 1200;
+const EDITOR_MODE_OPTIONS = [
+  { key: "edit", label: "Edit", icon: PenLine, announceLabel: "Edit" },
+  { key: "split", label: "Split", icon: SplitSquareHorizontal, announceLabel: "Split" },
+  { key: "preview", label: "Preview", icon: Eye, announceLabel: "Preview" },
+];
 
 function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -183,12 +189,6 @@ function collectMatches(text, query, caseSensitive) {
   }
 
   return output;
-}
-
-function isTextInputLike(target) {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
 }
 
 function getHeaderField(header, fieldName) {
@@ -258,6 +258,156 @@ function parseVersionDocumentContent(value, fallbackDocument = {}) {
   };
 }
 
+const MetadataPanel = memo(function MetadataPanel({
+  showMetadataPanel,
+  isFocusMode,
+  document,
+  tagText,
+  onTagsChange,
+  onTagsBlur,
+}) {
+  if (!showMetadataPanel || isFocusMode) return null;
+
+  return (
+    <div className="metadata-grid">
+      <div className="metadata-card">
+        <User size={16} />
+        <span>Name</span>
+        <strong>{document.metadata?.name || "Not captured"}</strong>
+      </div>
+      <div className="metadata-card">
+        <Clock size={16} />
+        <span>Time</span>
+        <strong>{document.metadata?.time || "Not captured"}</strong>
+      </div>
+      <div className="metadata-card">
+        <MapPin size={16} />
+        <span>Location</span>
+        <strong>{document.metadata?.location || "Not captured"}</strong>
+      </div>
+      <label className="metadata-card metadata-card-input">
+        <Tag size={16} />
+        <span>Tags</span>
+        <input
+          type="text"
+          value={tagText}
+          onChange={onTagsChange}
+          onBlur={onTagsBlur}
+          placeholder="Add tags"
+          aria-label="Note tags"
+        />
+      </label>
+    </div>
+  );
+});
+
+const FindReplacePanel = memo(function FindReplacePanel({
+  showFindReplace,
+  findQuery,
+  setFindQuery,
+  replaceValue,
+  setReplaceValue,
+  findCaseSensitive,
+  setFindCaseSensitive,
+  onFindPrevious,
+  onFindNext,
+  onReplace,
+  onReplaceAll,
+  findMatchIndex,
+  findMatchTotal,
+}) {
+  if (!showFindReplace) return null;
+
+  return (
+    <div className="find-replace-panel" role="region" aria-label="Find and replace">
+      <input
+        value={findQuery}
+        onChange={(event) => setFindQuery(event.target.value)}
+        placeholder="Find"
+      />
+      <input
+        value={replaceValue}
+        onChange={(event) => setReplaceValue(event.target.value)}
+        placeholder="Replace"
+      />
+      <label className="find-toggle">
+        <input
+          type="checkbox"
+          checked={findCaseSensitive}
+          onChange={(event) => setFindCaseSensitive(event.target.checked)}
+        />
+        Case
+      </label>
+      <button className="small-button" type="button" onClick={onFindPrevious}>Prev</button>
+      <button className="small-button" type="button" onClick={onFindNext}>Next</button>
+      <button className="small-button" type="button" onClick={onReplace}>Replace</button>
+      <button className="small-button" type="button" onClick={onReplaceAll}>Replace All</button>
+      <span className="find-count">{findMatchTotal ? `${Math.max(findMatchIndex + 1, 1)}/${findMatchTotal}` : "0/0"}</span>
+    </div>
+  );
+});
+
+const OutlinePanel = memo(function OutlinePanel({
+  isOutlineEnabled,
+  isOutlineCollapsed,
+  setIsOutlineCollapsed,
+  outlineHeadings,
+  onJumpToLine,
+}) {
+  if (!isOutlineEnabled) return null;
+
+  return (
+    <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
+      {isOutlineCollapsed ? (
+        <div className="outline-collapsed-actions">
+          <button
+            className="small-button"
+            onClick={() => setIsOutlineCollapsed(false)}
+            title="Open outline panel"
+            aria-expanded="false"
+          >
+            <ListTree size={16} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="panel-title-row">
+            <h2>Outline</h2>
+            <div className="panel-actions">
+              <button
+                className="small-button"
+                onClick={() => setIsOutlineCollapsed(true)}
+                title="Close outline panel"
+                aria-expanded="true"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+          {outlineHeadings.length ? (
+            <div className="outline-list">
+              {outlineHeadings.map((entry) => (
+                <button
+                  key={`${entry.line}-${entry.text}`}
+                  type="button"
+                  className={`outline-item level-${entry.level}`}
+                  onClick={() => onJumpToLine(entry.line)}
+                  title={`Go to line ${entry.line}`}
+                >
+                  <span>{entry.text}</span>
+                  <em>L{entry.line}</em>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No headings in this section yet.</p>
+          )}
+        </>
+      )}
+    </aside>
+  );
+});
+
 export function DocumentDetail({
   document,
   history,
@@ -273,6 +423,8 @@ export function DocumentDetail({
   menuAction,
   onNotify,
   onBack,
+  breadcrumbs = [],
+  onNavigateBreadcrumb,
   onOpenAIRequest,
   onInlineAIRequest,
   onRegisterAIEditor,
@@ -284,6 +436,11 @@ export function DocumentDetail({
   onShowAI,
   onOpenAISettings,
   onOpenDocument,
+  workspaceStorageScope = "default",
+  outlineEnabled = true,
+  onOutlineEnabledChange,
+  focusModeEnabled = false,
+  onFocusModeChange,
   aiSidebar = null,
 }) {
   const MAX_EDITOR_HISTORY = 200;
@@ -305,13 +462,12 @@ export function DocumentDetail({
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfExportMode, setPdfExportMode] = useState("formal");
   const [pdfQualityPreset, setPdfQualityPreset] = useState("full");
-  const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return window.localStorage.getItem(AUTOSAVE_PREF_KEY) === "true";
-    } catch {
-      return false;
-    }
+  const [autosaveEnabled, setAutosaveEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:autosave-enabled",
+    defaultValue: false,
+    normalize: (value) => value === true,
+    fallbackKey: AUTOSAVE_PREF_KEY,
   });
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(0);
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -323,7 +479,6 @@ export function DocumentDetail({
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
   const [showOriginalImages, setShowOriginalImages] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
   const [showMediaManager, setShowMediaManager] = useState(false);
 
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
@@ -332,6 +487,25 @@ export function DocumentDetail({
 
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
+  const isOutlineEnabled = outlineEnabled !== false;
+  const isFocusMode = focusModeEnabled === true;
+  const setEditorMode = (nextMode, options = {}) => {
+    const { announce = true, force = false } = options;
+    if (!force && showMediaManager) {
+      if (announce) {
+        onNotify?.("Close Assets view to switch editor mode.", "info");
+      }
+      return false;
+    }
+
+    setMode(nextMode);
+    if (announce) {
+      const activeMode = EDITOR_MODE_OPTIONS.find((item) => item.key === nextMode);
+      onNotify?.(`Editor mode: ${activeMode?.announceLabel || nextMode}.`, "info");
+    }
+    return true;
+  };
+
   const outlineHeadings = useMemo(() => {
     if (showMediaManager) return [];
     const lines = String(content || "").split(/\r?\n/);
@@ -448,15 +622,6 @@ export function DocumentDetail({
   }, [document.filePath]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(AUTOSAVE_PREF_KEY, autosaveEnabled ? "true" : "false");
-    } catch {
-      // Ignore preference persistence failures.
-    }
-  }, [autosaveEnabled]);
-
-  useEffect(() => {
     if (!autosaveEnabled || !dirty || saving || showMediaManager) return undefined;
 
     const timer = window.setTimeout(async () => {
@@ -476,46 +641,6 @@ export function DocumentDetail({
       setFindMatchIndex(total - 1);
     }
   }, [content, findQuery, findCaseSensitive, findMatchIndex]);
-
-  useEffect(() => {
-    if (!menuAction?.action) return;
-
-    if (menuAction.action === "find-in-note" || menuAction.action === "find-replace") {
-      openFindReplacePanel();
-      return;
-    }
-
-    if (menuAction.action === "toggle-outline") {
-      if (!isFocusMode) {
-        setIsOutlineCollapsed((value) => !value);
-      }
-      return;
-    }
-
-    if (menuAction.action === "toggle-split-preview") {
-      if (!showMediaManager) {
-        setMode((value) => (value === "split" ? "edit" : "split"));
-      }
-      return;
-    }
-
-    if (menuAction.action === "toggle-focus-mode") {
-      setIsFocusMode((value) => !value);
-      return;
-    }
-
-    if (menuAction.action === "export-pdf") {
-      setPdfExportMode("formal");
-      setPdfQualityPreset("full");
-      setPdfOptionsOpen(true);
-      return;
-    }
-
-    if (menuAction.action === "manage-versions") {
-      setShowHistoryPopover(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuAction?.nonce, isFocusMode, setMode, showMediaManager]);
 
   const updateContent = (value) => {
     if (value === content) return;
@@ -541,7 +666,7 @@ export function DocumentDetail({
   const jumpToLine = (line) => {
     const safeLine = Math.max(Number(line) || 1, 1);
     if (mode !== "edit" && mode !== "split") {
-      setMode("edit");
+      setEditorMode("edit", { announce: false, force: true });
       requestAnimationFrame(() => jumpToLine(safeLine));
       return;
     }
@@ -616,7 +741,7 @@ export function DocumentDetail({
     const match = matches[safeIndex];
 
     if (mode !== "edit" && mode !== "split") {
-      setMode("edit");
+      setEditorMode("edit", { announce: false, force: true });
     }
 
     editor.focus();
@@ -729,93 +854,33 @@ export function DocumentDetail({
     return true;
   };
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      const key = event.key.toLowerCase();
-      const hasPrimaryModifier = event.ctrlKey || event.metaKey;
-      const inInput = isTextInputLike(event.target);
-
-      if (!hasPrimaryModifier) return;
-
-      if (event.shiftKey && key === "f") {
-        if (showMediaManager) return;
-        event.preventDefault();
-        setIsFocusMode((value) => !value);
-        onNotify?.("Focus mode toggled.", "info");
-        return;
-      }
-
-      if (key === "s") {
-        event.preventDefault();
-        handleManualSave();
-        return;
-      }
-
-      if (key === "f") {
-        event.preventDefault();
-        openFindReplacePanel();
-        return;
-      }
-
-      if (key === "z") {
-        if (inInput && event.target !== textareaRef.current) return;
-        event.preventDefault();
-        const changed = event.shiftKey ? handleRedo() : handleUndo();
-        if (changed) {
-          onNotify?.(event.shiftKey ? "Redo applied." : "Undo applied.", "info");
-        } else {
-          onNotify?.(event.shiftKey ? "Nothing to redo." : "Nothing to undo.", "info");
-        }
-        return;
-      }
-
-      if (key === "1") {
-        if (showMediaManager) return;
-        event.preventDefault();
-        setMode("edit");
-        onNotify?.("Editor mode: Edit.", "info");
-        return;
-      }
-
-      if (key === "2") {
-        if (showMediaManager) return;
-        event.preventDefault();
-        setMode("split");
-        onNotify?.("Editor mode: Split.", "info");
-        return;
-      }
-
-      if (key === "3") {
-        if (showMediaManager) return;
-        event.preventDefault();
-        setMode("preview");
-        onNotify?.("Editor mode: Preview.", "info");
-        return;
-      }
-
-      if (event.shiftKey && key === "l") {
-        event.preventDefault();
-        if (!isFocusMode) {
-          setIsOutlineCollapsed((value) => !value);
-          onNotify?.("Outline visibility toggled.", "info");
-        } else {
-          onNotify?.("Disable Focus mode to toggle outline.", "info");
-        }
-        return;
-      }
-
-      if (key === "\\") {
-        if (showMediaManager) return;
-        event.preventDefault();
+  useDocumentEditorActions({
+    menuAction,
+    isFocusMode,
+    showMediaManager,
+    textareaRef,
+    setFindQuery,
+    openFindReplacePanel,
+    toggleOutlineEnabled: () => onOutlineEnabledChange?.((value) => value === false),
+    toggleSplitPreview: () => {
+      if (!showMediaManager) {
         setMode((value) => (value === "split" ? "edit" : "split"));
         onNotify?.("Split preview toggled.", "info");
       }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFocusMode, onNotify, setMode, showMediaManager, handleUndo, handleRedo, onSave]);
+    },
+    toggleFocusMode: () => onFocusModeChange?.((value) => value !== true),
+    openPdfOptions: () => {
+      setPdfExportMode("formal");
+      setPdfQualityPreset("full");
+      setPdfOptionsOpen(true);
+    },
+    openHistoryVersions: () => setShowHistoryPopover(true),
+    setEditorMode,
+    handleManualSave,
+    handleUndo,
+    handleRedo,
+    onNotify,
+  });
 
   const handleConfirmPdfExport = async () => {
     const includeRawNotes = pdfExportMode === "raw" || pdfExportMode === "both";
@@ -936,16 +1001,26 @@ export function DocumentDetail({
   return (
     <div className="detail-shell">
       <div className="detail-topbar">
-        <button
-          className="back-button"
-          type="button"
-          onClick={onBack}
-          title="Back to landing"
-          aria-label="Back to landing"
-        >
-          <Home size={16} />
-        </button>
-        <div className="crumb">Notes / {document.title}</div>
+        <nav className="detail-breadcrumb" aria-label="Note location">
+          {breadcrumbs.length ? breadcrumbs.map((segment) => (
+            <span className="detail-breadcrumb-part" key={segment.path}>
+              <button
+                className="detail-breadcrumb-link"
+                type="button"
+                onClick={() => onNavigateBreadcrumb?.(segment.path)}
+              >
+                {segment.label}
+              </button>
+              <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
+            </span>
+          )) : (
+            <span className="detail-breadcrumb-part">
+              <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Notes</button>
+              <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
+            </span>
+          )}
+          <span className="detail-breadcrumb-current" title={document.title}>{document.title}</span>
+        </nav>
         <div className="save-status">{dirty ? "Unsaved changes" : "Saved"}</div>
         <button
           className={`text-button ${autosaveEnabled ? "active" : ""}`}
@@ -979,39 +1054,16 @@ export function DocumentDetail({
         </div>
       </header>
 
-      {showMetadataPanel && !isFocusMode ? (
-        <div className="metadata-grid">
-          <div className="metadata-card">
-            <User size={16} />
-            <span>Name</span>
-            <strong>{document.metadata?.name || "Not captured"}</strong>
-          </div>
-          <div className="metadata-card">
-            <Clock size={16} />
-            <span>Time</span>
-            <strong>{document.metadata?.time || "Not captured"}</strong>
-          </div>
-          <div className="metadata-card">
-            <MapPin size={16} />
-            <span>Location</span>
-            <strong>{document.metadata?.location || "Not captured"}</strong>
-          </div>
-          <label className="metadata-card metadata-card-input">
-            <Tag size={16} />
-            <span>Tags</span>
-            <input
-              type="text"
-              value={tagText}
-              onChange={handleTagsChange}
-              onBlur={handleTagsBlur}
-              placeholder="Add tags"
-              aria-label="Note tags"
-            />
-          </label>
-        </div>
-      ) : null}
+      <MetadataPanel
+        showMetadataPanel={showMetadataPanel}
+        isFocusMode={isFocusMode}
+        document={document}
+        tagText={tagText}
+        onTagsChange={handleTagsChange}
+        onTagsBlur={handleTagsBlur}
+      />
 
-      <div className={`workspace ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
+      <div className={`workspace ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
         <main className="editor-panel">
           <div className="tab-row">
             <div className="tabs">
@@ -1059,15 +1111,13 @@ export function DocumentDetail({
               </button>
               <div className="button-group-separator" />
               <div className="button-group">
-                {[
-                  { key: "edit", label: "Edit", icon: PenLine },
-                  { key: "split", label: "Split", icon: SplitSquareHorizontal },
-                  { key: "preview", label: "Preview", icon: Eye },
-                ].map((item) => (
+                {EDITOR_MODE_OPTIONS.map((item) => (
                   <button
                     className={mode === item.key ? "active" : ""}
                     key={item.key}
-                    onClick={() => setMode(item.key)}
+                    disabled={showMediaManager}
+                    onClick={() => setEditorMode(item.key, { announce: false })}
+                    title={showMediaManager ? "Close Assets view to switch mode" : `Switch to ${item.label} mode`}
                   >
                     <item.icon size={16} />
                     <span>{item.label}</span>
@@ -1077,33 +1127,21 @@ export function DocumentDetail({
             </div>
           </div>
 
-          {showFindReplace ? (
-            <div className="find-replace-panel" role="region" aria-label="Find and replace">
-              <input
-                value={findQuery}
-                onChange={(event) => setFindQuery(event.target.value)}
-                placeholder="Find"
-              />
-              <input
-                value={replaceValue}
-                onChange={(event) => setReplaceValue(event.target.value)}
-                placeholder="Replace"
-              />
-              <label className="find-toggle">
-                <input
-                  type="checkbox"
-                  checked={findCaseSensitive}
-                  onChange={(event) => setFindCaseSensitive(event.target.checked)}
-                />
-                Case
-              </label>
-              <button className="small-button" type="button" onClick={handleFindPrevious}>Prev</button>
-              <button className="small-button" type="button" onClick={handleFindNext}>Next</button>
-              <button className="small-button" type="button" onClick={replaceCurrentMatch}>Replace</button>
-              <button className="small-button" type="button" onClick={replaceAllMatches}>Replace All</button>
-              <span className="find-count">{findMatchTotal ? `${Math.max(findMatchIndex + 1, 1)}/${findMatchTotal}` : "0/0"}</span>
-            </div>
-          ) : null}
+          <FindReplacePanel
+            showFindReplace={showFindReplace}
+            findQuery={findQuery}
+            setFindQuery={setFindQuery}
+            replaceValue={replaceValue}
+            setReplaceValue={setReplaceValue}
+            findCaseSensitive={findCaseSensitive}
+            setFindCaseSensitive={setFindCaseSensitive}
+            onFindPrevious={handleFindPrevious}
+            onFindNext={handleFindNext}
+            onReplace={replaceCurrentMatch}
+            onReplaceAll={replaceAllMatches}
+            findMatchIndex={findMatchIndex}
+            findMatchTotal={findMatchTotal}
+          />
 
           <EditorPane
             value={content}
@@ -1135,54 +1173,13 @@ export function DocumentDetail({
           />
         </main>
 
-        <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
-          {isOutlineCollapsed ? (
-            <div className="outline-collapsed-actions">
-              <button
-                className="small-button"
-                onClick={() => setIsOutlineCollapsed(false)}
-                title="Open outline panel"
-                aria-expanded="false"
-              >
-                <ListTree size={16} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="panel-title-row">
-                <h2>Outline</h2>
-                <div className="panel-actions">
-                  <button
-                    className="small-button"
-                    onClick={() => setIsOutlineCollapsed(true)}
-                    title="Close outline panel"
-                    aria-expanded="true"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-              {outlineHeadings.length ? (
-                <div className="outline-list">
-                  {outlineHeadings.map((entry) => (
-                    <button
-                      key={`${entry.line}-${entry.text}`}
-                      type="button"
-                      className={`outline-item level-${entry.level}`}
-                      onClick={() => jumpToLine(entry.line)}
-                      title={`Go to line ${entry.line}`}
-                    >
-                      <span>{entry.text}</span>
-                      <em>L{entry.line}</em>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">No headings in this section yet.</p>
-              )}
-            </>
-          )}
-        </aside>
+        <OutlinePanel
+          isOutlineEnabled={isOutlineEnabled}
+          isOutlineCollapsed={isOutlineCollapsed}
+          setIsOutlineCollapsed={setIsOutlineCollapsed}
+          outlineHeadings={outlineHeadings}
+          onJumpToLine={jumpToLine}
+        />
         {aiSidebar}
         {!aiPanelVisible && aiEnabled ? (
           <button

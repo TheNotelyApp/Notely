@@ -82,20 +82,76 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
-  it("toggles outline collapsed state from menu action", () => {
+  it("requests outline toggle from menu action", () => {
     const view = renderDetail(baseProps);
-    const workspace = view.host.querySelector('.workspace');
+    const onOutlineEnabledChange = vi.fn();
 
-    expect(workspace.className).not.toContain("outline-panel-collapsed");
+    expect(onOutlineEnabledChange).not.toHaveBeenCalled();
 
     act(() => {
       view.rerender({
         ...baseProps,
-        menuAction: { action: "toggle-outline", nonce: Date.now() },
+        menuAction: { action: "toggle-outline-enabled", nonce: Date.now() },
+        outlineEnabled: true,
+        onOutlineEnabledChange,
       });
     });
 
-    expect(workspace.className).toContain("outline-panel-collapsed");
+    expect(onOutlineEnabledChange).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+  });
+
+  it("does not process the same menu nonce twice", () => {
+    const view = renderDetail(baseProps);
+    const onOutlineEnabledChange = vi.fn();
+    const nonce = Date.now();
+
+    act(() => {
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "toggle-outline-enabled", nonce },
+        onOutlineEnabledChange,
+      });
+    });
+
+    act(() => {
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "toggle-outline-enabled", nonce },
+        onOutlineEnabledChange,
+      });
+    });
+
+    expect(onOutlineEnabledChange).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+  });
+
+  it("opens find panel from menu action", () => {
+    const view = renderDetail(baseProps);
+
+    act(() => {
+      view.rerender({
+        ...baseProps,
+        menuAction: { action: "find-replace", nonce: Date.now() },
+      });
+    });
+
+    expect(view.host.querySelector('[aria-label="Find and replace"]')).toBeTruthy();
+
+    view.unmount();
+  });
+
+  it("toggles split mode from menu action", () => {
+    const setMode = vi.fn();
+    const view = renderDetail({
+      ...baseProps,
+      setMode,
+      menuAction: { action: "toggle-split-preview", nonce: Date.now() },
+    });
+
+    expect(setMode).toHaveBeenCalled();
 
     view.unmount();
   });
@@ -105,6 +161,37 @@ describe("DocumentDetail popup and panel toggles", () => {
     const removeButton = view.host.querySelector('button[title="Move note to removed folder"]');
 
     expect(removeButton).toBeFalsy();
+
+    view.unmount();
+  });
+
+  it("hides outline panel when outline is disabled", () => {
+    const view = renderDetail({
+      ...baseProps,
+      outlineEnabled: false,
+      onOutlineEnabledChange: vi.fn(),
+    });
+
+    const workspace = view.host.querySelector(".workspace");
+    expect(workspace?.className).toContain("outline-panel-disabled");
+    expect(view.host.querySelector("aside.outline-panel")).toBeFalsy();
+
+    view.unmount();
+  });
+
+  it("keeps AI sidebar while outline is disabled", () => {
+    const view = renderDetail({
+      ...baseProps,
+      outlineEnabled: false,
+      onOutlineEnabledChange: vi.fn(),
+      aiSidebar: <section data-testid="ai-sidebar">AI</section>,
+    });
+
+    const workspace = view.host.querySelector(".workspace");
+    expect(workspace?.className).toContain("outline-panel-disabled");
+    expect(workspace?.className).toContain("with-ai-chat");
+    expect(view.host.querySelector("aside.outline-panel")).toBeFalsy();
+    expect(view.host.querySelector('[data-testid="ai-sidebar"]')).toBeTruthy();
 
     view.unmount();
   });

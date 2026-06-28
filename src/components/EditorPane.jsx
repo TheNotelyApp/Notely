@@ -296,6 +296,29 @@ export function EditorPane({
     />
   );
 
+  const toolbarProps = {
+    value,
+    onChange,
+    textareaRef,
+    basePath,
+    onNotify,
+    validationIssues,
+    validationStatus,
+    onJumpToLine: jumpToLine,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
+    spellCheckEnabled,
+    onToggleSpellCheck: () => setSpellCheckEnabled((prev) => !prev),
+  };
+
+  const renderToolbar = () => (
+    <div className="pane-toolbar-row">
+      <MarkdownToolbar {...toolbarProps} />
+    </div>
+  );
+
   if (mode === "preview") {
     return (
       <div
@@ -353,26 +376,7 @@ export function EditorPane({
           <div className="pane-title toolbar-label-row">
             <span className="pane-title-label">Editor</span>
           </div>
-          {showToolbar ? (
-            <div className="pane-toolbar-row">
-              <MarkdownToolbar
-                value={value}
-                onChange={onChange}
-                textareaRef={textareaRef}
-                basePath={basePath}
-                onNotify={onNotify}
-                validationIssues={validationIssues}
-                validationStatus={validationStatus}
-                onJumpToLine={jumpToLine}
-                onUndo={onUndo}
-                onRedo={onRedo}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                spellCheckEnabled={spellCheckEnabled}
-                onToggleSpellCheck={() => setSpellCheckEnabled((prev) => !prev)}
-              />
-            </div>
-          ) : null}
+          {showToolbar ? renderToolbar() : null}
           {showToolbar ? <MarkdownValidationBanner issues={validationIssues} status={validationStatus} /> : null}
           <div className="markdown-editor">{markdownEditor}</div>
         </section>
@@ -431,26 +435,7 @@ export function EditorPane({
       <div className="pane-title toolbar-label-row">
         <span className="pane-title-label">Markdown Editor</span>
       </div>
-      {showToolbar ? (
-        <div className="pane-toolbar-row">
-          <MarkdownToolbar
-            value={value}
-            onChange={onChange}
-            textareaRef={textareaRef}
-            basePath={basePath}
-            onNotify={onNotify}
-            validationIssues={validationIssues}
-            validationStatus={validationStatus}
-            onJumpToLine={jumpToLine}
-            onUndo={onUndo}
-            onRedo={onRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            spellCheckEnabled={spellCheckEnabled}
-            onToggleSpellCheck={() => setSpellCheckEnabled((prev) => !prev)}
-          />
-        </div>
-      ) : null}
+      {showToolbar ? renderToolbar() : null}
       {showToolbar ? <MarkdownValidationBanner issues={validationIssues} status={validationStatus} /> : null}
       <div className="markdown-editor">{markdownEditor}</div>
     </section>

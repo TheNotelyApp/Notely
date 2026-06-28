@@ -1,12 +1,16 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { ArrowUp, FolderOpen, FolderPlus, Image as ImageIcon, LayoutGrid, NotebookPen, Rows3, Terminal, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { FolderOpen, NotebookPen, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { CommandPalette } from "./components/CommandPalette";
+import { GlobalSearchOverlay } from "./components/GlobalSearchOverlay";
+import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
+import { DashboardPanels } from "./components/DashboardPanels";
+import { LandingListControls } from "./components/LandingListControls";
+import { applyDocumentListQuery } from "./utils/documentListQuery";
+import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
-const EmbeddedTerminal = lazy(() =>
-  import("./components/EmbeddedTerminal").then((m) => ({ default: m.EmbeddedTerminal }))
-);
 const MediaTab = lazy(() =>
   import("./components/MediaTab").then((m) => ({ default: m.MediaTab }))
 );
@@ -33,31 +37,95 @@ import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
+import { useWorkspaceScopedStorage } from "./hooks/useWorkspaceScopedStorage";
+
+function getPaletteUsageKey(commandId) {
+  const rawId = resolvePaletteCommandId(commandId);
+  if (rawId.startsWith("open-sibling-note:")) {
+    return "open-sibling-note";
+  }
+  if (rawId.startsWith("open-note:")) {
+    return "open-note";
+  }
+  return rawId;
+}
+
+function resolvePaletteCommandId(commandId) {
+  const rawId = String(commandId || "");
+  if (rawId.startsWith("frequent:")) {
+    return resolvePaletteCommandId(rawId.slice("frequent:".length));
+  }
+  if (rawId.startsWith("pinned:")) {
+    return resolvePaletteCommandId(rawId.slice("pinned:".length));
+  }
+  return rawId;
+}
+
+function normalizePaletteUsageMap(rawValue) {
+  if (!rawValue || typeof rawValue !== "object" || Array.isArray(rawValue)) return {};
+  return Object.fromEntries(
+    Object.entries(rawValue).filter(([key, value]) => typeof key === "string" && Number.isFinite(value) && value > 0)
+  );
+}
+
+function normalizePalettePins(rawValue) {
+  if (!Array.isArray(rawValue)) return [];
+  return rawValue.filter((item) => typeof item === "string");
+}
+
+function normalizeLandingListPrefs(rawValue) {
+  const source = rawValue && typeof rawValue === "object" ? rawValue : {};
+  return {
+    query: typeof source.query === "string" ? source.query : "",
+    typeFilter: source.typeFilter === "notes" || source.typeFilter === "folders" ? source.typeFilter : "all",
+    sortBy: ["updated-desc", "updated-asc", "title-asc", "title-desc"].includes(source.sortBy)
+      ? source.sortBy
+      : "updated-desc",
+  };
+}
+
+function normalizeNotesViewMode(rawValue) {
+  return rawValue === "table" ? "table" : "tile";
+}
+
+function normalizeEditorMode(rawValue) {
+  return ["edit", "split", "preview"].includes(rawValue) ? rawValue : "edit";
+}
+
+function normalizeDensityMode(rawValue) {
+  return rawValue === "compact" ? "compact" : "comfortable";
+}
+
+function normalizeFavoriteNotes(rawValue) {
+  if (!Array.isArray(rawValue)) return [];
+  return rawValue.filter((item) => typeof item === "string");
+}
+
+function normalizeOutlineEnabled(rawValue) {
+  return rawValue !== false;
+}
+function normalizeFocusModeEnabled(rawValue) {
+  return rawValue === true;
+}
+
+function normalizeTerminalOpen(rawValue) {
+  return rawValue === true;
+}
+
+function normalizeTerminalShell(rawValue) {
+  return rawValue === "bash" || rawValue === "cmd" ? rawValue : "auto";
+}
+
+const DEFAULT_LANDING_LIST_PREFS = { query: "", typeFilter: "all", sortBy: "updated-desc" };
+const EMPTY_OBJECT = {};
+const EMPTY_ARRAY = [];
 
 export default function App() {
-  const initialViewMode = (() => {
-    try {
-      const stored = window.localStorage.getItem("notes:view-mode");
-      return stored === "table" ? "table" : "tile";
-    } catch {
-      return "tile";
-    }
-  })();
-
-  const initialEditorMode = (() => {
-    try {
-      const stored = window.localStorage.getItem("notes:editor-mode");
-      return ["edit", "split", "preview"].includes(stored) ? stored : "edit";
-    } catch {
-      return "edit";
-    }
-  })();
-
-  const [mode, setMode] = useState(initialEditorMode);
   const { toasts, notify } = useToast();
-  const [notesViewMode, setNotesViewMode] = useState(initialViewMode);
-  const [showTerminal, setShowTerminal] = useState(false);
   const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
   const {
     documents,
@@ -90,13 +158,14 @@ export default function App() {
     documentMenuAction,
     setDocumentMenuAction,
     landingFolderPath,
-    canNavigateUp,
     dirty,
     loadDocumentsData,
     openDocument,
     saveDocument,
     handleReloadCurrentFromDisk,
     handleDeleteCurrentDocument,
+    handleDeleteCurrentFolder,
+    handleRemoveListEntry,
     handleCreateNote,
     handleCreateFolder,
     handlePickNotesFolder,
@@ -108,8 +177,114 @@ export default function App() {
     handleRenameFromTopbar,
     handleOpenListItem,
     handleOpenReferencedDocument,
-    handleLandingNavigateUp,
+    handleLandingNavigateTo,
   } = useDocumentManager({ notify });
+
+  const workspaceStorageScope = useMemo(() => {
+    const rawWorkspaceId = activeProject?.slug || activeProject?.rootPath || notesFolderPath || "default";
+    return encodeURIComponent(String(rawWorkspaceId));
+  }, [activeProject, notesFolderPath]);
+
+  const [landingListPreferences, setLandingListPreferences] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:landing-list-preferences",
+    defaultValue: DEFAULT_LANDING_LIST_PREFS,
+    normalize: normalizeLandingListPrefs,
+  });
+  const landingListQuery = landingListPreferences.query;
+  const landingEntryFilter = landingListPreferences.typeFilter;
+  const landingSortMode = landingListPreferences.sortBy;
+
+  function setLandingListQuery(nextValue) {
+    setLandingListPreferences((currentValue) => ({
+      ...normalizeLandingListPrefs(currentValue),
+      query: String(nextValue || ""),
+    }));
+  }
+
+  function setLandingEntryFilter(nextValue) {
+    setLandingListPreferences((currentValue) => ({
+      ...normalizeLandingListPrefs(currentValue),
+      typeFilter: nextValue === "notes" || nextValue === "folders" ? nextValue : "all",
+    }));
+  }
+
+  function setLandingSortMode(nextValue) {
+    setLandingListPreferences((currentValue) => ({
+      ...normalizeLandingListPrefs(currentValue),
+      sortBy: ["updated-desc", "updated-asc", "title-asc", "title-desc"].includes(nextValue)
+        ? nextValue
+        : "updated-desc",
+    }));
+  }
+
+  const [paletteCommandUsage, setPaletteCommandUsage] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:palette-command-usage",
+    defaultValue: EMPTY_OBJECT,
+    normalize: normalizePaletteUsageMap,
+    fallbackKey: "notes:palette-command-usage",
+  });
+  const [palettePinnedCommandKeys, setPalettePinnedCommandKeys] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:palette-pinned-commands",
+    defaultValue: EMPTY_ARRAY,
+    normalize: normalizePalettePins,
+    fallbackKey: "notes:palette-pinned-commands",
+  });
+  const [outlineEnabled, setOutlineEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:outline-enabled",
+    defaultValue: true,
+    normalize: normalizeOutlineEnabled,
+  });
+  const [focusModeEnabled, setFocusModeEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:focus-mode-enabled",
+    defaultValue: false,
+    normalize: normalizeFocusModeEnabled,
+  });
+  const [notesViewMode, setNotesViewMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:view-mode",
+    defaultValue: "tile",
+    normalize: normalizeNotesViewMode,
+    fallbackKey: "notes:view-mode",
+  });
+  const [mode, setMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:editor-mode",
+    defaultValue: "edit",
+    normalize: normalizeEditorMode,
+    fallbackKey: "notes:editor-mode",
+  });
+  const [notesDensityMode, setNotesDensityMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:density-mode",
+    defaultValue: "comfortable",
+    normalize: normalizeDensityMode,
+    fallbackKey: "notes:density-mode",
+  });
+  const [favoriteNotes, setFavoriteNotes] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:favorites",
+    defaultValue: EMPTY_ARRAY,
+    normalize: normalizeFavoriteNotes,
+    fallbackKey: "notes:favorites",
+  });
+  const [showTerminal, setShowTerminal] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:terminal-open",
+    defaultValue: false,
+    normalize: normalizeTerminalOpen,
+  });
+  const [terminalShellPreference, setTerminalShellPreference] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:terminal-shell",
+    defaultValue: "auto",
+    normalize: normalizeTerminalShell,
+    fallbackKey: "notely:terminal-shell",
+  });
 
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
   syncStateRef.current = { doc: current, dirty, openDocument };
@@ -201,28 +376,58 @@ export default function App() {
   }
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem("notes:view-mode", notesViewMode);
-    } catch {
-      // Ignore storage failures.
+    function onGlobalKeyDown(event) {
+      const isCmdK = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+      const isGlobalSearch = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f";
+      const isShortcutHelp = (event.ctrlKey || event.metaKey) && event.key === "/";
+
+      if (isCmdK) {
+        event.preventDefault();
+        setGlobalSearchOpen(false);
+        setShortcutsModalOpen(false);
+        setCommandPaletteOpen(true);
+        return;
+      }
+
+      if (isGlobalSearch) {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+        setShortcutsModalOpen(false);
+        setGlobalSearchOpen(true);
+        return;
+      }
+
+      if (isShortcutHelp) {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+        setGlobalSearchOpen(false);
+        setShortcutsModalOpen(true);
+      }
     }
-  }, [notesViewMode]);
+
+    window.addEventListener("keydown", onGlobalKeyDown);
+    return () => window.removeEventListener("keydown", onGlobalKeyDown);
+  }, []);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem("notes:editor-mode", mode);
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [mode]);
+    const rootPath = String(activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "");
+    const currentPath = String(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
+    const canRemoveFolder = Boolean(rootPath && currentPath && rootPath.toLowerCase() !== currentPath.toLowerCase());
 
-  useEffect(() => {
     updateMenuContext({
       screen: current ? "document" : "landing",
       viewMode: notesViewMode,
+      densityMode: notesDensityMode,
       dirty,
+      terminalOpen: showTerminal,
+      terminalShell: terminalShellPreference,
+      outlineEnabled,
+      splitPreviewEnabled: current ? mode === "split" : false,
+      focusModeEnabled: current ? focusModeEnabled : false,
+      canRemoveFolder,
+      currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
     });
-  }, [current, notesViewMode, dirty]);
+  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -238,6 +443,13 @@ export default function App() {
 
       if (action === "open-notes-folder-settings") {
         setNotesFolderDialogOpen(true);
+        return;
+      }
+
+      if (action === "open-command-palette") {
+        setGlobalSearchOpen(false);
+        setShortcutsModalOpen(false);
+        setCommandPaletteOpen(true);
         return;
       }
 
@@ -281,6 +493,36 @@ export default function App() {
         return;
       }
 
+      if (action === "view-density-comfortable") {
+        setNotesDensityMode("comfortable");
+        return;
+      }
+
+      if (action === "view-density-compact") {
+        setNotesDensityMode("compact");
+        return;
+      }
+
+      if (action === "toggle-terminal") {
+        setShowTerminal((open) => !open);
+        return;
+      }
+
+      if (action === "terminal-shell-auto") {
+        setTerminalShellPreference("auto");
+        return;
+      }
+
+      if (action === "terminal-shell-bash") {
+        setTerminalShellPreference("bash");
+        return;
+      }
+
+      if (action === "terminal-shell-cmd") {
+        setTerminalShellPreference("cmd");
+        return;
+      }
+
       if (action === "save-document") {
         saveDocument();
         return;
@@ -308,9 +550,12 @@ export default function App() {
         return;
       }
 
-      if (action === "toggle-outline" || action === "toggle-split-preview" || action === "toggle-focus-mode") {
+      if (action === "toggle-outline" || action === "toggle-outline-enabled" || action === "toggle-split-preview" || action === "toggle-focus-mode") {
         if (current) {
-          setDocumentMenuAction({ action, nonce: Date.now() });
+          setDocumentMenuAction({
+            action: action === "toggle-outline" ? "toggle-outline-enabled" : action,
+            nonce: Date.now(),
+          });
         }
         return;
       }
@@ -348,6 +593,11 @@ export default function App() {
         return;
       }
 
+      if (action === "remove-folder") {
+        handleDeleteCurrentFolder();
+        return;
+      }
+
       if (action === "open-ai-settings") {
         setAiSettingsOpen(true);
         return;
@@ -379,10 +629,498 @@ export default function App() {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, dirty, activeProject, activeTab]);
+  }, [current, dirty, activeProject, activeTab, landingFolderPath]);
+
+  const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
+  const noteCount = documents.length - folderCount;
+  const visibleDocuments = applyDocumentListQuery(documents, {
+    query: landingListQuery,
+    typeFilter: landingEntryFilter,
+    sortBy: landingSortMode,
+  });
+  const paletteRootPath = activeProject?.rootPath || notesFolderPath || "";
+  const normalizedPaletteRootPath = String(paletteRootPath || "").replace(/[\\/]+$/, "");
+  const currentNoteParentPath = current?.filePath
+    ? String(current.filePath).replace(/[\\/][^\\/]+$/, "").replace(/[\\/]+$/, "")
+    : "";
+  const currentNoteParentComparable = currentNoteParentPath.replace(/\\/g, "/").toLowerCase();
+  const rootComparable = normalizedPaletteRootPath.replace(/\\/g, "/").toLowerCase();
+  const canOpenCurrentNoteParent = Boolean(
+    current && currentNoteParentPath
+      && (!rootComparable || currentNoteParentComparable === rootComparable || currentNoteParentComparable.startsWith(`${rootComparable}/`))
+  );
+  const siblingPaletteNotes = current
+    ? documents
+      .filter((entry) => entry.entryType === "file" && entry.filePath !== current.filePath)
+      .sort((left, right) => {
+        const leftTime = new Date(left.updatedAt || 0).getTime();
+        const rightTime = new Date(right.updatedAt || 0).getTime();
+        return rightTime - leftTime;
+      })
+      .slice(0, 8)
+    : [];
+  const siblingPaletteNotePaths = new Set(siblingPaletteNotes.map((entry) => entry.filePath));
+  const recentPaletteNotes = [...documents]
+    .filter((entry) => {
+      if (entry.entryType !== "file") return false;
+      if (current?.filePath && entry.filePath === current.filePath) return false;
+      return !siblingPaletteNotePaths.has(entry.filePath);
+    })
+    .sort((left, right) => {
+      const leftTime = new Date(left.updatedAt || 0).getTime();
+      const rightTime = new Date(right.updatedAt || 0).getTime();
+      return rightTime - leftTime;
+    })
+    .slice(0, 8);
+
+  const hasPaletteUsage = Object.keys(paletteCommandUsage).length > 0;
+  const palettePinnedCommandSet = new Set(palettePinnedCommandKeys);
+  const hasPinnedCommands = palettePinnedCommandSet.size > 0;
+  function getPaletteUsageCount(commandId) {
+    const usageKey = getPaletteUsageKey(commandId);
+    return Number(paletteCommandUsage[usageKey] || 0);
+  }
+
+  const paletteCommandsBase = [
+    { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document" },
+    { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory" },
+    { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes" },
+    { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
+    { id: "open-notes-folder", label: "Open Notes Folder Settings", group: "Workspace", aliases: "notes root path workspace folder" },
+    { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
+    { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
+    { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
+    { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
+    { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
+    {
+      id: "toggle-view-mode",
+      label: notesViewMode === "tile" ? "Switch to Table View" : "Switch to Tile View",
+      group: "View",
+      aliases: "toggle list layout",
+    },
+    {
+      id: "set-view-tile",
+      label: "Use Tile View",
+      group: "View",
+      disabled: notesViewMode === "tile",
+      aliases: "grid cards",
+    },
+    {
+      id: "set-view-table",
+      label: "Use Table View",
+      group: "View",
+      disabled: notesViewMode === "table",
+      aliases: "rows list table",
+    },
+    {
+      id: "set-density-comfortable",
+      label: "Use Comfortable Density",
+      group: "View",
+      disabled: notesDensityMode === "comfortable",
+      aliases: "spacious cozy",
+    },
+    {
+      id: "set-density-compact",
+      label: "Use Compact Density",
+      group: "View",
+      disabled: notesDensityMode === "compact",
+      aliases: "tight dense",
+    },
+    {
+      id: "find-in-note",
+      label: "Find in Current Note",
+      group: "Editor",
+      shortcut: "Ctrl/Cmd+F",
+      disabled: !current,
+      aliases: "search in note replace",
+    },
+    {
+      id: "open-current-note-parent-folder",
+      label: "Open Parent Folder (Current Note)",
+      group: "Navigation",
+      disabled: !canOpenCurrentNoteParent,
+      aliases: "go parent folder",
+    },
+    {
+      id: "reveal-current-note-in-list",
+      label: "Reveal Current Note in List",
+      group: "Navigation",
+      disabled: !canOpenCurrentNoteParent,
+      aliases: "show current note in folder",
+    },
+    ...siblingPaletteNotes.map((note) => ({
+      id: `open-sibling-note:${encodeURIComponent(note.filePath)}`,
+      label: `Open: ${note.title}`,
+      group: "Current Folder",
+      keywords: `${note.title} ${note.filePath || ""}`,
+      priority: 10,
+    })),
+    ...recentPaletteNotes.map((note) => ({
+      id: `open-note:${encodeURIComponent(note.filePath)}`,
+      label: `Open: ${note.title}`,
+      group: "Recent",
+      keywords: `${note.title} ${note.filePath || ""}`,
+      priority: 30,
+    })),
+    {
+      id: "clear-command-usage",
+      label: "Clear Command Usage History",
+      group: "Help",
+      disabled: !hasPaletteUsage,
+      priority: 200,
+      aliases: "reset command history usage",
+    },
+    {
+      id: "clear-pinned-commands",
+      label: "Clear Pinned Commands",
+      group: "Help",
+      disabled: !hasPinnedCommands,
+      priority: 200,
+      aliases: "reset pinned commands",
+    },
+    {
+      id: "reset-palette-personalization",
+      label: "Reset Command Palette Personalization",
+      group: "Help",
+      disabled: !hasPaletteUsage && !hasPinnedCommands,
+      priority: 220,
+      aliases: "reset command palette personalization frequent pinned",
+    },
+  ];
+
+  const paletteCommandsWithUsage = paletteCommandsBase.map((command) => {
+    const resolvedId = resolvePaletteCommandId(command.id);
+    return {
+      ...command,
+      pinKey: resolvedId,
+      usageBoost: getPaletteUsageCount(command.id),
+    };
+  });
+
+  const frequentPaletteCommands = Object.entries(paletteCommandUsage)
+    .filter(([id, count]) => id && Number.isFinite(count) && count > 1)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 6)
+    .map(([id, count]) => {
+      const source = paletteCommandsWithUsage.find((command) => command.id === id && !command.disabled);
+      if (!source) return null;
+      return {
+        ...source,
+        id: `frequent:${source.id}`,
+        group: "Frequent",
+        keywords: `${source.keywords || ""} ${source.group || ""} popular often used`,
+        aliases: `${source.aliases || ""} frequent popular`,
+        priority: -5,
+        usageBoost: Math.min(count, 20),
+      };
+    })
+    .filter(Boolean);
+
+  const pinnedPaletteCommands = paletteCommandsWithUsage
+    .filter((command) => palettePinnedCommandSet.has(command.pinKey) && !command.disabled)
+    .slice(0, 12)
+    .map((command) => ({
+      ...command,
+      id: `pinned:${command.id}`,
+      group: "Pinned",
+      priority: -15,
+      aliases: `${command.aliases || ""} pinned`,
+      usageBoost: Math.max(command.usageBoost || 0, 2),
+    }));
+
+  const paletteCommands = [
+    ...pinnedPaletteCommands,
+    ...frequentPaletteCommands,
+    ...paletteCommandsWithUsage.filter((command) => !palettePinnedCommandSet.has(command.pinKey)),
+  ];
+
+  function handleTogglePinnedPaletteCommand(commandId) {
+    const resolvedId = resolvePaletteCommandId(commandId);
+    if (!resolvedId || resolvedId === "clear-command-usage" || resolvedId === "clear-pinned-commands") {
+      return;
+    }
+    const currentlyPinned = palettePinnedCommandSet.has(resolvedId);
+    setPalettePinnedCommandKeys((currentPinned) => {
+      if (currentPinned.includes(resolvedId)) {
+        return currentPinned.filter((item) => item !== resolvedId);
+      }
+      return [...currentPinned, resolvedId];
+    });
+    notify(currentlyPinned ? "Command unpinned." : "Command pinned.", "success");
+  }
+
+  async function handleRunPaletteCommand(commandId) {
+    setCommandPaletteOpen(false);
+
+    const resolvedCommandId = resolvePaletteCommandId(commandId);
+
+    if (
+      resolvedCommandId
+      && resolvedCommandId !== "clear-command-usage"
+      && resolvedCommandId !== "clear-pinned-commands"
+      && resolvedCommandId !== "reset-palette-personalization"
+    ) {
+      const usageKey = getPaletteUsageKey(resolvedCommandId);
+      setPaletteCommandUsage((currentUsage) => ({
+        ...currentUsage,
+        [usageKey]: Number(currentUsage[usageKey] || 0) + 1,
+      }));
+    }
+
+    if (resolvedCommandId === "clear-command-usage") {
+      setPaletteCommandUsage({});
+      notify("Command usage history cleared.", "success");
+      return;
+    }
+
+    if (resolvedCommandId === "clear-pinned-commands") {
+      setPalettePinnedCommandKeys([]);
+      notify("Pinned commands cleared.", "success");
+      return;
+    }
+
+    if (resolvedCommandId === "reset-palette-personalization") {
+      setPaletteCommandUsage({});
+      setPalettePinnedCommandKeys([]);
+      notify("Command palette personalization reset.", "success");
+      return;
+    }
+
+    if (resolvedCommandId.startsWith("open-note:")) {
+      const encodedPath = String(resolvedCommandId).slice("open-note:".length);
+      const filePath = decodeURIComponent(encodedPath || "");
+      const target = documents.find((entry) => entry.filePath === filePath && entry.entryType === "file");
+      if (!target) {
+        notify("That note is no longer available in this view.", "warning");
+        return;
+      }
+      await handleOpenListItem(target);
+      return;
+    }
+
+    if (resolvedCommandId.startsWith("open-sibling-note:")) {
+      const encodedPath = String(resolvedCommandId).slice("open-sibling-note:".length);
+      const filePath = decodeURIComponent(encodedPath || "");
+      const target = documents.find((entry) => entry.filePath === filePath && entry.entryType === "file");
+      if (!target) {
+        notify("That sibling note is no longer available in this folder.", "warning");
+        return;
+      }
+      await handleOpenListItem(target);
+      return;
+    }
+
+    if (resolvedCommandId === "new-note") {
+      setNoteDialogOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "new-folder") {
+      setFolderDialogOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-notes-folder") {
+      setNotesFolderDialogOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-global-search") {
+      setGlobalSearchOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-shortcuts") {
+      setShortcutsModalOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-assets") {
+      setLandingAssetsOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-workspace-activity") {
+      await handleOpenWorkspaceActivity();
+      return;
+    }
+
+    if (resolvedCommandId === "open-p2p-status") {
+      await handleOpenP2PStatus();
+      return;
+    }
+
+    if (resolvedCommandId === "open-ai-settings") {
+      setAiSettingsOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "toggle-terminal") {
+      setShowTerminal((open) => !open);
+      return;
+    }
+
+    if (resolvedCommandId === "toggle-view-mode") {
+      setNotesViewMode((value) => (value === "tile" ? "table" : "tile"));
+      return;
+    }
+
+    if (resolvedCommandId === "set-view-tile") {
+      setNotesViewMode("tile");
+      return;
+    }
+
+    if (resolvedCommandId === "set-view-table") {
+      setNotesViewMode("table");
+      return;
+    }
+
+    if (resolvedCommandId === "set-density-comfortable") {
+      setNotesDensityMode("comfortable");
+      return;
+    }
+
+    if (resolvedCommandId === "set-density-compact") {
+      setNotesDensityMode("compact");
+      return;
+    }
+
+    if (resolvedCommandId === "find-in-note") {
+      if (!current) {
+        notify("Open a note to search within it.", "info");
+        return;
+      }
+      setDocumentMenuAction({ action: "find-replace", nonce: Date.now() });
+      return;
+    }
+
+    if (resolvedCommandId === "open-current-note-parent-folder") {
+      if (!canOpenCurrentNoteParent) {
+        notify("Current note is outside the active workspace path.", "info");
+        return;
+      }
+      const canLeaveCurrent = handleGoHome();
+      if (!canLeaveCurrent) return;
+      await handleLandingNavigateTo(currentNoteParentPath);
+      return;
+    }
+
+    if (resolvedCommandId === "reveal-current-note-in-list") {
+      if (!canOpenCurrentNoteParent) {
+        notify("Current note is outside the active workspace path.", "info");
+        return;
+      }
+      const canLeaveCurrent = handleGoHome();
+      if (!canLeaveCurrent) return;
+      await handleLandingNavigateTo(currentNoteParentPath);
+    }
+  }
+
+  async function handleOpenGlobalSearchResult(result, query) {
+    setGlobalSearchOpen(false);
+
+    if (result?.kind === "current-note-match") {
+      if (!current) {
+        notify("Open a note to search inside it.", "info");
+        return;
+      }
+      setDocumentMenuAction({ action: "find-replace", query, nonce: Date.now() });
+      return;
+    }
+
+    if (result?.kind === "document" && result.entry) {
+      await handleOpenListItem(result.entry);
+    }
+  }
+
+  function handleDashboardAction(action) {
+    if (action === "new-note") {
+      setNoteDialogOpen(true);
+      return;
+    }
+
+    if (action === "new-folder") {
+      setFolderDialogOpen(true);
+      return;
+    }
+
+    if (action === "search") {
+      setGlobalSearchOpen(true);
+      return;
+    }
+
+    if (action === "assets") {
+      setLandingAssetsOpen(true);
+    }
+  }
+
+  function handleToggleFavorite(filePath) {
+    if (!filePath) return;
+    setFavoriteNotes((currentFavorites) => {
+      if (currentFavorites.includes(filePath)) {
+        return currentFavorites.filter((item) => item !== filePath);
+      }
+      return [...currentFavorites, filePath];
+    });
+  }
+  const rootPath = activeProject?.rootPath || notesFolderPath || "";
+  const currentLandingPath = landingFolderPath || rootPath;
+  const normalizedRootPath = String(rootPath || "").replace(/[\\/]+$/, "");
+  const normalizedLandingPath = String(currentLandingPath || "").replace(/[\\/]+$/, "");
+  const isRootLandingView = Boolean(normalizedRootPath) && normalizedRootPath.toLowerCase() === normalizedLandingPath.toLowerCase();
+  const breadcrumbSegments = [];
+  if (normalizedRootPath) {
+    breadcrumbSegments.push({
+      path: normalizedRootPath,
+      label: activeProject?.isRoot ? "Workspace" : (activeProject?.name || "Project"),
+    });
+
+    const rootForCompare = normalizedRootPath.replace(/\\/g, "/").toLowerCase();
+    const currentForCompare = normalizedLandingPath.replace(/\\/g, "/").toLowerCase();
+
+    if (currentForCompare.startsWith(rootForCompare)) {
+      const relativePath = normalizedLandingPath.slice(normalizedRootPath.length).replace(/^[\\/]+/, "");
+      const pathSeparator = normalizedRootPath.includes("\\") ? "\\" : "/";
+      let cursorPath = normalizedRootPath;
+      if (relativePath) {
+        relativePath.split(/[\\/]+/).filter(Boolean).forEach((segment) => {
+          cursorPath = `${cursorPath}${cursorPath.endsWith("/") || cursorPath.endsWith("\\") ? "" : pathSeparator}${segment}`;
+          breadcrumbSegments.push({ path: cursorPath, label: segment });
+        });
+      }
+    }
+  }
+
+  const noteBreadcrumbSegments = [];
+  if (current?.filePath && normalizedRootPath) {
+    noteBreadcrumbSegments.push({
+      path: normalizedRootPath,
+      label: activeProject?.isRoot ? "Workspace" : (activeProject?.name || "Project"),
+    });
+
+    const noteParentPath = String(current.filePath || "").replace(/[\\/][^\\/]+$/, "").replace(/[\\/]+$/, "");
+    const rootForCompare = normalizedRootPath.replace(/\\/g, "/").toLowerCase();
+    const noteParentForCompare = noteParentPath.replace(/\\/g, "/").toLowerCase();
+
+    if (noteParentForCompare.startsWith(rootForCompare)) {
+      const relativePath = noteParentPath.slice(normalizedRootPath.length).replace(/^[\\/]+/, "");
+      const pathSeparator = normalizedRootPath.includes("\\") ? "\\" : "/";
+      let cursorPath = normalizedRootPath;
+      if (relativePath) {
+        relativePath.split(/[\\/]+/).filter(Boolean).forEach((segment) => {
+          cursorPath = `${cursorPath}${cursorPath.endsWith("/") || cursorPath.endsWith("\\") ? "" : pathSeparator}${segment}`;
+          noteBreadcrumbSegments.push({ path: cursorPath, label: segment });
+        });
+      }
+    }
+  }
+
+  const landingTitle = breadcrumbSegments.length
+    ? breadcrumbSegments[breadcrumbSegments.length - 1].label
+    : (activeProject?.isRoot ? "Workspace" : (activeProject?.name || "Project"));
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}`}>
       <div className="toast-stack" aria-live="polite" aria-atomic="true">
         {toasts.map((toast) => (
           <div className={`toast-item ${toast.type}`} key={toast.id}>
@@ -427,66 +1165,105 @@ export default function App() {
         </div>
       ) : null}
       {!current ? (
-        <>
+        <div className="landing-shell">
           <header className="landing-header">
-            <div>
-              <h1>{activeProject?.isRoot ? "All Notes" : `${activeProject?.name || "Folder"} Notes`}</h1>
-              <div className="landing-path" title={landingFolderPath || activeProject?.rootPath || notesFolderPath || "Path unavailable"}>
-                {landingFolderPath || activeProject?.rootPath || notesFolderPath || "Path unavailable"}
-              </div>
-            </div>
-            <div className="landing-header-actions">
-              <div className="landing-primary-actions">
-                {canNavigateUp ? (
-                  <button className="small-button" type="button" onClick={handleLandingNavigateUp}>
-                    <ArrowUp size={14} />
-                    Up
-                  </button>
-                ) : null}
-                <button className="small-button" type="button" onClick={() => setFolderDialogOpen(true)}>
-                  <FolderPlus size={14} />
-                  New Folder
-                </button>
-                <button className="small-button" type="button" onClick={() => setNoteDialogOpen(true)}>
-                  <NotebookPen size={14} />
-                  New Note
-                </button>
-                <button
-                  className="small-button"
-                  type="button"
-                  onClick={() => setLandingAssetsOpen(true)}
-                  title="Browse assets in this folder"
-                >
-                  <ImageIcon size={14} />
-                  Assets
-                </button>
-                <div className="document-view-toggle" role="group" aria-label="Landing notes view mode">
-                  <button
-                    className={notesViewMode === "tile" ? "active" : ""}
-                    onClick={() => setNotesViewMode("tile")}
-                    type="button"
-                  >
-                    <LayoutGrid size={14} />
-                    Tile
-                  </button>
-                  <button
-                    className={notesViewMode === "table" ? "active" : ""}
-                    onClick={() => setNotesViewMode("table")}
-                    type="button"
-                  >
-                    <Rows3 size={14} />
-                    Table
-                  </button>
+            <div className="landing-header-main">
+              <div className="landing-title-row">
+                <h1>{landingTitle}</h1>
+                <div className="landing-stats" aria-label="Current folder metrics">
+                  <span><em>Folders</em><strong>{folderCount}</strong></span>
+                  <span><em>Notes</em><strong>{noteCount}</strong></span>
                 </div>
               </div>
+              {breadcrumbSegments.length ? (
+                <nav
+                  className="landing-path"
+                  aria-label="Folder path"
+                  title={landingFolderPath || activeProject?.rootPath || notesFolderPath || "Path unavailable"}
+                >
+                  {breadcrumbSegments.map((segment, index) => {
+                    const isCurrent = index === breadcrumbSegments.length - 1;
+                    return (
+                      <span className="landing-path-part" key={segment.path}>
+                        <button
+                          className={`landing-path-segment${isCurrent ? " active" : ""}`}
+                          type="button"
+                          onClick={() => handleLandingNavigateTo(segment.path)}
+                          disabled={isCurrent}
+                        >
+                          {segment.label}
+                        </button>
+                        {isCurrent ? null : <span className="landing-path-separator" aria-hidden="true">/</span>}
+                      </span>
+                    );
+                  })}
+                </nav>
+              ) : (
+                <div className="landing-path">Path unavailable</div>
+              )}
             </div>
           </header>
-          <DocumentList
-            documents={documents}
-            onOpen={handleOpenListItem}
-            loading={loading}
-            viewMode={notesViewMode}
-          />
+          {isRootLandingView ? (
+            <div className="landing-workspace-layout">
+              <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
+                <DashboardPanels
+                  documents={documents}
+                  loading={loading}
+                  onOpen={handleOpenListItem}
+                  onAction={handleDashboardAction}
+                  favorites={favoriteNotes}
+                  layout="rail"
+                />
+              </aside>
+              <div className="landing-notes-pane">
+                <LandingListControls
+                  query={landingListQuery}
+                  onQueryChange={setLandingListQuery}
+                  typeFilter={landingEntryFilter}
+                  onTypeFilterChange={setLandingEntryFilter}
+                  sortBy={landingSortMode}
+                  onSortByChange={setLandingSortMode}
+                  visibleCount={visibleDocuments.length}
+                  totalCount={documents.length}
+                />
+                <DocumentList
+                  documents={visibleDocuments}
+                  onOpen={handleOpenListItem}
+                  onRemove={handleRemoveListEntry}
+                  loading={loading}
+                  viewMode={notesViewMode}
+                  density={notesDensityMode}
+                  favorites={favoriteNotes}
+                  onToggleFavorite={handleToggleFavorite}
+                  emptyMessage="No notes or folders match your current filters."
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="landing-notes-pane standalone">
+              <LandingListControls
+                query={landingListQuery}
+                onQueryChange={setLandingListQuery}
+                typeFilter={landingEntryFilter}
+                onTypeFilterChange={setLandingEntryFilter}
+                sortBy={landingSortMode}
+                onSortByChange={setLandingSortMode}
+                visibleCount={visibleDocuments.length}
+                totalCount={documents.length}
+              />
+              <DocumentList
+                documents={visibleDocuments}
+                onOpen={handleOpenListItem}
+                onRemove={handleRemoveListEntry}
+                loading={loading}
+                viewMode={notesViewMode}
+                density={notesDensityMode}
+                favorites={favoriteNotes}
+                onToggleFavorite={handleToggleFavorite}
+                emptyMessage="No notes or folders match your current filters."
+              />
+            </div>
+          )}
           {landingAssetsOpen ? (
             <div
               className="overlay-dialog"
@@ -525,7 +1302,7 @@ export default function App() {
               </div>
             </div>
           ) : null}
-        </>
+        </div>
       ) : (
         <Suspense fallback={<div className="lazy-loading">Loading editor…</div>}>
           <DocumentDetail
@@ -543,6 +1320,12 @@ export default function App() {
             menuAction={documentMenuAction}
             onNotify={notify}
             onBack={handleGoHome}
+            breadcrumbs={noteBreadcrumbSegments}
+            onNavigateBreadcrumb={async (targetPath) => {
+              const didLeave = handleGoHome();
+              if (!didLeave) return;
+              await handleLandingNavigateTo(targetPath);
+            }}
             onOpenAI={handleOpenAIPalette}
             onOpenAIRequest={handleOpenAIPalette}
             onInlineAIRequest={handleInlineAIRequest}
@@ -564,6 +1347,11 @@ export default function App() {
             }}
             onOpenAISettings={() => setAiSettingsOpen(true)}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
+            workspaceStorageScope={workspaceStorageScope}
+            outlineEnabled={outlineEnabled}
+            onOutlineEnabledChange={setOutlineEnabled}
+            focusModeEnabled={focusModeEnabled}
+            onFocusModeChange={setFocusModeEnabled}
             aiSidebar={aiPanelVisible && isAIConfigured ? (
               <ErrorBoundary label="AI chat">
                 <Suspense fallback={<div className="lazy-loading">Loading AI…</div>}>
@@ -589,9 +1377,12 @@ export default function App() {
       {showTerminal ? (
         <div className="terminal-dock open">
           <ErrorBoundary label="Terminal">
-            <Suspense fallback={<div className="lazy-loading">Loading terminal…</div>}>
-              <EmbeddedTerminal cwd={terminalCwd} onClose={() => setShowTerminal(false)} />
-            </Suspense>
+            <EmbeddedTerminal
+              cwd={terminalCwd}
+              shellPreference={terminalShellPreference}
+              onShellPreferenceChange={setTerminalShellPreference}
+              onClose={() => setShowTerminal(false)}
+            />
           </ErrorBoundary>
         </div>
       ) : null}
@@ -962,6 +1753,29 @@ export default function App() {
           </div>
         </div>
       ) : null}
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        commands={paletteCommands.filter((command) => !command.disabled)}
+        pinnedCommandKeys={palettePinnedCommandKeys}
+        onClose={() => setCommandPaletteOpen(false)}
+        onRun={handleRunPaletteCommand}
+        onTogglePinCommand={handleTogglePinnedPaletteCommand}
+      />
+
+      <GlobalSearchOverlay
+        isOpen={globalSearchOpen}
+        documents={documents}
+        currentDocument={current}
+        onClose={() => setGlobalSearchOpen(false)}
+        workspaceStorageScope={workspaceStorageScope}
+        onOpenResult={handleOpenGlobalSearchResult}
+      />
+
+      <KeyboardShortcutsModal
+        isOpen={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
 
     </div>
   );

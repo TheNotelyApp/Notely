@@ -114,15 +114,53 @@ export function MarkdownToolbar({
   const [tableRows, setTableRows] = useState(3);
   const [tableColumns, setTableColumns] = useState(3);
 
+  const closeToolbarPanels = () => {
+    setShowMermaidBuilder(false);
+    setShowImageLinker(false);
+    setShowWebLinker(false);
+    setShowDocLinker(false);
+    setShowTableBuilder(false);
+    setShowValidationPanel(false);
+  };
+
+  const isPanelOpen = (panel) => {
+    if (panel === "mermaid") return showMermaidBuilder;
+    if (panel === "image") return showImageLinker;
+    if (panel === "web") return showWebLinker;
+    if (panel === "doc") return showDocLinker;
+    if (panel === "table") return showTableBuilder;
+    if (panel === "validation") return showValidationPanel;
+    return false;
+  };
+
+  const openPanel = (panel) => {
+    if (panel === "mermaid") setShowMermaidBuilder(true);
+    if (panel === "image") setShowImageLinker(true);
+    if (panel === "web") setShowWebLinker(true);
+    if (panel === "doc") setShowDocLinker(true);
+    if (panel === "table") setShowTableBuilder(true);
+    if (panel === "validation") setShowValidationPanel(true);
+  };
+
+  const toggleToolbarPanel = (panel) => {
+    const shouldOpen = !isPanelOpen(panel);
+    closeToolbarPanels();
+    if (shouldOpen) {
+      openPanel(panel);
+    }
+    return shouldOpen;
+  };
+
+  const anyPopoverOpen =
+    showMermaidBuilder ||
+    showImageLinker ||
+    showWebLinker ||
+    showDocLinker ||
+    showTableBuilder ||
+    showValidationPanel;
+
   useEffect(() => {
-    if (
-      !showMermaidBuilder &&
-      !showImageLinker &&
-      !showWebLinker &&
-      !showDocLinker &&
-      !showTableBuilder &&
-      !showValidationPanel
-    ) {
+    if (!anyPopoverOpen) {
       return undefined;
     }
 
@@ -141,23 +179,13 @@ export function MarkdownToolbar({
         !insideTableBuilder &&
         !insideValidation
       ) {
-        setShowMermaidBuilder(false);
-        setShowImageLinker(false);
-        setShowWebLinker(false);
-        setShowDocLinker(false);
-        setShowTableBuilder(false);
-        setShowValidationPanel(false);
+        closeToolbarPanels();
       }
     };
 
     const handleEscape = (event) => {
       if (event.key === "Escape") {
-        setShowMermaidBuilder(false);
-        setShowImageLinker(false);
-        setShowWebLinker(false);
-        setShowDocLinker(false);
-        setShowTableBuilder(false);
-        setShowValidationPanel(false);
+        closeToolbarPanels();
       }
     };
 
@@ -168,7 +196,7 @@ export function MarkdownToolbar({
       document.removeEventListener("mousedown", handleGlobalClick);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [showDocLinker, showImageLinker, showMermaidBuilder, showTableBuilder, showValidationPanel, showWebLinker]);
+  }, [anyPopoverOpen]);
 
   const handleMediaSelect = async (event) => {
     const file = event.target.files?.[0];
@@ -223,21 +251,12 @@ export function MarkdownToolbar({
           : "No issues";
 
   function openTableBuilder() {
-    const shouldOpen = !showTableBuilder;
-    setShowTableBuilder(shouldOpen);
-    setShowMermaidBuilder(false);
-    setShowImageLinker(false);
-    setShowWebLinker(false);
-    setShowValidationPanel(false);
+    toggleToolbarPanel("table");
   }
 
   function runMarkdownValidation() {
-    setShowValidationPanel(true);
-    setShowMermaidBuilder(false);
-    setShowImageLinker(false);
-    setShowWebLinker(false);
-    setShowDocLinker(false);
-    setShowTableBuilder(false);
+    const shouldOpen = toggleToolbarPanel("validation");
+    if (!shouldOpen) return;
 
     if (validationStatus === "checking") {
       onNotify?.("Validation is running...", "info");
@@ -302,9 +321,7 @@ export function MarkdownToolbar({
   }
 
   async function openImageLinker() {
-    const shouldOpen = !showImageLinker;
-    setShowImageLinker(shouldOpen);
-    setShowMermaidBuilder(false);
+    const shouldOpen = toggleToolbarPanel("image");
     setImagesError("");
 
     if (!shouldOpen) return;
@@ -328,22 +345,12 @@ export function MarkdownToolbar({
   }
 
   function openWebLinker() {
-    const shouldOpen = !showWebLinker;
-    setShowWebLinker(shouldOpen);
-    setShowMermaidBuilder(false);
-    setShowImageLinker(false);
-    setShowDocLinker(false);
+    toggleToolbarPanel("web");
     setWebLinkError("");
   }
 
   async function openDocLinker() {
-    const shouldOpen = !showDocLinker;
-    setShowDocLinker(shouldOpen);
-    setShowMermaidBuilder(false);
-    setShowImageLinker(false);
-    setShowWebLinker(false);
-    setShowTableBuilder(false);
-    setShowValidationPanel(false);
+    const shouldOpen = toggleToolbarPanel("doc");
     setDocsError("");
 
     if (!shouldOpen) return;
@@ -496,7 +503,7 @@ export function MarkdownToolbar({
       <button onClick={openImageLinker} title="Insert media from existing">
         <Link size={18} />
       </button>
-      <button onClick={() => setShowMermaidBuilder((open) => !open)} title="Mermaid Builder">
+      <button onClick={() => toggleToolbarPanel("mermaid")} title="Mermaid Builder">
         <Zap size={18} />
       </button>
       <button onClick={runMarkdownValidation} title="Validate markdown syntax">

@@ -1,5 +1,8 @@
+const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
+
 function createImageMedia(deps) {
   const {
+    BrowserWindow,
     fs,
     path,
     crypto,
@@ -379,7 +382,14 @@ function removeImageReferencesForAsset(resolvedAssetPath, options = {}) {
 
 
   function registerIpcHandlers(ipcMain) {
-ipcMain.handle("images:save", (_event, payload) => {
+function registerTrustedHandler(channel, handler) {
+  ipcMain.handle(channel, (event, payload) => {
+    assertTrustedIpcSender(BrowserWindow, event, channel);
+    return handler(event, payload);
+  });
+}
+
+registerTrustedHandler("images:save", (_event, payload) => {
   const { fileName, base64Data, basePath, storageTarget } = payload || {};
   if (!fileName || typeof fileName !== "string") {
     throw new Error("Invalid image filename.");
@@ -430,7 +440,7 @@ ipcMain.handle("images:save", (_event, payload) => {
   return savedToWorkspace ? `/images/${finalName}` : `./images/${finalName}`;
 });
 
-ipcMain.handle("images:list", (_event, payload) => {
+registerTrustedHandler("images:list", (_event, payload) => {
   const { basePath, includeAnnotations = false } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -486,7 +496,7 @@ ipcMain.handle("images:list", (_event, payload) => {
   });
 });
 
-ipcMain.handle("images:usage", (_event, payload) => {
+registerTrustedHandler("images:usage", (_event, payload) => {
   const { basePath } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -495,7 +505,7 @@ ipcMain.handle("images:usage", (_event, payload) => {
   return collectImageUsage(basePath);
 });
 
-ipcMain.handle("images:get-annotation", (_event, payload) => {
+registerTrustedHandler("images:get-annotation", (_event, payload) => {
   const { basePath, assetPath } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -510,7 +520,7 @@ ipcMain.handle("images:get-annotation", (_event, payload) => {
   return normalizeImageAnnotation(annotations[getImageAnnotationKey(resolvedAssetPath)]);
 });
 
-ipcMain.handle("images:set-annotation", (_event, payload) => {
+registerTrustedHandler("images:set-annotation", (_event, payload) => {
   const { basePath, assetPath, annotation } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -536,7 +546,7 @@ ipcMain.handle("images:set-annotation", (_event, payload) => {
   return normalized;
 });
 
-ipcMain.handle("images:delete", (_event, payload) => {
+registerTrustedHandler("images:delete", (_event, payload) => {
   const { basePath, assetPath, removeAllReferences } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -575,7 +585,7 @@ ipcMain.handle("images:delete", (_event, payload) => {
   };
 });
 
-ipcMain.handle("images:replace", (_event, payload) => {
+registerTrustedHandler("images:replace", (_event, payload) => {
   const { basePath, assetPath, base64Data } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -603,7 +613,7 @@ ipcMain.handle("images:replace", (_event, payload) => {
   return true;
 });
 
-ipcMain.handle("images:rename", (_event, payload) => {
+registerTrustedHandler("images:rename", (_event, payload) => {
   const { basePath, assetPath, nextFileName } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");
@@ -651,7 +661,7 @@ ipcMain.handle("images:rename", (_event, payload) => {
   return `./images/${path.basename(finalPath)}`;
 });
 
-ipcMain.handle("images:read", (_event, payload) => {
+registerTrustedHandler("images:read", (_event, payload) => {
   const { basePath, assetPath, thumbnail } = payload || {};
   if (!basePath || typeof basePath !== "string") {
     throw new Error("Invalid base path.");

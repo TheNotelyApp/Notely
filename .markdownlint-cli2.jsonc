@@ -3,7 +3,10 @@
     "**/*.md",
     "!.versions/**",
     "!node_modules/**",
-    "!dist/**"
+    "!dist/**",
+    "!.artifacts/**",
+    "!release/**",
+    "!build/**"
   ],
   "config": {
     "default": true,

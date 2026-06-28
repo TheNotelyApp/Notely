@@ -152,6 +152,14 @@ export async function createFolder(name, parentPath) {
   return api.createFolder({ name, parentPath });
 }
 
+export async function deleteFolder(folderPath) {
+  const api = getNotesApi();
+  if (typeof api.deleteFolder !== "function") {
+    throw new Error("Delete folder action unavailable. Please restart the app.");
+  }
+  return api.deleteFolder({ folderPath });
+}
+
 export async function renameDocument(filePath, title) {
   const api = getNotesApi();
   if (typeof api.renameDocument !== "function") {
@@ -468,12 +476,16 @@ export async function renameImage(basePath, assetPath, nextFileName) {
   return api.renameImage({ basePath, assetPath, nextFileName });
 }
 
-export async function createTerminalSession(cwd) {
+export async function createTerminalSession(cwd, options = {}) {
   const api = getNotesApi();
   if (typeof api.createTerminalSession !== "function") {
     throw new Error("Interactive terminal is unavailable. Please restart the app.");
   }
-  return api.createTerminalSession({ cwd });
+  return api.createTerminalSession({
+    cwd,
+    role: typeof options.role === "string" ? options.role : undefined,
+    shell: options.shell === "bash" || options.shell === "cmd" ? options.shell : undefined,
+  });
 }
 
 export async function writeTerminalInput(sessionId, data) {

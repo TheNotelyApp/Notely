@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   createFolder,
   createDocument,
+  deleteFolder as deleteFolderApi,
   deleteDocument as deleteDocumentApi,
   getNotesRootSetting,
   listProjects,
@@ -227,6 +228,92 @@ export function useDocumentManager({ notify }) {
     }
   }
 
+  async function handleDeleteCurrentFolder() {
+    const projectRoot = String(activeProject?.rootPath || "").replace(/[\\/]+$/, "");
+    const currentFolder = String(landingFolderPath || projectRoot).replace(/[\\/]+$/, "");
+    if (!projectRoot || !currentFolder) return false;
+    if (projectRoot.toLowerCase() === currentFolder.toLowerCase()) {
+      notify("Project root folder cannot be removed.", "info");
+      return false;
+    }
+
+    const folderName = currentFolder.replace(/^.*[\\/]/, "") || "current folder";
+    const confirmed = window.confirm(`Move folder "${folderName}" to the removed folder?`);
+    if (!confirmed) return false;
+
+    const parentPath = currentFolder.replace(/[\\/][^\\/]+$/, "") || projectRoot;
+    try {
+      const result = await deleteFolderApi(currentFolder);
+      const nextParentPath = String(result?.parentPath || parentPath || projectRoot).trim();
+      setCurrent(null);
+      setHistory([]);
+      setError("");
+      setLoading(true);
+      setLandingFolderPath(nextParentPath);
+      setDocuments(await listDocuments(nextParentPath));
+      notify("Folder moved to removed folder.", "success");
+      return true;
+    } catch (err) {
+      setError(err?.message || "Unable to remove folder.");
+      notify(err?.message || "Unable to remove folder.", "error");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRemoveListEntry(entry) {
+    if (!entry?.filePath) return false;
+    const basePath = landingFolderPath || activeProject?.rootPath;
+
+    if (entry.entryType === "folder") {
+      const projectRoot = String(activeProject?.rootPath || "").replace(/[\\/]+$/, "").toLowerCase();
+      const folderPath = String(entry.filePath || "").replace(/[\\/]+$/, "").toLowerCase();
+      if (projectRoot && folderPath && projectRoot === folderPath) {
+        notify("Project root folder cannot be removed.", "info");
+        return false;
+      }
+
+      const confirmed = window.confirm(`Move folder "${entry.title}" to the removed folder?`);
+      if (!confirmed) return false;
+
+      try {
+        await deleteFolderApi(entry.filePath);
+        setError("");
+        setDocuments(await listDocuments(basePath));
+        notify("Folder moved to removed folder.", "success");
+        return true;
+      } catch (err) {
+        setError(err?.message || "Unable to remove folder.");
+        notify(err?.message || "Unable to remove folder.", "error");
+        return false;
+      }
+    }
+
+    if (entry.entryType === "file") {
+      const confirmed = window.confirm(`Move note "${entry.title}" to the removed folder?`);
+      if (!confirmed) return false;
+
+      try {
+        await deleteDocumentApi(entry.filePath);
+        if (current?.filePath === entry.filePath) {
+          setCurrent(null);
+          setHistory([]);
+        }
+        setError("");
+        setDocuments(await listDocuments(basePath));
+        notify("Note moved to removed folder.", "success");
+        return true;
+      } catch (err) {
+        setError(err?.message || "Unable to remove note.");
+        notify(err?.message || "Unable to remove note.", "error");
+        return false;
+      }
+    }
+
+    return false;
+  }
+
   async function handleCreateNote() {
     const title = newNoteTitle.trim();
     if (!title) {
@@ -277,11 +364,15 @@ export function useDocumentManager({ notify }) {
     setError("");
     try {
       const basePath = landingFolderPath || activeProject?.rootPath;
-      await createFolder(name, basePath);
+      const created = await createFolder(name, basePath);
       setNewFolderName("");
       setFolderDialogOpen(false);
       setDocuments(await listDocuments(basePath));
-      notify("Folder created.", "success");
+      if (created?.title && created.title !== name) {
+        notify(`Folder name exists. Created "${created.title}" instead.`, "info");
+      } else {
+        notify("Folder created.", "success");
+      }
     } catch (err) {
       setError(err?.message || "Unable to create folder.");
       notify(err?.message || "Unable to create folder.", "error");
@@ -329,12 +420,13 @@ export function useDocumentManager({ notify }) {
   function handleGoHome() {
     if (current && dirty) {
       const confirmed = window.confirm("You have unsaved changes. Go back to notes and discard unsaved changes?");
-      if (!confirmed) return;
+      if (!confirmed) return false;
     }
 
     setDocumentMenuAction(null);
     setCurrent(null);
     setHistory([]);
+    return true;
   }
 
   async function handleOpenCurrentInEditor() {
@@ -441,6 +533,31 @@ export function useDocumentManager({ notify }) {
     }
   }
 
+  async function handleLandingNavigateTo(targetPath) {
+    const nextPath = String(targetPath || "").trim();
+    if (!nextPath) return;
+
+    const activeRoot = String(activeProject?.rootPath || "").trim();
+    const normalizedTarget = nextPath.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+    const normalizedRoot = activeRoot.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+
+    if (normalizedRoot && !(normalizedTarget === normalizedRoot || normalizedTarget.startsWith(`${normalizedRoot}/`))) {
+      return;
+    }
+
+    try {
+      setError("");
+      setLoading(true);
+      setLandingFolderPath(nextPath);
+      setDocuments(await listDocuments(nextPath));
+    } catch (err) {
+      setError(err?.message || "Unable to navigate to folder.");
+      notify(err?.message || "Unable to navigate to folder.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadDocumentsData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -488,6 +605,8 @@ export function useDocumentManager({ notify }) {
     handleReloadCurrentFromDisk,
     handleRenameCurrentDocument,
     handleDeleteCurrentDocument,
+    handleDeleteCurrentFolder,
+    handleRemoveListEntry,
     handleCreateNote,
     handleCreateFolder,
     handlePickNotesFolder,
@@ -500,5 +619,6 @@ export function useDocumentManager({ notify }) {
     handleOpenListItem,
     handleOpenReferencedDocument,
     handleLandingNavigateUp,
+    handleLandingNavigateTo,
   };
 }

@@ -76,12 +76,19 @@ function createDocumentFileOps(deps) {
 
     ensureDir(parentPath);
 
-    const nextFolderPath = path.join(parentPath, folderName);
+    let nextFolderPath = path.join(parentPath, folderName);
     if (!filePathWithin(resolvedRoot, nextFolderPath)) {
       throw new Error("Invalid folder path.");
     }
-    if (fs.existsSync(nextFolderPath)) {
-      throw new Error("A file or folder with that name already exists.");
+
+    // Mirror note creation behavior: create a unique suffixed folder name
+    // instead of failing when a sibling already exists.
+    let finalFolderName = folderName;
+    let counter = 2;
+    while (fs.existsSync(nextFolderPath)) {
+      finalFolderName = `${folderName}-${counter}`;
+      nextFolderPath = path.join(parentPath, finalFolderName);
+      counter += 1;
     }
 
     fs.mkdirSync(nextFolderPath, { recursive: false });
@@ -90,7 +97,7 @@ function createDocumentFileOps(deps) {
     return {
       entryType: "folder",
       filePath: nextFolderPath,
-      title: folderName,
+      title: finalFolderName,
       metadata: {},
       updatedAt: stat.mtime.toISOString(),
       previewImages: []
@@ -173,11 +180,37 @@ function createDocumentFileOps(deps) {
     return { movedPath };
   }
 
+  function deleteFolderInProject(rootDir, folderPath) {
+    const resolvedRoot = path.resolve(String(rootDir || ""));
+    const resolved = path.resolve(String(folderPath || ""));
+    if (!resolvedRoot || !resolved || !filePathWithin(resolvedRoot, resolved)) {
+      throw new Error("Invalid folder path.");
+    }
+    if (resolved.toLowerCase() === resolvedRoot.toLowerCase()) {
+      throw new Error("Project root folder cannot be removed.");
+    }
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+      throw new Error("Folder does not exist.");
+    }
+
+    const folderName = path.basename(resolved);
+    if (shouldHideDirectory(folderName)) {
+      throw new Error("This folder is protected.");
+    }
+
+    const movedPath = moveFileToRemoved(resolved, "folders");
+    return {
+      movedPath,
+      parentPath: path.dirname(resolved),
+    };
+  }
+
   return {
     createDocumentInProject,
     createFolderInProject,
     renameDocumentFile,
     deleteDocumentFile,
+    deleteFolderInProject,
   };
 }
 

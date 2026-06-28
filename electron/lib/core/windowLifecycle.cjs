@@ -92,6 +92,7 @@ function createWindowLifecycle(deps) {
   }
 
   function createWindow() {
+    const isDevMode = Boolean(rendererUrl) || !app.isPackaged;
     const iconCandidates = [
       path.join(process.resourcesPath || "", "icon.ico"),
       path.join(process.resourcesPath || "", "icon.png"),
@@ -155,7 +156,20 @@ function createWindowLifecycle(deps) {
       win.loadFile(path.join(projectRoot, "dist", "index.html"));
     }
 
-    win.__menuContext = { screen: "landing", viewMode: "tile", dirty: false };
+    win.__menuContext = {
+      screen: "landing",
+      viewMode: "tile",
+      densityMode: "comfortable",
+      outlineEnabled: true,
+      splitPreviewEnabled: false,
+      focusModeEnabled: false,
+      terminalOpen: false,
+      terminalShell: "auto",
+      isDevMode,
+      dirty: false,
+      canRemoveFolder: false,
+      currentFolderLabel: "",
+    };
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
     mainWindow = win;
 
@@ -182,7 +196,20 @@ function createWindowLifecycle(deps) {
   }
 
   function handleBrowserWindowFocus(_event, win) {
-    const context = win?.__menuContext || { screen: "landing", viewMode: "tile", dirty: false };
+    const context = win?.__menuContext || {
+      screen: "landing",
+      viewMode: "tile",
+      densityMode: "comfortable",
+      outlineEnabled: true,
+      splitPreviewEnabled: false,
+      focusModeEnabled: false,
+      terminalOpen: false,
+      terminalShell: "auto",
+      isDevMode: Boolean(rendererUrl) || !app.isPackaged,
+      dirty: false,
+      canRemoveFolder: false,
+      currentFolderLabel: "",
+    };
     Menu.setApplicationMenu(buildAppMenu(win, context));
   }
 
@@ -193,7 +220,18 @@ function createWindowLifecycle(deps) {
     win.__menuContext = {
       screen: context?.screen === "document" ? "document" : "landing",
       viewMode: context?.viewMode === "table" ? "table" : "tile",
-      dirty: Boolean(context?.dirty)
+      densityMode: context?.densityMode === "compact" ? "compact" : "comfortable",
+      outlineEnabled: context?.outlineEnabled !== false,
+      splitPreviewEnabled: context?.splitPreviewEnabled === true,
+      focusModeEnabled: context?.focusModeEnabled === true,
+      terminalOpen: context?.terminalOpen === true,
+      terminalShell: context?.terminalShell === "bash" || context?.terminalShell === "cmd"
+        ? context.terminalShell
+        : "auto",
+      isDevMode: Boolean(rendererUrl) || !app.isPackaged,
+      dirty: Boolean(context?.dirty),
+      canRemoveFolder: Boolean(context?.canRemoveFolder),
+      currentFolderLabel: String(context?.currentFolderLabel || "").trim(),
     };
 
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
