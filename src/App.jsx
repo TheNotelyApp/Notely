@@ -485,7 +485,7 @@ export default function App() {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, dirty, activeProject, activeTab]);
+  }, [current, dirty, activeProject, activeTab, landingFolderPath]);
 
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;

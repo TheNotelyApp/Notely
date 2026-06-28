@@ -243,13 +243,14 @@ export function useDocumentManager({ notify }) {
 
     const parentPath = currentFolder.replace(/[\\/][^\\/]+$/, "") || projectRoot;
     try {
-      await deleteFolderApi(currentFolder);
+      const result = await deleteFolderApi(currentFolder);
+      const nextParentPath = String(result?.parentPath || parentPath || projectRoot).trim();
       setCurrent(null);
       setHistory([]);
       setError("");
       setLoading(true);
-      setLandingFolderPath(parentPath);
-      setDocuments(await listDocuments(parentPath));
+      setLandingFolderPath(nextParentPath);
+      setDocuments(await listDocuments(nextParentPath));
       notify("Folder moved to removed folder.", "success");
       return true;
     } catch (err) {
