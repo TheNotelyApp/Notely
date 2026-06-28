@@ -710,10 +710,12 @@ export default function App() {
         <div className="landing-shell">
           <header className="landing-header">
             <div className="landing-header-main">
-              <h1>{activeProject?.isRoot ? "All Notes" : `${activeProject?.name || "Folder"} Notes`}</h1>
-              <div className="landing-stats" aria-label="Current folder metrics">
-                <span><em>Folders</em><strong>{folderCount}</strong></span>
-                <span><em>Notes</em><strong>{noteCount}</strong></span>
+              <div className="landing-title-row">
+                <h1>{activeProject?.isRoot ? "All Notes" : `${activeProject?.name || "Folder"} Notes`}</h1>
+                <div className="landing-stats" aria-label="Current folder metrics">
+                  <span><em>Folders</em><strong>{folderCount}</strong></span>
+                  <span><em>Notes</em><strong>{noteCount}</strong></span>
+                </div>
               </div>
               {breadcrumbSegments.length ? (
                 <nav
