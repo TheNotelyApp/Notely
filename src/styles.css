@@ -4477,6 +4477,23 @@ button {
   font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
 }
 
+.preview blockquote {
+  margin: 14px 0;
+  padding: 10px 14px;
+  border-left: 4px solid #8eb8a8;
+  border-radius: 0 8px 8px 0;
+  background: #f4f8f6;
+  color: #35545a;
+}
+
+.preview blockquote > :first-child {
+  margin-top: 0;
+}
+
+.preview blockquote > :last-child {
+  margin-bottom: 0;
+}
+
 .preview img {
   display: block;
   max-width: 100%;
