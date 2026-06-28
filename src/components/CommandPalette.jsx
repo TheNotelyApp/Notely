@@ -3,8 +3,43 @@ import { useEffect, useMemo, useRef, useState } from "react";
 function matchesQuery(command, query) {
   const needle = String(query || "").trim().toLowerCase();
   if (!needle) return true;
-  const haystack = `${command.label} ${command.group || ""} ${command.keywords || ""}`.toLowerCase();
-  return haystack.includes(needle);
+  const label = String(command.label || "").toLowerCase();
+  const haystack = `${label} ${command.group || ""} ${command.keywords || ""} ${command.aliases || ""}`.toLowerCase();
+  if (haystack.includes(needle)) return true;
+  return fuzzySubsequenceScore(label, needle) > 0 || fuzzySubsequenceScore(String(command.keywords || "").toLowerCase(), needle) > 0;
+}
+
+function fuzzySubsequenceScore(haystack, needle) {
+  const source = String(haystack || "");
+  const target = String(needle || "");
+  if (!target) return 0;
+  let cursor = 0;
+  let score = 0;
+  let previousIndex = -2;
+
+  for (let index = 0; index < target.length; index += 1) {
+    const expected = target[index];
+    let foundAt = -1;
+    for (let scan = cursor; scan < source.length; scan += 1) {
+      if (source[scan] === expected) {
+        foundAt = scan;
+        break;
+      }
+    }
+    if (foundAt < 0) return -1;
+
+    score += 5;
+    if (foundAt === previousIndex + 1) {
+      score += 6;
+    }
+    previousIndex = foundAt;
+    cursor = foundAt + 1;
+  }
+
+  if (source.startsWith(target)) {
+    score += 20;
+  }
+  return score;
 }
 
 function getCommandScore(command, query) {
@@ -12,6 +47,7 @@ function getCommandScore(command, query) {
   const label = String(command.label || "").toLowerCase();
   const group = String(command.group || "").toLowerCase();
   const keywords = String(command.keywords || "").toLowerCase();
+  const aliases = String(command.aliases || "").toLowerCase();
   const priority = Number.isFinite(command.priority) ? command.priority : 100;
   const usageBoost = Number.isFinite(command.usageBoost) ? command.usageBoost : 0;
 
@@ -23,7 +59,11 @@ function getCommandScore(command, query) {
   if (label.startsWith(needle)) score += 60;
   if (label.includes(needle)) score += 30;
   if (keywords.includes(needle)) score += 35;
+  if (aliases.includes(needle)) score += 28;
   if (group.includes(needle)) score += 10;
+  score += Math.max(0, fuzzySubsequenceScore(label, needle));
+  score += Math.max(0, fuzzySubsequenceScore(keywords, needle));
+  score += Math.max(0, fuzzySubsequenceScore(aliases, needle));
   return score + (usageBoost * 4) - priority;
 }
 
@@ -60,11 +100,12 @@ function findEnabledFrom(commands, startIndex, direction, options = {}) {
   return -1;
 }
 
-export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
+export function CommandPalette({ isOpen, commands = [], pinnedCommandKeys = [], onClose, onRun, onTogglePinCommand }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
+  const pinnedKeySet = useMemo(() => new Set((pinnedCommandKeys || []).map((item) => String(item))), [pinnedCommandKeys]);
 
   const filtered = useMemo(() => {
     return commands
@@ -213,6 +254,15 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
                 event.preventDefault();
                 const selected = filtered[activeIndex];
                 if (selected && !selected.disabled) onRun(selected.id);
+                return;
+              }
+
+              if (event.altKey && event.key.toLowerCase() === "p") {
+                event.preventDefault();
+                const selected = filtered[activeIndex];
+                if (selected && typeof onTogglePinCommand === "function") {
+                  onTogglePinCommand(selected.pinKey || selected.id);
+                }
               }
             }}
             placeholder="Type a command or action"
@@ -228,7 +278,9 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
             groupedResults.map((group) => (
               <section className="command-palette-group" key={group.key} aria-label={`${group.title} commands`}>
                 <header className="command-palette-group-header">{group.title}</header>
-                {group.items.map(({ command, index }) => (
+                {group.items.map(({ command, index }) => {
+                  const isPinned = pinnedKeySet.has(String(command.pinKey || command.id));
+                  return (
                   <button
                     key={command.id}
                     className={`command-palette-item${index === activeIndex ? " active" : ""}`}
@@ -244,9 +296,13 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
                     <span className="command-palette-item-text">
                       <strong>{renderHighlightedLabel(command.label, query)}</strong>
                     </span>
-                    {command.shortcut ? <kbd>{command.shortcut}</kbd> : null}
+                    <span className="command-palette-item-meta">
+                      {isPinned ? <span className="command-palette-pin-tag">Pinned</span> : null}
+                      {command.shortcut ? <kbd>{command.shortcut}</kbd> : null}
+                    </span>
                   </button>
-                ))}
+                  );
+                })}
               </section>
             ))
           )}
@@ -256,6 +312,7 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
           <span className="command-palette-footer-item"><kbd>↑</kbd><kbd>↓</kbd> Move</span>
           <span className="command-palette-footer-item"><kbd>PgUp</kbd><kbd>PgDn</kbd> Jump</span>
           <span className="command-palette-footer-item"><kbd>Home</kbd><kbd>End</kbd> First/Last</span>
+          <span className="command-palette-footer-item"><kbd>Alt+P</kbd> Pin/Unpin</span>
           <span className="command-palette-footer-item"><kbd>Enter</kbd> Run</span>
           <span className="command-palette-footer-item"><kbd>Esc</kbd> Close</span>
         </footer>

@@ -262,10 +262,28 @@ button {
   display: block;
 }
 
+.command-palette-item-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .command-palette-item-text strong {
   font-size: 13px;
   color: #163238;
   font-weight: 700;
+}
+
+.command-palette-pin-tag {
+  padding: 2px 7px;
+  border: 1px solid #c8dad3;
+  border-radius: 999px;
+  background: #eef6f2;
+  color: #2d5d55;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .command-palette-match {

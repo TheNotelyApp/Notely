@@ -39,15 +39,23 @@ import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
 
 function getPaletteUsageKey(commandId) {
-  const rawId = String(commandId || "");
-  if (rawId.startsWith("frequent:")) {
-    return getPaletteUsageKey(rawId.slice("frequent:".length));
-  }
+  const rawId = resolvePaletteCommandId(commandId);
   if (rawId.startsWith("open-sibling-note:")) {
     return "open-sibling-note";
   }
   if (rawId.startsWith("open-note:")) {
     return "open-note";
+  }
+  return rawId;
+}
+
+function resolvePaletteCommandId(commandId) {
+  const rawId = String(commandId || "");
+  if (rawId.startsWith("frequent:")) {
+    return resolvePaletteCommandId(rawId.slice("frequent:".length));
+  }
+  if (rawId.startsWith("pinned:")) {
+    return resolvePaletteCommandId(rawId.slice("pinned:".length));
   }
   return rawId;
 }
@@ -108,6 +116,15 @@ export default function App() {
       );
     } catch {
       return {};
+    }
+  });
+  const [palettePinnedCommandKeys, setPalettePinnedCommandKeys] = useState(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("notes:palette-pinned-commands") || "[]");
+      if (!Array.isArray(stored)) return [];
+      return stored.filter((item) => typeof item === "string");
+    } catch {
+      return [];
     }
   });
 
@@ -291,6 +308,14 @@ export default function App() {
       // Ignore storage failures.
     }
   }, [paletteCommandUsage]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("notes:palette-pinned-commands", JSON.stringify(palettePinnedCommandKeys));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [palettePinnedCommandKeys]);
 
   useEffect(() => {
     function onGlobalKeyDown(event) {
@@ -558,50 +583,57 @@ export default function App() {
     .slice(0, 8);
 
   const hasPaletteUsage = Object.keys(paletteCommandUsage).length > 0;
+  const palettePinnedCommandSet = new Set(palettePinnedCommandKeys);
+  const hasPinnedCommands = palettePinnedCommandSet.size > 0;
   function getPaletteUsageCount(commandId) {
     const usageKey = getPaletteUsageKey(commandId);
     return Number(paletteCommandUsage[usageKey] || 0);
   }
 
   const paletteCommandsBase = [
-    { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N" },
-    { id: "new-folder", label: "Create New Folder", group: "Notes" },
-    { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F" },
-    { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/" },
-    { id: "open-notes-folder", label: "Open Notes Folder Settings", group: "Workspace" },
-    { id: "open-assets", label: "Open Assets Library", group: "Workspace" },
-    { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync" },
-    { id: "open-p2p-status", label: "Open P2P Status", group: "Sync" },
-    { id: "open-ai-settings", label: "Open AI Settings", group: "AI" },
-    { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View" },
+    { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document" },
+    { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory" },
+    { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes" },
+    { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
+    { id: "open-notes-folder", label: "Open Notes Folder Settings", group: "Workspace", aliases: "notes root path workspace folder" },
+    { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
+    { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
+    { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
+    { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
+    { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
     {
       id: "toggle-view-mode",
       label: notesViewMode === "tile" ? "Switch to Table View" : "Switch to Tile View",
       group: "View",
+      aliases: "toggle list layout",
     },
     {
       id: "set-view-tile",
       label: "Use Tile View",
       group: "View",
       disabled: notesViewMode === "tile",
+      aliases: "grid cards",
     },
     {
       id: "set-view-table",
       label: "Use Table View",
       group: "View",
       disabled: notesViewMode === "table",
+      aliases: "rows list table",
     },
     {
       id: "set-density-comfortable",
       label: "Use Comfortable Density",
       group: "View",
       disabled: notesDensityMode === "comfortable",
+      aliases: "spacious cozy",
     },
     {
       id: "set-density-compact",
       label: "Use Compact Density",
       group: "View",
       disabled: notesDensityMode === "compact",
+      aliases: "tight dense",
     },
     {
       id: "find-in-note",
@@ -609,18 +641,21 @@ export default function App() {
       group: "Editor",
       shortcut: "Ctrl/Cmd+F",
       disabled: !current,
+      aliases: "search in note replace",
     },
     {
       id: "open-current-note-parent-folder",
       label: "Open Parent Folder (Current Note)",
       group: "Navigation",
       disabled: !canOpenCurrentNoteParent,
+      aliases: "go parent folder",
     },
     {
       id: "reveal-current-note-in-list",
       label: "Reveal Current Note in List",
       group: "Navigation",
       disabled: !canOpenCurrentNoteParent,
+      aliases: "show current note in folder",
     },
     ...siblingPaletteNotes.map((note) => ({
       id: `open-sibling-note:${encodeURIComponent(note.filePath)}`,
@@ -642,41 +677,83 @@ export default function App() {
       group: "Help",
       disabled: !hasPaletteUsage,
       priority: 200,
+      aliases: "reset command history usage",
+    },
+    {
+      id: "clear-pinned-commands",
+      label: "Clear Pinned Commands",
+      group: "Help",
+      disabled: !hasPinnedCommands,
+      priority: 200,
+      aliases: "reset pinned commands",
     },
   ];
+
+  const paletteCommandsWithUsage = paletteCommandsBase.map((command) => {
+    const resolvedId = resolvePaletteCommandId(command.id);
+    return {
+      ...command,
+      pinKey: resolvedId,
+      usageBoost: getPaletteUsageCount(command.id),
+    };
+  });
 
   const frequentPaletteCommands = Object.entries(paletteCommandUsage)
     .filter(([id, count]) => id && Number.isFinite(count) && count > 1)
     .sort((left, right) => right[1] - left[1])
     .slice(0, 6)
     .map(([id, count]) => {
-      const source = paletteCommandsBase.find((command) => command.id === id && !command.disabled);
+      const source = paletteCommandsWithUsage.find((command) => command.id === id && !command.disabled);
       if (!source) return null;
       return {
-        id: `frequent:${id}`,
-        label: source.label,
+        ...source,
+        id: `frequent:${source.id}`,
         group: "Frequent",
-        keywords: `${source.keywords || ""} ${source.group || ""}`,
-        priority: 0,
+        keywords: `${source.keywords || ""} ${source.group || ""} popular often used`,
+        aliases: `${source.aliases || ""} frequent popular`,
+        priority: -5,
         usageBoost: Math.min(count, 20),
       };
     })
     .filter(Boolean);
 
-  const paletteCommands = [
-    ...frequentPaletteCommands,
-    ...paletteCommandsBase.map((command) => ({
+  const pinnedPaletteCommands = paletteCommandsWithUsage
+    .filter((command) => palettePinnedCommandSet.has(command.pinKey) && !command.disabled)
+    .slice(0, 12)
+    .map((command) => ({
       ...command,
-      usageBoost: getPaletteUsageCount(command.id),
-    })),
+      id: `pinned:${command.id}`,
+      group: "Pinned",
+      priority: -15,
+      aliases: `${command.aliases || ""} pinned`,
+      usageBoost: Math.max(command.usageBoost || 0, 2),
+    }));
+
+  const paletteCommands = [
+    ...pinnedPaletteCommands,
+    ...frequentPaletteCommands,
+    ...paletteCommandsWithUsage.filter((command) => !palettePinnedCommandSet.has(command.pinKey)),
   ];
+
+  function handleTogglePinnedPaletteCommand(commandId) {
+    const resolvedId = resolvePaletteCommandId(commandId);
+    if (!resolvedId || resolvedId === "clear-command-usage" || resolvedId === "clear-pinned-commands") {
+      return;
+    }
+    const currentlyPinned = palettePinnedCommandSet.has(resolvedId);
+    setPalettePinnedCommandKeys((currentPinned) => {
+      if (currentPinned.includes(resolvedId)) {
+        return currentPinned.filter((item) => item !== resolvedId);
+      }
+      return [...currentPinned, resolvedId];
+    });
+    notify(currentlyPinned ? "Command unpinned." : "Command pinned.", "success");
+  }
 
   async function handleRunPaletteCommand(commandId) {
     setCommandPaletteOpen(false);
 
-    const resolvedCommandId = String(commandId || "").startsWith("frequent:")
-      ? String(commandId).slice("frequent:".length)
-      : String(commandId || "");
+    const resolvedCommandId = resolvePaletteCommandId(commandId);
 
     if (resolvedCommandId && resolvedCommandId !== "clear-command-usage") {
       const usageKey = getPaletteUsageKey(resolvedCommandId);
@@ -689,6 +766,12 @@ export default function App() {
     if (resolvedCommandId === "clear-command-usage") {
       setPaletteCommandUsage({});
       notify("Command usage history cleared.", "success");
+      return;
+    }
+
+    if (resolvedCommandId === "clear-pinned-commands") {
+      setPalettePinnedCommandKeys([]);
+      notify("Pinned commands cleared.", "success");
       return;
     }
 
@@ -1531,8 +1614,10 @@ export default function App() {
       <CommandPalette
         isOpen={commandPaletteOpen}
         commands={paletteCommands.filter((command) => !command.disabled)}
+        pinnedCommandKeys={palettePinnedCommandKeys}
         onClose={() => setCommandPaletteOpen(false)}
         onRun={handleRunPaletteCommand}
+        onTogglePinCommand={handleTogglePinnedPaletteCommand}
       />
 
       <GlobalSearchOverlay
