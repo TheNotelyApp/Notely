@@ -42,6 +42,21 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
       .map(({ command }) => command);
   }, [commands, query]);
 
+  const groupedResults = useMemo(() => {
+    const groups = [];
+    const byKey = new Map();
+    filtered.forEach((command, index) => {
+      const group = command.group || "Other";
+      if (!byKey.has(group)) {
+        const next = { key: group, title: group, items: [] };
+        byKey.set(group, next);
+        groups.push(next);
+      }
+      byKey.get(group).items.push({ command, index });
+    });
+    return groups;
+  }, [filtered]);
+
   useEffect(() => {
     if (!isOpen) return;
     setQuery("");
@@ -109,24 +124,28 @@ export function CommandPalette({ isOpen, commands = [], onClose, onRun }) {
           {!filtered.length ? (
             <div className="command-palette-empty">No matching command</div>
           ) : (
-            filtered.map((command, index) => (
-              <button
-                key={command.id}
-                className={`command-palette-item${index === activeIndex ? " active" : ""}`}
-                type="button"
-                role="option"
-                aria-selected={index === activeIndex}
-                aria-disabled={command.disabled ? "true" : "false"}
-                disabled={Boolean(command.disabled)}
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => onRun(command.id)}
-              >
-                <span className="command-palette-item-text">
-                  <strong>{command.label}</strong>
-                  {command.group ? <small>{command.group}</small> : null}
-                </span>
-                {command.shortcut ? <kbd>{command.shortcut}</kbd> : null}
-              </button>
+            groupedResults.map((group) => (
+              <section className="command-palette-group" key={group.key} aria-label={`${group.title} commands`}>
+                <header className="command-palette-group-header">{group.title}</header>
+                {group.items.map(({ command, index }) => (
+                  <button
+                    key={command.id}
+                    className={`command-palette-item${index === activeIndex ? " active" : ""}`}
+                    type="button"
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    aria-disabled={command.disabled ? "true" : "false"}
+                    disabled={Boolean(command.disabled)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => onRun(command.id)}
+                  >
+                    <span className="command-palette-item-text">
+                      <strong>{command.label}</strong>
+                    </span>
+                    {command.shortcut ? <kbd>{command.shortcut}</kbd> : null}
+                  </button>
+                ))}
+              </section>
             ))
           )}
         </div>
