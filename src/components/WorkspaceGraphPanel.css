@@ -1,6 +1,7 @@
 .workspace-graph-overlay {
   position: fixed;
   inset: 0;
+  bottom: 40px;
   z-index: 1200;
   display: flex;
   flex-direction: column;
@@ -140,10 +141,21 @@
 
 .workspace-graph-canvas .react-flow {
   background: #ffffff !important;
+  perspective: 1000px;
 }
 
 .workspace-graph-canvas .react-flow__viewport {
   background: #ffffff !important;
+  will-change: transform;
+}
+
+.workspace-graph-canvas .react-flow__pane {
+  cursor: grab;
+  transition: none;
+}
+
+.workspace-graph-canvas .react-flow__pane.dragging {
+  cursor: grabbing;
 }
 
 /* ── Loading / Empty ── */

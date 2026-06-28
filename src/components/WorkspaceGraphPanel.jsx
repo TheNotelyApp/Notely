@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, RefreshCw, Zap } from "lucide-react";
+import { X, RefreshCw, Zap, Eye, EyeOff } from "lucide-react";
 import {
   ReactFlow,
   Background,
@@ -188,7 +188,7 @@ function ClusterBackground({ clusters, nodes, clusterIdx }) {
 }
 
 // ── Inner graph (needs ReactFlowProvider context) ─────────────────────────────
-function GraphCanvas({ rawData, filter, onOpenDocument, clusters }) {
+function GraphCanvas({ rawData, filter, onOpenDocument, clusters, showMedia }) {
   const { fitView } = useReactFlow();
   const [selectedId, setSelectedId] = useState(null);
   const initialised = useRef(false);
@@ -201,15 +201,19 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters }) {
     return map;
   }, [rawData]);
 
-  // Filtered raw nodes
+  // Filtered raw nodes (apply media visibility filter)
   const filteredRaw = useMemo(() => {
     if (!rawData?.nodes) return [];
     const q = filter.trim().toLowerCase();
-    if (!q) return rawData.nodes;
-    return rawData.nodes.filter(
+    let nodes = rawData.nodes;
+    if (!showMedia) {
+      nodes = nodes.filter(n => n.nodeType !== 'media');
+    }
+    if (!q) return nodes;
+    return nodes.filter(
       (n) => n.label.toLowerCase().includes(q) || n.folder.toLowerCase().includes(q)
     );
-  }, [rawData, filter]);
+  }, [rawData, filter, showMedia]);
 
   const filteredIds = useMemo(() => new Set(filteredRaw.map((n) => n.id)), [filteredRaw]);
 
@@ -291,6 +295,11 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters }) {
         nodesDraggable
         nodesConnectable={false}
         elementsSelectable
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        panOnDrag={[1, 2]}
+        panOnScroll={false}
+        preventScrolling={true}
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={32} size={1.5} color="#f0f0f0" />
@@ -337,6 +346,7 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
   const [filter, setFilter] = useState("");
   const [embeddingsAvailable, setEmbeddingsAvailable] = useState(false);
   const [embeddingStaleness, setEmbeddingStaleness] = useState(null);
+  const [showMedia, setShowMedia] = useState(false);
 
   // Load base graph data
   useEffect(() => {
@@ -459,6 +469,16 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
       {/* Toolbar */}
       {!loading && !error && (
         <div className="workspace-graph-toolbar">
+          {mediaCount > 0 && (
+            <button
+              className="small-button"
+              onClick={() => setShowMedia(!showMedia)}
+              title={showMedia ? "Hide media files" : "Show media files"}
+            >
+              {showMedia ? <Eye size={14} /> : <EyeOff size={14} />}
+              {showMedia ? 'Media On' : 'Media Off'}
+            </button>
+          )}
           <input
             className="workspace-graph-filter-input"
             type="search"
@@ -502,7 +522,7 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
         )}
         {!loading && !error && noteCount > 0 && (
           <ReactFlowProvider>
-            <GraphCanvas rawData={rawData} filter={filter} onOpenDocument={onOpenDocument} clusters={clusters} />
+            <GraphCanvas rawData={rawData} filter={filter} onOpenDocument={onOpenDocument} clusters={clusters} showMedia={showMedia} />
           </ReactFlowProvider>
         )}
       </div>
