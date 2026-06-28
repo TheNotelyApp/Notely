@@ -1400,17 +1400,26 @@ button {
 
 .landing-header {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-  padding: 18px 20px;
+  gap: 18px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
   border: 1px solid #cfdbd6;
   border-radius: 14px;
   background:
     radial-gradient(circle at top right, rgba(141, 191, 174, 0.2), transparent 38%),
     linear-gradient(140deg, #fcfefd 0%, #f2f8f5 100%);
   box-shadow: 0 14px 28px rgba(16, 34, 36, 0.09);
+  flex-shrink: 0;
+}
+
+.landing-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .landing-header-main {
@@ -1439,7 +1448,7 @@ button {
 .landing-subtitle {
   margin: 6px 0 0;
   color: #47626a;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -1500,8 +1509,45 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 10px;
   flex-wrap: wrap;
+}
+
+.landing-header-meta {
+  min-width: 240px;
+  max-width: min(36vw, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.landing-meta-pill {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #d4dfdb;
+  background: #ffffff;
+  color: #305058;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.landing-meta-path {
+  max-width: 100%;
+  font-size: 11px;
+  color: #4f6770;
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid #d4dfdb;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 4px 10px;
 }
 
 .landing-stats span {
@@ -1549,17 +1595,23 @@ button {
 .dashboard-panels.rail {
   margin-bottom: 0;
   gap: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .landing-workspace-layout {
   display: grid;
   grid-template-columns: minmax(250px, 20%) minmax(0, 1fr);
   gap: 12px;
+  flex: 1;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .landing-dashboard-rail {
   min-width: 0;
+  height: 100%;
   border: 1px solid #c8d7d1;
   border-radius: 14px;
   background:
@@ -1567,10 +1619,19 @@ button {
     linear-gradient(180deg, #f8fcfa 0%, #eef5f2 100%);
   box-shadow: 0 14px 28px rgba(16, 34, 36, 0.1);
   padding: 8px;
+  overflow: hidden;
 }
 
 .landing-notes-pane {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.landing-notes-pane.standalone {
+  flex: 1;
 }
 
 .dashboard-bar {
@@ -1791,12 +1852,22 @@ button {
     flex-direction: column;
   }
 
+  .landing-header-meta {
+    min-width: 0;
+    max-width: 100%;
+    align-items: flex-start;
+  }
+
   .dashboard-panels {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .landing-workspace-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-dashboard-rail {
+    height: auto;
   }
 
   .dashboard-bar {
