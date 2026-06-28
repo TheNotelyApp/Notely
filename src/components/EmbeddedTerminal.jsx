@@ -11,19 +11,16 @@ import {
   writeTerminalInput,
 } from "../services/electronService";
 
-export function EmbeddedTerminal({ cwd, onClose }) {
+export function EmbeddedTerminal({
+  cwd,
+  shellPreference = "auto",
+  onShellPreferenceChange,
+  onClose,
+}) {
   const mountRef = useRef(null);
   const sessionIdRef = useRef("");
   const initialCwdRef = useRef(String(cwd || ""));
-  const [selectedShell, setSelectedShell] = useState(() => {
-    if (typeof window === "undefined") return "auto";
-    try {
-      const saved = String(window.localStorage.getItem("notely:terminal-shell") || "").trim().toLowerCase();
-      return saved === "bash" || saved === "cmd" ? saved : "auto";
-    } catch {
-      return "auto";
-    }
-  });
+  const selectedShell = shellPreference === "bash" || shellPreference === "cmd" ? shellPreference : "auto";
   const [sessionPath, setSessionPath] = useState("");
   const [sessionShellLabel, setSessionShellLabel] = useState("");
   const [sessionError, setSessionError] = useState("");
@@ -40,19 +37,6 @@ export function EmbeddedTerminal({ cwd, onClose }) {
     if (selectedShell === "cmd") return "Manual: CMD";
     return "";
   })();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (selectedShell === "bash" || selectedShell === "cmd") {
-        window.localStorage.setItem("notely:terminal-shell", selectedShell);
-      } else {
-        window.localStorage.removeItem("notely:terminal-shell");
-      }
-    } catch {
-      // Ignore preference persistence errors.
-    }
-  }, [selectedShell]);
 
   useEffect(() => {
     setSessionError("");
@@ -118,6 +102,12 @@ export function EmbeddedTerminal({ cwd, onClose }) {
       })
       .catch((error) => {
         const message = error?.message || "Unable to start terminal session.";
+        if (selectedShell === "bash" && /bash is not installed|bash.*not available/i.test(message)) {
+          setSessionError("Bash unavailable, switched to CMD.");
+          onShellPreferenceChange?.("cmd");
+          terminal.writeln("\x1b[33mBash unavailable, switching to CMD...\x1b[0m");
+          return;
+        }
         setSessionError(message);
         terminal.writeln(`\x1b[31m${message}\x1b[0m`);
       });
@@ -135,7 +125,7 @@ export function EmbeddedTerminal({ cwd, onClose }) {
       terminal.dispose();
       sessionIdRef.current = "";
     };
-  }, [retryTick, selectedShell]);
+  }, [retryTick, selectedShell, onShellPreferenceChange]);
 
   return (
     <section className="embedded-terminal" aria-label="Embedded terminal">
@@ -146,7 +136,7 @@ export function EmbeddedTerminal({ cwd, onClose }) {
             <button
               className={`small-button ${selectedShell === "bash" ? "active" : ""}`}
               type="button"
-              onClick={() => setSelectedShell("bash")}
+              onClick={() => onShellPreferenceChange?.("bash")}
               title="Use Bash shell"
             >
               Bash
@@ -154,7 +144,7 @@ export function EmbeddedTerminal({ cwd, onClose }) {
             <button
               className={`small-button ${selectedShell === "cmd" ? "active" : ""}`}
               type="button"
-              onClick={() => setSelectedShell("cmd")}
+              onClick={() => onShellPreferenceChange?.("cmd")}
               title="Use CMD shell"
             >
               CMD

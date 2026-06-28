@@ -163,6 +163,8 @@ function createWindowLifecycle(deps) {
       outlineEnabled: true,
       splitPreviewEnabled: false,
       focusModeEnabled: false,
+      terminalOpen: false,
+      terminalShell: "auto",
       isDevMode,
       dirty: false,
       canRemoveFolder: false,
@@ -201,6 +203,8 @@ function createWindowLifecycle(deps) {
       outlineEnabled: true,
       splitPreviewEnabled: false,
       focusModeEnabled: false,
+      terminalOpen: false,
+      terminalShell: "auto",
       isDevMode: Boolean(rendererUrl) || !app.isPackaged,
       dirty: false,
       canRemoveFolder: false,
@@ -220,6 +224,10 @@ function createWindowLifecycle(deps) {
       outlineEnabled: context?.outlineEnabled !== false,
       splitPreviewEnabled: context?.splitPreviewEnabled === true,
       focusModeEnabled: context?.focusModeEnabled === true,
+      terminalOpen: context?.terminalOpen === true,
+      terminalShell: context?.terminalShell === "bash" || context?.terminalShell === "cmd"
+        ? context.terminalShell
+        : "auto",
       isDevMode: Boolean(rendererUrl) || !app.isPackaged,
       dirty: Boolean(context?.dirty),
       canRemoveFolder: Boolean(context?.canRemoveFolder),

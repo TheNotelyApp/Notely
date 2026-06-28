@@ -14,6 +14,10 @@ function buildAppMenu(win, context = {}) {
   const outlineEnabled = context?.outlineEnabled !== false;
   const splitPreviewEnabled = context?.splitPreviewEnabled === true;
   const focusModeEnabled = context?.focusModeEnabled === true;
+  const terminalOpen = context?.terminalOpen === true;
+  const terminalShell = context?.terminalShell === "bash" || context?.terminalShell === "cmd"
+    ? context.terminalShell
+    : "auto";
   const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
   const canRemoveFolder = Boolean(context?.canRemoveFolder);
@@ -175,6 +179,36 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "open-command-palette")
         },
         { type: "separator" },
+        {
+          label: "Show Terminal",
+          type: "checkbox",
+          checked: terminalOpen,
+          click: () => sendMenuAction(win, "toggle-terminal")
+        },
+        {
+          label: "Terminal Shell",
+          submenu: [
+            {
+              label: "Auto",
+              type: "radio",
+              checked: terminalShell === "auto",
+              click: () => sendMenuAction(win, "terminal-shell-auto")
+            },
+            {
+              label: "Bash",
+              type: "radio",
+              checked: terminalShell === "bash",
+              click: () => sendMenuAction(win, "terminal-shell-bash")
+            },
+            {
+              label: "CMD",
+              type: "radio",
+              checked: terminalShell === "cmd",
+              click: () => sendMenuAction(win, "terminal-shell-cmd")
+            },
+          ],
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
         ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
@@ -183,6 +217,36 @@ function buildAppMenu(win, context = {}) {
         {
           label: "Open Command Palette",
           click: () => sendMenuAction(win, "open-command-palette")
+        },
+        { type: "separator" },
+        {
+          label: "Show Terminal",
+          type: "checkbox",
+          checked: terminalOpen,
+          click: () => sendMenuAction(win, "toggle-terminal")
+        },
+        {
+          label: "Terminal Shell",
+          submenu: [
+            {
+              label: "Auto",
+              type: "radio",
+              checked: terminalShell === "auto",
+              click: () => sendMenuAction(win, "terminal-shell-auto")
+            },
+            {
+              label: "Bash",
+              type: "radio",
+              checked: terminalShell === "bash",
+              click: () => sendMenuAction(win, "terminal-shell-bash")
+            },
+            {
+              label: "CMD",
+              type: "radio",
+              checked: terminalShell === "cmd",
+              click: () => sendMenuAction(win, "terminal-shell-cmd")
+            },
+          ],
         },
         { type: "separator" },
         {

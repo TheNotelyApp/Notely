@@ -108,13 +108,20 @@ function normalizeFocusModeEnabled(rawValue) {
   return rawValue === true;
 }
 
+function normalizeTerminalOpen(rawValue) {
+  return rawValue === true;
+}
+
+function normalizeTerminalShell(rawValue) {
+  return rawValue === "bash" || rawValue === "cmd" ? rawValue : "auto";
+}
+
 const DEFAULT_LANDING_LIST_PREFS = { query: "", typeFilter: "all", sortBy: "updated-desc" };
 const EMPTY_OBJECT = {};
 const EMPTY_ARRAY = [];
 
 export default function App() {
   const { toasts, notify } = useToast();
-  const [showTerminal, setShowTerminal] = useState(false);
   const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -265,6 +272,19 @@ export default function App() {
     normalize: normalizeFavoriteNotes,
     fallbackKey: "notes:favorites",
   });
+  const [showTerminal, setShowTerminal] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:terminal-open",
+    defaultValue: false,
+    normalize: normalizeTerminalOpen,
+  });
+  const [terminalShellPreference, setTerminalShellPreference] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:terminal-shell",
+    defaultValue: "auto",
+    normalize: normalizeTerminalShell,
+    fallbackKey: "notely:terminal-shell",
+  });
 
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
   syncStateRef.current = { doc: current, dirty, openDocument };
@@ -399,13 +419,15 @@ export default function App() {
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       dirty,
+      terminalOpen: showTerminal,
+      terminalShell: terminalShellPreference,
       outlineEnabled,
       splitPreviewEnabled: current ? mode === "split" : false,
       focusModeEnabled: current ? focusModeEnabled : false,
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
     });
-  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, outlineEnabled, mode, focusModeEnabled]);
+  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -478,6 +500,26 @@ export default function App() {
 
       if (action === "view-density-compact") {
         setNotesDensityMode("compact");
+        return;
+      }
+
+      if (action === "toggle-terminal") {
+        setShowTerminal((open) => !open);
+        return;
+      }
+
+      if (action === "terminal-shell-auto") {
+        setTerminalShellPreference("auto");
+        return;
+      }
+
+      if (action === "terminal-shell-bash") {
+        setTerminalShellPreference("bash");
+        return;
+      }
+
+      if (action === "terminal-shell-cmd") {
+        setTerminalShellPreference("cmd");
         return;
       }
 
@@ -1335,7 +1377,12 @@ export default function App() {
       {showTerminal ? (
         <div className="terminal-dock open">
           <ErrorBoundary label="Terminal">
-            <EmbeddedTerminal cwd={terminalCwd} onClose={() => setShowTerminal(false)} />
+            <EmbeddedTerminal
+              cwd={terminalCwd}
+              shellPreference={terminalShellPreference}
+              onShellPreferenceChange={setTerminalShellPreference}
+              onClose={() => setShowTerminal(false)}
+            />
           </ErrorBoundary>
         </div>
       ) : null}
