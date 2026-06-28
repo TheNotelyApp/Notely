@@ -1577,6 +1577,25 @@ button {
   margin-bottom: 14px;
 }
 
+.dashboard-panels.rail {
+  margin-bottom: 0;
+}
+
+.landing-workspace-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 20%) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.landing-dashboard-rail {
+  min-width: 0;
+}
+
+.landing-notes-pane {
+  min-width: 0;
+}
+
 .dashboard-bar {
   border: 1px solid #cfdbd6;
   border-radius: 12px;
@@ -1605,6 +1624,10 @@ button {
   box-shadow: 0 10px 20px rgba(15, 33, 35, 0.08);
   padding: 12px;
   min-height: 126px;
+}
+
+.dashboard-panels.rail .dashboard-panel {
+  min-height: 0;
 }
 
 .dashboard-panel-head {
@@ -1795,6 +1818,10 @@ button {
   }
 
   .dashboard-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-workspace-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 

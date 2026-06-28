@@ -766,23 +766,40 @@ export default function App() {
             </div>
           </header>
           {isRootLandingView ? (
-            <DashboardPanels
+            <div className="landing-workspace-layout">
+              <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
+                <DashboardPanels
+                  documents={documents}
+                  loading={loading}
+                  onOpen={handleOpenListItem}
+                  onAction={handleDashboardAction}
+                  favorites={favoriteNotes}
+                  layout="rail"
+                />
+              </aside>
+              <div className="landing-notes-pane">
+                <DocumentList
+                  documents={documents}
+                  onOpen={handleOpenListItem}
+                  loading={loading}
+                  viewMode={notesViewMode}
+                  density={notesDensityMode}
+                  favorites={favoriteNotes}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </div>
+            </div>
+          ) : (
+            <DocumentList
               documents={documents}
-              loading={loading}
               onOpen={handleOpenListItem}
-              onAction={handleDashboardAction}
+              loading={loading}
+              viewMode={notesViewMode}
+              density={notesDensityMode}
               favorites={favoriteNotes}
+              onToggleFavorite={handleToggleFavorite}
             />
-          ) : null}
-          <DocumentList
-            documents={documents}
-            onOpen={handleOpenListItem}
-            loading={loading}
-            viewMode={notesViewMode}
-            density={notesDensityMode}
-            favorites={favoriteNotes}
-            onToggleFavorite={handleToggleFavorite}
-          />
+          )}
           {landingAssetsOpen ? (
             <div
               className="overlay-dialog"
