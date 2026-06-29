@@ -17,6 +17,9 @@ class MetadataStore {
     try {
       const { DatabaseSync } = require("node:sqlite");
       this.db = new DatabaseSync(this.dbPath);
+      // History writes should not fail due to unrelated AI foreign-key constraints
+      // defined against non-unique columns in the same SQLite file.
+      this.db.exec("PRAGMA foreign_keys = OFF");
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS history_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

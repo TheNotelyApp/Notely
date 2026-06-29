@@ -15,8 +15,7 @@ const MIGRATIONS = [
         embedding_vector BLOB,
         embedding_model TEXT DEFAULT 'gemini-embedding-001',
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (file_path) REFERENCES history_entries(file_path)
+        updated_at TEXT NOT NULL
       );
       CREATE INDEX idx_ai_embeddings_file_path ON ai_document_embeddings(file_path);
       CREATE INDEX idx_ai_embeddings_created_at ON ai_document_embeddings(created_at);
@@ -34,9 +33,7 @@ const MIGRATIONS = [
         strength REAL DEFAULT 0.5 CHECK(strength >= 0 AND strength <= 1),
         metadata TEXT,
         detected_at TEXT NOT NULL,
-        UNIQUE(source_file, target_file, relationship_type),
-        FOREIGN KEY (source_file) REFERENCES history_entries(file_path),
-        FOREIGN KEY (target_file) REFERENCES history_entries(file_path)
+        UNIQUE(source_file, target_file, relationship_type)
       );
       CREATE INDEX idx_ai_relationships_source ON ai_document_relationships(source_file);
       CREATE INDEX idx_ai_relationships_target ON ai_document_relationships(target_file);
@@ -96,8 +93,7 @@ const MIGRATIONS = [
         context_value TEXT NOT NULL,
         created_at TEXT NOT NULL,
         expires_at TEXT,
-        UNIQUE(workspace_root, context_key),
-        FOREIGN KEY (workspace_root) REFERENCES ai_interactions(workspace_root)
+        UNIQUE(workspace_root, context_key)
       );
       CREATE INDEX idx_ai_cache_workspace ON ai_context_cache(workspace_root);
       CREATE INDEX idx_ai_cache_expires ON ai_context_cache(expires_at);
@@ -114,6 +110,68 @@ const MIGRATIONS = [
         applied_at TEXT NOT NULL,
         status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'rolled_back'))
       );
+    `
+  },
+  {
+    version: 7,
+    name: 'repair_ai_foreign_keys_for_history_schema',
+    sql: `
+      PRAGMA foreign_keys = OFF;
+
+      CREATE TABLE IF NOT EXISTS ai_document_embeddings_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_path TEXT NOT NULL UNIQUE,
+        content_hash TEXT NOT NULL,
+        embedding_vector BLOB,
+        embedding_model TEXT DEFAULT 'gemini-embedding-001',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      INSERT OR REPLACE INTO ai_document_embeddings_new (id, file_path, content_hash, embedding_vector, embedding_model, created_at, updated_at)
+      SELECT id, file_path, content_hash, embedding_vector, embedding_model, created_at, updated_at
+      FROM ai_document_embeddings;
+      DROP TABLE IF EXISTS ai_document_embeddings;
+      ALTER TABLE ai_document_embeddings_new RENAME TO ai_document_embeddings;
+      CREATE INDEX IF NOT EXISTS idx_ai_embeddings_file_path ON ai_document_embeddings(file_path);
+      CREATE INDEX IF NOT EXISTS idx_ai_embeddings_created_at ON ai_document_embeddings(created_at);
+
+      CREATE TABLE IF NOT EXISTS ai_document_relationships_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_file TEXT NOT NULL,
+        target_file TEXT NOT NULL,
+        relationship_type TEXT NOT NULL CHECK(relationship_type IN ('references', 'related', 'sibling', 'dependency', 'parent', 'child')),
+        strength REAL DEFAULT 0.5 CHECK(strength >= 0 AND strength <= 1),
+        metadata TEXT,
+        detected_at TEXT NOT NULL,
+        UNIQUE(source_file, target_file, relationship_type)
+      );
+      INSERT OR REPLACE INTO ai_document_relationships_new (id, source_file, target_file, relationship_type, strength, metadata, detected_at)
+      SELECT id, source_file, target_file, relationship_type, strength, metadata, detected_at
+      FROM ai_document_relationships;
+      DROP TABLE IF EXISTS ai_document_relationships;
+      ALTER TABLE ai_document_relationships_new RENAME TO ai_document_relationships;
+      CREATE INDEX IF NOT EXISTS idx_ai_relationships_source ON ai_document_relationships(source_file);
+      CREATE INDEX IF NOT EXISTS idx_ai_relationships_target ON ai_document_relationships(target_file);
+      CREATE INDEX IF NOT EXISTS idx_ai_relationships_type ON ai_document_relationships(relationship_type);
+
+      CREATE TABLE IF NOT EXISTS ai_context_cache_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        workspace_root TEXT NOT NULL,
+        context_key TEXT NOT NULL,
+        context_value TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        UNIQUE(workspace_root, context_key)
+      );
+      INSERT OR REPLACE INTO ai_context_cache_new (id, workspace_root, context_key, context_value, created_at, expires_at)
+      SELECT id, workspace_root, context_key, context_value, created_at, expires_at
+      FROM ai_context_cache;
+      DROP TABLE IF EXISTS ai_context_cache;
+      ALTER TABLE ai_context_cache_new RENAME TO ai_context_cache;
+      CREATE INDEX IF NOT EXISTS idx_ai_cache_workspace ON ai_context_cache(workspace_root);
+      CREATE INDEX IF NOT EXISTS idx_ai_cache_expires ON ai_context_cache(expires_at);
+
+      PRAGMA foreign_keys = ON;
     `
   }
 ];
