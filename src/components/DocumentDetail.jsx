@@ -391,13 +391,15 @@ const MetadataPanel = memo(function MetadataPanel({
       <div className="metadata-card metadata-card-time-range">
         <Clock size={16} />
         <span>Time</span>
-        <div className="metadata-time-range-inputs">
+        <div className="metadata-time-range-row">
+          <span className="metadata-time-range-label">From</span>
           <input
             type="datetime-local"
             value={timeFromText}
             onChange={onTimeFromChange}
             aria-label="Start time"
           />
+          <span className="metadata-time-range-label">To</span>
           <input
             type="datetime-local"
             value={timeToText}
@@ -418,7 +420,7 @@ const MetadataPanel = memo(function MetadataPanel({
           aria-label="Note location"
         />
       </label>
-      <label className="metadata-card metadata-card-input">
+      <label className="metadata-card metadata-card-input metadata-card-span-full">
         <Tag size={16} />
         <span>Tags</span>
         <input
