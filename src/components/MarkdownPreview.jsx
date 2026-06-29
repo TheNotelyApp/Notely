@@ -701,6 +701,13 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({ content, b
         ? fullSizeSrc
         : await readImage(basePath, cropState.assetPath, { thumbnail: true }).catch(() => fullSizeSrc);
 
+      // Update cropState.src so that the ImageCropModal's imageSrc prop reflects the
+      // restored original. Without this, subsequent rotation in the modal would still
+      // use the old (edited) image as its base, producing degraded output.
+      if (fullSizeSrc) {
+        setCropState((prev) => ({ ...prev, src: fullSizeSrc }));
+      }
+
       if (previewRef.current) {
         previewRef.current.querySelectorAll("img").forEach((image) => {
           if ((image.getAttribute("data-asset-path") || "") === cropState.assetPath) {

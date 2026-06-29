@@ -255,14 +255,6 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
             formattedSize: formatFileSize(getImageFileSize(editedDataUrl)),
           });
           await replaceImage(basePath, mediaPath, editedDataUrl);
-          if (!showOriginalImages) {
-            try {
-              const thumbnail = await readImage(basePath, mediaPath, { thumbnail: true });
-              setDisplayedImage(thumbnail || editedDataUrl);
-            } catch {
-              setDisplayedImage(editedDataUrl);
-            }
-          }
         }
 
         const savedAnnotation = await setImageAnnotation(basePath, mediaPath, annotation);
@@ -285,10 +277,14 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       setRestoringOriginal(true);
       await restoreImageOriginal(basePath, mediaPath);
       const fullImage = await readImage(basePath, mediaPath);
-      const previewImage = showOriginalImages
-        ? fullImage
-        : await readImage(basePath, mediaPath, { thumbnail: true }).catch(() => fullImage);
-      setDisplayedImage(previewImage || mediaPath);
+      setDisplayedImage(fullImage || mediaPath);
+
+      // Update editImageSrc so that the ImageCropModal's imageSrc prop reflects the
+      // restored original. Without this, subsequent rotation in the modal would still
+      // use the old (edited) image as its base, producing degraded output.
+      if (fullImage) {
+        setEditImageSrc(fullImage);
+      }
 
       try {
         const dimensions = await getImageDimensions(fullImage || mediaPath);
@@ -304,7 +300,7 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
 
       await loadOriginalStatus();
       onMediaChanged?.(mediaPath);
-      return fullImage || previewImage || displayedImage || resolvedPath || "";
+      return fullImage || displayedImage || resolvedPath || "";
     } catch (err) {
       setError(`Failed to restore original image: ${err.message}`);
       return "";
