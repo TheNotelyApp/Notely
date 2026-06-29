@@ -425,7 +425,11 @@ export default function App() {
         autoIgnoreMetadataInGit: nextMeta?.autoIgnoreMetadataInGit !== false,
         gitignoreHasNotesApp: nextMeta?.gitignoreHasNotesApp === true,
       });
-      notify(`Auto-ignore .notes-app in git is now ${nextMeta?.autoIgnoreMetadataInGit === false ? "off" : "on"}.`, "success");
+      if (nextMeta?.isGitRoot) {
+        notify(`Auto-ignore .notes-app in git is now ${nextMeta?.autoIgnoreMetadataInGit === false ? "off" : "on"}.`, "success");
+      } else {
+        notify(`Auto-ignore preference set to ${nextMeta?.autoIgnoreMetadataInGit === false ? "off" : "on"}. It will apply when workspace is a Git root.`, "info");
+      }
     } catch (error) {
       notify(error?.message || "Unable to update git metadata settings.", "error");
     }
@@ -1229,8 +1233,13 @@ export default function App() {
             <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot ? "" : "warn"}`} title={gitWorkspaceMeta.isGitRoot ? "Workspace Git branch" : "Workspace is not a Git root"}>
               {gitWorkspaceMeta.isGitRoot ? `Git: ${gitWorkspaceMeta.branch || "(unknown)"}` : "Git: not root"}
             </span>
+            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot && !gitWorkspaceMeta.gitignoreHasNotesApp ? "warn" : ""}`} title=".notes-app gitignore status">
+              {gitWorkspaceMeta.isGitRoot
+                ? (gitWorkspaceMeta.gitignoreHasNotesApp ? ".notes-app ignored" : ".notes-app tracked")
+                : ".notes-app n/a"}
+            </span>
             <button
-              className={`small-button ${gitWorkspaceMeta.autoIgnoreMetadataInGit ? "active" : ""}`}
+              className={`terminal-meta-pill terminal-meta-toggle ${gitWorkspaceMeta.autoIgnoreMetadataInGit ? "active" : ""}`}
               type="button"
               title="Toggle auto-ignore of .notes-app in workspace .gitignore"
               onClick={() => {

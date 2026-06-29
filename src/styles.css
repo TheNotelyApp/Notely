@@ -2190,10 +2190,26 @@ button {
   color: #ffe3b5;
 }
 
-.terminal-status-right .small-button {
-  min-height: 22px;
+.terminal-meta-toggle {
+  border: 1px solid rgba(159, 214, 188, 0.35);
+  background: rgba(9, 23, 25, 0.28);
+  color: #d5ece2;
+  min-height: 20px;
   padding: 0 8px;
   font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.terminal-meta-toggle:hover {
+  border-color: rgba(159, 214, 188, 0.55);
+  background: rgba(9, 23, 25, 0.42);
+}
+
+.terminal-meta-toggle.active {
+  border-color: rgba(159, 214, 188, 0.55);
+  background: rgba(29, 74, 67, 0.45);
+  color: #d5ece2;
 }
 
 .terminal-dock {

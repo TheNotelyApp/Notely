@@ -178,6 +178,31 @@ function hasNotesAppGitignoreEntry(workspaceDir) {
     .some((line) => line === ignoreEntry || line === ignoreEntry.slice(0, -1));
 }
 
+function removeNotesAppGitignoreEntry(workspaceDir) {
+  const resolvedWorkspace = path.resolve(String(workspaceDir || ""));
+  const gitignorePath = path.join(resolvedWorkspace, ".gitignore");
+  if (!fs.existsSync(gitignorePath)) return false;
+
+  const notesAppPath = path.join(resolvedWorkspace, ".notes-app");
+  const relativeNotesAppPath = normalizeToPosix(path.relative(resolvedWorkspace, notesAppPath)).replace(/\/+$/, "");
+  const ignoreEntry = `${relativeNotesAppPath || ".notes-app"}/`;
+  const ignoreEntryAlt = ignoreEntry.slice(0, -1);
+
+  const existing = String(fs.readFileSync(gitignorePath, "utf8") || "");
+  const lines = existing.split(/\r?\n/);
+  const filtered = lines.filter((line) => {
+    const normalized = String(line || "").trim().replace(/\\/g, "/");
+    return normalized !== ignoreEntry && normalized !== ignoreEntryAlt;
+  });
+
+  if (filtered.length === lines.length) return false;
+
+  const trailingNewline = existing.endsWith("\n") ? "\n" : "";
+  const nextValue = `${filtered.join("\n")}${trailingNewline}`;
+  fs.writeFileSync(gitignorePath, nextValue, "utf8");
+  return true;
+}
+
 function ensureNotesAppIgnoredInGit(notesDir) {
   const resolvedWorkspace = path.resolve(String(notesDir || ""));
   if (!isWorkspaceGitRoot(resolvedWorkspace)) return false;
@@ -222,11 +247,21 @@ function setAutoIgnoreMetadataInGit(enabled) {
   settings.autoIgnoreMetadataInGit = enabled !== false;
   writeUserSettings(settings);
 
+  if (!isWorkspaceGitRoot(notesRoot)) {
+    return getGitWorkspaceMetadata();
+  }
+
   if (settings.autoIgnoreMetadataInGit) {
     try {
       ensureNotesAppIgnoredInGit(notesRoot);
     } catch (error) {
       console.warn("[settings] Unable to apply .gitignore metadata preference:", error?.message || error);
+    }
+  } else {
+    try {
+      removeNotesAppGitignoreEntry(notesRoot);
+    } catch (error) {
+      console.warn("[settings] Unable to remove .gitignore metadata preference:", error?.message || error);
     }
   }
 
