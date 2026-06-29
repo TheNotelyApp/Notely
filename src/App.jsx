@@ -169,6 +169,7 @@ export default function App() {
     documentMenuAction,
     setDocumentMenuAction,
     landingFolderPath,
+    lastSavedDocument,
     dirty,
     loadDocumentsData,
     openDocument,
@@ -1241,6 +1242,7 @@ export default function App() {
                   loading={loading}
                   onOpen={handleOpenListItem}
                   onAction={handleDashboardAction}
+                  continueNote={lastSavedDocument}
                   favorites={favoriteNotes}
                   layout="rail"
                 />

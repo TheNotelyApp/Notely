@@ -11,11 +11,13 @@ function getRecentNotes(documents) {
     });
 }
 
-export function DashboardPanels({ documents, loading, onOpen, onAction, favorites = [], layout = "bar" }) {
+export function DashboardPanels({ documents, loading, onOpen, onAction, continueNote = null, favorites = [], layout = "bar" }) {
   if (loading) return null;
 
   const recentNotes = getRecentNotes(documents);
-  const continueNote = recentNotes[0] || null;
+  const continueCandidate = continueNote?.entryType === "file"
+    ? continueNote
+    : recentNotes[0] || null;
   const recentSlice = recentNotes.slice(0, 5);
   const favoriteSet = new Set(favorites);
   const favoriteSlice = recentNotes.filter((note) => favoriteSet.has(note.filePath)).slice(0, 5);
@@ -28,14 +30,14 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, favorite
             <h2>Continue Writing</h2>
             <Clock3 size={14} />
           </div>
-          {continueNote ? (
+          {continueCandidate ? (
             <button
               className="dashboard-continue-card"
               type="button"
-              onClick={() => onOpen(continueNote)}
+              onClick={() => onOpen(continueCandidate)}
             >
-              <strong>{continueNote.title}</strong>
-              <span>Last edited {formatDate(continueNote.updatedAt)}</span>
+              <strong>{continueCandidate.title}</strong>
+              <span>Last edited {formatDate(continueCandidate.updatedAt)}</span>
               <em>
                 Open
                 <ArrowRight size={13} />
@@ -121,14 +123,14 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, favorite
             <h2>Continue Writing</h2>
             <Clock3 size={14} />
           </div>
-          {continueNote ? (
+          {continueCandidate ? (
             <button
               className="dashboard-continue-card"
               type="button"
-              onClick={() => onOpen(continueNote)}
+              onClick={() => onOpen(continueCandidate)}
             >
-              <strong>{continueNote.title}</strong>
-              <span>Last edited {formatDate(continueNote.updatedAt)}</span>
+              <strong>{continueCandidate.title}</strong>
+              <span>Last edited {formatDate(continueCandidate.updatedAt)}</span>
               <em>
                 Open
                 <ArrowRight size={13} />

@@ -39,6 +39,7 @@ export function useDocumentManager({ notify }) {
   const [savingNotesFolder, setSavingNotesFolder] = useState(false);
   const [documentMenuAction, setDocumentMenuAction] = useState(null);
   const [landingFolderPath, setLandingFolderPath] = useState("");
+  const [lastSavedDocument, setLastSavedDocument] = useState(null);
 
   const loadDocumentsRequestRef = useRef(0);
 
@@ -129,6 +130,12 @@ export function useDocumentManager({ notify }) {
         reason,
       });
       setCurrent(saved);
+      setLastSavedDocument({
+        entryType: "file",
+        filePath: saved.filePath,
+        title: saved.title,
+        updatedAt: saved.updatedAt || new Date().toISOString(),
+      });
       setSavedHash(
         JSON.stringify({
           header: saved.header,
@@ -597,6 +604,7 @@ export function useDocumentManager({ notify }) {
     setDocumentMenuAction,
     landingFolderPath,
     setLandingFolderPath,
+    lastSavedDocument,
     canNavigateUp,
     dirty,
     loadDocumentsData,
