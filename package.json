@@ -24,7 +24,7 @@
     "lint:fix": "node ./node_modules/eslint/bin/eslint.js . --fix",
     "format": "node ./node_modules/prettier/bin/prettier.cjs --write .",
     "format:check": "node ./node_modules/prettier/bin/prettier.cjs --check .",
-    "test": "node ./node_modules/vitest/vitest.mjs run",
+    "test": "node scripts/run-vitest.cjs run",
     "test:p2p": "node scripts/p2p-harness.cjs",
     "test:p2p:packaged": "node scripts/p2p-packaged-validation.cjs",
     "ci:check": "npm run lint && npm run build && npm run lint:markdown && npm run test"

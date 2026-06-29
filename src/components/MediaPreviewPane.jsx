@@ -5,8 +5,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
-import * as pdfjsLib from "pdfjs-dist";
-import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import PdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker";
 import { ImageCropModal } from "./ImageCropModal";
 import {
   getImageDimensions,
