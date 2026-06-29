@@ -119,6 +119,13 @@ function normalizeTerminalShell(rawValue) {
   return rawValue === "bash" || rawValue === "cmd" ? rawValue : "auto";
 }
 
+function parseTagField(value) {
+  return String(value || "")
+    .split(/[,#]/)
+    .map((tag) => tag.trim().replace(/^#+/, ""))
+    .filter(Boolean);
+}
+
 const DEFAULT_LANDING_LIST_PREFS = { query: "", typeFilter: "all", sortBy: "updated-desc" };
 const EMPTY_OBJECT = {};
 const EMPTY_ARRAY = [];
@@ -648,6 +655,19 @@ export default function App() {
     typeFilter: landingEntryFilter,
     sortBy: landingSortMode,
   });
+  const workspaceTagSuggestions = useMemo(() => {
+    const pool = new Set();
+    for (const entry of documents) {
+      if (entry?.entryType !== "file") continue;
+      const tagsValue = entry?.metadata?.tags || entry?.metadata?.Tags;
+      for (const tag of parseTagField(tagsValue)) {
+        const key = tag.toLowerCase();
+        if (!key) continue;
+        if (!pool.has(key)) pool.add(tag);
+      }
+    }
+    return [...pool].sort((left, right) => left.localeCompare(right));
+  }, [documents]);
   const paletteRootPath = activeProject?.rootPath || notesFolderPath || "";
   const normalizedPaletteRootPath = String(paletteRootPath || "").replace(/[\\/]+$/, "");
   const currentNoteParentPath = current?.filePath
@@ -1358,6 +1378,7 @@ export default function App() {
             }}
             onOpenAISettings={() => setAiSettingsOpen(true)}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
+            workspaceTagSuggestions={workspaceTagSuggestions}
             workspaceStorageScope={workspaceStorageScope}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={setOutlineEnabled}

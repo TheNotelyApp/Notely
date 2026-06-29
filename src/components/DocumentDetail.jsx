@@ -231,6 +231,25 @@ function normalizeTagInput(value) {
     .join(", ");
 }
 
+function parseTagList(value) {
+  return String(value || "")
+    .split(/[,#]/)
+    .map((tag) => tag.trim().replace(/^#+/, ""))
+    .filter(Boolean);
+}
+
+function normalizeTagSuggestionList(value) {
+  if (!Array.isArray(value)) return [];
+  const dedup = new Map();
+  for (const item of value) {
+    const tag = String(item || "").trim();
+    if (!tag) continue;
+    const key = tag.toLowerCase();
+    if (!dedup.has(key)) dedup.set(key, tag);
+  }
+  return [...dedup.values()].sort((left, right) => left.localeCompare(right));
+}
+
 const MONTH_LABELS = [
   "Jan",
   "Feb",
@@ -358,6 +377,7 @@ const MetadataPanel = memo(function MetadataPanel({
   onLocationChange,
   onTagsChange,
   onTagsBlur,
+  tagSuggestions,
 }) {
   if (!showMetadataPanel || isFocusMode) return null;
 
@@ -430,8 +450,16 @@ const MetadataPanel = memo(function MetadataPanel({
           onBlur={onTagsBlur}
           placeholder="Add tags"
           aria-label="Note tags"
+          list="note-tags-suggestions"
         />
       </label>
+      {tagSuggestions?.length ? (
+        <datalist id="note-tags-suggestions">
+          {tagSuggestions.map((tag) => (
+            <option key={tag} value={tag} />
+          ))}
+        </datalist>
+      ) : null}
     </div>
   );
 });
@@ -572,6 +600,7 @@ export function DocumentDetail({
   onShowAI,
   onOpenAISettings,
   onOpenDocument,
+  workspaceTagSuggestions = [],
   workspaceStorageScope = "default",
   outlineEnabled = true,
   onOutlineEnabledChange,
@@ -618,6 +647,12 @@ export function DocumentDetail({
   const [showMediaManager, setShowMediaManager] = useState(false);
   const [titleDraft, setTitleDraft] = useState(document.title || "");
   const [titleSaving, setTitleSaving] = useState(false);
+  const [cachedTagSuggestions, setCachedTagSuggestions] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:tag-suggestions",
+    defaultValue: [],
+    normalize: normalizeTagSuggestionList,
+  });
   const titleRenameInFlightRef = useRef(false);
   const lastSubmittedTitleRef = useRef("");
 
@@ -635,6 +670,14 @@ export function DocumentDetail({
     return fromTs > toTs ? "End time must be after start time." : "";
   }, [timeRange.from, timeRange.to]);
   const tagText = getHeaderField(document.header, "Tags");
+  const combinedTagSuggestions = useMemo(() => {
+    const merged = normalizeTagSuggestionList([
+      ...workspaceTagSuggestions,
+      ...cachedTagSuggestions,
+      ...parseTagList(tagText),
+    ]);
+    return merged.slice(0, 100);
+  }, [workspaceTagSuggestions, cachedTagSuggestions, tagText]);
 
   useEffect(() => {
     setTitleDraft(document.title || "");
@@ -897,10 +940,16 @@ export function DocumentDetail({
   };
 
   const handleTagsBlur = (event) => {
+    const normalizedTags = normalizeTagInput(event.target.value);
     onChange({
       ...document,
-      header: setHeaderField(document.header, "Tags", normalizeTagInput(event.target.value)),
+      header: setHeaderField(document.header, "Tags", normalizedTags),
     });
+
+    const nextTags = parseTagList(normalizedTags);
+    if (nextTags.length) {
+      setCachedTagSuggestions((current) => normalizeTagSuggestionList([...(current || []), ...nextTags]).slice(0, 100));
+    }
   };
 
   const handleManualSave = async () => {
@@ -1323,6 +1372,7 @@ export function DocumentDetail({
         onLocationChange={handleLocationChange}
         onTagsChange={handleTagsChange}
         onTagsBlur={handleTagsBlur}
+        tagSuggestions={combinedTagSuggestions}
       />
 
       <div className={`workspace ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
