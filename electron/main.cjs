@@ -480,6 +480,7 @@ const documentFileOps = createDocumentFileOps({
 
 const imageMedia = createImageMedia({
   BrowserWindow,
+  shell,
   fs,
   path,
   crypto,

@@ -494,6 +494,14 @@ export async function readImage(basePath, assetPath, options = {}) {
   return api.readImage({ basePath, assetPath, thumbnail: Boolean(options.thumbnail) });
 }
 
+export async function openMediaInDefaultApp(basePath, assetPath) {
+  const api = getNotesApi();
+  if (typeof api.openMediaInDefaultApp !== "function") {
+    throw new Error("Open media action unavailable. Please restart the app.");
+  }
+  return api.openMediaInDefaultApp({ basePath, assetPath });
+}
+
 export async function getImageAnnotation(basePath, assetPath) {
   const api = getNotesApi();
   if (typeof api.getImageAnnotation !== "function") return null;

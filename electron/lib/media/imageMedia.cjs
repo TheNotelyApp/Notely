@@ -3,6 +3,7 @@ const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 function createImageMedia(deps) {
   const {
     BrowserWindow,
+    shell,
     fs,
     path,
     crypto,
@@ -155,7 +156,7 @@ function collectImageUsage(basePath) {
   const scopeRoot = path.resolve(activeProject?.rootPath || getNotesRoot());
   const markdownFiles = walkFiles(scopeRoot, { excludeDirs: Array.from(WALK_EXCLUDE_DIRS) })
     .filter((item) => path.extname(item).toLowerCase() === ".md");
-  const markdownImagePattern = /!\[[^\]]*\]\((<[^>]+>|[^)]+)\)/g;
+  const markdownMediaPattern = /(?:!\[[^\]]*\]|\[[^\]]*\])\((<[^>]+>|[^)]+)\)/g;
   const usageByAssetPath = {};
 
   for (const markdownFile of markdownFiles) {
@@ -163,7 +164,7 @@ function collectImageUsage(basePath) {
     const seenInDocument = new Set();
     let match;
 
-    while ((match = markdownImagePattern.exec(content))) {
+    while ((match = markdownMediaPattern.exec(content))) {
       const rawPath = String(match[1] || "").trim();
       const assetPath = rawPath.startsWith("<") && rawPath.endsWith(">")
         ? rawPath.slice(1, -1)
@@ -448,10 +449,10 @@ function registerTrustedHandler(channel, handler) {
 registerTrustedHandler("images:save", (_event, payload) => {
   const { fileName, base64Data, basePath, storageTarget } = payload || {};
   if (!fileName || typeof fileName !== "string") {
-    throw new Error("Invalid image filename.");
+    throw new Error("Invalid media filename.");
   }
   if (!base64Data || typeof base64Data !== "string" || !base64Data.includes(",")) {
-    throw new Error("Invalid image payload.");
+    throw new Error("Invalid media payload.");
   }
 
   // Prefer saving next to the active note (per-note images/), with an explicit
@@ -474,8 +475,8 @@ registerTrustedHandler("images:save", (_event, payload) => {
   // Generate unique filename if it already exists
   const safeFileName = path.basename(fileName).replace(/[<>:"/\\|?*]+/g, "-");
   const ext = path.extname(safeFileName);
-  const baseName = path.basename(safeFileName, ext) || "image";
-  const finalExt = ext || ".png";
+  const baseName = path.basename(safeFileName, ext) || "file";
+  const finalExt = ext || ".bin";
   let finalName = `${baseName}${finalExt}`;
   let counter = 1;
 
@@ -487,7 +488,7 @@ registerTrustedHandler("images:save", (_event, payload) => {
   const imagePath = path.join(imagesDir, finalName);
   const buffer = Buffer.from(base64Data.split(",")[1], "base64");
   if (!buffer.length) {
-    throw new Error("Image data is empty.");
+    throw new Error("File data is empty.");
   }
   fs.writeFileSync(imagePath, buffer);
   ensureImageThumbnail(imagePath);
@@ -507,19 +508,12 @@ registerTrustedHandler("images:list", (_event, payload) => {
     throw new Error("Invalid document path.");
   }
 
-  const allowedExtensions = new Set([
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico",
-    ".mp4", ".webm", ".ogv", ".mov", ".avi", ".mkv", ".m4v",
-    ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac",
-    ".pdf"
-  ]);
   const readImagesIn = (dir) => {
     if (!fs.existsSync(dir)) return [];
     try {
       return fs.readdirSync(dir, { withFileTypes: true })
         .filter((entry) => entry.isFile())
-        .map((entry) => entry.name)
-        .filter((name) => allowedExtensions.has(path.extname(name).toLowerCase()));
+        .map((entry) => entry.name);
     } catch {
       return [];
     }
@@ -811,11 +805,49 @@ registerTrustedHandler("images:read", (_event, payload) => {
     ".wav": "audio/wav",
     ".ogg": "audio/ogg",
     ".m4a": "audio/mp4",
-    ".pdf": "application/pdf"
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".txt": "text/plain",
+    ".rtf": "application/rtf",
+    ".odt": "application/vnd.oasis.opendocument.text",
+    ".ods": "application/vnd.oasis.opendocument.spreadsheet",
+    ".odp": "application/vnd.oasis.opendocument.presentation",
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".xml": "application/xml",
+    ".zip": "application/zip",
+    ".7z": "application/x-7z-compressed",
+    ".rar": "application/vnd.rar"
   };
   const mimeType = mimeMap[ext] || "application/octet-stream";
   const buffer = fs.readFileSync(fileToRead);
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
+});
+
+registerTrustedHandler("images:open-default-app", async (_event, payload) => {
+  const { basePath, assetPath } = payload || {};
+  if (!basePath || typeof basePath !== "string") {
+    throw new Error("Invalid base path.");
+  }
+  if (!assetPath || typeof assetPath !== "string") {
+    throw new Error("Invalid asset path.");
+  }
+
+  const resolvedAssetPath = resolveImageAssetPath(basePath, assetPath);
+  if (!resolvedAssetPath || !fs.existsSync(resolvedAssetPath)) {
+    throw new Error("Media file not found.");
+  }
+
+  const openResult = await shell.openPath(resolvedAssetPath);
+  if (openResult) {
+    throw new Error(openResult);
+  }
+  return true;
 });
 
   }
