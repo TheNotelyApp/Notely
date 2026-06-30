@@ -484,7 +484,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
           view.dispatch({ selection: EditorSelection.single(dropPosition) });
         }
 
-        onNotify?.("Uploading dropped image...", "info");
+        onNotify?.("Uploading dropped files...", "info");
 
         void (async () => {
           try {

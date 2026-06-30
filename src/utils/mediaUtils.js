@@ -27,28 +27,35 @@ export function extractImagesFromMarkdown(content) {
 export function extractAllMediaFromMarkdown(content) {
   if (!content) return [];
 
-  // Match markdown image/media syntax: ![alt](path)
-  const regex = /!\[([^\]]*)\]\((<[^>]+>|[^)]+)\)/g;
+  // Match both image syntax and regular markdown links:
+  // ![alt](path) and [label](path)
+  const regex = /(!)?\[([^\]]*)\]\((<[^>]+>|[^)]+)\)/g;
   const mediaItems = [];
+  const seen = new Set();
   let match;
 
   while ((match = regex.exec(content))) {
-    const rawPath = (match[2] || "").trim();
+    const isImageSyntax = Boolean(match[1]);
+    const rawPath = (match[3] || "").trim();
     const path = rawPath.startsWith("<") && rawPath.endsWith(">") ? rawPath.slice(1, -1) : rawPath;
+    if (!path) continue;
+    if (/^(https?:|data:|blob:|mailto:|#)/i.test(path)) continue;
 
     // Detect media type from path
     const ext = path.split(".").pop()?.toLowerCase();
-    const mediaType = getMediaTypeFromExtension(ext);
+    const mediaType = getMediaTypeFromExtension(ext) || MEDIA_TYPES.DOCUMENT;
+    const id = path;
 
-    if (mediaType) {
-      mediaItems.push({
-        altText: match[1] || path.split("/").pop() || "Media",
-        path,
-        id: path,
-        type: mediaType,
-        extension: ext,
-      });
-    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+
+    mediaItems.push({
+      altText: match[2] || path.split("/").pop() || (isImageSyntax ? "Image" : "Media"),
+      path,
+      id,
+      type: mediaType,
+      extension: ext,
+    });
   }
 
   return mediaItems;
@@ -76,7 +83,11 @@ export function getMediaTypeFromExtension(extension) {
     return MEDIA_TYPES.PDF;
   }
   // Documents
-  if (["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf"].includes(ext)) {
+  if ([
+    "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf",
+    "odt", "ods", "odp", "csv", "tsv", "md", "markdown", "json",
+    "xml", "yaml", "yml", "log", "zip", "7z", "rar",
+  ].includes(ext)) {
     return MEDIA_TYPES.DOCUMENT;
   }
 

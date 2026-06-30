@@ -21,6 +21,7 @@ import { applySnippet, createImageMarkdown, createMediaMarkdown, insertTextAtCur
 import { insertMediaFromFile } from "../services/imageService";
 import { listDocuments, listImages } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
+import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 
 function toRelativeDocPath(fromFilePath, toFilePath) {
   if (!fromFilePath || !toFilePath) return "";
@@ -906,7 +907,7 @@ export function MarkdownToolbar({
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/*,video/*,audio/*,.pdf"
+        accept={MEDIA_FILE_INPUT_ACCEPT}
         onChange={handleMediaSelect}
         hidden
       />

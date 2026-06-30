@@ -34,7 +34,11 @@ export const SUPPORTED_EXTENSIONS = {
   },
   // Documents
   document: {
-    extensions: ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf"],
+    extensions: [
+      "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf",
+      "odt", "ods", "odp", "csv", "tsv", "md", "markdown", "json",
+      "xml", "yaml", "yml", "log", "zip", "7z", "rar",
+    ],
     mimeTypes: [
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -42,11 +46,26 @@ export const SUPPORTED_EXTENSIONS = {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-powerpoint",
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.oasis.opendocument.text",
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "application/vnd.oasis.opendocument.presentation",
+      "text/csv",
+      "text/tab-separated-values",
+      "application/json",
+      "application/xml",
+      "text/xml",
+      "application/yaml",
+      "text/yaml",
+      "application/zip",
+      "application/x-7z-compressed",
+      "application/vnd.rar",
       "text/plain",
       "application/rtf",
     ],
   },
 };
+
+export const MEDIA_FILE_INPUT_ACCEPT = "*/*";
 
 export function getMediaType(file) {
   if (!file) return null;
@@ -98,9 +117,10 @@ export function isPreviewableMedia(file) {
 }
 
 export function isEmbeddableMedia(file) {
-  const type = getMediaType(file);
-  // All supported types except some documents
-  return type !== null;
+  if (!file) return false;
+  const name = String(file.name || "").trim();
+  // Allow any file attachment. Rendering still depends on detected media type.
+  return Boolean(name);
 }
 
 export async function readFileAsDataUrl(file) {
@@ -124,8 +144,12 @@ export function validateMediaFile(file) {
   if (!file) {
     throw new Error("No file selected");
   }
+  const fileName = String(file.name || "").trim();
+  if (!fileName) {
+    throw new Error("File name is required");
+  }
   if (!isEmbeddableMedia(file)) {
-    throw new Error("File type not supported. Supported: images, videos, audio, PDFs, and documents.");
+    throw new Error("File type not supported.");
   }
   return true;
 }
