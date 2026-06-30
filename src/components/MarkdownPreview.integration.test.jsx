@@ -167,4 +167,32 @@ describe("MarkdownPreview image behaviors", () => {
 
     view.unmount();
   });
+
+  it("resolves encoded markdown link paths for inline rendering", async () => {
+    readMarkdownSourceMock.mockResolvedValue("# Encoded Note\n\nWorks with encoded paths.");
+
+    const view = renderPreview({
+      content: "See [encoded](./Team%20Notes/Nested%20Note.md)",
+      basePath: "C:/notes/doc.md",
+      inlineLinkedMarkdown: true,
+      onNotify: vi.fn(),
+      onContentChange: vi.fn(),
+    });
+
+    const link = view.host.querySelector("a[href='./Team%20Notes/Nested%20Note.md']");
+    expect(link).toBeTruthy();
+
+    await act(async () => {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await waitFor(0);
+      await waitFor(0);
+    });
+
+    expect(readMarkdownSourceMock).toHaveBeenCalledWith("C:\\notes\\Team Notes\\Nested Note.md");
+    const inlineBlock = view.host.querySelector(".inline-linked-note");
+    expect(inlineBlock).toBeTruthy();
+    expect(inlineBlock.textContent).toContain("Works with encoded paths.");
+
+    view.unmount();
+  });
 });

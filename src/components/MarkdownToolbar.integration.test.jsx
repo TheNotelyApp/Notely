@@ -265,6 +265,63 @@ describe("MarkdownToolbar validation panel interactions", () => {
     view.unmount();
   });
 
+  it("uses absolute encoded path when target note is on a different drive", async () => {
+    listImagesMock.mockResolvedValue([]);
+    listDocumentsMock.mockResolvedValue([
+      {
+        title: "Remote Drive Note",
+        fileName: "Remote Drive Note.md",
+        filePath: "D:/Shared Notes/Remote Drive Note.md",
+      },
+    ]);
+
+    const onChange = vi.fn();
+    const onNotify = vi.fn();
+    const textareaRef = {
+      current: {
+        selectionStart: 0,
+        selectionEnd: 0,
+        scrollTop: 0,
+        scrollLeft: 0,
+        focus: () => {},
+      },
+    };
+
+    const view = renderToolbar({
+      value: "",
+      onChange,
+      textareaRef,
+      basePath: "C:/notes/Current.md",
+      onNotify,
+      validationStatus: "ready",
+      validationIssues: [],
+      onJumpToLine: vi.fn(),
+    });
+
+    const openWorkspaceInsert = view.host.querySelector('button[title="Insert from workspace"]');
+    expect(openWorkspaceInsert).toBeTruthy();
+
+    await act(async () => {
+      openWorkspaceInsert.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const noteButton = Array.from(view.host.querySelectorAll(".image-linker-list button")).find((button) =>
+      button.textContent?.includes("Remote Drive Note")
+    );
+    expect(noteButton).toBeTruthy();
+
+    act(() => {
+      noteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const inserted = String(onChange.mock.calls.at(-1)?.[0] || "");
+    expect(inserted).toContain("D:/Shared%20Notes/Remote%20Drive%20Note.md");
+    expect(onNotify).toHaveBeenCalledWith("Document link inserted.", "success");
+
+    view.unmount();
+  });
+
   it("filters workspace insert list by selected asset type", async () => {
     listImagesMock.mockResolvedValue([
       "./images/photo.png",

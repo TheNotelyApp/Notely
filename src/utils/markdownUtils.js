@@ -88,7 +88,37 @@ export function normalizeImagePathForMarkdown(pathValue) {
     }
   }
 
-  return encodeURI(decoded);
+  // Keep full URI semantics for URLs while still handling spaces.
+  if (/^(https?:|file:|blob:|data:|mailto:)/i.test(decoded)) {
+    return encodeURI(decoded);
+  }
+
+  // For local paths, encode each segment to avoid broken markdown links for
+  // spaces and reserved characters in file/folder names.
+  const normalized = decoded.replace(/\\/g, "/");
+  const windowsAbsoluteMatch = normalized.match(/^([A-Za-z]:)\/(.*)$/);
+  if (windowsAbsoluteMatch) {
+    const drive = windowsAbsoluteMatch[1];
+    const rest = windowsAbsoluteMatch[2]
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+    return `${drive}/${rest}`;
+  }
+
+  const leading = normalized.startsWith("../")
+    ? "../"
+    : normalized.startsWith("./")
+      ? "./"
+      : normalized.startsWith("/")
+        ? "/"
+        : "";
+  const body = leading ? normalized.slice(leading.length) : normalized;
+  const encodedBody = body
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${leading}${encodedBody}`;
 }
 
 export function createImageMarkdown(altText, imagePath) {

@@ -82,7 +82,10 @@ function resolveMarkdownLinkPath(basePath, href) {
   const cleanedHref = String(href || "").trim();
   if (!cleanedHref) return "";
 
-  const withoutQuery = cleanedHref.split(/[?#]/)[0];
+  let withoutQuery = cleanedHref;
+  if (!/^file:/i.test(withoutQuery)) {
+    withoutQuery = withoutQuery.split(/[?#]/)[0];
+  }
   if (!withoutQuery || /^(https?:|data:|blob:|mailto:|#)/i.test(withoutQuery)) {
     return "";
   }
@@ -95,6 +98,21 @@ function resolveMarkdownLinkPath(basePath, href) {
       decoded = next;
     } catch {
       break;
+    }
+  }
+
+  if (/^file:/i.test(decoded)) {
+    try {
+      const parsed = new URL(decoded);
+      let pathname = parsed.pathname || "";
+      if (/^\/[A-Za-z]:\//.test(pathname)) {
+        pathname = pathname.slice(1);
+      }
+      const filePath = decodeURIComponent(pathname || "").replace(/\//g, "\\");
+      if (!/\.md$/i.test(filePath)) return "";
+      return filePath;
+    } catch {
+      return "";
     }
   }
 

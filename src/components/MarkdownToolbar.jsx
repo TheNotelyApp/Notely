@@ -25,8 +25,18 @@ import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 
 function toRelativeDocPath(fromFilePath, toFilePath) {
   if (!fromFilePath || !toFilePath) return "";
-  const fromParts = fromFilePath.split(/[\\/]+/);
-  const toParts = toFilePath.split(/[\\/]+/);
+  const fromNormalized = String(fromFilePath).replace(/\\/g, "/");
+  const toNormalized = String(toFilePath).replace(/\\/g, "/");
+
+  const fromDrive = fromNormalized.match(/^([A-Za-z]:)\//)?.[1]?.toLowerCase() || "";
+  const toDrive = toNormalized.match(/^([A-Za-z]:)\//)?.[1]?.toLowerCase() || "";
+  // Cross-drive links cannot be represented as sane relative paths on Windows.
+  if (fromDrive && toDrive && fromDrive !== toDrive) {
+    return toNormalized;
+  }
+
+  const fromParts = fromNormalized.split(/[\\/]+/);
+  const toParts = toNormalized.split(/[\\/]+/);
 
   fromParts.pop();
   while (fromParts.length && toParts.length && fromParts[0].toLowerCase() === toParts[0].toLowerCase()) {
