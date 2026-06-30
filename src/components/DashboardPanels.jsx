@@ -1,4 +1,5 @@
 import { ArrowRight, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search } from "lucide-react";
+import { useMemo } from "react";
 import { formatDate } from "../utils/dateUtils";
 
 function getRecentNotes(documents) {
@@ -11,6 +12,16 @@ function getRecentNotes(documents) {
     });
 }
 
+function getDisplayName(filePath) {
+  if (!filePath) return "Untitled";
+  const normalizedPath = String(filePath).replace(/\\/g, "/");
+  const parts = normalizedPath.split("/").filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  return parts.slice(-2).join("/");
+}
+
 export function DashboardPanels({ documents, loading, onOpen, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
   if (loading) return null;
 
@@ -21,8 +32,32 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
   const continueCandidate = continueCandidates[0] || recentNotes[0] || null;
   const continueHistory = continueCandidates.length > 1 ? continueCandidates.slice(1) : [];
   const recentSlice = recentNotes.slice(0, 5);
-  const favoriteSet = new Set(favorites);
-  const favoriteSlice = recentNotes.filter((note) => favoriteSet.has(note.filePath)).slice(0, 5);
+  
+  const favoriteSlice = useMemo(() => {
+    const favoriteSet = new Set(favorites);
+    const metadataMap = new Map(
+      [...recentNotes, ...continueNotes]
+        .filter((item) => item?.entryType === "file" && item?.filePath)
+        .map((item) => [String(item.filePath).toLowerCase(), item])
+    );
+
+    return Array.from(favoriteSet)
+      .map((filePath) => {
+        const key = String(filePath || "").toLowerCase();
+        const item = metadataMap.get(key) || { filePath, title: filePath, entryType: "file" };
+        return {
+          ...item,
+          displayName: getDisplayName(item.filePath || filePath)
+        };
+      })
+      .filter((item) => item?.filePath)
+      .sort((a, b) => {
+        const left = new Date(a.updatedAt || 0).getTime();
+        const right = new Date(b.updatedAt || 0).getTime();
+        return right - left;
+      })
+      .slice(0, 5);
+  }, [favorites, recentNotes, continueNotes]);
 
   if (layout === "rail") {
     return (
@@ -117,7 +152,7 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
               {favoriteSlice.map((note) => (
                 <li key={note.filePath}>
                   <button type="button" onClick={() => onOpen(note)}>
-                    <span>{note.title}</span>
+                    <span>{note.displayName}</span>
                     <small>{formatDate(note.updatedAt)}</small>
                   </button>
                 </li>
@@ -224,7 +259,7 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
               {favoriteSlice.map((note) => (
                 <li key={note.filePath}>
                   <button type="button" onClick={() => onOpen(note)}>
-                    <span>{note.title}</span>
+                    <span>{note.displayName}</span>
                     <small>{formatDate(note.updatedAt)}</small>
                   </button>
                 </li>
