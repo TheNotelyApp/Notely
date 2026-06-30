@@ -23,10 +23,12 @@ function getDisplayName(filePath) {
 }
 
 export function DashboardPanels({ documents, loading, onOpen, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
-  if (loading) return null;
+  const safeDocuments = useMemo(() => (Array.isArray(documents) ? documents : []), [documents]);
+  const safeContinueNotes = useMemo(() => (Array.isArray(continueNotes) ? continueNotes : []), [continueNotes]);
+  const safeFavorites = useMemo(() => (Array.isArray(favorites) ? favorites : []), [favorites]);
 
-  const recentNotes = getRecentNotes(documents);
-  const continueCandidates = (Array.isArray(continueNotes) ? continueNotes : [])
+  const recentNotes = getRecentNotes(safeDocuments);
+  const continueCandidates = safeContinueNotes
     .filter((item) => item?.entryType === "file" && item?.filePath)
     .slice(0, 4);
   const continueCandidate = continueCandidates[0] || recentNotes[0] || null;
@@ -34,9 +36,9 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
   const recentSlice = recentNotes.slice(0, 5);
   
   const favoriteSlice = useMemo(() => {
-    const favoriteSet = new Set(favorites);
+    const favoriteSet = new Set(safeFavorites);
     const metadataMap = new Map(
-      [...recentNotes, ...continueNotes]
+      [...recentNotes, ...safeContinueNotes]
         .filter((item) => item?.entryType === "file" && item?.filePath)
         .map((item) => [String(item.filePath).toLowerCase(), item])
     );
@@ -57,7 +59,9 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         return right - left;
       })
       .slice(0, 5);
-  }, [favorites, recentNotes, continueNotes]);
+  }, [safeFavorites, recentNotes, safeContinueNotes]);
+
+  if (loading) return null;
 
   if (layout === "rail") {
     return (
