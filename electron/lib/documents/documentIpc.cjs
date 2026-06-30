@@ -140,18 +140,22 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   });
 
   registerTrustedHandler("documents:read", (_event, filePath) => {
+    const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
+    const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
     const resolved = path.resolve(filePath);
-    if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
     return parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
   });
 
   registerTrustedHandler("documents:read-markdown-source", (_event, filePath) => {
+    const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
+    const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
     const resolved = path.resolve(String(filePath || ""));
-    if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
     if (!fs.existsSync(resolved)) {
