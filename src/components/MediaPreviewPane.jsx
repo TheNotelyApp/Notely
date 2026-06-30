@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, ExternalLink } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import PdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker";
 import { ImageCropModal } from "./ImageCropModal";
@@ -13,7 +13,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal } from "../services/electronService";
+import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it
@@ -45,6 +45,17 @@ function dataUrlToUint8Array(dataUrl) {
   }
 }
 
+function getDocumentKind(extension) {
+  const ext = String(extension || "").toLowerCase();
+  if (["doc", "docx", "odt", "rtf"].includes(ext)) return { icon: "📝", family: "Word Document" };
+  if (["xls", "xlsx", "csv", "tsv", "ods"].includes(ext)) return { icon: "📊", family: "Spreadsheet" };
+  if (["ppt", "pptx", "odp"].includes(ext)) return { icon: "📽️", family: "Presentation" };
+  if (["txt", "md", "markdown", "log"].includes(ext)) return { icon: "📄", family: "Text File" };
+  if (["json", "xml", "yaml", "yml"].includes(ext)) return { icon: "🧩", family: "Data File" };
+  if (["zip", "7z", "rar"].includes(ext)) return { icon: "🗜️", family: "Archive" };
+  return { icon: "📃", family: "Document" };
+}
+
 export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalImages = false, onClose, onMediaChanged }) {
   const [error, setError] = useState(null);
   const [pdfPages, setPdfPages] = useState(0);
@@ -71,6 +82,10 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   const audioRef = useRef(null);
 
   const [resolvedPath, setResolvedPath] = useState(null);
+  const [openingExternal, setOpeningExternal] = useState(false);
+  const fileName = (mediaPath || "").split(/[\\/]/).pop() || mediaPath;
+  const fileExtension = String(fileName || "").split(".").pop()?.toLowerCase() || "";
+  const docKind = getDocumentKind(fileExtension);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +216,28 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadMedia = () => {
+    if (!resolvedPath) return;
+    const link = document.createElement("a");
+    link.href = resolvedPath;
+    link.download = fileName || "download";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleOpenInDefaultApp = async () => {
+    if (!basePath || !mediaPath || /^(data:|blob:|https?:)/i.test(mediaPath)) return;
+    try {
+      setOpeningExternal(true);
+      await openMediaInDefaultApp(basePath, mediaPath);
+    } catch (err) {
+      setError(`Failed to open file: ${err?.message || "Unknown error"}`);
+    } finally {
+      setOpeningExternal(false);
+    }
   };
 
   const handleZoomIn = () => {
@@ -488,11 +525,12 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
             {mediaType === "video" && "🎬"}
             {mediaType === "audio" && "🎵"}
             {mediaType === "pdf" && "📄"}
-            {mediaType === "document" && "📃"}
+            {mediaType === "document" && docKind.icon}
           </span>
           <span className="media-preview-filename" title={mediaPath}>
-            {(mediaPath || "").split(/[\\/]/).pop() || mediaPath}
+            {fileName}
           </span>
+          {fileExtension ? <span className="media-preview-ext">{fileExtension.toUpperCase()}</span> : null}
         </div>
         <button
           className="media-preview-close"
@@ -649,6 +687,15 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
                 <img src={pdfContent} alt={`PDF page ${currentPdfPage}`} />
                 <div className="pdf-controls">
                   <button
+                    type="button"
+                    onClick={handleOpenInDefaultApp}
+                    disabled={!basePath || openingExternal}
+                    title="Open in default PDF app"
+                    aria-label="Open in default PDF app"
+                  >
+                    <ExternalLink size={14} />
+                  </button>
+                  <button
                     className="icon-only"
                     onClick={() => handlePdfPageChange(-1)}
                     disabled={currentPdfPage === 1}
@@ -677,10 +724,32 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
 
         {mediaType === "document" && !error && (
           <div className="media-preview-document-container">
-            <div className="document-icon">📃</div>
-            <p>Document cannot be previewed inline</p>
-            <p className="document-filename">{mediaPath.split("/").pop()}</p>
-            <p className="document-hint">Download to open in your application</p>
+            <div className="document-icon">{docKind.icon}</div>
+            <p className="document-family">{docKind.family}</p>
+            <p>Inline preview is not available for this format.</p>
+            <p className="document-filename">{fileName}</p>
+            <button
+              className="image-action-button"
+              type="button"
+              onClick={handleOpenInDefaultApp}
+              disabled={!basePath || openingExternal}
+              title="Open in default app"
+              aria-label="Open in default app"
+            >
+              <ExternalLink size={14} />
+              <span>{openingExternal ? "Opening..." : "Open in App"}</span>
+            </button>
+            <button
+              className="image-action-button"
+              type="button"
+              onClick={handleDownloadMedia}
+              title="Download file"
+              aria-label="Download file"
+            >
+              <Download size={14} />
+              <span>Download</span>
+            </button>
+            <p className="document-hint">Open the downloaded file in your preferred app.</p>
           </div>
         )}
       </div>

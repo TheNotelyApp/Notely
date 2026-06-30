@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Copy, ExternalLink, Eye, ImageOff, ImagePlus, ListTree, RefreshCw, Upload, Trash2, X } from "lucide-react";
-import { extractImagesFromMarkdown } from "../utils/mediaUtils";
+import { extractAllMediaFromMarkdown } from "../utils/mediaUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { MediaPreviewPane } from "./MediaPreviewPane";
 import {
@@ -11,14 +11,36 @@ import {
   deleteImage,
   replaceImage,
   setImageAnnotation,
+  openMediaInDefaultApp,
 } from "../services/electronService";
-import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
+import { MEDIA_FILE_INPUT_ACCEPT, readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { formatFileSize } from "../utils/imageProcessingUtils";
 import { formatImageDeleteResult } from "../utils/imageDeleteResult";
 import "../styles/media.css";
 
+function getDocumentVisual(extension) {
+  const ext = String(extension || "").toLowerCase();
+  if (["doc", "docx", "odt", "rtf"].includes(ext)) return { icon: "📝", label: "Word" };
+  if (["xls", "xlsx", "csv", "tsv", "ods"].includes(ext)) return { icon: "📊", label: "Sheet" };
+  if (["ppt", "pptx", "odp"].includes(ext)) return { icon: "📽️", label: "Slides" };
+  if (["txt", "md", "markdown", "log"].includes(ext)) return { icon: "📄", label: "Text" };
+  if (["json", "xml", "yaml", "yml"].includes(ext)) return { icon: "🧩", label: "Data" };
+  if (["zip", "7z", "rar"].includes(ext)) return { icon: "🗜️", label: "Archive" };
+  return { icon: "📃", label: "Document" };
+}
+
+function getPreviewBadge(mediaType, extension) {
+  const ext = String(extension || "").toUpperCase();
+  if (mediaType === "image") return null;
+  if (mediaType === "video") return { icon: "🎬", label: ext || "VIDEO" };
+  if (mediaType === "audio") return { icon: "🎵", label: ext || "AUDIO" };
+  if (mediaType === "pdf") return { icon: "📄", label: "PDF" };
+  const documentVisual = getDocumentVisual(extension);
+  return { icon: documentVisual.icon, label: ext || documentVisual.label.toUpperCase() };
+}
+
 export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
-  const linkedImages = useMemo(() => extractImagesFromMarkdown(content), [content]);
+  const linkedImages = useMemo(() => extractAllMediaFromMarkdown(content), [content]);
   const [allImages, setAllImages] = useState([]);
   const [imageUsage, setImageUsage] = useState({});
   const [resolvedImages, setResolvedImages] = useState({});
@@ -35,6 +57,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
   const [uploadTarget, setUploadTarget] = useState("note");
   const [selectedMediaPreview, setSelectedMediaPreview] = useState(null);
   const [usageInspectorImage, setUsageInspectorImage] = useState(null);
+  const [openingPath, setOpeningPath] = useState("");
   const addInputRef = useRef(null);
   const replaceInputRef = useRef(null);
 
@@ -372,7 +395,11 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
   }
 
   async function handleCopyMarkdown(image) {
-    const markdown = `![${image.altText}](${image.path})`;
+    const extension = image.path.split(".").pop()?.toLowerCase();
+    const mediaType = getMediaTypeFromExtension(extension);
+    const markdown = mediaType === "image"
+      ? `![${image.altText}](${image.path})`
+      : `[${image.altText}](${image.path})`;
     setActionError("");
     setActionInfo("");
 
@@ -463,6 +490,23 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
     if (!filePath || typeof onOpenDocument !== "function") return;
     setUsageInspectorImage(null);
     await onOpenDocument(filePath);
+  }
+
+  async function handleOpenInDefaultApp(pathValue) {
+    if (!basePath || !pathValue) return;
+    setActionError("");
+    setActionInfo("");
+    try {
+      setOpeningPath(pathValue);
+      await openMediaInDefaultApp(basePath, pathValue);
+      onNotify?.("Opened file in default app.", "success");
+    } catch (error) {
+      const message = error?.message || "Unable to open file in default app.";
+      setActionError(message);
+      onNotify?.(message, "error");
+    } finally {
+      setOpeningPath("");
+    }
   }
 
   return (
@@ -611,8 +655,8 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
           >
             <RefreshCw size={16} />
           </button>
-          <input ref={addInputRef} type="file" accept="image/*,video/*,audio/*,.pdf" onChange={handleAddImage} hidden />
-          <input ref={replaceInputRef} type="file" accept="image/*,video/*,audio/*,.pdf" onChange={handleReplaceImage} hidden />
+          <input ref={addInputRef} type="file" accept={MEDIA_FILE_INPUT_ACCEPT} onChange={handleAddImage} hidden />
+          <input ref={replaceInputRef} type="file" accept={MEDIA_FILE_INPUT_ACCEPT} onChange={handleReplaceImage} hidden />
         </div>
       </div>
 
@@ -643,6 +687,8 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
             const resolvedSrc = resolvedImages[image.id];
             const extension = image.path.split(".").pop()?.toLowerCase();
             const mediaType = getMediaTypeFromExtension(extension) || "unknown";
+            const previewBadge = getPreviewBadge(mediaType, extension);
+            const documentVisual = getDocumentVisual(extension);
             const referenced = (image.referenceCount || 0) > 0 || referencedPathSet.has(image.path);
             const fileName = image.path.split(/[\\/]/).pop() || image.altText || "Image";
             const annotationText = String(image.annotation?.text || "").trim();
@@ -685,21 +731,26 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
                   </video>
                 ) : mediaType === "audio" ? (
                   <div className="media-fallback">
-                    <span>🎵 Audio</span>
+                    <span>{previewBadge?.icon || "🎵"} Audio File</span>
                   </div>
                 ) : mediaType === "pdf" ? (
                   <div className="media-fallback">
-                    <span>📄 PDF</span>
+                    <span>{previewBadge?.icon || "📄"} Portable Document</span>
                   </div>
                 ) : mediaType === "document" ? (
                   <div className="media-fallback">
-                    <span>📃 Document</span>
+                    <span>{documentVisual.icon} {documentVisual.label}</span>
                   </div>
                 ) : (
                   <div className="media-fallback">
-                    <span>📎 File</span>
+                    <span>{previewBadge?.icon || "📎"} File</span>
                   </div>
                 )}
+                {previewBadge ? (
+                  <span className="media-type-chip" title={`Type: ${previewBadge.label}`}>
+                    {previewBadge.icon} {previewBadge.label}
+                  </span>
+                ) : null}
                 {annotationText ? (
                   <span className="media-annotation-badge" title={`Annotation: ${annotationText}`}>
                     Note
@@ -772,6 +823,14 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
                     title="Inspect usage"
                   >
                     <ListTree size={14} />
+                  </button>
+                  <button
+                    className="small-button icon-only"
+                    onClick={() => handleOpenInDefaultApp(image.path)}
+                    disabled={!basePath || openingPath === image.path}
+                    title={openingPath === image.path ? "Opening..." : "Open in default app"}
+                  >
+                    <ExternalLink size={14} />
                   </button>
                   <button
                     className="small-button icon-only"

@@ -585,6 +585,26 @@
   pointer-events: none;
 }
 
+.media-type-chip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  max-width: calc(100% - 16px);
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  background: rgba(21, 44, 52, 0.82);
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .media-fallback {
   display: flex;
   flex-direction: column;
@@ -749,7 +769,7 @@
 .media-item-actions {
   margin-top: 10px;
   display: grid;
-  grid-template-columns: repeat(5, 24px);
+  grid-template-columns: repeat(6, 24px);
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
