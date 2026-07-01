@@ -77,7 +77,7 @@ function createP2PSyncEngine(deps) {
     };
 
     try {
-      const allFiles = walkFiles(notesRoot, { excludeDirs: [".notes-app", "removed", "images"] });
+      const allFiles = walkFiles(notesRoot, { excludeDirs: [".notes-app", "removed", "images", "excali-diagrams"] });
       const mdFiles = allFiles.filter((f) => {
         const lower = f.toLowerCase();
         return lower.endsWith(".md") && !path.basename(f).includes(".sync-conflict-");

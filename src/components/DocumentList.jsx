@@ -125,6 +125,7 @@ export function DocumentList({
                         isFavorite={favoriteSet.has(doc.filePath)}
                         onToggleFavorite={onToggleFavorite}
                         onRemove={onRemove}
+                        showFavorite={false}
                         showRemove={false}
                       />
                     ) : null}
@@ -152,7 +153,6 @@ export function DocumentList({
                       isFavorite={favoriteSet.has(doc.filePath)}
                       onToggleFavorite={onToggleFavorite}
                       onRemove={onRemove}
-                      showFavorite={false}
                     />
                   )}
                 </td>

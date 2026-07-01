@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, memo } from "react";
 import {
   renderMarkdown,
   parseMermaidBlocks,
+  parseDiagramBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
 import { readMarkdownSource } from "../services/electronService";
@@ -12,6 +13,7 @@ import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { formatImageDeleteResult } from "../utils/imageDeleteResult";
 import { removeImageReferenceFromMarkdown } from "../utils/imageMarkdownReferences";
 import { MermaidBlock } from "./MermaidBlock";
+import { ExcalidrawBlock } from "./ExcalidrawBlock";
 import { ImageCropModal } from "./ImageCropModal";
 
 function replaceAllLiteral(source, needle, replacement) {
@@ -223,7 +225,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   const [cropSaving, setCropSaving] = useState(false);
   const [replaceState, setReplaceState] = useState({ busy: false, assetPath: "" });
   const parts = useMemo(() => {
-    return parseMermaidBlocks(content);
+    return parseDiagramBlocks(content);
   }, [content]);
 
   useEffect(() => {
@@ -973,6 +975,18 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         {parts.map((part, index) =>
           part.type === "mermaid" ? (
             <MermaidBlock code={part.value} index={index} key={`${part.type}-${index}`} />
+          ) : part.type === "excalidraw" ? (
+            <ExcalidrawBlock 
+              imagePath={part.imagePath}
+              diagramId={part.diagramId}
+              docSlug={basePath?.split(/[/\\]/).pop()?.replace('.md', '') || 'document'}
+              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join('/')}
+              index={index}
+              key={`${part.type}-${index}`}
+              onUpdate={(newData) => {
+                console.log("Diagram updated:", newData);
+              }}
+            />
           ) : (
             <div
               key={`${part.type}-${index}`}

@@ -9,6 +9,8 @@ import { DashboardPanels } from "./components/DashboardPanels";
 import { LandingListControls } from "./components/LandingListControls";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
 import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
+import { HelpCenterModal } from "./components/HelpCenterModal";
+import { AboutModal } from "./components/AboutModal";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
 const MediaTab = lazy(() =>
@@ -33,7 +35,11 @@ const WorkspaceGraphPanel = lazy(() =>
 );
 import {
   onMenuAction,
+  notifyBootReady,
+  notifyBootProgress,
   getHistory,
+  getAppInfo,
+  getHelpDocuments,
   updateMenuContext,
   getGitWorkspaceMetadata,
   setAutoIgnoreGitMetadata,
@@ -139,6 +145,18 @@ export default function App() {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
+  const [helpCenterOpen, setHelpCenterOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [appInfoLoading, setAppInfoLoading] = useState(true);
+  const [helpDocsLoading, setHelpDocsLoading] = useState(true);
+  const bootReadyNotifiedRef = useRef(false);
+  const [appInfo, setAppInfo] = useState({
+    appName: "Notely",
+    version: "0.0.0",
+    versionCore: "0.0.0",
+    commitHash: "",
+  });
+  const [helpDocuments, setHelpDocuments] = useState([]);
   const [gitWorkspaceMeta, setGitWorkspaceMeta] = useState({
     workspaceRoot: "",
     isGitRoot: false,
@@ -476,6 +494,62 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    void getAppInfo()
+      .then((info) => {
+        setAppInfo({
+          appName: String(info?.appName || "Notely"),
+          version: String(info?.version || "0.0.0"),
+          versionCore: String(info?.versionCore || "0.0.0"),
+          commitHash: String(info?.commitHash || ""),
+        });
+      })
+      .catch(() => {
+        // Ignore app-info failures in renderer and keep fallback values.
+      })
+      .finally(() => {
+        setAppInfoLoading(false);
+      });
+
+    void getHelpDocuments()
+      .then((docs) => {
+        setHelpDocuments(Array.isArray(docs) ? docs : []);
+      })
+      .catch(() => {
+        setHelpDocuments([]);
+      })
+      .finally(() => {
+        setHelpDocsLoading(false);
+      });
+  }, []);
+
+  const bootProgress = useMemo(() => {
+    const workspacePart = loading ? 0 : 34;
+    const appInfoPart = appInfoLoading ? 0 : 33;
+    const docsPart = helpDocsLoading ? 0 : 33;
+    return Math.min(100, workspacePart + appInfoPart + docsPart);
+  }, [loading, appInfoLoading, helpDocsLoading]);
+
+  const bootPhase = loading
+    ? "Loading workspace"
+    : appInfoLoading
+      ? "Loading app metadata"
+      : helpDocsLoading
+        ? "Loading help documentation"
+        : "Launching application";
+
+  useEffect(() => {
+    notifyBootProgress({ phase: bootPhase, percent: bootProgress });
+  }, [bootPhase, bootProgress]);
+
+  useEffect(() => {
+    if (bootProgress < 100) return;
+    if (bootReadyNotifiedRef.current) return;
+    bootReadyNotifiedRef.current = true;
+    notifyBootProgress({ phase: "Ready", percent: 100 });
+    notifyBootReady();
+  }, [bootProgress]);
+
+  useEffect(() => {
     const rootPath = String(activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "");
     const currentPath = String(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
     const canRemoveFolder = Boolean(rootPath && currentPath && rootPath.toLowerCase() !== currentPath.toLowerCase());
@@ -516,6 +590,22 @@ export default function App() {
         setGlobalSearchOpen(false);
         setShortcutsModalOpen(false);
         setCommandPaletteOpen(true);
+        return;
+      }
+
+      if (action === "open-help-center" || action === "open-about") {
+        if (action === "open-about") {
+          setAboutOpen(true);
+        } else {
+          setHelpCenterOpen(true);
+        }
+        return;
+      }
+
+      if (action === "open-shortcuts") {
+        setGlobalSearchOpen(false);
+        setCommandPaletteOpen(false);
+        setShortcutsModalOpen(true);
         return;
       }
 
@@ -767,6 +857,8 @@ export default function App() {
 
   const paletteCommandsBase = [
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document" },
+    { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
+    { id: "open-about", label: "Open About Notely", group: "Help", aliases: "about version build" },
     { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory" },
     { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes" },
     { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
@@ -996,6 +1088,16 @@ export default function App() {
 
     if (resolvedCommandId === "new-note") {
       setNoteDialogOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-help-center") {
+      setHelpCenterOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-about") {
+      setAboutOpen(true);
       return;
     }
 
@@ -1925,6 +2027,19 @@ export default function App() {
           />
         </Suspense>
       )}
+
+      <HelpCenterModal
+        open={helpCenterOpen}
+        onClose={() => setHelpCenterOpen(false)}
+        appInfo={appInfo}
+        documents={helpDocuments}
+      />
+
+      <AboutModal
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        appInfo={appInfo}
+      />
 
     </div>
   );

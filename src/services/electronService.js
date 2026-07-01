@@ -27,6 +27,22 @@ export function updateMenuContext(context) {
   api.updateMenuContext(context || {});
 }
 
+export function notifyBootReady() {
+  const api = getNotesApi();
+  if (typeof api.notifyBootReady !== "function") {
+    return;
+  }
+  api.notifyBootReady();
+}
+
+export function notifyBootProgress(progress) {
+  const api = getNotesApi();
+  if (typeof api.notifyBootProgress !== "function") {
+    return;
+  }
+  api.notifyBootProgress(progress || {});
+}
+
 export async function aiQuery(query, context = {}) {
   const api = getNotesApi();
   if (typeof api.aiQuery !== "function") {
@@ -125,6 +141,28 @@ export async function getNotesRootSetting() {
     throw new Error("Notes folder settings are unavailable. Please restart the app.");
   }
   return api.getNotesRootSetting();
+}
+
+export async function getAppInfo() {
+  const api = getNotesApi();
+  if (typeof api.getAppInfo !== "function") {
+    return {
+      appName: "Notely",
+      version: "0.0.0",
+      versionCore: "0.0.0",
+      commitHash: "",
+    };
+  }
+  return api.getAppInfo();
+}
+
+export async function getHelpDocuments() {
+  const api = getNotesApi();
+  if (typeof api.getHelpDocuments !== "function") {
+    return [];
+  }
+  const docs = await api.getHelpDocuments();
+  return Array.isArray(docs) ? docs : [];
 }
 
 export async function setNotesRootSetting(notesRoot) {
