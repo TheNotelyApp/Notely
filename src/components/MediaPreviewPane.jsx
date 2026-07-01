@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, ExternalLink } from "lucide-react";
+import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ZoomIn, ZoomOut, Maximize2, ExternalLink } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import PdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker";
 import { ImageCropModal } from "./ImageCropModal";
@@ -58,9 +58,8 @@ function getDocumentKind(extension) {
 
 export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalImages = false, onClose, onMediaChanged }) {
   const [error, setError] = useState(null);
-  const [pdfPages, setPdfPages] = useState(0);
-  const [currentPdfPage, setCurrentPdfPage] = useState(1);
-  const [pdfContent, setPdfContent] = useState(null);
+  const [pdfPageImages, setPdfPageImages] = useState([]);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [displayedImage, setDisplayedImage] = useState(null);
   const [imageInfo, setImageInfo] = useState(null);
@@ -124,9 +123,8 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
 
   useEffect(() => {
     setError(null);
-    setPdfPages(0);
-    setCurrentPdfPage(1);
-    setPdfContent(null);
+    setPdfPageImages([]);
+    setPdfLoading(false);
     setDisplayedImage(null);
     setImageInfo(null);
     setShowCropModal(false);
@@ -463,52 +461,46 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   }, [displayedImage, imageZoom, isDragging, dragStart, mediaType]);
 
   const loadPdf = async (source) => {
+    setPdfLoading(true);
     try {
       ensurePdfWorker();
       const input = typeof source === "string" && source.startsWith("data:")
         ? { data: dataUrlToUint8Array(source) }
         : source;
       const pdf = await pdfjsLib.getDocument(input).promise;
-      setPdfPages(pdf.numPages);
-      await renderPdfPage(pdf, 1);
+      await renderPdfPages(pdf);
     } catch (err) {
       setError(`Failed to load PDF: ${err.message}`);
+    } finally {
+      setPdfLoading(false);
     }
   };
 
-  const renderPdfPage = async (pdf, pageNum) => {
+  const renderPdfPages = async (pdf) => {
     try {
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      const renderedPages = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
-      await page.render({
-        canvasContext: context,
-        viewport,
-      }).promise;
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise;
 
-      setPdfContent(canvas.toDataURL());
+        renderedPages.push({
+          page: pageNum,
+          dataUrl: canvas.toDataURL(),
+        });
+      }
+
+      setPdfPageImages(renderedPages);
     } catch (err) {
-      setError(`Failed to render PDF page: ${err.message}`);
-    }
-  };
-
-  const handlePdfPageChange = async (direction) => {
-    const newPage = Math.max(1, Math.min(pdfPages, currentPdfPage + direction));
-    setCurrentPdfPage(newPage);
-
-    try {
-      ensurePdfWorker();
-      const input = typeof resolvedPath === "string" && resolvedPath.startsWith("data:")
-        ? { data: dataUrlToUint8Array(resolvedPath) }
-        : resolvedPath;
-      const pdf = await pdfjsLib.getDocument(input).promise;
-      await renderPdfPage(pdf, newPage);
-    } catch (err) {
-      setError(`Failed to load PDF page: ${err.message}`);
+      setError(`Failed to render PDF: ${err.message}`);
     }
   };
 
@@ -542,7 +534,7 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
         </button>
       </div>
 
-      <div className="media-preview-content">
+      <div className={`media-preview-content ${mediaType === "pdf" ? "pdf-mode" : ""}`}>
         {error && <div className="media-preview-error">{error}</div>}
 
         {mediaType === "image" && !error && (
@@ -682,43 +674,16 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
 
         {mediaType === "pdf" && !error && (
           <div className="media-preview-pdf-container">
-            {pdfContent && (
-              <div className="pdf-viewer">
-                <img src={pdfContent} alt={`PDF page ${currentPdfPage}`} />
-                <div className="pdf-controls">
-                  <button
-                    type="button"
-                    onClick={handleOpenInDefaultApp}
-                    disabled={!basePath || openingExternal}
-                    title="Open in default PDF app"
-                    aria-label="Open in default PDF app"
-                  >
-                    <ExternalLink size={14} />
-                  </button>
-                  <button
-                    className="icon-only"
-                    onClick={() => handlePdfPageChange(-1)}
-                    disabled={currentPdfPage === 1}
-                    title="Previous page"
-                    aria-label="Previous page"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span className="pdf-page-info">
-                    Page {currentPdfPage} of {pdfPages}
-                  </span>
-                  <button
-                    className="icon-only"
-                    onClick={() => handlePdfPageChange(1)}
-                    disabled={currentPdfPage === pdfPages}
-                    title="Next page"
-                    aria-label="Next page"
-                  >
-                    <ChevronRight size={14} />
-                  </button>
+            <div className="pdf-viewer">
+              {pdfLoading ? <p className="pdf-empty-state">Rendering PDF...</p> : null}
+              {!pdfLoading && !pdfPageImages.length ? <p className="pdf-empty-state">No pages to display.</p> : null}
+              {pdfPageImages.map((entry) => (
+                <div className="pdf-page-frame" key={`pdf-page-${entry.page}`}>
+                  <img src={entry.dataUrl} alt={`PDF page ${entry.page}`} />
+                  <span className="pdf-page-label">Page {entry.page}</span>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
 
