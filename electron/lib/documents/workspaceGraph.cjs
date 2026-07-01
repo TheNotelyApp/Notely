@@ -1,6 +1,6 @@
 const DEFAULT_EXCLUDE_DIRS = new Set([
   ".notes-app", ".versions", "node_modules", ".git", ".svn", ".hg",
-  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed",
+  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed", "excali-diagrams",
   ".venv", "venv", ".next", ".nuxt", "coverage"
 ]);
 

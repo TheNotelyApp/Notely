@@ -2,7 +2,7 @@ const { shouldHideDirectory } = require("../core/folderPolicy.cjs");
 
 const DEFAULT_WALK_EXCLUDE_DIRS = new Set([
   ".notes-app", ".versions", "node_modules", ".git", ".svn", ".hg",
-  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed",
+  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed", "excali-diagrams",
   ".venv", "venv", ".next", ".nuxt", "coverage"
 ]);
 
@@ -24,7 +24,7 @@ function createWorkspaceEntries(deps) {
       for (const entry of entries) {
         const nextPath = path.join(currentDir, entry.name);
         if (entry.isDirectory()) {
-          if (excludeDirs.has(entry.name)) continue;
+          if (excludeDirs.has(entry.name) || shouldHideDirectory(entry.name)) continue;
           visit(nextPath);
           continue;
         }
