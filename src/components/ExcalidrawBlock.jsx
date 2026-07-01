@@ -76,7 +76,11 @@ export function ExcalidrawBlock({ imagePath, diagramId, docSlug, documentPath, o
   };
 
   return (
-    <div className="excalidraw-block">
+    <div
+      className="excalidraw-block"
+      data-diagram-id={diagramId || ""}
+      data-diagram-image-path={imagePath || ""}
+    >
       <div
         className="excalidraw-preview-container"
         onClick={() => !loading && setIsModalOpen(true)}

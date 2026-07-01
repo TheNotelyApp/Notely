@@ -27,10 +27,31 @@ function imageCacheKey(assetPath, variant = "thumbnail") {
 
 function getImageActionElement(target) {
   if (!(target instanceof HTMLElement)) return null;
+  if (target.closest?.(".excalidraw-block")) return null;
   if (target.tagName === "IMG") return target;
   const frame = target.closest?.(".markdown-image-frame");
   const framedImage = frame?.querySelector?.("img");
   return framedImage instanceof HTMLImageElement ? framedImage : null;
+}
+
+function getExcalidrawActionContext(target) {
+  if (!(target instanceof HTMLElement)) return null;
+  const block = target.closest?.(".excalidraw-block");
+  if (!block) return null;
+
+  const preview = block.querySelector?.(".excalidraw-preview-container");
+  if (!(preview instanceof HTMLElement)) return null;
+
+  const image = block.querySelector?.(".diagram-image");
+  const bounds = preview.getBoundingClientRect();
+  return {
+    block,
+    preview,
+    image: image instanceof HTMLImageElement ? image : null,
+    bounds,
+    diagramId: block.getAttribute("data-diagram-id") || "",
+    imagePath: block.getAttribute("data-diagram-image-path") || "",
+  };
 }
 
 function applyImageAnnotation(image, annotation) {
@@ -542,6 +563,24 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   };
 
   const openImageContextMenu = (event, sourceImage = null, x = null, y = null) => {
+    const sourceTarget = sourceImage || event?.target;
+    const diagramContext = getExcalidrawActionContext(sourceTarget);
+    if (diagramContext) {
+      event?.preventDefault?.();
+      menuSourceRef.current = diagramContext.preview;
+      setContextMenu({
+        kind: "diagram",
+        x: Number.isFinite(x) ? x : event?.clientX,
+        y: Number.isFinite(y) ? y : event?.clientY,
+        keyboardOpened: !Number.isFinite(event?.clientX),
+        anchorX: diagramContext.bounds.left + Math.min(diagramContext.bounds.width * 0.5, 220),
+        anchorY: diagramContext.bounds.top + Math.min(diagramContext.bounds.height * 0.5, 80),
+        diagramId: diagramContext.diagramId,
+        diagramImagePath: diagramContext.imagePath,
+      });
+      return;
+    }
+
     const imageElement = sourceImage || getImageActionElement(event.target);
     if (!imageElement) {
       closeContextMenu();
@@ -555,6 +594,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     const bounds = imageElement.getBoundingClientRect();
     menuSourceRef.current = imageElement;
     setContextMenu({
+      kind: "image",
       x: Number.isFinite(x) ? x : event.clientX,
       y: Number.isFinite(y) ? y : event.clientY,
       keyboardOpened: !Number.isFinite(event?.clientX),
@@ -650,6 +690,39 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       onNotify?.("Image markdown copied.", "success");
     } catch {
       onNotify?.("Unable to copy image markdown.", "error");
+    } finally {
+      closeContextMenu();
+    }
+  };
+
+  const editDiagramFromMenu = () => {
+    const source = menuSourceRef.current;
+    const preview = source instanceof HTMLElement
+      ? (source.classList.contains("excalidraw-preview-container") ? source : source.closest?.(".excalidraw-preview-container"))
+      : null;
+    if (preview instanceof HTMLElement) {
+      preview.click();
+    }
+    closeContextMenu();
+  };
+
+  const copyDiagramMarkdownFromMenu = async () => {
+    if (!contextMenu?.diagramImagePath) {
+      onNotify?.("Diagram reference unavailable.", "info");
+      closeContextMenu();
+      return;
+    }
+
+    const metadata = contextMenu.diagramId
+      ? `{data-diagram-id="${contextMenu.diagramId}" data-diagram-type="excalidraw"}`
+      : "";
+    const markdown = `![Excalidraw Diagram](${contextMenu.diagramImagePath})${metadata}`;
+
+    try {
+      await navigator.clipboard.writeText(markdown);
+      onNotify?.("Diagram markdown copied.", "success");
+    } catch {
+      onNotify?.("Unable to copy diagram markdown.", "error");
     } finally {
       closeContextMenu();
     }
@@ -796,7 +869,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     }
   };
 
-  const menuActions = [
+  const imageMenuActions = [
     {
       key: "view",
       label: "View image",
@@ -835,6 +908,23 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     },
   ];
 
+  const diagramMenuActions = [
+    {
+      key: "edit-diagram",
+      label: "Edit diagram",
+      onSelect: editDiagramFromMenu,
+      disabled: false,
+    },
+    {
+      key: "copy-diagram",
+      label: "Copy diagram markdown",
+      onSelect: copyDiagramMarkdownFromMenu,
+      disabled: false,
+    },
+  ];
+
+  const activeMenuActions = contextMenu?.kind === "diagram" ? diagramMenuActions : imageMenuActions;
+
   const handleMenuKeyDown = (event) => {
     if (!contextMenu) return;
     if (event.key === "Escape") {
@@ -845,13 +935,13 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setMenuIndex((current) => (current + 1) % menuActions.length);
+      setMenuIndex((current) => (current + 1) % activeMenuActions.length);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setMenuIndex((current) => (current - 1 + menuActions.length) % menuActions.length);
+      setMenuIndex((current) => (current - 1 + activeMenuActions.length) % activeMenuActions.length);
       return;
     }
 
@@ -863,13 +953,13 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
 
     if (event.key === "End") {
       event.preventDefault();
-      setMenuIndex(menuActions.length - 1);
+      setMenuIndex(activeMenuActions.length - 1);
       return;
     }
 
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      const action = menuActions[menuIndex];
+      const action = activeMenuActions[menuIndex];
       if (!action?.disabled) {
         action.onSelect();
       }
@@ -1012,8 +1102,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           onKeyDown={handleMenuKeyDown}
         >
           <div className="editor-context-menu-group">
-            <div className="editor-context-menu-label">Image actions</div>
-            {menuActions.map((action, index) => (
+            <div className="editor-context-menu-label">{contextMenu?.kind === "diagram" ? "Diagram actions" : "Image actions"}</div>
+            {activeMenuActions.map((action, index) => (
               <button
                 key={action.key}
                 type="button"
