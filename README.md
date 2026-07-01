@@ -18,6 +18,27 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Visualise the workspace as an interactive note graph.
 - Use built-in AI features powered by Gemini or Groq for chat, queries, and semantic search.
 
+## In-app Help Center
+
+Notely includes built-in user documentation in the app menu:
+
+- Open **Help -> Help Center** (or press `F1`) to view app usage guidance directly in the app.
+- Open **Help -> Keyboard Shortcuts** for shortcut references.
+- Open **Help -> About Notely** to view a dedicated About dialog with product identity and build information.
+
+The Help Center includes quick start, core features, shortcuts, and storage/versioning notes so users do not need to leave the app to find documentation.
+The Help Center now reads its content directly from the repository `docs/` folder so in-app and repository documentation stay aligned.
+
+## Documentation set
+
+Project documentation is organized under `docs/` for maintainability and professional handoff:
+
+- `docs/index.md` documentation entry point
+- `docs/user-guide.md` end-user workflows and procedures
+- `docs/operations-guide.md` operational and support guidance
+- `docs/versioning-release.md` versioning and release process
+- `docs/help-center-ia.md` Help Center information architecture
+
 ## Workspace Graph
 
 Open **Workspace → Workspace Graph** (`Ctrl+Shift+G`) to visualise all notes and media in the active workspace as an interactive node-edge graph.
@@ -417,6 +438,29 @@ Windows packaging scripts are included in the repo:
 - `npm run pack:win` builds an unpacked Windows app.
 - `npm run dist:win` builds distributable Windows installers.
 - `./build-windows-exe.sh` is available for the current packaging flow.
+
+### Build versioning
+
+Notely build versions are generated as:
+
+- `major.minor.patch-commitHash`
+
+Where:
+
+- `major`, `minor`, and `patch` are read from `app-version.json`.
+- `commitHash` is the latest short commit hash from `master` (fallback: `origin/master`, then `HEAD`).
+
+Version files and scripts:
+
+- `app-version.json` source of truth for semantic version numbers.
+- `scripts/generate-app-version.cjs` generates build metadata.
+- `electron/app-version.generated.json` generated version payload used by app/runtime.
+
+Commands:
+
+- `npm run version:generate` generates/refreshes version metadata.
+- `npm run dev` and `npm run build` automatically regenerate version metadata.
+- Windows packaging (`pack:win`, `dist:win`) injects generated version metadata into Electron Builder so packaged app version surfaces the hash.
 
 ### Windows code-signing strategy
 
