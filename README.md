@@ -508,6 +508,22 @@ If strict mode is enabled and a command is not allowed, it is blocked in-session
 - `build/` app icons and build assets
 - `release/` collected release outputs
 
+## Backlogs
+
+Planned additions and improvements for upcoming iterations:
+
+- Diagram version timeline with visual compare and restore.
+- Excalidraw element comments and review threads.
+- Search indexing for diagram text/content.
+- Update-from-source flow for image-converted Excalidraw diagrams.
+- Interactive diagram hotspots linking to notes/files.
+- Expanded P2P sync dashboard with per-peer media/diagram health.
+- OCR-assisted alt text suggestions for inserted images.
+- Command palette automation macros for repeated authoring tasks.
+
 ## License and ownership
 
 This repository is maintained for Notely use.
+
+- Project license: **CC BY-NC 4.0** (see `LICENSE`).
+- Third-party dependency notices: see `THIRD_PARTY_NOTICES.txt`.
