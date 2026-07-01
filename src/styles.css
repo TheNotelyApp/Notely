@@ -4519,6 +4519,41 @@ button {
   color: #8e1b1b;
 }
 
+.editor-toolbar button.toolbar-btn-capture {
+  position: relative;
+}
+
+.editor-toolbar button.toolbar-btn-capture .toolbar-capture-mode-glyph {
+  position: absolute;
+  right: -4px;
+  top: -5px;
+  min-width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid #cfd8d4;
+  background: #ffffff;
+  color: #355159;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.editor-toolbar button.toolbar-btn-capture.auto .toolbar-capture-mode-glyph {
+  border-color: #bdd2e8;
+  background: #f1f7ff;
+  color: #23476e;
+}
+
+.editor-toolbar button.toolbar-btn-capture.review .toolbar-capture-mode-glyph {
+  border-color: #b7decf;
+  background: #ebfaf4;
+  color: #1b6654;
+}
+
 .mermaid-builder {
   position: absolute;
   top: calc(100% + 8px);

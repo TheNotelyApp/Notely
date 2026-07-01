@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   setNotesRootSetting: (payload) => ipcRenderer.invoke("settings:set-notes-root", payload),
   getGitWorkspaceMetadata: () => ipcRenderer.invoke("settings:get-git-workspace-meta"),
   setAutoIgnoreGitMetadata: (payload) => ipcRenderer.invoke("settings:set-auto-ignore-git-metadata", payload),
+  captureCurrentDisplay: () => ipcRenderer.invoke("screen:capture-current-display"),
   pickFolder: () => ipcRenderer.invoke("settings:pick-folder"),
   listProjects: () => ipcRenderer.invoke("projects:list"),
   setActiveProject: (payload) => ipcRenderer.invoke("projects:set-active", payload),

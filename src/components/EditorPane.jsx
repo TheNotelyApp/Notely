@@ -45,6 +45,8 @@ export function EditorPane({
   showOriginalImages = false,
   inlineLinkedMarkdown = false,
   workspaceStorageScope = "default",
+  typoCheckEnabled = true,
+  screenCaptureMode = "auto",
 }) {
   const previewRef = useRef(null);
   const splitPaneRef = useRef(null);
@@ -54,8 +56,6 @@ export function EditorPane({
   const [selectedMediaPreview, setSelectedMediaPreview] = useState(null);
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const deferredValue = useDeferredValue(value);
-  // Disable spell check in split view by default to reduce validation overhead during scrolling
-  const [spellCheckEnabled, setSpellCheckEnabled] = useState(mode !== "split");
   const [ignoredSpellingWords, setIgnoredSpellingWords] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
     key: "notes:ignored-spelling-words",
@@ -64,7 +64,7 @@ export function EditorPane({
   });
   const isSplitMode = mode === "split";
   const { issues: validationIssues, status: validationStatus } = useMarkdownValidation(value, {
-    spellCheck: spellCheckEnabled,
+    spellCheck: typoCheckEnabled,
     ignoredWords: ignoredSpellingWords,
     strategy: "debounce",
     debounceMs: isSplitMode ? 1200 : 500,
@@ -342,8 +342,6 @@ export function EditorPane({
     onRedo,
     canUndo,
     canRedo,
-    spellCheckEnabled,
-    onToggleSpellCheck: () => setSpellCheckEnabled((prev) => !prev),
     ignoredSpellingWords,
     onIgnoreSpellingWord: (word) => {
       const normalized = String(word || "").trim().toLowerCase();
@@ -365,6 +363,7 @@ export function EditorPane({
       setIgnoredSpellingWords([]);
       onNotify?.("Cleared ignored spelling words.", "info");
     },
+    screenCaptureMode,
   };
 
   const renderToolbar = () => (

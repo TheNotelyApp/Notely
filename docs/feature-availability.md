@@ -14,6 +14,7 @@ This page helps you decide what works offline, what needs optional setup, and wh
 | Global search | Yes | No | No |
 | Version history | Yes | No | No |
 | Media insert/manage | Yes | No | No |
+| Screen area capture (Windows) | Yes | No | No |
 | Mermaid diagrams | Yes | No | No |
 | Excalidraw diagrams | Yes | No | No |
 | Workspace graph | Yes | No | No |
@@ -53,3 +54,7 @@ Graph clustering and freshness indicators depend on embedding generation and cac
 - If you work fully offline, core note authoring features are fully available.
 - If you collaborate across devices, configure P2P sync.
 - If you need semantic and AI features, complete AI setup first.
+
+## Platform Notes
+
+- Screen area capture uses Windows snip integration and is currently Windows-focused.

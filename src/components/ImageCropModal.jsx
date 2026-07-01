@@ -141,6 +141,7 @@ export function ImageCropModal({
   open,
   imageSrc,
   imageLabel,
+  allowSaveWithoutEdits = false,
   initialAnnotation = null,
   annotationOnly = false,
   restoreOriginalAvailable = false,
@@ -289,7 +290,11 @@ export function ImageCropModal({
     }
 
     if (!imageRef.current) return;
-    if (!hasSelection && !hasImageEdits && !annotationDirty) return;
+    if (!hasSelection && !hasImageEdits && !annotationDirty && !allowSaveWithoutEdits) return;
+    if (!hasSelection && !hasImageEdits && !annotationDirty && allowSaveWithoutEdits) {
+      await onSave?.(workingImageSrc || imageSrc, currentAnnotation);
+      return;
+    }
     if (!hasSelection && !hasImageEdits) {
       await onSave?.(null, currentAnnotation);
       return;
@@ -413,7 +418,7 @@ export function ImageCropModal({
 
     if (annotationOnly || !selection) return;
 
-    if (event.key === "Enter" && (hasSelection || hasImageEdits) && !saving && !rotating) {
+    if (event.key === "Enter" && (hasSelection || hasImageEdits || allowSaveWithoutEdits) && !saving && !rotating) {
       event.preventDefault();
       void handleSave();
       return;
@@ -619,7 +624,11 @@ export function ImageCropModal({
               type="button"
               className="small-button"
               onClick={handleSave}
-              disabled={(annotationOnly ? !annotationDirty : (!hasSelection && !hasImageEdits && !annotationDirty)) || saving || rotating}
+              disabled={(
+                annotationOnly
+                  ? !annotationDirty
+                  : (!hasSelection && !hasImageEdits && !annotationDirty && !allowSaveWithoutEdits)
+              ) || saving || rotating}
             >
               <Check size={14} />
               {saving ? "Saving..." : rotating ? "Previewing..." : "Save"}

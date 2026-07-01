@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, shell } = require("electron");
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
@@ -699,10 +699,12 @@ ipcMain.on("app:boot-progress", (event, payload) => {
 registerCoreIpcHandlers(ipcMain, {
   BrowserWindow,
   app,
+  clipboard,
   dialog,
   fs,
   process,
   path,
+  shell,
   projectRoot,
   ensureDir,
   readUserSettings,

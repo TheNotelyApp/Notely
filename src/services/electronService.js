@@ -203,6 +203,14 @@ export async function pickFolder() {
   return api.pickFolder();
 }
 
+export async function captureCurrentDisplay() {
+  const api = getNotesApi();
+  if (typeof api.captureCurrentDisplay !== "function") {
+    throw new Error("Area snipping is unavailable. Please restart the app.");
+  }
+  return api.captureCurrentDisplay();
+}
+
 export async function listDocuments(folderPath) {
   const api = getNotesApi();
   return api.listDocuments({ folderPath });

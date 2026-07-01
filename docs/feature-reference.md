@@ -100,6 +100,22 @@ Insert local media and linked files from note workflows.
 
 Rename, replace, annotate, and open media in default apps.
 
+### Screen capture (Windows)
+
+Notely supports area-based screen capture directly from the editor.
+
+- Trigger capture from the toolbar screen icon or `Ctrl/Cmd + Shift + S`.
+- Use Windows snip overlay to select an area.
+- Insert behavior is controlled by **Settings -> Screen Capture**:
+  - **Auto Insert**: captured image is inserted immediately.
+  - **Review Before Insert**: open review editor first, then save to insert.
+- In review mode, edits are optional; you can save as-is.
+
+The toolbar capture icon shows current mode:
+
+- `A` = Auto Insert
+- `R` = Review Before Insert
+
 ### Media preview tools
 
 Use zoom and media-aware preview controls to inspect assets.

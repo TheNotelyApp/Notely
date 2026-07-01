@@ -53,3 +53,22 @@ If you need help from your team, share:
 - App version from **Help -> About Notely**
 - What you were doing when issue started
 - Exact error message text (if shown)
+
+## 8. Screen Capture Mode Looks Incorrect (A/R)
+
+1. Open **Settings -> Screen Capture** and choose mode again.
+2. Check toolbar capture icon marker. `A` means Auto Insert and `R` means Review Before Insert.
+3. Trigger a fresh capture (`Ctrl/Cmd + Shift + S`) to confirm behavior.
+
+If marker and menu differ, restart app once and re-check.
+
+## 9. Review Mode Save Appears Unresponsive
+
+In current flow, review mode Save should work even without making edits.
+
+If Save still appears blocked:
+
+1. Ensure review dialog is focused.
+2. Confirm image preview has loaded.
+3. Try keyboard Enter once.
+4. Retry capture from toolbar.

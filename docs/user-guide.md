@@ -51,7 +51,19 @@ You can insert and manage media directly from your notes:
 
 Tip: keep image names meaningful so teammates can identify assets quickly.
 
-## 6. Use Diagrams (Mermaid and Excalidraw)
+## 6. Capture Screen Areas into Notes (Windows)
+
+1. Place your cursor where you want the screenshot markdown inserted.
+2. Click the toolbar capture icon, or press `Ctrl/Cmd + Shift + S`.
+3. Select screen area in Windows snip overlay.
+4. If mode is **Auto Insert**, image is inserted directly.
+5. If mode is **Review Before Insert**, adjust (optional) and click **Save**.
+
+Change mode in **Settings -> Screen Capture**.
+
+Tip: capture icon marker shows active mode (`A` auto, `R` review).
+
+## 7. Use Diagrams (Mermaid and Excalidraw)
 
 ### Mermaid
 
@@ -65,14 +77,14 @@ Tip: keep image names meaningful so teammates can identify assets quickly.
 2. Edit visually and save.
 3. Re-open from preview to continue editing.
 
-## 7. Navigate Large Workspaces
+## 8. Navigate Large Workspaces
 
 - **View -> Show Outline** for quick jumps inside long notes.
 - **View -> Split Preview** to keep source and output aligned.
 - **View -> Focus Mode** to reduce distractions.
 - **Workspace -> Workspace Graph** to explore note and media relationships.
 
-## 8. Get Help Quickly
+## 9. Get Help Quickly
 
 - **Help -> Documentation** (`F1`) for in-app help.
 - **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) for key bindings.

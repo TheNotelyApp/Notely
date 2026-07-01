@@ -14,6 +14,8 @@ function buildAppMenu(win, context = {}) {
   const outlineEnabled = context?.outlineEnabled !== false;
   const splitPreviewEnabled = context?.splitPreviewEnabled === true;
   const focusModeEnabled = context?.focusModeEnabled === true;
+  const typoCheckEnabled = context?.typoCheckEnabled !== false;
+  const screenCaptureMode = context?.screenCaptureMode === "review" ? "review" : "auto";
   const terminalOpen = context?.terminalOpen === true;
   const terminalShell = context?.terminalShell === "bash" || context?.terminalShell === "cmd"
     ? context.terminalShell
@@ -141,6 +143,12 @@ function buildAppMenu(win, context = {}) {
             label: "Find or Replace",
             accelerator: "CmdOrCtrl+F",
             click: () => sendMenuAction(win, "find-replace")
+          },
+          {
+            label: "Enable Typo Check",
+            type: "checkbox",
+            checked: typoCheckEnabled,
+            click: () => sendMenuAction(win, "toggle-typo-check")
           }
         ]
       : [])
@@ -292,6 +300,28 @@ function buildAppMenu(win, context = {}) {
     {
       label: "View",
       submenu: viewSubmenu
+    },
+    {
+      label: "Settings",
+      submenu: [
+        {
+          label: "Screen Capture",
+          submenu: [
+            {
+              label: "Auto Insert",
+              type: "radio",
+              checked: screenCaptureMode === "auto",
+              click: () => sendMenuAction(win, "settings-screen-capture-auto")
+            },
+            {
+              label: "Review Before Insert",
+              type: "radio",
+              checked: screenCaptureMode === "review",
+              click: () => sendMenuAction(win, "settings-screen-capture-review")
+            }
+          ]
+        }
+      ]
     },
     {
       label: "P2P",

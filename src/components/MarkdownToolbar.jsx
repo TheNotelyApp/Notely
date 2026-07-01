@@ -14,15 +14,16 @@ import {
   Table2,
   ImagePlus,
   Zap,
-  SpellCheck,
+  Scan,
 } from "lucide-react";
 import { applySnippet, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
 import { insertMediaFromFile } from "../services/imageService";
-import { listDocuments, listImages } from "../services/electronService";
+import { captureCurrentDisplay, listDocuments, listImages, saveImage } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUtils";
+import { ImageCropModal } from "./ImageCropModal";
 
 function canonicalPathKey(pathValue) {
   const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
@@ -108,12 +109,11 @@ export function MarkdownToolbar({
   onRedo,
   canUndo = false,
   canRedo = false,
-  spellCheckEnabled = true,
-  onToggleSpellCheck,
   ignoredSpellingWords = [],
   onIgnoreSpellingWord,
   onRemoveIgnoredSpellingWord,
   onClearIgnoredSpellingWords,
+  screenCaptureMode = "auto",
 }) {
   const imageInputRef = useRef(null);
   const mermaidPopoverRef = useRef(null);
@@ -147,6 +147,11 @@ export function MarkdownToolbar({
   const [tableRows, setTableRows] = useState(3);
   const [tableColumns, setTableColumns] = useState(3);
   const [diagramMode, setDiagramMode] = useState("picker");
+  const [screenCaptureOpen, setScreenCaptureOpen] = useState(false);
+  const [screenCaptureImageSrc, setScreenCaptureImageSrc] = useState("");
+  const [screenCaptureLabel, setScreenCaptureLabel] = useState("");
+  const [screenCaptureBusy, setScreenCaptureBusy] = useState(false);
+  const [screenCaptureSaving, setScreenCaptureSaving] = useState(false);
 
   const closeToolbarPanels = () => {
     setShowMermaidBuilder(false);
@@ -589,8 +594,105 @@ export function MarkdownToolbar({
     onNotify?.("Excalidraw reference inserted.", "success");
   };
 
+  const createScreenshotFileName = () => {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    const stamp = [
+      now.getFullYear(),
+      pad(now.getMonth() + 1),
+      pad(now.getDate()),
+      "-",
+      pad(now.getHours()),
+      pad(now.getMinutes()),
+      pad(now.getSeconds()),
+    ].join("");
+    return `screenshot-${stamp}.png`;
+  };
+
+  const closeScreenCapture = () => {
+    if (screenCaptureSaving) return;
+    setScreenCaptureOpen(false);
+    setScreenCaptureImageSrc("");
+    setScreenCaptureLabel("");
+  };
+
+  const insertCapturedImage = async (dataUrl) => {
+    if (screenCaptureSaving) return false;
+
+    setScreenCaptureSaving(true);
+    try {
+      const savedPath = await saveImage(createScreenshotFileName(), dataUrl, basePath);
+      const markdown = createMediaMarkdown("Screenshot", savedPath);
+      insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
+      onNotify?.("Screen area inserted.", "success");
+      return true;
+    } finally {
+      setScreenCaptureSaving(false);
+    }
+  };
+
+  const openScreenCapture = async () => {
+    if (screenCaptureBusy || screenCaptureSaving) return;
+
+    setScreenCaptureBusy(true);
+    closeToolbarPanels();
+    onNotify?.("Select area to snip. Press Esc to cancel.", "info");
+    try {
+      const result = await captureCurrentDisplay();
+      if (result?.canceled) {
+        onNotify?.("Screen snip canceled.", "info");
+        return;
+      }
+
+      if (!result?.dataUrl) {
+        throw new Error("Screen snip returned empty data.");
+      }
+
+      if (screenCaptureMode === "review") {
+        setScreenCaptureImageSrc(result.dataUrl);
+        setScreenCaptureLabel("Adjust capture area, then save.");
+        setScreenCaptureOpen(true);
+        return;
+      }
+
+      await insertCapturedImage(result.dataUrl);
+    } catch (error) {
+      onNotify?.(error?.message || "Unable to start area snipping.", "error");
+    } finally {
+      setScreenCaptureBusy(false);
+    }
+  };
+
+  const saveScreenCapture = async (editedDataUrl) => {
+    if (!editedDataUrl || screenCaptureSaving) return;
+
+    try {
+      const inserted = await insertCapturedImage(editedDataUrl);
+      if (inserted) {
+        closeScreenCapture();
+      }
+    } catch (error) {
+      onNotify?.(error?.message || "Unable to save screen capture.", "error");
+    }
+  };
+
+  useEffect(() => {
+    const onShortcut = (event) => {
+      if (!(event.ctrlKey || event.metaKey) || !event.shiftKey) return;
+      if (String(event.key || "").toLowerCase() !== "s") return;
+      event.preventDefault();
+      void openScreenCapture();
+    };
+
+    document.addEventListener("keydown", onShortcut);
+    return () => {
+      document.removeEventListener("keydown", onShortcut);
+    };
+  }, [screenCaptureBusy, screenCaptureSaving, screenCaptureMode, value, basePath]);
+
   return (
-    <div className="editor-toolbar" aria-label="Markdown formatting toolbar">
+    <>
+      <div className="editor-toolbar" aria-label="Markdown formatting toolbar">
       <button onClick={() => onUndo?.()} title="Undo (Ctrl/Cmd+Z)" disabled={!canUndo}>
         <Undo2 size={18} />
       </button>
@@ -617,6 +719,19 @@ export function MarkdownToolbar({
       <button onClick={() => imageInputRef.current?.click()} title="Insert media from file">
         <ImagePlus size={18} />
       </button>
+      <button
+        onClick={() => {
+          void openScreenCapture();
+        }}
+        title={`Capture screen area (Ctrl/Cmd+Shift+S) - ${screenCaptureMode === "review" ? "Review before insert" : "Auto insert"}`}
+        disabled={screenCaptureBusy || screenCaptureSaving}
+        className={screenCaptureMode === "review" ? "toolbar-btn-capture review" : "toolbar-btn-capture auto"}
+      >
+        <Scan size={18} />
+        <span className="toolbar-capture-mode-glyph" aria-hidden="true">
+          {screenCaptureMode === "review" ? "R" : "A"}
+        </span>
+      </button>
       <button onClick={openAssetLinker} title="Insert from workspace">
         <Link size={18} />
       </button>
@@ -625,14 +740,6 @@ export function MarkdownToolbar({
       </button>
       <button onClick={runMarkdownValidation} title="Validate markdown syntax">
         <CheckCircle2 size={18} />
-      </button>
-      <button
-        onClick={onToggleSpellCheck}
-        title={spellCheckEnabled ? "Disable typo check" : "Enable typo check"}
-        className={spellCheckEnabled ? "" : "toolbar-btn-inactive"}
-        aria-pressed={spellCheckEnabled}
-      >
-        <SpellCheck size={18} />
       </button>
       <span className={`toolbar-validation-summary ${validationStatus}`} title={validationSummary}>
         {validationSummary}
@@ -1008,6 +1115,16 @@ export function MarkdownToolbar({
         onChange={handleMediaSelect}
         hidden
       />
-    </div>
+      </div>
+      <ImageCropModal
+        open={screenCaptureOpen}
+        imageSrc={screenCaptureImageSrc}
+        imageLabel={screenCaptureLabel || "Adjust capture area, then save."}
+        allowSaveWithoutEdits
+        saving={screenCaptureSaving}
+        onClose={closeScreenCapture}
+        onSave={(editedDataUrl) => saveScreenCapture(editedDataUrl)}
+      />
+    </>
   );
 }

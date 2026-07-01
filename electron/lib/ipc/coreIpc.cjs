@@ -5,9 +5,11 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     BrowserWindow,
     app,
     dialog,
+    clipboard,
     fs,
     process,
     path,
+    shell,
     projectRoot,
     ensureDir,
     readUserSettings,
@@ -200,6 +202,61 @@ function registerCoreIpcHandlers(ipcMain, deps) {
 
   registerTrustedHandler("settings:set-auto-ignore-git-metadata", (_event, payload) => {
     return setAutoIgnoreMetadataInGit(payload?.enabled !== false);
+  });
+
+  registerTrustedHandler("screen:capture-current-display", async (event) => {
+    if (process.platform !== "win32") {
+      throw new Error("Area snip is currently supported on Windows only.");
+    }
+
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    const beforeImage = clipboard.readImage();
+    const beforePngBase64 = beforeImage.isEmpty() ? "" : beforeImage.toPNG().toString("base64");
+
+    if (senderWindow && !senderWindow.isDestroyed()) {
+      try {
+        senderWindow.minimize();
+        senderWindow.blur();
+      } catch {
+        // Continue even if minimize fails.
+      }
+    }
+
+    try {
+      await shell.openExternal("ms-screenclip:");
+
+      const startedAt = Date.now();
+      const timeoutMs = 25000;
+      while (Date.now() - startedAt < timeoutMs) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const clipped = clipboard.readImage();
+        if (clipped.isEmpty()) continue;
+
+        const pngBase64 = clipped.toPNG().toString("base64");
+        if (!pngBase64 || pngBase64 === beforePngBase64) continue;
+
+        return {
+          dataUrl: `data:image/png;base64,${pngBase64}`,
+          displayName: "Snipped area",
+          canceled: false,
+        };
+      }
+
+      return {
+        dataUrl: "",
+        displayName: "",
+        canceled: true,
+      };
+    } finally {
+      if (senderWindow && !senderWindow.isDestroyed()) {
+        try {
+          senderWindow.restore();
+          senderWindow.focus();
+        } catch {
+          // Best effort window restoration.
+        }
+      }
+    }
   });
 
   return {

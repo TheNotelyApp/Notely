@@ -117,3 +117,12 @@ Use this page when you want quick, direct steps.
 1. Open note actions for export.
 2. Choose PDF export.
 3. Select destination and confirm.
+
+## 21. Capture a screen area into a note
+
+1. Place cursor in note.
+2. Click toolbar capture icon or press `Ctrl/Cmd + Shift + S`.
+3. Select area in Windows snip overlay.
+4. If mode is Review, click Save in review dialog.
+
+Set mode in **Settings -> Screen Capture**.

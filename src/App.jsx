@@ -127,6 +127,14 @@ function normalizeTerminalShell(rawValue) {
   return rawValue === "bash" || rawValue === "cmd" ? rawValue : "auto";
 }
 
+function normalizeScreenCaptureMode(rawValue) {
+  return rawValue === "review" ? "review" : "auto";
+}
+
+function normalizeTypoCheckEnabled(rawValue) {
+  return rawValue !== false;
+}
+
 function parseTagField(value) {
   return String(value || "")
     .split(/[,#]/)
@@ -325,6 +333,18 @@ export default function App() {
     defaultValue: "auto",
     normalize: normalizeTerminalShell,
     fallbackKey: "notely:terminal-shell",
+  });
+  const [screenCaptureMode, setScreenCaptureMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:screen-capture-mode",
+    defaultValue: "auto",
+    normalize: normalizeScreenCaptureMode,
+  });
+  const [typoCheckEnabled, setTypoCheckEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:typo-check-enabled",
+    defaultValue: true,
+    normalize: normalizeTypoCheckEnabled,
   });
 
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
@@ -558,6 +578,8 @@ export default function App() {
       screen: current ? "document" : "landing",
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
+      typoCheckEnabled,
+      screenCaptureMode,
       dirty,
       terminalOpen: showTerminal,
       terminalShell: terminalShellPreference,
@@ -567,7 +589,7 @@ export default function App() {
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
     });
-  }, [current, notesViewMode, notesDensityMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, screenCaptureMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -684,6 +706,18 @@ export default function App() {
         return;
       }
 
+      if (action === "settings-screen-capture-auto") {
+        setScreenCaptureMode("auto");
+        notify("Screen capture mode set to Auto insert.", "info");
+        return;
+      }
+
+      if (action === "settings-screen-capture-review") {
+        setScreenCaptureMode("review");
+        notify("Screen capture mode set to Review before insert.", "info");
+        return;
+      }
+
       if (action === "save-document") {
         saveDocument();
         return;
@@ -708,6 +742,11 @@ export default function App() {
         if (current) {
           setDocumentMenuAction({ action: "find-replace", nonce: Date.now() });
         }
+        return;
+      }
+
+      if (action === "toggle-typo-check") {
+        setTypoCheckEnabled((enabled) => !enabled);
         return;
       }
 
@@ -1586,6 +1625,8 @@ export default function App() {
             onOpenDocument={handleOpenReferencedDocumentFromUI}
             workspaceTagSuggestions={workspaceTagSuggestions}
             workspaceStorageScope={workspaceStorageScope}
+            typoCheckEnabled={typoCheckEnabled}
+            screenCaptureMode={screenCaptureMode}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={setOutlineEnabled}
             focusModeEnabled={focusModeEnabled}

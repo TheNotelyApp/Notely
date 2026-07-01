@@ -656,6 +656,8 @@ export function DocumentDetail({
   onOpenDocument,
   workspaceTagSuggestions = [],
   workspaceStorageScope = "default",
+  typoCheckEnabled = true,
+  screenCaptureMode = "auto",
   outlineEnabled = true,
   onOutlineEnabledChange,
   focusModeEnabled = false,
@@ -1630,6 +1632,8 @@ export function DocumentDetail({
             textareaRef={textareaRef}
             basePath={document.filePath}
             workspaceStorageScope={workspaceStorageScope}
+            typoCheckEnabled={typoCheckEnabled}
+            screenCaptureMode={screenCaptureMode}
             showToolbar={!showMediaManager}
             onNotify={onNotify}
             onUndo={handleUndo}
