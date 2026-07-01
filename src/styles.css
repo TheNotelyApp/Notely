@@ -162,6 +162,302 @@ button {
   box-shadow: 0 18px 40px rgba(15, 35, 40, 0.18);
 }
 
+.help-center-dialog-card {
+  width: min(80vw, 1200px);
+  display: flex;
+  flex-direction: column;
+}
+
+.help-center-content {
+  margin-top: 4px;
+  padding-right: 2px;
+}
+
+.help-center-meta {
+  border-top: 0 !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.help-doc-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.help-doc-nav {
+  border: 1px solid #d7e3df;
+  border-radius: 10px;
+  background: #f8fcfa;
+  padding: 5px;
+  max-height: 65vh;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.help-doc-nav-item {
+  border: 1px solid #d7e3df;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 8px 9px;
+  text-align: left;
+}
+
+.help-doc-nav-item:hover {
+  background: #eff7f4;
+}
+
+.help-doc-nav-item.active {
+  border-color: #8cb3a9;
+  background: #e8f4ef;
+}
+
+.help-doc-nav-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #23444b;
+}
+
+.help-doc-nav-summary {
+  display: block;
+  margin-top: 3px;
+  color: #557178;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.help-doc-article {
+  border: 1px solid #d7e3df;
+  border-radius: 10px;
+  background: #ffffff;
+  max-height: 65vh;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.help-doc-article-header {
+  border-bottom: 1px solid #e1ece8;
+  margin-bottom: 8px;
+  padding-bottom: 7px;
+}
+
+.help-doc-article-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #23444b;
+}
+
+.help-doc-article-header p {
+  margin: 4px 0 0;
+  color: #557178;
+  font-size: 11px;
+}
+
+.help-doc-markdown h1,
+.help-doc-markdown h2,
+.help-doc-markdown h3 {
+  color: #23444b;
+  margin: 0 0 8px;
+}
+
+.help-doc-markdown h1 {
+  font-size: 18px;
+}
+
+.help-doc-markdown h2 {
+  font-size: 16px;
+  margin-top: 12px;
+}
+
+.help-doc-markdown h3 {
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.help-doc-markdown p,
+.help-doc-markdown li {
+  color: #355159;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.help-doc-markdown ul,
+.help-doc-markdown ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.help-doc-markdown a {
+  color: #2d5f7f;
+}
+
+@media (max-width: 960px) {
+  .help-doc-layout {
+    grid-template-columns: 1fr;
+  }
+  .help-doc-nav,
+  .help-doc-article {
+    max-height: none;
+  }
+}
+
+.help-doc-empty {
+  margin: 0;
+  color: #60797f;
+  font-size: 12px;
+}
+
+.help-center-content section {
+  border-top: 1px solid #e4ece8;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.help-center-content section:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.help-center-content h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #1d3d44;
+}
+
+.help-center-content ul,
+.help-center-content ol {
+  margin: 0;
+  padding-left: 18px;
+  color: #314c53;
+  display: grid;
+  gap: 6px;
+}
+
+.help-center-lead {
+  margin: 0 0 4px;
+  color: #244147;
+  font-size: 13px;
+}
+
+.help-center-version {
+  margin: 0;
+  color: #4b666d;
+  font-size: 12px;
+}
+
+.about-dialog-card {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.about-dialog-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 8px 4px;
+}
+
+.about-brand-mark {
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 12px 30px rgba(16, 39, 45, 0.18);
+  margin-bottom: 12px;
+}
+
+.about-dialog-content h3 {
+  margin: 0;
+  font-size: 22px;
+  color: #1f3e45;
+}
+
+.about-version {
+  margin: 8px 0 4px;
+  color: #4d676e;
+  font-size: 13px;
+}
+
+.about-copy {
+  margin: 12px 0 4px;
+  max-width: 420px;
+  color: #345058;
+  line-height: 1.45;
+}
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 15% 20%, #eef7f4 0%, #d7e8e3 45%, #c9dfd9 100%);
+}
+
+.splash-card {
+  width: min(460px, calc(100vw - 36px));
+  border: 1px solid #c2d7d1;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(8px);
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 24px 50px rgba(18, 45, 50, 0.2);
+}
+
+.splash-brand-mark {
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow: 0 10px 24px rgba(18, 45, 50, 0.2);
+}
+
+.splash-card h1 {
+  margin: 14px 0 8px;
+  font-size: 26px;
+  color: #23424a;
+}
+
+.splash-card p {
+  margin: 0;
+  color: #46656d;
+}
+
+.splash-progress {
+  margin: 12px auto 6px;
+  width: min(300px, 100%);
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid #b8d0c9;
+  background: #edf5f2;
+  overflow: hidden;
+}
+
+.splash-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4c8f88 0%, #6aa7a0 100%);
+  transition: width 220ms ease;
+}
+
+.splash-percent {
+  margin-top: 0 !important;
+  font-size: 13px;
+  color: #3f656f !important;
+  font-weight: 700;
+}
+
+.splash-version {
+  margin-top: 8px !important;
+  font-size: 12px;
+  color: #617b82 !important;
+}
+
 .command-palette-card {
   width: min(720px, calc(100vw - 32px));
   max-height: calc(100vh - 120px);

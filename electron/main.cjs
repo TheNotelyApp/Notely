@@ -45,6 +45,7 @@ const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const projectRoot = app.getAppPath();
+const generatedVersionPath = path.join(projectRoot, "electron", "app-version.generated.json");
 const sessionDataPath = path.join(app.getPath("userData"), "session-data");
 const chromiumCachePath = path.join(sessionDataPath, "Cache");
 
@@ -74,6 +75,40 @@ let mainHelpers;
 const FULL_SYNC_BATCH_SIZE = 25;
 const FULL_SYNC_MAX_FILES = 1000;
 const VERSION_HISTORY_LIMIT = 50;
+
+function readGeneratedVersionInfo() {
+  const fallbackVersion = String(app.getVersion() || "0.0.0");
+  const fallbackName = String(app.getName() || "Notely");
+  try {
+    if (!fs.existsSync(generatedVersionPath)) {
+      return {
+        appName: fallbackName,
+        version: fallbackVersion,
+        versionCore: fallbackVersion,
+        commitHash: "",
+      };
+    }
+
+    const parsed = JSON.parse(String(fs.readFileSync(generatedVersionPath, "utf8") || "{}"));
+    const fullVersion = String(parsed.version || fallbackVersion).trim() || fallbackVersion;
+    const versionCore = String(parsed.versionCore || fullVersion).trim() || fullVersion;
+    const commitHash = String(parsed.commitHash || "").trim();
+    return {
+      appName: fallbackName,
+      version: fullVersion,
+      versionCore,
+      commitHash,
+    };
+  } catch (error) {
+    console.warn("[startup] Unable to read generated app version info:", error?.message || error);
+    return {
+      appName: fallbackName,
+      version: fallbackVersion,
+      versionCore: fallbackVersion,
+      commitHash: "",
+    };
+  }
+}
 
 async function initializeAIForWorkspace() {
   try {
@@ -651,11 +686,24 @@ ipcMain.on("app-menu:update-context", (event, context) => {
   windowLifecycle.handleMenuContextUpdate(event, context);
 });
 
+ipcMain.on("app:boot-ready", (event) => {
+  assertTrustedIpcSender(BrowserWindow, event, "app:boot-ready");
+  windowLifecycle.markRendererBootReady(event.sender);
+});
+
+ipcMain.on("app:boot-progress", (event, payload) => {
+  assertTrustedIpcSender(BrowserWindow, event, "app:boot-progress");
+  windowLifecycle.updateRendererBootProgress(event.sender, payload);
+});
+
 registerCoreIpcHandlers(ipcMain, {
   BrowserWindow,
+  app,
   dialog,
+  fs,
   process,
   path,
+  projectRoot,
   ensureDir,
   readUserSettings,
   writeUserSettings,
@@ -664,6 +712,7 @@ registerCoreIpcHandlers(ipcMain, {
   setAutoIgnoreMetadataInGit,
   getNotesRoot: () => notesRoot,
   listProjectsState,
+  getAppInfo: () => readGeneratedVersionInfo(),
   getActiveProjectSlug: () => activeProjectSlug,
   setActiveProjectSlug: (slug) => {
     activeProjectSlug = slug;

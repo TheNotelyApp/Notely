@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("app-menu:action", listener);
     return () => ipcRenderer.removeListener("app-menu:action", listener);
   },
+  notifyBootReady: () => ipcRenderer.send("app:boot-ready"),
+  notifyBootProgress: (payload) => ipcRenderer.send("app:boot-progress", payload),
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
   aiQuery: (payload) => ipcRenderer.invoke("ai:query", payload),
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
@@ -22,6 +24,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiBuildGraph: (payload) => ipcRenderer.invoke("ai:graph:build", payload),
   aiDetectPatterns: (payload) => ipcRenderer.invoke("ai:patterns:detect", payload),
   getNotesRootSetting: () => ipcRenderer.invoke("settings:get-notes-root"),
+  getAppInfo: () => ipcRenderer.invoke("settings:get-app-info"),
+  getHelpDocuments: () => ipcRenderer.invoke("help:get-documents"),
   setNotesRootSetting: (payload) => ipcRenderer.invoke("settings:set-notes-root", payload),
   getGitWorkspaceMetadata: () => ipcRenderer.invoke("settings:get-git-workspace-meta"),
   setAutoIgnoreGitMetadata: (payload) => ipcRenderer.invoke("settings:set-auto-ignore-git-metadata", payload),

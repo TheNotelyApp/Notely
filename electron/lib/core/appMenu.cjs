@@ -141,27 +141,6 @@ function buildAppMenu(win, context = {}) {
             label: "Find or Replace",
             accelerator: "CmdOrCtrl+F",
             click: () => sendMenuAction(win, "find-replace")
-          },
-          {
-            label: "Show Outline",
-            type: "checkbox",
-            checked: outlineEnabled,
-            accelerator: "CmdOrCtrl+Shift+L",
-            click: () => sendMenuAction(win, "toggle-outline-enabled")
-          },
-          {
-            label: "Split Preview",
-            type: "checkbox",
-            checked: splitPreviewEnabled,
-            accelerator: "CmdOrCtrl+\\",
-            click: () => sendMenuAction(win, "toggle-split-preview")
-          },
-          {
-            label: "Focus Mode",
-            type: "checkbox",
-            checked: focusModeEnabled,
-            accelerator: "CmdOrCtrl+Shift+F",
-            click: () => sendMenuAction(win, "toggle-focus-mode")
           }
         ]
       : [])
@@ -202,6 +181,28 @@ function buildAppMenu(win, context = {}) {
               click: () => sendMenuAction(win, "terminal-shell-cmd")
             },
           ],
+        },
+        { type: "separator" },
+        {
+          label: "Show Outline",
+          type: "checkbox",
+          checked: outlineEnabled,
+          accelerator: "CmdOrCtrl+Shift+L",
+          click: () => sendMenuAction(win, "toggle-outline-enabled")
+        },
+        {
+          label: "Split Preview",
+          type: "checkbox",
+          checked: splitPreviewEnabled,
+          accelerator: "CmdOrCtrl+\\",
+          click: () => sendMenuAction(win, "toggle-split-preview")
+        },
+        {
+          label: "Focus Mode",
+          type: "checkbox",
+          checked: focusModeEnabled,
+          accelerator: "CmdOrCtrl+Shift+F",
+          click: () => sendMenuAction(win, "toggle-focus-mode")
         },
         { type: "separator" },
         { role: "reload" },
@@ -374,16 +375,34 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "open-workspace-activity")
         }
       ]
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "Help Center",
+          accelerator: "F1",
+          click: () => sendMenuAction(win, "open-help-center")
+        },
+        {
+          label: "Keyboard Shortcuts",
+          accelerator: "CmdOrCtrl+/",
+          click: () => sendMenuAction(win, "open-shortcuts")
+        },
+        { type: "separator" },
+        {
+          label: "About Notely",
+          click: () => sendMenuAction(win, "open-about")
+        }
+      ]
     }
   ];
 
-  if (isDevMode) {
-    template.push({
-      label: "Help",
-      submenu: [
-        { role: "toggleDevTools" }
-      ]
-    });
+  if (isDevMode && Array.isArray(template[template.length - 1]?.submenu)) {
+    template[template.length - 1].submenu.push(
+      { type: "separator" },
+      { role: "toggleDevTools" }
+    );
   }
 
   return Menu.buildFromTemplate(template);

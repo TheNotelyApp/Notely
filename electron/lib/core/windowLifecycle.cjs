@@ -15,6 +15,218 @@ function createWindowLifecycle(deps) {
   } = deps;
 
   let mainWindow = null;
+  let splashWindow = null;
+  let bootReadyReceived = false;
+  let mainLoadReady = false;
+  let splashReady = false;
+  let pendingSplashPayload = null;
+
+  function resolveWindowIconPath() {
+    const iconCandidates = [
+      path.join(process.resourcesPath || "", "icon.ico"),
+      path.join(process.resourcesPath || "", "icon.png"),
+      path.join(process.cwd(), "build", "icon.ico"),
+      path.join(process.cwd(), "build", "icon.png"),
+      path.join(projectRoot, "build", "icon.ico"),
+      path.join(projectRoot, "build", "icon.png")
+    ];
+    return iconCandidates.find((candidate) => candidate && fs.existsSync(candidate));
+  }
+
+  function resolveSplashBrandDataUri() {
+    const splashCandidates = [
+      path.join(process.resourcesPath || "", "icon.png"),
+      path.join(process.cwd(), "build", "icon.png"),
+      path.join(projectRoot, "build", "icon.png")
+    ];
+    const splashPath = splashCandidates.find((candidate) => candidate && fs.existsSync(candidate));
+    if (!splashPath) return "";
+
+    try {
+      const bytes = fs.readFileSync(splashPath);
+      const base64 = Buffer.from(bytes).toString("base64");
+      return `data:image/png;base64,${base64}`;
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function closeSplashWindow() {
+    if (!splashWindow || splashWindow.isDestroyed()) {
+      splashWindow = null;
+      return;
+    }
+    splashWindow.close();
+    splashWindow = null;
+  }
+
+  function applySplashProgress(payload = {}) {
+    if (!splashWindow || splashWindow.isDestroyed() || !splashReady) {
+      pendingSplashPayload = payload;
+      return;
+    }
+
+    const percentValue = Math.max(0, Math.min(100, Number(payload.percent) || 0));
+    const phaseValue = String(payload.phase || "Loading workspace");
+    const escapedPhase = phaseValue.replace(/[\\]/g, "\\\\").replace(/"/g, '\\"');
+    const escapedPercent = `${percentValue}%`.replace(/[\\]/g, "\\\\").replace(/"/g, '\\"');
+
+    splashWindow.webContents.executeJavaScript(`
+      (() => {
+        const phase = document.getElementById("splash-phase");
+        const percentText = document.getElementById("splash-percent");
+        const fill = document.getElementById("splash-progress-fill");
+        if (phase) phase.textContent = "${escapedPhase}";
+        if (percentText) percentText.textContent = "${escapedPercent}";
+        if (fill) fill.style.width = "${percentValue}%";
+      })();
+    `).catch(() => {});
+  }
+
+  function showMainWindow() {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!mainWindow.__bootShown) {
+      mainWindow.__bootShown = true;
+      mainWindow.center();
+      mainWindow.show();
+    }
+    mainWindow.focus();
+    closeSplashWindow();
+  }
+
+  function createSplashWindow(windowIconPath) {
+    splashWindow = new BrowserWindow({
+      width: 560,
+      height: 420,
+      frame: false,
+      movable: false,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      autoHideMenuBar: true,
+      show: false,
+      backgroundColor: "#dcece7",
+      ...(windowIconPath ? { icon: windowIconPath } : {}),
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      }
+    });
+
+    const splashTitle = String(app.getName() || "Notely");
+    const splashBrandUri = resolveSplashBrandDataUri();
+    const markNode = splashBrandUri
+      ? `<img class="mark-image" src="${splashBrandUri}" alt="${splashTitle} logo" />`
+      : `<div class="mark" aria-hidden="true"></div>`;
+    const splashHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:" />
+    <title>${splashTitle}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+        background: radial-gradient(circle at 20% 20%, #eef7f4 0%, #d6e8e3 55%, #c5ded7 100%);
+        color: #26424a;
+      }
+      .card {
+        width: min(420px, calc(100vw - 32px));
+        border: 1px solid #b8d2cb;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 20px 45px rgba(18, 48, 53, 0.2);
+        padding: 26px 22px;
+        text-align: center;
+      }
+      .mark {
+        width: 84px;
+        height: 84px;
+        margin: 0 auto 12px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #4f8f89 0%, #7ab3ac 100%);
+        box-shadow: 0 10px 24px rgba(24, 60, 65, 0.23);
+      }
+      .mark-image {
+        width: 92px;
+        height: 92px;
+        margin: 0 auto 10px;
+        border-radius: 16px;
+        object-fit: cover;
+        box-shadow: 0 10px 24px rgba(24, 60, 65, 0.23);
+      }
+      h1 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+      }
+      p {
+        margin: 10px 0 0;
+        color: #4a6870;
+        font-size: 14px;
+      }
+      .progress {
+        margin: 12px auto 0;
+        width: min(280px, 100%);
+        height: 10px;
+        border-radius: 999px;
+        border: 1px solid #b7d1ca;
+        background: #eaf4f1;
+        overflow: hidden;
+      }
+      .progress > span {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #4f8f89 0%, #73ada6 100%);
+        border-radius: 999px;
+        transition: width 220ms ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      ${markNode}
+      <h1>${splashTitle}</h1>
+      <p id="splash-phase">Loading workspace...</p>
+      <div class="progress" aria-hidden="true"><span id="splash-progress-fill"></span></div>
+      <p id="splash-percent">0%</p>
+    </div>
+  </body>
+</html>`;
+    splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml)}`);
+    splashWindow.once("ready-to-show", () => {
+      if (!splashWindow || splashWindow.isDestroyed()) return;
+      splashReady = true;
+      splashWindow.center();
+      splashWindow.show();
+      if (pendingSplashPayload) {
+        applySplashProgress(pendingSplashPayload);
+        pendingSplashPayload = null;
+      }
+    });
+
+    // Fail-safe in case ready-to-show is delayed by the environment.
+    setTimeout(() => {
+      if (!splashWindow || splashWindow.isDestroyed()) return;
+      if (splashWindow.isVisible()) return;
+      splashWindow.center();
+      splashWindow.show();
+    }, 1200);
+
+    splashWindow.on("closed", () => {
+      splashReady = false;
+      pendingSplashPayload = null;
+      splashWindow = null;
+    });
+  }
 
   function buildContentSecurityPolicy() {
     const isDev = Boolean(rendererUrl);
@@ -93,15 +305,14 @@ function createWindowLifecycle(deps) {
 
   function createWindow() {
     const isDevMode = Boolean(rendererUrl) || !app.isPackaged;
-    const iconCandidates = [
-      path.join(process.resourcesPath || "", "icon.ico"),
-      path.join(process.resourcesPath || "", "icon.png"),
-      path.join(process.cwd(), "build", "icon.ico"),
-      path.join(process.cwd(), "build", "icon.png"),
-      path.join(projectRoot, "build", "icon.ico"),
-      path.join(projectRoot, "build", "icon.png")
-    ];
-    const windowIconPath = iconCandidates.find((candidate) => candidate && fs.existsSync(candidate));
+    const windowIconPath = resolveWindowIconPath();
+
+    bootReadyReceived = false;
+    mainLoadReady = false;
+    splashReady = false;
+    pendingSplashPayload = null;
+
+    createSplashWindow(windowIconPath);
 
     const win = new BrowserWindow({
       width: 1320,
@@ -121,33 +332,25 @@ function createWindowLifecycle(deps) {
     });
 
     hardenWebContents(win.webContents);
-
-    let hasShown = false;
-
-    const showWindow = () => {
-      if (win.isDestroyed()) return;
-      if (!hasShown) {
-        hasShown = true;
-        win.center();
-        win.show();
-      }
-      win.focus();
-    };
+    win.__bootShown = false;
 
     win.once("ready-to-show", () => {
-      win.center();
-      showWindow();
+      mainLoadReady = true;
+      if (bootReadyReceived) {
+        showMainWindow();
+      }
     });
 
+    // Fail-safe: ensure app can still open if renderer boot handshake never arrives.
     setTimeout(() => {
-      if (!hasShown) {
-        showWindow();
+      if (!win.__bootShown) {
+        showMainWindow();
       }
-    }, 3000);
+    }, 20000);
 
     win.webContents.on("did-fail-load", (_event, code, desc, url) => {
       console.error("Renderer failed to load:", { code, desc, url });
-      showWindow();
+      showMainWindow();
     });
 
     if (rendererUrl) {
@@ -191,8 +394,29 @@ function createWindowLifecycle(deps) {
     if (mainWindow.isMinimized()) {
       mainWindow.restore();
     }
-    mainWindow.show();
-    mainWindow.focus();
+    if (mainWindow.__bootShown) {
+      mainWindow.show();
+      mainWindow.focus();
+      return;
+    }
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.focus();
+    }
+  }
+
+  function markRendererBootReady(webContents) {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!webContents || webContents.id !== mainWindow.webContents.id) return;
+    bootReadyReceived = true;
+    if (mainLoadReady) {
+      showMainWindow();
+    }
+  }
+
+  function updateRendererBootProgress(webContents, payload) {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!webContents || webContents.id !== mainWindow.webContents.id) return;
+    applySplashProgress(payload || {});
   }
 
   function handleBrowserWindowFocus(_event, win) {
@@ -264,6 +488,8 @@ function createWindowLifecycle(deps) {
     focusOrCreateWindow,
     registerAppWindowEvents,
     handleMenuContextUpdate,
+    markRendererBootReady,
+    updateRendererBootProgress,
     getMainWindow: () => mainWindow,
   };
 }
