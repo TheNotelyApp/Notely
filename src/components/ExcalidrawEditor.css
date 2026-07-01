@@ -1,0 +1,231 @@
+.excalidraw-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+}
+
+.excalidraw-modal-container {
+  width: 95%;
+  height: 90%;
+  max-width: 1400px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.excalidraw-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+}
+
+.excalidraw-modal-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.5rem;
+}
+
+.excalidraw-library-search {
+  position: relative;
+  width: 320px;
+}
+
+.excalidraw-library-search input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.86rem;
+  background: #ffffff;
+}
+
+.excalidraw-library-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 7;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+}
+
+.excalidraw-library-search-results button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #edf0f2;
+  background: #ffffff;
+  text-align: left;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.library-search-result-preview {
+  width: 64px;
+  height: 42px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.library-search-result-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.library-search-result-preview-fallback {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.library-search-result-name {
+  font-size: 0.82rem;
+  color: #0f172a;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.excalidraw-library-search-results button:last-child {
+  border-bottom: none;
+}
+
+.excalidraw-library-search-results button:hover {
+  background: #f8fafc;
+}
+
+.excalidraw-library-search-results p {
+  margin: 0;
+  padding: 0.6rem 0.65rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.excalidraw-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn {
+  padding: 0.625rem 1.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-primary {
+  background-color: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background-color: #000000;
+  border-color: #000000;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.btn-secondary:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.excalidraw-editor-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.excalidraw-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.excalidraw-editor-container > div {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Excalidraw component styles */
+.excalidraw-editor-container .excalidraw {
+  height: 100%;
+  width: 100%;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .excalidraw-modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .excalidraw-modal-container {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border-radius: 0;
+  }
+
+  .excalidraw-modal-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .excalidraw-modal-header h2 {
+    width: 100%;
+    text-align: center;
+  }
+
+  .excalidraw-library-search {
+    width: 100%;
+  }
+
+  .excalidraw-modal-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .excalidraw-workspace {
+    display: flex;
+  }
+}

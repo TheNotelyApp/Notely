@@ -2,12 +2,14 @@ import { useMemo } from "react";
 import {
   renderMarkdown,
   parseMermaidBlocks,
+  parseDiagramBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
 import { MermaidBlock } from "./MermaidBlock";
+import { ExcalidrawBlock } from "./ExcalidrawBlock";
 
-export function WebViewPreview({ content }) {
-  const parts = useMemo(() => parseMermaidBlocks(content), [content]);
+export function WebViewPreview({ content, basePath }) {
+  const parts = useMemo(() => parseDiagramBlocks(content), [content]);
 
   return (
     <div className="webview-shell">
@@ -21,6 +23,18 @@ export function WebViewPreview({ content }) {
         {parts.map((part, index) =>
           part.type === "mermaid" ? (
             <MermaidBlock code={part.value} index={index} key={`${part.type}-${index}`} />
+          ) : part.type === "excalidraw" ? (
+            <ExcalidrawBlock 
+              imagePath={part.imagePath}
+              diagramId={part.diagramId}
+              docSlug={basePath?.split(/[/\\]/).pop()?.replace('.md', '') || 'document'}
+              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join('/')}
+              index={index}
+              key={`${part.type}-${index}`}
+              onUpdate={(newData) => {
+                console.log("Diagram updated:", newData);
+              }}
+            />
           ) : (
             <div
               key={`${part.type}-${index}`}

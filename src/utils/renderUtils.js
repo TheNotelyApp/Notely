@@ -52,6 +52,82 @@ export function renderMarkdown(content, options = {}) {
   return md.render(content || "", options);
 }
 
+/**
+ * Parse all diagram blocks (mermaid and excalidraw image references)
+ * Supports both ```mermaid and image references to excalidraw diagrams
+ */
+export function parseDiagramBlocks(content) {
+  const chunks = [];
+  const mermaidRegex = /```mermaid\s*([\s\S]*?)```/gi;
+  const excalidrawRegex = /!\[Excalidraw Diagram\]\((excali-diagrams\/([^/]+)\/([^/]+)\/diagram\.png)\)(?:\{[^}]*data-diagram-id=["“]([^"”]+)["”][^}]*\})?/gi;
+  const positions = [];
+  let match;
+
+  const countLines = (value) => (String(value || "").match(/\n/g) || []).length;
+
+  // Find all mermaid blocks
+  while ((match = mermaidRegex.exec(content || ""))) {
+    positions.push({
+      index: match.index,
+      endIndex: mermaidRegex.lastIndex,
+      type: "mermaid",
+      value: match[1].trim(),
+      fullMatch: match[0],
+    });
+  }
+
+  // Find all excalidraw image references
+  while ((match = excalidrawRegex.exec(content || ""))) {
+    positions.push({
+      index: match.index,
+      endIndex: excalidrawRegex.lastIndex,
+      type: "excalidraw",
+      imagePath: match[1],
+      // Prefer explicit data-diagram-id if present, else derive from path segment.
+      diagramId: match[4] || match[3],
+      fullMatch: match[0],
+    });
+  }
+
+  // Sort by position
+  positions.sort((a, b) => a.index - b.index);
+
+  let lastIndex = 0;
+  let currentLine = 0;
+
+  positions.forEach((pos) => {
+    if (pos.index > lastIndex) {
+      const markdownValue = content.slice(lastIndex, pos.index);
+      chunks.push({ type: "markdown", value: markdownValue, startLine: currentLine });
+      currentLine += countLines(markdownValue);
+    }
+
+    if (pos.type === "mermaid") {
+      chunks.push({ type: "mermaid", value: pos.value, startLine: currentLine });
+    } else if (pos.type === "excalidraw") {
+      chunks.push({
+        type: "excalidraw",
+        imagePath: pos.imagePath,
+        diagramId: pos.diagramId,
+        startLine: currentLine,
+      });
+    }
+    
+    currentLine += countLines(pos.fullMatch);
+    lastIndex = pos.endIndex;
+  });
+
+  if (lastIndex < (content || "").length) {
+    chunks.push({ type: "markdown", value: content.slice(lastIndex), startLine: currentLine });
+  }
+
+  return chunks.length ? chunks : [{ type: "markdown", value: content || "", startLine: 0 }];
+}
+
+/**
+ * Legacy function - kept for backward compatibility
+ * Use parseDiagramBlocks instead for both mermaid and excalidraw
+ */
 export function parseMermaidBlocks(content) {
   const chunks = [];
   const regex = /```mermaid\s*([\s\S]*?)```/gi;

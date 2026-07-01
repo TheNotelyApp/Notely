@@ -41,6 +41,7 @@ const { createWorkspaceEntries, DEFAULT_WALK_EXCLUDE_DIRS } = require("./lib/doc
 const { createMetadataStore } = require("./lib/core/metadataStore.cjs");
 const { createDocumentFileOps } = require("./lib/documents/documentFileOps.cjs");
 const { createMainHelpers } = require("./lib/core/mainHelpers.cjs");
+const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const projectRoot = app.getAppPath();
@@ -730,3 +731,4 @@ registerDocumentIpcHandlers(ipcMain, {
 });
 
 imageMedia.registerIpcHandlers(ipcMain);
+setupDiagramHandlers(ipcMain, appDataDir);

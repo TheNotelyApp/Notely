@@ -222,11 +222,39 @@ Rendered content supports richer note viewing:
 
 - Markdown preview rendering
 - Mermaid diagram rendering
+- Excalidraw diagram rendering with click-to-edit support
 - Embedded image resolution
 - Web-style preview for selected notes
 - Split preview sync with editor scrolling
 - Image filename overlays so embedded media can be identified from preview.
 - Right-click image actions, including view image, edit image, replace, rename, copy markdown, and delete.
+
+### Excalidraw diagram workflow
+
+Excalidraw diagrams are stored as file-based assets so they remain offline-first and Git-friendly.
+
+- Markdown stores a relative PNG image reference with Excalidraw metadata.
+- Notely preview renders the PNG and opens the editor when clicked.
+- On save, Notely writes both source JSON and rendered PNG.
+- GitHub displays diagrams natively from the PNG path.
+
+Example markdown reference:
+
+```markdown
+![Excalidraw Diagram](excali-diagrams/diagram-id/diagram.png){data-diagram-id="diagram-id" data-diagram-type="excalidraw"}
+```
+
+Diagram files are stored alongside the note under `excali-diagrams/`:
+
+```text
+my-note.md
+excali-diagrams/
+  diagram-id/
+    diagram.excalidraw
+    diagram.png
+```
+
+Renderer-side helpers are exposed from `src/services/diagramService.js` and path/reference helpers are in `src/utils/diagramFileUtils.js`.
 
 ## Media handling
 

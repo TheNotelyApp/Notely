@@ -1,0 +1,90 @@
+.excalidraw-block {
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.excalidraw-preview-container {
+  cursor: pointer;
+  border: 1px solid #9fceb0;
+  border-radius: 8px;
+  padding: 0;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  outline: none;
+}
+
+.excalidraw-preview-container:hover {
+  background-color: #ffffff;
+  border-color: #7fb697;
+  box-shadow: 0 6px 16px rgba(47, 93, 98, 0.14);
+}
+
+.excalidraw-preview-container:focus {
+  outline: 2px solid #7fb697;
+  outline-offset: 2px;
+}
+
+.excalidraw-preview-thumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #ffffff;
+}
+
+.diagram-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: 1rem;
+}
+
+.click-hint {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(80, 107, 112, 0.8);
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.excalidraw-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #506b70;
+  padding: 2rem;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.excalidraw-loading {
+  color: #506b70;
+  font-size: 1rem;
+}
+
+.excalidraw-error {
+  color: #d32f2f;
+  padding: 0.75rem;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+

@@ -22,6 +22,7 @@ import { listDocuments, listImages } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
+import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUtils";
 
 function canonicalPathKey(pathValue) {
   const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
@@ -145,6 +146,7 @@ export function MarkdownToolbar({
   const [seqMessage, setSeqMessage] = useState("Submit request");
   const [tableRows, setTableRows] = useState(3);
   const [tableColumns, setTableColumns] = useState(3);
+  const [diagramMode, setDiagramMode] = useState("picker");
 
   const closeToolbarPanels = () => {
     setShowMermaidBuilder(false);
@@ -152,6 +154,7 @@ export function MarkdownToolbar({
     setShowWebLinker(false);
     setShowTableBuilder(false);
     setShowValidationPanel(false);
+    setDiagramMode("picker");
   };
 
   const isPanelOpen = (panel) => {
@@ -282,6 +285,13 @@ export function MarkdownToolbar({
 
   function openTableBuilder() {
     toggleToolbarPanel("table");
+  }
+
+  function openDiagramBuilder() {
+    const shouldOpen = toggleToolbarPanel("mermaid");
+    if (shouldOpen) {
+      setDiagramMode("picker");
+    }
   }
 
   function runMarkdownValidation() {
@@ -552,6 +562,33 @@ export function MarkdownToolbar({
     onNotify?.("Mermaid block inserted.", "success");
   };
 
+  const deriveDocSlug = () => {
+    const fileName = String(basePath || "").split(/[\\/]/).pop() || "document";
+    const withoutExt = fileName.replace(/\.md$/i, "").trim() || "document";
+    const slug = withoutExt
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return slug || "document";
+  };
+
+  const insertExcalidrawDiagram = () => {
+    const docSlug = deriveDocSlug();
+    const diagramId = generateDiagramId();
+    const rawMarkdown = createDiagramMarkdown(docSlug, diagramId);
+    const normalizedMarkdown = rawMarkdown.replace(/\(([^)]+)\)/, (_match, pathValue) => {
+      return `(${normalizeImagePathForMarkdown(pathValue)})`;
+    });
+
+    insertTextAtCursor(value, onChange, `\n\n${normalizedMarkdown}\n`, textareaRef);
+    setShowMermaidBuilder(false);
+    if (!basePath) {
+      onNotify?.("Excalidraw reference inserted. Save this note to resolve diagram files.", "info");
+      return;
+    }
+    onNotify?.("Excalidraw reference inserted.", "success");
+  };
+
   return (
     <div className="editor-toolbar" aria-label="Markdown formatting toolbar">
       <button onClick={() => onUndo?.()} title="Undo (Ctrl/Cmd+Z)" disabled={!canUndo}>
@@ -583,7 +620,7 @@ export function MarkdownToolbar({
       <button onClick={openAssetLinker} title="Insert from workspace">
         <Link size={18} />
       </button>
-      <button onClick={() => toggleToolbarPanel("mermaid")} title="Mermaid Builder">
+      <button onClick={openDiagramBuilder} title="Insert diagram">
         <Zap size={18} />
       </button>
       <button onClick={runMarkdownValidation} title="Validate markdown syntax">
@@ -873,7 +910,7 @@ export function MarkdownToolbar({
       {showMermaidBuilder && (
         <div className="mermaid-builder" ref={mermaidPopoverRef} role="dialog" aria-label="Mermaid builder">
           <div className="mermaid-builder-header">
-            <strong>Mermaid Builder</strong>
+            <strong>{diagramMode === "picker" ? "Insert Diagram" : "Mermaid Builder"}</strong>
             <button
               className="mermaid-close"
               onClick={() => setShowMermaidBuilder(false)}
@@ -883,68 +920,85 @@ export function MarkdownToolbar({
             </button>
           </div>
 
-          <div className="mermaid-type-switch">
-            <button
-              className={chartType === "flowchart" ? "active" : ""}
-              onClick={() => setChartType("flowchart")}
-            >
-              Flowchart
-            </button>
-            <button
-              className={chartType === "sequence" ? "active" : ""}
-              onClick={() => setChartType("sequence")}
-            >
-              Sequence
-            </button>
-          </div>
+          {diagramMode === "picker" ? (
+            <>
+              <div className="mermaid-type-switch">
+                <button onClick={() => setDiagramMode("mermaid")}>Mermaid</button>
+                <button onClick={insertExcalidrawDiagram}>Excalidraw</button>
+              </div>
+              <p className="toolbar-inline-note">
+                Mermaid inserts an editable code block. Excalidraw inserts an image reference + metadata tag.
+              </p>
+            </>
+          ) : null}
 
-          {chartType === "flowchart" ? (
-            <div className="mermaid-fields">
-              <label>
-                Direction
-                <select value={flowDirection} onChange={(event) => setFlowDirection(event.target.value)}>
-                  <option value="LR">Left to Right</option>
-                  <option value="TD">Top to Down</option>
-                  <option value="RL">Right to Left</option>
-                  <option value="BT">Bottom to Top</option>
-                </select>
-              </label>
-              <label>
-                Step 1
-                <input value={flowStart} onChange={(event) => setFlowStart(event.target.value)} />
-              </label>
-              <label>
-                Step 2
-                <input value={flowMiddle} onChange={(event) => setFlowMiddle(event.target.value)} />
-              </label>
-              <label>
-                Step 3
-                <input value={flowEnd} onChange={(event) => setFlowEnd(event.target.value)} />
-              </label>
-            </div>
-          ) : (
-            <div className="mermaid-fields">
-              <label>
-                Participant A
-                <input value={seqActorA} onChange={(event) => setSeqActorA(event.target.value)} />
-              </label>
-              <label>
-                Participant B
-                <input value={seqActorB} onChange={(event) => setSeqActorB(event.target.value)} />
-              </label>
-              <label>
-                Message
-                <input value={seqMessage} onChange={(event) => setSeqMessage(event.target.value)} />
-              </label>
-            </div>
-          )}
+          {diagramMode === "mermaid" ? (
+            <>
+              <div className="mermaid-type-switch">
+                <button
+                  className={chartType === "flowchart" ? "active" : ""}
+                  onClick={() => setChartType("flowchart")}
+                >
+                  Flowchart
+                </button>
+                <button
+                  className={chartType === "sequence" ? "active" : ""}
+                  onClick={() => setChartType("sequence")}
+                >
+                  Sequence
+                </button>
+              </div>
 
-          <pre className="mermaid-preview-code">{buildMermaidCode()}</pre>
+              {chartType === "flowchart" ? (
+                <div className="mermaid-fields">
+                  <label>
+                    Direction
+                    <select value={flowDirection} onChange={(event) => setFlowDirection(event.target.value)}>
+                      <option value="LR">Left to Right</option>
+                      <option value="TD">Top to Down</option>
+                      <option value="RL">Right to Left</option>
+                      <option value="BT">Bottom to Top</option>
+                    </select>
+                  </label>
+                  <label>
+                    Step 1
+                    <input value={flowStart} onChange={(event) => setFlowStart(event.target.value)} />
+                  </label>
+                  <label>
+                    Step 2
+                    <input value={flowMiddle} onChange={(event) => setFlowMiddle(event.target.value)} />
+                  </label>
+                  <label>
+                    Step 3
+                    <input value={flowEnd} onChange={(event) => setFlowEnd(event.target.value)} />
+                  </label>
+                </div>
+              ) : (
+                <div className="mermaid-fields">
+                  <label>
+                    Participant A
+                    <input value={seqActorA} onChange={(event) => setSeqActorA(event.target.value)} />
+                  </label>
+                  <label>
+                    Participant B
+                    <input value={seqActorB} onChange={(event) => setSeqActorB(event.target.value)} />
+                  </label>
+                  <label>
+                    Message
+                    <input value={seqMessage} onChange={(event) => setSeqMessage(event.target.value)} />
+                  </label>
+                </div>
+              )}
 
-          <div className="mermaid-builder-actions">
-            <button onClick={insertMermaidDiagram}>Insert</button>
-            <button onClick={() => setShowMermaidBuilder(false)}>Cancel</button>
-          </div>
+              <pre className="mermaid-preview-code">{buildMermaidCode()}</pre>
+
+              <div className="mermaid-builder-actions">
+                <button onClick={insertMermaidDiagram}>Insert</button>
+                <button onClick={() => setDiagramMode("picker")}>Back</button>
+                <button onClick={() => setShowMermaidBuilder(false)}>Cancel</button>
+              </div>
+            </>
+          ) : null}
         </div>
       )}
       <input

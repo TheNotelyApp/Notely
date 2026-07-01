@@ -514,4 +514,54 @@ describe("MarkdownToolbar validation panel interactions", () => {
 
     view.unmount();
   });
+
+  it("inserts an Excalidraw reference from the diagram picker", async () => {
+    const onChange = vi.fn();
+    const onNotify = vi.fn();
+    const textareaRef = {
+      current: {
+        selectionStart: 0,
+        selectionEnd: 0,
+        scrollTop: 0,
+        scrollLeft: 0,
+        focus: () => {},
+      },
+    };
+
+    const view = renderToolbar({
+      value: "",
+      onChange,
+      textareaRef,
+      basePath: "C:/notes/Architecture Note.md",
+      onNotify,
+      validationStatus: "ready",
+      validationIssues: [],
+      onJumpToLine: vi.fn(),
+    });
+
+    const openDiagramButton = view.host.querySelector('button[title="Insert diagram"]');
+    expect(openDiagramButton).toBeTruthy();
+
+    act(() => {
+      openDiagramButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const excalidrawButton = Array.from(view.host.querySelectorAll(".mermaid-builder .mermaid-type-switch button")).find((button) =>
+      button.textContent?.includes("Excalidraw")
+    );
+    expect(excalidrawButton).toBeTruthy();
+
+    act(() => {
+      excalidrawButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onChange).toHaveBeenCalled();
+    const inserted = String(onChange.mock.calls.at(-1)?.[0] || "");
+    expect(inserted).toContain("![Excalidraw Diagram](excali-diagrams/architecture-note/");
+    expect(inserted).toContain('/diagram.png){data-diagram-id="');
+    expect(inserted).toContain('data-diagram-type="excalidraw"}');
+    expect(onNotify).toHaveBeenCalledWith("Excalidraw reference inserted.", "success");
+
+    view.unmount();
+  });
 });
