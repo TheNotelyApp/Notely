@@ -661,8 +661,20 @@ if (canRunApp) {
   app.whenReady().then(async () => {
     windowLifecycle.applyContentSecurityPolicy();
     applyNotesRoot(resolveInitialNotesRoot());
-    await initializeAIForWorkspace();
     windowLifecycle.focusOrCreateWindow();
+    // Initialize AI in background without awaiting to avoid blocking splash screen
+    // Startup timeout ensures app remains responsive even if AI init stalls
+    const AI_INIT_TIMEOUT_MS = 8000;
+    const initTimeout = setTimeout(() => {
+      console.warn("[startup] AI initialization taking longer than expected (>8s), continuing anyway...");
+    }, AI_INIT_TIMEOUT_MS);
+    initializeAIForWorkspace()
+      .catch((err) => {
+        console.error("[AI] Background initialization failed:", err?.message || err);
+      })
+      .finally(() => {
+        clearTimeout(initTimeout);
+      });
   });
 }
 
