@@ -132,12 +132,53 @@ function buildWebsiteMarkdownRenderer() {
 
 function buildNavigationHtml(activeRelPath = "") {
   const docs = listMarkdownRelativePaths();
-  const links = docs.map((docPath) => {
-    const href = `/view/${encodePathForUrl(docPath)}`;
-    const title = path.basename(docPath, ".md");
-    const activeClass = docPath === activeRelPath ? " class=\"active\"" : "";
-    return `<li><a${activeClass} href="${href}" title="${escapeHtml(docPath)}">${escapeHtml(title)}</a></li>`;
-  }).join("");
+  const treeRoot = {
+    folders: new Map(),
+    files: [],
+  };
+
+  docs.forEach((docPath) => {
+    const normalized = normalizeToPosix(docPath).replace(/^\/+/, "");
+    const parts = normalized.split("/").filter(Boolean);
+    if (!parts.length) return;
+
+    const fileName = parts.pop();
+    let cursor = treeRoot;
+    for (const folder of parts) {
+      if (!cursor.folders.has(folder)) {
+        cursor.folders.set(folder, { folders: new Map(), files: [] });
+      }
+      cursor = cursor.folders.get(folder);
+    }
+
+    cursor.files.push({
+      docPath: normalized,
+      title: path.basename(fileName || normalized, ".md"),
+    });
+  });
+
+  const renderNode = (node, pathPrefix = "") => {
+    const folderEntries = Array.from(node.folders.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    const fileEntries = [...node.files].sort((a, b) => a.title.localeCompare(b.title));
+
+    const folderHtml = folderEntries.map(([folderName, childNode]) => {
+      const folderPath = pathPrefix ? `${pathPrefix}/${folderName}` : folderName;
+      return `<li class="nav-folder-item">
+        <div class="nav-folder-label" title="${escapeHtml(folderPath)}">${escapeHtml(folderName)}</div>
+        <ul class="nav-list nav-sublist">${renderNode(childNode, folderPath)}</ul>
+      </li>`;
+    }).join("");
+
+    const fileHtml = fileEntries.map((entry) => {
+      const href = `/view/${encodePathForUrl(entry.docPath)}`;
+      const activeClass = entry.docPath === activeRelPath ? " class=\"active\"" : "";
+      return `<li><a${activeClass} href="${href}" title="${escapeHtml(entry.docPath)}">${escapeHtml(entry.title)}</a></li>`;
+    }).join("");
+
+    return `${folderHtml}${fileHtml}`;
+  };
+
+  const links = renderNode(treeRoot);
 
   return `<a href="/search" class="nav-search-link">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>

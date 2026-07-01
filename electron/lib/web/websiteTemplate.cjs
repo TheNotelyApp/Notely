@@ -164,6 +164,26 @@ function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "", scopeLabel = "
         gap: 1px;
       }
 
+      .nav-folder-item {
+        list-style: none;
+      }
+
+      .nav-folder-label {
+        display: block;
+        padding: 6px 8px 4px;
+        color: var(--ink-4);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .nav-sublist {
+        margin-left: 10px;
+        padding-left: 6px;
+        border-left: 1px solid var(--border);
+      }
+
       .nav-list a {
         display: block;
         padding: 7px 8px;
