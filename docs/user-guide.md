@@ -77,6 +77,20 @@ Tip: capture icon marker shows active mode (`A` auto, `R` review).
 2. Edit visually and save.
 3. Re-open from preview to continue editing.
 
+### Convert an image to Excalidraw
+
+1. In preview, right-click a workspace image.
+2. Select **Edit with Excalidraw**.
+3. Draw on top of the image (the starting image is resizable on canvas).
+4. Save diagram to replace the markdown image reference.
+
+### Restore original image from converted diagram
+
+1. Right-click an Excalidraw preview created from an image.
+2. Select **Restore original image**.
+
+Note: restore appears only for diagrams that were created from an image conversion flow.
+
 ## 8. Navigate Large Workspaces
 
 - **View -> Show Outline** for quick jumps inside long notes.

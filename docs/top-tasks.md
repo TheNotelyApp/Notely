@@ -66,6 +66,13 @@ Use this page when you want quick, direct steps.
 2. Select Excalidraw.
 3. Edit and save.
 
+## 11b. Convert an image to Excalidraw
+
+1. In preview, right-click a workspace image.
+2. Choose **Edit with Excalidraw**.
+3. Draw and resize the base image as needed.
+4. Save diagram.
+
 ## 12. View or restore note history
 
 1. Open **File -> Versions** (`Ctrl/Cmd + Shift + H`).
@@ -111,6 +118,11 @@ Use this page when you want quick, direct steps.
 1. Open image editor for a previously edited image.
 2. Choose restore original.
 3. Confirm restore action.
+
+## 19b. Restore original image from converted Excalidraw
+
+1. Right-click an Excalidraw preview that came from image conversion.
+2. Choose **Restore original image**.
 
 ## 20. Export a note to PDF
 

@@ -156,6 +156,10 @@ This helps recover from aggressive crops or accidental edits.
 - Insert Excalidraw diagrams in notes.
 - Edit visually and save.
 - Re-open diagrams from preview for updates.
+- Convert an existing note image to an Excalidraw diagram from image right-click menu (**Edit with Excalidraw**).
+- Start converted diagrams with the original image on canvas as a resizable base element for tracing and annotation.
+- Use diagram-specific right-click actions on Excalidraw previews (separate from normal image actions).
+- Restore the original image reference when a diagram was created from an image. Restore is only shown when origin metadata exists.
 
 ## 8. AI Assistance
 
