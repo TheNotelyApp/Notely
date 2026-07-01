@@ -1,4 +1,4 @@
-const { spawn } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 const path = require("node:path");
 const waitOn = require("wait-on");
 
@@ -67,6 +67,19 @@ process.on("SIGTERM", () => shutdown(0));
 
 const viteBin = path.join(__dirname, "..", "node_modules", "vite", "bin", "vite.js");
 const launchElectronScript = path.join(__dirname, "launch-electron.cjs");
+const versionScriptPath = path.join(__dirname, "generate-app-version.cjs");
+
+const versionChild = spawnSync(process.execPath, [versionScriptPath], {
+  cwd: process.cwd(),
+  env: { ...process.env },
+  stdio: "inherit",
+  shell: false
+});
+
+if (versionChild.status !== 0) {
+  console.error("[dev] Failed to generate app version metadata.");
+  process.exit(versionChild.status ?? 1);
+}
 
 startProcess("vite", process.execPath, [viteBin, "--host", "127.0.0.1"]);
 

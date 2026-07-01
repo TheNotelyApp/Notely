@@ -10,6 +10,7 @@
   },
   "main": "electron/main.cjs",
   "scripts": {
+    "version:generate": "node scripts/generate-app-version.cjs",
     "dev": "node scripts/dev.cjs",
     "assets:icon": "node scripts/generate-icon.cjs",
     "notices": "node scripts/generate-notices.cjs",
@@ -83,6 +84,7 @@
       "dist/**/*",
       "electron/**/*",
       "src/ai/**/*",
+      "docs/**/*",
       "scripts/launch-electron.cjs",
       "package.json"
     ],

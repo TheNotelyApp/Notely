@@ -1,7 +1,9 @@
 const { spawn } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const electronBuilderCliPath = path.join(__dirname, "..", "node_modules", "electron-builder", "cli.js");
+const generatedVersionPath = path.join(__dirname, "..", "electron", "app-version.generated.json");
 const args = process.argv.slice(2);
 
 const isWindowsBuild = args.some((arg) => /^--win$/i.test(String(arg || ""))) || args.includes("nsis") || args.includes("portable");
@@ -15,6 +17,20 @@ const hasSigningMaterial = Boolean(
 
 let nextArgs = [...args];
 const childEnv = { ...process.env };
+
+try {
+  if (fs.existsSync(generatedVersionPath)) {
+    const generated = JSON.parse(String(fs.readFileSync(generatedVersionPath, "utf8") || "{}"));
+    const fullVersion = String(generated.version || "").trim();
+    const coreVersion = String(generated.versionCore || "").trim();
+    if (fullVersion) {
+      nextArgs.push(`--config.extraMetadata.version=${fullVersion}`);
+      nextArgs.push(`--config.buildVersion=${coreVersion || fullVersion}`);
+    }
+  }
+} catch (error) {
+  console.warn("[packaging] Unable to read generated app version metadata:", error?.message || error);
+}
 
 if (isWindowsBuild && !hasSigningMaterial) {
   console.warn("[packaging] Windows signing material not found.");

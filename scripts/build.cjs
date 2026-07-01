@@ -1,8 +1,21 @@
-const { spawn } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
 
 const viteCliPath = path.join(__dirname, "..", "node_modules", "vite", "bin", "vite.js");
+const versionScriptPath = path.join(__dirname, "generate-app-version.cjs");
+
+const versionChild = spawnSync(process.execPath, [versionScriptPath], {
+  cwd: process.cwd(),
+  env: { ...process.env },
+  stdio: "inherit",
+  shell: false
+});
+
+if (versionChild.status !== 0) {
+  console.error("[build] Failed to generate app version metadata.");
+  process.exit(versionChild.status ?? 1);
+}
 
 const child = spawn(process.execPath, [viteCliPath, "build"], {
   cwd: process.cwd(),
