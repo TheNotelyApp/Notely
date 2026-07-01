@@ -57,6 +57,14 @@ export function DocumentEntryActions({
 
   return (
     <span className="document-card-actions">
+      {showRemove ? renderAction({
+        className: "remove-toggle",
+        label: `Move ${entry?.title || "item"} to removed`,
+        title: "Move to removed",
+        onActivate: () => onRemove?.(entry),
+        children: <Trash2 size={12} />,
+      }) : null}
+
       {isNote && showFavorite ? (
         renderAction({
           className: `favorite-toggle ${isFavorite ? "active" : ""}`,
@@ -66,14 +74,6 @@ export function DocumentEntryActions({
           children: <Star size={12} />,
         })
       ) : null}
-
-      {showRemove ? renderAction({
-        className: "remove-toggle",
-        label: `Move ${entry?.title || "item"} to removed`,
-        title: "Move to removed",
-        onActivate: () => onRemove?.(entry),
-        children: <Trash2 size={12} />,
-      }) : null}
     </span>
   );
 }
