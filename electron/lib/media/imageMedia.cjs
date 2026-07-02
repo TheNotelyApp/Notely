@@ -10,6 +10,7 @@ function createImageMedia(deps) {
     nativeImage,
     pathToFileURL,
     MarkdownIt,
+    getMarkdownIt,
     buildPdfStyles,
     escapeHtml,
     safeDecode,
@@ -129,7 +130,12 @@ function emitImageSyncFromDisk(filePath, options = {}) {
 }
 
 function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downsampleImages = false, pdfQualityPreset = "full" }) {
-  const markdown = new MarkdownIt({
+  const MarkdownItCtor = MarkdownIt || (typeof getMarkdownIt === "function" ? getMarkdownIt() : null);
+  if (!MarkdownItCtor) {
+    throw new Error("Markdown renderer is unavailable.");
+  }
+
+  const markdown = new MarkdownItCtor({
     html: false,
     linkify: true,
     typographer: true

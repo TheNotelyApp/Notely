@@ -2,15 +2,9 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { FolderOpen, NotebookPen, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { CommandPalette } from "./components/CommandPalette";
-import { GlobalSearchOverlay } from "./components/GlobalSearchOverlay";
-import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
 import { DashboardPanels } from "./components/DashboardPanels";
 import { LandingListControls } from "./components/LandingListControls";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
-import { EmbeddedTerminal } from "./components/EmbeddedTerminal";
-import { HelpCenterModal } from "./components/HelpCenterModal";
-import { AboutModal } from "./components/AboutModal";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
 const MediaTab = lazy(() =>
@@ -32,6 +26,24 @@ const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
 const AISettings = lazy(() => import("./components/AISettings"));
 const WorkspaceGraphPanel = lazy(() =>
   import("./components/WorkspaceGraphPanel").then((m) => ({ default: m.WorkspaceGraphPanel }))
+);
+const EmbeddedTerminal = lazy(() =>
+  import("./components/EmbeddedTerminal").then((m) => ({ default: m.EmbeddedTerminal }))
+);
+const CommandPalette = lazy(() =>
+  import("./components/CommandPalette").then((m) => ({ default: m.CommandPalette }))
+);
+const GlobalSearchOverlay = lazy(() =>
+  import("./components/GlobalSearchOverlay").then((m) => ({ default: m.GlobalSearchOverlay }))
+);
+const KeyboardShortcutsModal = lazy(() =>
+  import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
+);
+const HelpCenterModal = lazy(() =>
+  import("./components/HelpCenterModal").then((m) => ({ default: m.HelpCenterModal }))
+);
+const AboutModal = lazy(() =>
+  import("./components/AboutModal").then((m) => ({ default: m.AboutModal }))
 );
 import {
   onMenuAction,
@@ -155,8 +167,8 @@ export default function App() {
   const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [appInfoLoading, setAppInfoLoading] = useState(true);
-  const [helpDocsLoading, setHelpDocsLoading] = useState(true);
+  const [_appInfoLoading, setAppInfoLoading] = useState(true);
+  const [_helpDocsLoading, setHelpDocsLoading] = useState(false);
   const bootReadyNotifiedRef = useRef(false);
   const [appInfo, setAppInfo] = useState({
     appName: "Notely",
@@ -529,7 +541,13 @@ export default function App() {
       .finally(() => {
         setAppInfoLoading(false);
       });
+  }, []);
 
+  useEffect(() => {
+    if (!helpCenterOpen) return;
+    if (helpDocuments.length > 0) return;
+
+    setHelpDocsLoading(true);
     void getHelpDocuments()
       .then((docs) => {
         setHelpDocuments(Array.isArray(docs) ? docs : []);
@@ -540,22 +558,15 @@ export default function App() {
       .finally(() => {
         setHelpDocsLoading(false);
       });
-  }, []);
+  }, [helpCenterOpen, helpDocuments.length]);
 
   const bootProgress = useMemo(() => {
-    const workspacePart = loading ? 0 : 34;
-    const appInfoPart = appInfoLoading ? 0 : 33;
-    const docsPart = helpDocsLoading ? 0 : 33;
-    return Math.min(100, workspacePart + appInfoPart + docsPart);
-  }, [loading, appInfoLoading, helpDocsLoading]);
+    return loading ? 25 : 100;
+  }, [loading]);
 
   const bootPhase = loading
     ? "Loading workspace"
-    : appInfoLoading
-      ? "Loading app metadata"
-      : helpDocsLoading
-        ? "Loading help documentation"
-        : "Launching application";
+    : "Launching application";
 
   useEffect(() => {
     notifyBootProgress({ phase: bootPhase, percent: bootProgress });
@@ -1656,12 +1667,14 @@ export default function App() {
       {showTerminal ? (
         <div className="terminal-dock open">
           <ErrorBoundary label="Terminal">
-            <EmbeddedTerminal
-              cwd={terminalCwd}
-              shellPreference={terminalShellPreference}
-              onShellPreferenceChange={setTerminalShellPreference}
-              onClose={() => setShowTerminal(false)}
-            />
+            <Suspense fallback={<div className="lazy-loading">Loading terminal…</div>}>
+              <EmbeddedTerminal
+                cwd={terminalCwd}
+                shellPreference={terminalShellPreference}
+                onShellPreferenceChange={setTerminalShellPreference}
+                onClose={() => setShowTerminal(false)}
+              />
+            </Suspense>
           </ErrorBoundary>
         </div>
       ) : null}
@@ -2033,28 +2046,40 @@ export default function App() {
         </div>
       ) : null}
 
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        commands={paletteCommands.filter((command) => !command.disabled)}
-        pinnedCommandKeys={palettePinnedCommandKeys}
-        onClose={() => setCommandPaletteOpen(false)}
-        onRun={handleRunPaletteCommand}
-        onTogglePinCommand={handleTogglePinnedPaletteCommand}
-      />
+      {commandPaletteOpen ? (
+        <Suspense fallback={<div className="lazy-loading">Loading commands…</div>}>
+          <CommandPalette
+            isOpen={commandPaletteOpen}
+            commands={paletteCommands.filter((command) => !command.disabled)}
+            pinnedCommandKeys={palettePinnedCommandKeys}
+            onClose={() => setCommandPaletteOpen(false)}
+            onRun={handleRunPaletteCommand}
+            onTogglePinCommand={handleTogglePinnedPaletteCommand}
+          />
+        </Suspense>
+      ) : null}
 
-      <GlobalSearchOverlay
-        isOpen={globalSearchOpen}
-        documents={documents}
-        currentDocument={current}
-        onClose={() => setGlobalSearchOpen(false)}
-        workspaceStorageScope={workspaceStorageScope}
-        onOpenResult={handleOpenGlobalSearchResult}
-      />
+      {globalSearchOpen ? (
+        <Suspense fallback={<div className="lazy-loading">Loading search…</div>}>
+          <GlobalSearchOverlay
+            isOpen={globalSearchOpen}
+            documents={documents}
+            currentDocument={current}
+            onClose={() => setGlobalSearchOpen(false)}
+            workspaceStorageScope={workspaceStorageScope}
+            onOpenResult={handleOpenGlobalSearchResult}
+          />
+        </Suspense>
+      ) : null}
 
-      <KeyboardShortcutsModal
-        isOpen={shortcutsModalOpen}
-        onClose={() => setShortcutsModalOpen(false)}
-      />
+      {shortcutsModalOpen ? (
+        <Suspense fallback={<div className="lazy-loading">Loading shortcuts…</div>}>
+          <KeyboardShortcutsModal
+            isOpen={shortcutsModalOpen}
+            onClose={() => setShortcutsModalOpen(false)}
+          />
+        </Suspense>
+      ) : null}
 
       {workspaceGraphOpen && (
         <Suspense fallback={null}>
@@ -2069,18 +2094,26 @@ export default function App() {
         </Suspense>
       )}
 
-      <HelpCenterModal
-        open={helpCenterOpen}
-        onClose={() => setHelpCenterOpen(false)}
-        appInfo={appInfo}
-        documents={helpDocuments}
-      />
+      {helpCenterOpen ? (
+        <Suspense fallback={<div className="lazy-loading">Loading help center…</div>}>
+          <HelpCenterModal
+            open={helpCenterOpen}
+            onClose={() => setHelpCenterOpen(false)}
+            appInfo={appInfo}
+            documents={helpDocuments}
+          />
+        </Suspense>
+      ) : null}
 
-      <AboutModal
-        open={aboutOpen}
-        onClose={() => setAboutOpen(false)}
-        appInfo={appInfo}
-      />
+      {aboutOpen ? (
+        <Suspense fallback={<div className="lazy-loading">Loading about…</div>}>
+          <AboutModal
+            open={aboutOpen}
+            onClose={() => setAboutOpen(false)}
+            appInfo={appInfo}
+          />
+        </Suspense>
+      ) : null}
 
     </div>
   );
