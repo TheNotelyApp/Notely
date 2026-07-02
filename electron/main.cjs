@@ -434,7 +434,7 @@ function moveDirectoryContents(sourceDir, targetDir) {
       moveDirectoryContents(sourcePath, targetPath);
       try {
         fs.rmdirSync(sourcePath);
-      } catch (_error) {
+      } catch {
         // Leave non-empty directories in place if any nested move failed.
       }
       continue;
@@ -456,7 +456,7 @@ function migrateLegacyRemovedDirectory() {
   moveDirectoryContents(legacyRemovedDir, managedRemovedDir);
   try {
     fs.rmSync(legacyRemovedDir, { recursive: true, force: false });
-  } catch (_error) {
+  } catch {
     // Best-effort cleanup: leaving an empty legacy folder is harmless.
   }
 }

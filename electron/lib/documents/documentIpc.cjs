@@ -501,7 +501,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
         const AIConfig = require('../../../src/ai/utils/AIConfig');
         const config = new AIConfig();
         staleness = config.getEmbeddingStaleness();
-      } catch (err) {
+      } catch {
         // Ignore staleness fetch error in error handler
       }
       return { ...buildWorkspaceGraph(fs, path, workspaceRoot), clusters: [], staleness };

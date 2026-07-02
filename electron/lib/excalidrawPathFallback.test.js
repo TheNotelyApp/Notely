@@ -84,7 +84,7 @@ describe("Excalidraw legacy path fallbacks", () => {
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;"),
+        .replace(/"/g, "&quot;"),
       encodePathForUrl,
       normalizeToPosix,
       safeDecode,

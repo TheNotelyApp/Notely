@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   Heading2,
   Bold,
@@ -676,19 +676,23 @@ export function MarkdownToolbar({
     }
   };
 
+  const handleScreenCaptureShortcut = useEffectEvent(() => {
+    void openScreenCapture();
+  });
+
   useEffect(() => {
     const onShortcut = (event) => {
       if (!(event.ctrlKey || event.metaKey) || !event.shiftKey) return;
       if (String(event.key || "").toLowerCase() !== "s") return;
       event.preventDefault();
-      void openScreenCapture();
+      handleScreenCaptureShortcut();
     };
 
     document.addEventListener("keydown", onShortcut);
     return () => {
       document.removeEventListener("keydown", onShortcut);
     };
-  }, [screenCaptureBusy, screenCaptureSaving, screenCaptureMode, value, basePath]);
+  }, [handleScreenCaptureShortcut]);
 
   return (
     <>
