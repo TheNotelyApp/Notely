@@ -1014,6 +1014,22 @@ export default function App() {
       aliases: "search in note replace",
     },
     {
+      id: "open-reference-note",
+      label: "Open Reference Note",
+      group: "Editor",
+      shortcut: "Ctrl/Cmd+Shift+K",
+      disabled: !current,
+      aliases: "reference note preview linked note",
+    },
+    {
+      id: "insert-reference-link",
+      label: "Insert Reference Link",
+      group: "Editor",
+      shortcut: "Ctrl/Cmd+Shift+L",
+      disabled: !current,
+      aliases: "insert markdown link note reference",
+    },
+    {
       id: "open-current-note-parent-folder",
       label: "Open Parent Folder (Current Note)",
       group: "Navigation",
@@ -1196,6 +1212,24 @@ export default function App() {
 
     if (resolvedCommandId === "open-help-center") {
       setHelpCenterOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-reference-note") {
+      if (!current) {
+        notify("Open a note first to reference another note.", "info");
+        return;
+      }
+      window.dispatchEvent(new CustomEvent("notely:open-reference-note-picker"));
+      return;
+    }
+
+    if (resolvedCommandId === "insert-reference-link") {
+      if (!current) {
+        notify("Open a note first to insert a reference link.", "info");
+        return;
+      }
+      window.dispatchEvent(new CustomEvent("notely:insert-reference-link-picker"));
       return;
     }
 

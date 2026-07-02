@@ -10,6 +10,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     process,
     path,
     shell,
+    filePathWithin,
     projectRoot,
     ensureDir,
     readUserSettings,
@@ -22,6 +23,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     listProjectsState,
     getActiveProjectSlug,
     setActiveProjectSlug,
+    createReferenceWindow,
   } = deps;
 
   const RECENT_WORKSPACES_LIMIT = 8;
@@ -207,6 +209,24 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     }
 
     return result.filePaths[0];
+  });
+
+  registerTrustedHandler("window:open-reference-note", (_event, payload) => {
+    const nextFilePath = String(payload?.filePath || "").trim();
+    if (!nextFilePath) {
+      throw new Error("Reference note path is required.");
+    }
+
+    const resolved = path.resolve(nextFilePath);
+    if (!filePathWithin(getNotesRoot(), resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+      throw new Error("Invalid reference note path.");
+    }
+    if (!fs.existsSync(resolved)) {
+      throw new Error("Reference note does not exist.");
+    }
+
+    createReferenceWindow(resolved);
+    return { opened: true, filePath: resolved };
   });
 
   registerTrustedHandler("settings:set-notes-root", (_event, payload) => {

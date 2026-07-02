@@ -740,6 +740,7 @@ registerCoreIpcHandlers(ipcMain, {
   process,
   path,
   shell,
+  filePathWithin,
   projectRoot,
   ensureDir,
   readUserSettings,
@@ -754,6 +755,7 @@ registerCoreIpcHandlers(ipcMain, {
   setActiveProjectSlug: (slug) => {
     activeProjectSlug = slug;
   },
+  createReferenceWindow: (filePath) => windowLifecycle.createReferenceWindow(filePath),
 });
 
 terminalIpc.registerHandlers(ipcMain);

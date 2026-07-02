@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import path from "node:path";
 
 export default defineConfig({
   base: "./",
@@ -13,6 +14,10 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 2500,
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        reference: path.resolve(__dirname, "reference.html"),
+      },
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;

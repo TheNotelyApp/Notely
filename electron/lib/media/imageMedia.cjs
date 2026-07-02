@@ -576,13 +576,37 @@ registerTrustedHandler("images:list", (_event, payload) => {
 
   const readImagesIn = (dir) => {
     if (!fs.existsSync(dir)) return [];
-    try {
-      return fs.readdirSync(dir, { withFileTypes: true })
-        .filter((entry) => entry.isFile())
-        .map((entry) => entry.name);
-    } catch {
-      return [];
+
+    const files = [];
+    const queue = [""];
+
+    while (queue.length > 0) {
+      const relativeDir = queue.shift();
+      const absoluteDir = relativeDir ? path.join(dir, relativeDir) : dir;
+
+      let entries;
+      try {
+        entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+
+      for (const entry of entries) {
+        const relativePath = relativeDir
+          ? path.posix.join(relativeDir.replace(/\\/g, "/"), entry.name)
+          : entry.name;
+
+        if (entry.isDirectory()) {
+          queue.push(relativePath);
+          continue;
+        }
+
+        if (!entry.isFile()) continue;
+        files.push(relativePath.replace(/\\/g, "/"));
+      }
     }
+
+    return files;
   };
 
   // Scan both the note's own sibling images/ folder and the workspace-level

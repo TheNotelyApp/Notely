@@ -385,6 +385,53 @@ function createWindowLifecycle(deps) {
     });
   }
 
+  function createReferenceWindow(filePath) {
+    const windowIconPath = resolveWindowIconPath();
+    const query = new URLSearchParams({ filePath: String(filePath || "") }).toString();
+    const win = new BrowserWindow({
+      width: 980,
+      height: 760,
+      minWidth: 720,
+      minHeight: 520,
+      show: false,
+      autoHideMenuBar: true,
+      backgroundColor: "#f5f3ef",
+      title: "Reference Note",
+      ...(windowIconPath ? { icon: windowIconPath } : {}),
+      webPreferences: {
+        preload: path.join(__dirname, "..", "..", "preload.cjs"),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webviewTag: false,
+      }
+    });
+
+    hardenWebContents(win.webContents);
+
+    win.once("ready-to-show", () => {
+      win.show();
+      win.focus();
+    });
+
+    win.webContents.on("did-fail-load", (_event, code, desc, url) => {
+      console.error("Reference window failed to load:", { code, desc, url });
+      win.show();
+    });
+
+    if (rendererUrl) {
+      const referenceUrl = new URL("reference.html", rendererUrl.endsWith("/") ? rendererUrl : `${rendererUrl}/`);
+      referenceUrl.search = query;
+      win.loadURL(referenceUrl.toString());
+    } else {
+      win.loadFile(path.join(projectRoot, "dist", "reference.html"), {
+        search: `?${query}`,
+      });
+    }
+
+    return win;
+  }
+
   function focusOrCreateWindow() {
     if (!mainWindow || mainWindow.isDestroyed()) {
       createWindow();
@@ -490,6 +537,7 @@ function createWindowLifecycle(deps) {
   return {
     applyContentSecurityPolicy,
     createWindow,
+    createReferenceWindow,
     focusOrCreateWindow,
     registerAppWindowEvents,
     handleMenuContextUpdate,
