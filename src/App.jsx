@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { FolderOpen, NotebookPen, Terminal, X } from "lucide-react";
+import { NotebookPen, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DashboardPanels } from "./components/DashboardPanels";
@@ -147,6 +147,39 @@ function normalizeTypoCheckEnabled(rawValue) {
   return rawValue !== false;
 }
 
+function normalizePathLikeValue(value) {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (value && typeof value === "object") {
+    for (const key of ["filePath", "rootPath", "path", "label", "name", "title"]) {
+      if (typeof value[key] === "string" && value[key].trim()) {
+        return value[key].trim();
+      }
+    }
+  }
+
+  return "";
+}
+
+function normalizePathLikeList(entries) {
+  if (!Array.isArray(entries)) return [];
+  const seen = new Set();
+  const normalized = [];
+
+  for (const entry of entries) {
+    const value = normalizePathLikeValue(entry);
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(value);
+  }
+
+  return normalized;
+}
+
 function parseTagField(value) {
   return String(value || "")
     .split(/[,#]/)
@@ -208,10 +241,10 @@ export default function App() {
     setNoteDialogOpen,
     folderDialogOpen,
     setFolderDialogOpen,
-    notesFolderDialogOpen,
-    setNotesFolderDialogOpen,
+    recentWorkspacesDialogOpen,
+    setRecentWorkspacesDialogOpen,
     notesFolderPath,
-    setNotesFolderPath,
+    recentWorkspacePaths,
     savingNotesFolder,
     documentMenuAction,
     setDocumentMenuAction,
@@ -228,8 +261,8 @@ export default function App() {
     handleRemoveListEntry,
     handleCreateNote,
     handleCreateFolder,
-    handlePickNotesFolder,
-    handleSaveNotesFolder,
+    handleOpenWorkspacePicker,
+    handleOpenRecentWorkspace,
     handleGoHome,
     handleOpenCurrentInEditor,
     handleOpenWebsiteFromLanding,
@@ -458,7 +491,7 @@ export default function App() {
         autoIgnoreMetadataInGit: meta?.autoIgnoreMetadataInGit !== false,
         gitignoreHasNotesApp: meta?.gitignoreHasNotesApp === true,
       });
-    } catch (_error) {
+    } catch {
       setGitWorkspaceMeta((currentValue) => ({
         ...currentValue,
         isGitRoot: false,
@@ -581,8 +614,8 @@ export default function App() {
   }, [bootProgress]);
 
   useEffect(() => {
-    const rootPath = String(activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "");
-    const currentPath = String(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
+    const rootPath = normalizePathLikeValue(activeProject?.rootPath || notesFolderPath).replace(/[\\/]+$/, "");
+    const currentPath = normalizePathLikeValue(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
     const canRemoveFolder = Boolean(rootPath && currentPath && rootPath.toLowerCase() !== currentPath.toLowerCase());
 
     updateMenuContext({
@@ -599,8 +632,9 @@ export default function App() {
       focusModeEnabled: current ? focusModeEnabled : false,
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
+      recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, screenCaptureMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, screenCaptureMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -614,8 +648,20 @@ export default function App() {
         return;
       }
 
-      if (action === "open-notes-folder-settings") {
-        setNotesFolderDialogOpen(true);
+      if (action === "open-workspace") {
+        void handleOpenWorkspacePicker();
+        return;
+      }
+
+      if (action === "open-recent-workspaces") {
+        setRecentWorkspacesDialogOpen(true);
+        return;
+      }
+
+      if (action.startsWith("open-recent-workspace:")) {
+        const encodedPath = String(action).slice("open-recent-workspace:".length);
+        const workspacePath = decodeURIComponent(encodedPath || "");
+        void handleOpenRecentWorkspace(workspacePath);
         return;
       }
 
@@ -912,7 +958,14 @@ export default function App() {
     { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory" },
     { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes" },
     { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
-    { id: "open-notes-folder", label: "Open Notes Folder Settings", group: "Workspace", aliases: "notes root path workspace folder" },
+    { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
+    {
+      id: "open-recent-workspaces",
+      label: "Open Recent Workspace",
+      group: "Workspace",
+      disabled: recentWorkspacePaths.length === 0,
+      aliases: "recent workspaces recently opened folders",
+    },
     { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
@@ -1156,8 +1209,13 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-notes-folder") {
-      setNotesFolderDialogOpen(true);
+    if (resolvedCommandId === "open-workspace") {
+      await handleOpenWorkspacePicker();
+      return;
+    }
+
+    if (resolvedCommandId === "open-recent-workspaces") {
+      setRecentWorkspacesDialogOpen(true);
       return;
     }
 
@@ -1746,43 +1804,41 @@ export default function App() {
         </div>
       ) : null}
 
-      {notesFolderDialogOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Configure notes folder">
+      {recentWorkspacesDialogOpen ? (
+        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Open recent workspace">
           <div className="overlay-dialog-card">
             <div className="overlay-dialog-header">
-              <h2>Notes Folder</h2>
+              <h2>Open Recent Workspace</h2>
               <button
                 className="icon-button"
-                onClick={() => setNotesFolderDialogOpen(false)}
+                onClick={() => setRecentWorkspacesDialogOpen(false)}
                 type="button"
-                aria-label="Close notes folder dialog"
+                aria-label="Close recent workspaces dialog"
               >
                 <X size={16} />
               </button>
             </div>
-            <label className="overlay-dialog-field">
-              <span>Location</span>
-              <input
-                type="text"
-                value={notesFolderPath}
-                onChange={(event) => setNotesFolderPath(event.target.value)}
-                placeholder="Select notes folder path"
-              />
-            </label>
-            <div className="overlay-dialog-actions split">
-              <button className="small-button" onClick={handlePickNotesFolder} type="button">
-                <FolderOpen size={14} />
-                Browse
-              </button>
-              <button
-                className="primary-button"
-                onClick={handleSaveNotesFolder}
-                disabled={savingNotesFolder}
-                type="button"
-              >
-                {savingNotesFolder ? "Saving..." : "Save"}
-              </button>
-            </div>
+            {recentWorkspacePaths.length ? (
+              <div className="overlay-dialog-recents" aria-label="Recent workspaces">
+                <span>Recent Workspaces</span>
+                <div className="overlay-dialog-recent-list">
+                  {recentWorkspacePaths.map((workspacePath) => (
+                    <button
+                      key={workspacePath}
+                      className="overlay-dialog-recent-button"
+                      onClick={() => handleOpenRecentWorkspace(workspacePath)}
+                      disabled={savingNotesFolder}
+                      title={workspacePath}
+                      type="button"
+                    >
+                      {workspacePath}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="overlay-dialog-empty">No recent workspaces yet.</p>
+            )}
           </div>
         </div>
       ) : null}

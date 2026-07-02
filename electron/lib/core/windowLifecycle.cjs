@@ -80,6 +80,28 @@ function createWindowLifecycle(deps) {
     closeSplashWindow();
   }
 
+  function normalizeMenuText(value, fallback = "") {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed || fallback;
+    }
+
+    if (value && typeof value === "object") {
+      for (const key of ["path", "label", "name", "title"]) {
+        if (typeof value[key] === "string" && value[key].trim()) {
+          return value[key].trim();
+        }
+      }
+    }
+
+    return fallback;
+  }
+
+  function normalizeRecentWorkspacePaths(entries) {
+    if (!Array.isArray(entries)) return [];
+    return entries.map((entry) => normalizeMenuText(entry, "")).filter(Boolean);
+  }
+
   function createSplashWindow(windowIconPath) {
     splashWindow = new BrowserWindow({
       width: 560,
@@ -412,6 +434,7 @@ function createWindowLifecycle(deps) {
       dirty: false,
       canRemoveFolder: false,
       currentFolderLabel: "",
+      recentWorkspacePaths: [],
     };
     Menu.setApplicationMenu(buildAppMenu(win, context));
   }
@@ -436,7 +459,8 @@ function createWindowLifecycle(deps) {
       isDevMode: Boolean(rendererUrl) || !app.isPackaged,
       dirty: Boolean(context?.dirty),
       canRemoveFolder: Boolean(context?.canRemoveFolder),
-      currentFolderLabel: String(context?.currentFolderLabel || "").trim(),
+      currentFolderLabel: normalizeMenuText(context?.currentFolderLabel, ""),
+      recentWorkspacePaths: normalizeRecentWorkspacePaths(context?.recentWorkspacePaths),
     };
 
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));

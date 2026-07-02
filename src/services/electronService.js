@@ -138,7 +138,7 @@ export async function aiDetectPatterns() {
 export async function getNotesRootSetting() {
   const api = getNotesApi();
   if (typeof api.getNotesRootSetting !== "function") {
-    throw new Error("Notes folder settings are unavailable. Please restart the app.");
+    throw new Error("Workspace settings are unavailable. Please restart the app.");
   }
   return api.getNotesRootSetting();
 }
@@ -168,7 +168,7 @@ export async function getHelpDocuments() {
 export async function setNotesRootSetting(notesRoot) {
   const api = getNotesApi();
   if (typeof api.setNotesRootSetting !== "function") {
-    throw new Error("Notes folder settings are unavailable. Please restart the app.");
+    throw new Error("Workspace settings are unavailable. Please restart the app.");
   }
   return api.setNotesRootSetting({ notesRoot });
 }

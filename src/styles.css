@@ -1026,6 +1026,56 @@ button {
   padding: 0 12px;
 }
 
+.overlay-dialog-recents {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.overlay-dialog-recents > span {
+  color: #56666b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.overlay-dialog-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overlay-dialog-recent-button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9dedb;
+  border-radius: 8px;
+  background: #f8fbfa;
+  color: #19363a;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.overlay-dialog-recent-button:hover:not(:disabled) {
+  background: #f2f7f5;
+  border-color: #1a3a3e;
+}
+
+.overlay-dialog-recent-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.overlay-dialog-empty {
+  margin: 0;
+  color: #64777c;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .overlay-dialog-checkbox {
   display: flex;
   align-items: flex-start;
