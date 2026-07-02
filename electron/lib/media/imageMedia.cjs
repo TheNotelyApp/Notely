@@ -147,18 +147,21 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
         const pathPart = rawSrc.split(/[?#]/)[0];
         annotation = getImageAnnotationForMarkdownAsset(path.join(sourceDir || getNotesRoot(), "__notely_export__.md"), pathPart);
 
-        if (downsampleImages && !/^file:/i.test(rawSrc)) {
-          const normalizedSrc = safeDecode(pathPart.replace(/\\/g, "/"));
-          const resolvedImagePath = path.isAbsolute(normalizedSrc)
-            ? path.resolve(getNotesRoot(), normalizedSrc.replace(/^[/\\]+/, ""))
-            : path.resolve(sourceDir || getNotesRoot(), normalizedSrc);
+        const normalizedSrc = safeDecode(pathPart.replace(/\\/g, "/"));
+        const resolvedImagePath = resolveImageAssetPath(
+          path.join(sourceDir || getNotesRoot(), "__notely_export__.md"),
+          normalizedSrc
+        );
 
-          if (filePathWithin(getNotesRoot(), resolvedImagePath) && fs.existsSync(resolvedImagePath) && isRasterImagePath(resolvedImagePath)) {
-            const thumbnailPath = ensureImageThumbnail(resolvedImagePath);
+        if (resolvedImagePath && fs.existsSync(resolvedImagePath)) {
+          tokens[idx].attrs[srcIndex][1] = pathToFileURL(resolvedImagePath).href;
+        }
+
+        if (downsampleImages && resolvedImagePath && filePathWithin(getNotesRoot(), resolvedImagePath) && fs.existsSync(resolvedImagePath) && isRasterImagePath(resolvedImagePath)) {
+          const thumbnailPath = ensureImageThumbnail(resolvedImagePath);
             if (thumbnailPath) {
               tokens[idx].attrs[srcIndex][1] = pathToFileURL(thumbnailPath).href;
             }
-          }
         }
       }
     }
