@@ -4,6 +4,7 @@ import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DashboardPanels } from "./components/DashboardPanels";
 import { LandingListControls } from "./components/LandingListControls";
+import { OverlayDialog } from "./components/OverlayDialog";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
@@ -55,6 +56,10 @@ import {
   updateMenuContext,
   getGitWorkspaceMetadata,
   setAutoIgnoreGitMetadata,
+  getAppearanceSettings,
+  setThemePreference as persistThemePreference,
+  setZoomFactor as persistZoomFactor,
+  onThemeChanged,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -209,6 +214,9 @@ export default function App() {
     versionCore: "0.0.0",
     commitHash: "",
   });
+  const [themePreference, setThemePreferenceState] = useState("auto");
+  const [effectiveTheme, setEffectiveTheme] = useState("light");
+  const [zoomFactor, setZoomFactorState] = useState(1);
   const [helpDocuments, setHelpDocuments] = useState([]);
   const [gitWorkspaceMeta, setGitWorkspaceMeta] = useState({
     workspaceRoot: "",
@@ -593,6 +601,41 @@ export default function App() {
       });
   }, [helpCenterOpen, helpDocuments.length]);
 
+  useEffect(() => {
+    void getAppearanceSettings()
+      .then((appearance) => {
+        const nextPreference = ["auto", "light", "dark"].includes(appearance?.themePreference)
+          ? appearance.themePreference
+          : "auto";
+        const nextEffective = appearance?.effectiveTheme === "dark" ? "dark" : "light";
+        const nextZoom = Number.isFinite(Number(appearance?.zoomFactor))
+          ? Math.max(0.75, Math.min(2, Number(appearance.zoomFactor)))
+          : 1;
+        setThemePreferenceState(nextPreference);
+        setEffectiveTheme(nextEffective);
+        setZoomFactorState(nextZoom);
+      })
+      .catch(() => {
+        // Keep defaults when appearance settings are unavailable.
+      });
+
+    return onThemeChanged((payload) => {
+      const nextPreference = ["auto", "light", "dark"].includes(payload?.themePreference)
+        ? payload.themePreference
+        : "auto";
+      const nextEffective = payload?.effectiveTheme === "dark" ? "dark" : "light";
+      setThemePreferenceState(nextPreference);
+      setEffectiveTheme(nextEffective);
+    });
+  }, []);
+
+  useEffect(() => {
+    const root = document?.documentElement;
+    if (!root) return;
+    root.setAttribute("data-theme", effectiveTheme === "dark" ? "dark" : "light");
+    root.setAttribute("data-theme-preference", themePreference);
+  }, [effectiveTheme, themePreference]);
+
   const bootProgress = useMemo(() => {
     return loading ? 25 : 100;
   }, [loading]);
@@ -624,6 +667,7 @@ export default function App() {
       densityMode: notesDensityMode,
       typoCheckEnabled,
       screenCaptureMode,
+      themePreference,
       dirty,
       terminalOpen: showTerminal,
       terminalShell: terminalShellPreference,
@@ -634,7 +678,7 @@ export default function App() {
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, screenCaptureMode, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, screenCaptureMode, themePreference, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -775,6 +819,49 @@ export default function App() {
         return;
       }
 
+      if (action === "theme-auto" || action === "theme-light" || action === "theme-dark") {
+        const nextPreference = action === "theme-light"
+          ? "light"
+          : action === "theme-dark"
+            ? "dark"
+            : "auto";
+        void persistThemePreference(nextPreference)
+          .then((result) => {
+            const appliedPreference = ["auto", "light", "dark"].includes(result?.themePreference)
+              ? result.themePreference
+              : nextPreference;
+            const appliedTheme = result?.effectiveTheme === "dark" ? "dark" : "light";
+            setThemePreferenceState(appliedPreference);
+            setEffectiveTheme(appliedTheme);
+            notify(`Theme set to ${appliedPreference === "auto" ? "System" : appliedPreference}.`, "info");
+          })
+          .catch(() => {
+            notify("Unable to update theme preference.", "error");
+          });
+        return;
+      }
+
+      if (action === "zoom-in" || action === "zoom-out" || action === "zoom-reset") {
+        const nextZoom = action === "zoom-reset"
+          ? 1
+          : action === "zoom-in"
+            ? Math.min(2, Number((zoomFactor + 0.1).toFixed(2)))
+            : Math.max(0.75, Number((zoomFactor - 0.1).toFixed(2)));
+
+        void persistZoomFactor(nextZoom)
+          .then((result) => {
+            const appliedZoom = Number.isFinite(Number(result?.zoomFactor))
+              ? Number(result.zoomFactor)
+              : nextZoom;
+            setZoomFactorState(appliedZoom);
+            notify(`Zoom ${Math.round(appliedZoom * 100)}%.`, "info");
+          })
+          .catch(() => {
+            notify("Unable to update zoom level.", "error");
+          });
+        return;
+      }
+
       if (action === "save-document") {
         saveDocument();
         return;
@@ -886,7 +973,7 @@ export default function App() {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, dirty, activeProject, activeTab, landingFolderPath]);
+  }, [current, dirty, activeProject, activeTab, landingFolderPath, zoomFactor]);
 
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
@@ -952,13 +1039,15 @@ export default function App() {
   }
 
   const paletteCommandsBase = [
-    { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document" },
+    { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document write jot capture" },
+    { id: "open-ai-palette", label: "Open AI Palette", group: "AI", aliases: "assistant ask ai prompt summarize rewrite" },
     { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
     { id: "open-about", label: "Open About Notely", group: "Help", aliases: "about version build" },
-    { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory" },
-    { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes" },
+    { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory organize" },
+    { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes quick open jump" },
     { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
     { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
+    { id: "open-workspace-graph", label: "Open Workspace Graph", group: "Navigation", aliases: "graph map relationships links topology" },
     {
       id: "open-recent-workspaces",
       label: "Open Recent Workspace",
@@ -1028,6 +1117,13 @@ export default function App() {
       shortcut: "Ctrl/Cmd+Shift+L",
       disabled: !current,
       aliases: "insert markdown link note reference",
+    },
+    {
+      id: "go-home",
+      label: "Go to Notes Home",
+      group: "Navigation",
+      disabled: !current,
+      aliases: "home notes list landing back",
     },
     {
       id: "open-current-note-parent-folder",
@@ -1210,6 +1306,11 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-ai-palette") {
+      handleOpenAIPalette({ forceOpen: true });
+      return;
+    }
+
     if (resolvedCommandId === "open-help-center") {
       setHelpCenterOpen(true);
       return;
@@ -1250,6 +1351,11 @@ export default function App() {
 
     if (resolvedCommandId === "open-recent-workspaces") {
       setRecentWorkspacesDialogOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-workspace-graph") {
+      setWorkspaceGraphOpen(true);
       return;
     }
 
@@ -1319,6 +1425,11 @@ export default function App() {
         return;
       }
       setDocumentMenuAction({ action: "find-replace", nonce: Date.now() });
+      return;
+    }
+
+    if (resolvedCommandId === "go-home") {
+      handleGoHome();
       return;
     }
 
@@ -1643,16 +1754,7 @@ export default function App() {
             </div>
           )}
           {landingAssetsOpen ? (
-            <div
-              className="overlay-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Assets"
-              onClick={(event) => {
-                if (event.target === event.currentTarget) setLandingAssetsOpen(false);
-              }}
-            >
-              <div className="overlay-dialog-card assets-dialog-card">
+            <OverlayDialog open={landingAssetsOpen} onClose={() => setLandingAssetsOpen(false)} ariaLabel="Assets" cardClassName="assets-dialog-card">
                 <div className="overlay-dialog-header assets-dialog-header">
                   <div className="assets-dialog-title-group">
                     <h2>Assets Library</h2>
@@ -1677,8 +1779,7 @@ export default function App() {
                     />
                   </Suspense>
                 </div>
-              </div>
-            </div>
+            </OverlayDialog>
           ) : null}
         </div>
       ) : (
@@ -1772,8 +1873,7 @@ export default function App() {
       ) : null}
 
       {noteDialogOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Create note">
-          <div className="overlay-dialog-card">
+        <OverlayDialog open={noteDialogOpen} onClose={() => setNoteDialogOpen(false)} ariaLabel="Create note">
             <div className="overlay-dialog-header">
               <h2>New Note</h2>
               <button
@@ -1801,13 +1901,11 @@ export default function App() {
                 {creatingNote ? "Creating..." : "Create Note"}
               </button>
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {folderDialogOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Create folder">
-          <div className="overlay-dialog-card">
+        <OverlayDialog open={folderDialogOpen} onClose={() => setFolderDialogOpen(false)} ariaLabel="Create folder">
             <div className="overlay-dialog-header">
               <h2>New Folder</h2>
               <button
@@ -1834,13 +1932,11 @@ export default function App() {
                 {creatingFolder ? "Creating..." : "Create Folder"}
               </button>
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {recentWorkspacesDialogOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Open recent workspace">
-          <div className="overlay-dialog-card">
+        <OverlayDialog open={recentWorkspacesDialogOpen} onClose={() => setRecentWorkspacesDialogOpen(false)} ariaLabel="Open recent workspace">
             <div className="overlay-dialog-header">
               <h2>Open Recent Workspace</h2>
               <button
@@ -1873,13 +1969,11 @@ export default function App() {
             ) : (
               <p className="overlay-dialog-empty">No recent workspaces yet.</p>
             )}
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {p2pStatusOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="P2P status">
-          <div className="overlay-dialog-card p2p-status-dialog-card">
+        <OverlayDialog open={p2pStatusOpen} onClose={() => setP2PStatusOpen(false)} ariaLabel="P2P status" cardClassName="p2p-status-dialog-card">
             <div className="overlay-dialog-header">
               <h2>P2P Status</h2>
               <button
@@ -1908,13 +2002,11 @@ export default function App() {
                 onRotateWorkspaceKeys={handleRotateP2PWorkspaceKeys}
               />
             </Suspense>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {workspaceActivityOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Workspace activity">
-          <div className="overlay-dialog-card activity-dialog-card">
+        <OverlayDialog open={workspaceActivityOpen} onClose={() => setWorkspaceActivityOpen(false)} ariaLabel="Workspace activity" cardClassName="activity-dialog-card">
             <div className="overlay-dialog-header">
               <h2>Workspace Activity</h2>
               <button
@@ -1933,8 +2025,7 @@ export default function App() {
                 onRefresh={handleOpenWorkspaceActivity}
               />
             </Suspense>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {aiSettingsOpen ? (
@@ -1950,8 +2041,7 @@ export default function App() {
       ) : null}
 
       {p2pSyncHelpOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="P2P sync notes">
-          <div className="overlay-dialog-card">
+        <OverlayDialog open={p2pSyncHelpOpen} onClose={() => setP2PSyncHelpOpen(false)} ariaLabel="P2P sync notes">
             <div className="overlay-dialog-header">
               <h2>How P2P Sync Works</h2>
               <button
@@ -1981,13 +2071,11 @@ export default function App() {
                 <li>Add delivery retry queues and offline reconciliation.</li>
               </ol>
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {conflictResolutionOpen && conflictResolutionEntry ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Resolve sync conflict">
-          <div className="overlay-dialog-card conflict-resolve-dialog-card">
+        <OverlayDialog open={conflictResolutionOpen && Boolean(conflictResolutionEntry)} onClose={() => setConflictResolutionOpen(false)} ariaLabel="Resolve sync conflict" cardClassName="conflict-resolve-dialog-card">
             <div className="overlay-dialog-header">
               <h2>Resolve Conflict</h2>
               <button
@@ -2012,13 +2100,11 @@ export default function App() {
                 />
               </Suspense>
             ) : null}
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {syncSelfTestOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="P2P sync self-test">
-          <div className="overlay-dialog-card">
+        <OverlayDialog open={syncSelfTestOpen} onClose={() => setSyncSelfTestOpen(false)} ariaLabel="P2P sync self-test">
             <div className="overlay-dialog-header">
               <h2>P2P Sync Self-Test</h2>
               <button
@@ -2052,13 +2138,11 @@ export default function App() {
                 <p>No result yet.</p>
               )}
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {conflictCenterOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="P2P conflict center">
-          <div className="overlay-dialog-card p2p-status-dialog-card">
+        <OverlayDialog open={conflictCenterOpen} onClose={() => setConflictCenterOpen(false)} ariaLabel="P2P conflict center" cardClassName="p2p-status-dialog-card">
             <div className="overlay-dialog-header">
               <h2>Conflict Center</h2>
               <button
@@ -2132,8 +2216,7 @@ export default function App() {
                 </table>
               )}
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {commandPaletteOpen ? (

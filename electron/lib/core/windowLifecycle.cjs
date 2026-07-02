@@ -12,6 +12,7 @@ function createWindowLifecycle(deps) {
     rendererUrl,
     buildAppMenu,
     terminalIpc,
+    getInitialZoomFactor,
   } = deps;
 
   let mainWindow = null;
@@ -315,10 +316,10 @@ function createWindowLifecycle(deps) {
     createSplashWindow(windowIconPath);
 
     const win = new BrowserWindow({
-      width: 1320,
-      height: 860,
-      minWidth: 980,
-      minHeight: 640,
+      width: 1280,
+      height: 840,
+      minWidth: 860,
+      minHeight: 560,
       show: false,
       backgroundColor: "#f5f3ef",
       ...(windowIconPath ? { icon: windowIconPath } : {}),
@@ -330,6 +331,9 @@ function createWindowLifecycle(deps) {
         webviewTag: false
       }
     });
+
+    const initialZoom = Number.isFinite(getInitialZoomFactor?.()) ? getInitialZoomFactor() : 1;
+    win.webContents.setZoomFactor(Math.max(0.75, Math.min(2, initialZoom)));
 
     hardenWebContents(win.webContents);
     win.__bootShown = false;
@@ -363,6 +367,7 @@ function createWindowLifecycle(deps) {
       densityMode: "comfortable",
       typoCheckEnabled: true,
       screenCaptureMode: "auto",
+      themePreference: "auto",
       outlineEnabled: true,
       splitPreviewEnabled: false,
       focusModeEnabled: false,
@@ -391,8 +396,8 @@ function createWindowLifecycle(deps) {
     const win = new BrowserWindow({
       width: 980,
       height: 760,
-      minWidth: 720,
-      minHeight: 520,
+      minWidth: 640,
+      minHeight: 460,
       show: false,
       autoHideMenuBar: true,
       backgroundColor: "#f5f3ef",
@@ -406,6 +411,9 @@ function createWindowLifecycle(deps) {
         webviewTag: false,
       }
     });
+
+    const initialZoom = Number.isFinite(getInitialZoomFactor?.()) ? getInitialZoomFactor() : 1;
+    win.webContents.setZoomFactor(Math.max(0.75, Math.min(2, initialZoom)));
 
     hardenWebContents(win.webContents);
 
@@ -472,6 +480,7 @@ function createWindowLifecycle(deps) {
       densityMode: "comfortable",
       typoCheckEnabled: true,
       screenCaptureMode: "auto",
+      themePreference: "auto",
       outlineEnabled: true,
       splitPreviewEnabled: false,
       focusModeEnabled: false,
@@ -496,6 +505,9 @@ function createWindowLifecycle(deps) {
       densityMode: context?.densityMode === "compact" ? "compact" : "comfortable",
       typoCheckEnabled: context?.typoCheckEnabled !== false,
       screenCaptureMode: context?.screenCaptureMode === "review" ? "review" : "auto",
+      themePreference: ["auto", "light", "dark"].includes(context?.themePreference)
+        ? context.themePreference
+        : "auto",
       outlineEnabled: context?.outlineEnabled !== false,
       splitPreviewEnabled: context?.splitPreviewEnabled === true,
       focusModeEnabled: context?.focusModeEnabled === true,

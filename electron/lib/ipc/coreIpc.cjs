@@ -74,6 +74,31 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     });
   }
 
+  function normalizeThemePreference(value) {
+    return value === "light" || value === "dark" ? value : "auto";
+  }
+
+  function resolveEffectiveTheme(themePreference) {
+    const preference = normalizeThemePreference(themePreference);
+    if (preference === "light" || preference === "dark") return preference;
+    const shouldUseDark = Boolean(deps?.nativeTheme?.shouldUseDarkColors);
+    return shouldUseDark ? "dark" : "light";
+  }
+
+  function normalizeZoomFactor(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 1;
+    return Math.max(0.75, Math.min(2, Number(numeric.toFixed(2))));
+  }
+
+  function broadcastThemeChange(themePreference) {
+    const effectiveTheme = resolveEffectiveTheme(themePreference);
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win || win.isDestroyed()) continue;
+      win.webContents.send("appearance:theme-changed", { themePreference, effectiveTheme });
+    }
+  }
+
   registerTrustedHandler("settings:get-notes-root", () => ({
     notesRoot: getNotesRoot(),
     notesRootSource: process.env.NOTES_ROOT ? "env" : "config",
@@ -195,6 +220,49 @@ function registerCoreIpcHandlers(ipcMain, deps) {
       versionCore: String(computed?.versionCore || fallbackVersion),
       commitHash: String(computed?.commitHash || ""),
     };
+  });
+
+  registerTrustedHandler("settings:get-appearance", () => {
+    const settings = readUserSettings();
+    const themePreference = normalizeThemePreference(settings?.themePreference);
+    const zoomFactor = normalizeZoomFactor(settings?.zoomFactor);
+    return {
+      themePreference,
+      effectiveTheme: resolveEffectiveTheme(themePreference),
+      zoomFactor,
+    };
+  });
+
+  registerTrustedHandler("settings:set-theme-preference", (_event, payload) => {
+    const settings = readUserSettings();
+    const themePreference = normalizeThemePreference(payload?.themePreference);
+    settings.themePreference = themePreference;
+    writeUserSettings(settings);
+
+    if (deps?.nativeTheme) {
+      deps.nativeTheme.themeSource = themePreference === "auto" ? "system" : themePreference;
+    }
+
+    broadcastThemeChange(themePreference);
+
+    return {
+      themePreference,
+      effectiveTheme: resolveEffectiveTheme(themePreference),
+    };
+  });
+
+  registerTrustedHandler("settings:set-zoom-factor", (event, payload) => {
+    const nextZoom = normalizeZoomFactor(payload?.zoomFactor);
+    const settings = readUserSettings();
+    settings.zoomFactor = nextZoom;
+    writeUserSettings(settings);
+
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (senderWindow && !senderWindow.isDestroyed()) {
+      senderWindow.webContents.setZoomFactor(nextZoom);
+    }
+
+    return { zoomFactor: nextZoom };
   });
 
   registerTrustedHandler("settings:pick-folder", async () => {

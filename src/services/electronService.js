@@ -43,6 +43,45 @@ export function notifyBootProgress(progress) {
   api.notifyBootProgress(progress || {});
 }
 
+export async function getAppearanceSettings() {
+  const api = getNotesApi();
+  if (typeof api.getAppearanceSettings !== "function") {
+    return {
+      themePreference: "auto",
+      effectiveTheme: "light",
+      zoomFactor: 1,
+    };
+  }
+  return api.getAppearanceSettings();
+}
+
+export async function setThemePreference(themePreference) {
+  const api = getNotesApi();
+  if (typeof api.setThemePreference !== "function") {
+    return {
+      themePreference: "auto",
+      effectiveTheme: "light",
+    };
+  }
+  return api.setThemePreference({ themePreference });
+}
+
+export async function setZoomFactor(zoomFactor) {
+  const api = getNotesApi();
+  if (typeof api.setZoomFactor !== "function") {
+    return { zoomFactor: 1 };
+  }
+  return api.setZoomFactor({ zoomFactor });
+}
+
+export function onThemeChanged(callback) {
+  const api = getNotesApi();
+  if (typeof api.onThemeChanged !== "function") {
+    return () => {};
+  }
+  return api.onThemeChanged(callback);
+}
+
 export async function aiQuery(query, context = {}) {
   const api = getNotesApi();
   if (typeof api.aiQuery !== "function") {

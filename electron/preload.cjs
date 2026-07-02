@@ -13,6 +13,18 @@ contextBridge.exposeInMainWorld("notesApi", {
   notifyBootReady: () => ipcRenderer.send("app:boot-ready"),
   notifyBootProgress: (payload) => ipcRenderer.send("app:boot-progress", payload),
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
+  getAppearanceSettings: () => ipcRenderer.invoke("settings:get-appearance"),
+  setThemePreference: (payload) => ipcRenderer.invoke("settings:set-theme-preference", payload),
+  setZoomFactor: (payload) => ipcRenderer.invoke("settings:set-zoom-factor", payload),
+  onThemeChanged: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("appearance:theme-changed", listener);
+    return () => ipcRenderer.removeListener("appearance:theme-changed", listener);
+  },
   aiQuery: (payload) => ipcRenderer.invoke("ai:query", payload),
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
   aiSetApiKey: (payload) => ipcRenderer.invoke("ai:config:set-api-key", payload),

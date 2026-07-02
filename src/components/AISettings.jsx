@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Key, Save, Trash2, X, Zap, AlertCircle } from 'lucide-react';
+import AppInput from './AppInput';
+import AppIconButton from './AppIconButton';
+import AppSelect from './AppSelect';
 import './AISettings.css';
-import { useFocusTrap } from '../hooks/useFocusTrap';
+import OverlayDialog from './OverlayDialog';
 import {
   aiClearData,
   aiGetApiKey,
@@ -110,26 +113,18 @@ const AISettings = ({ isOpen, onClose }) => {
   const [hfTestResult, setHfTestResult] = useState(null);
   const [selectedModel, setSelectedModel] = useState('');
   const [embeddingStaleness, setEmbeddingStaleness] = useState(null);
-  const dialogRef = useFocusTrap(isOpen);
+  const [showAdvancedGeneration, setShowAdvancedGeneration] = useState(false);
+  const [showDataControls, setShowDataControls] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       loadSettings();
       loadEmbeddingStaleness();
+      setShowAdvancedGeneration(false);
+      setShowDataControls(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedProvider]);
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
 
   const loadSettings = async () => {
     try {
@@ -342,16 +337,20 @@ const AISettings = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="overlay-dialog" onClick={onClose} role="dialog" aria-modal="true" aria-label="AI settings">
-      <div ref={dialogRef} className="overlay-dialog-card ai-settings-dialog-card" onClick={(event) => event.stopPropagation()}>
+    <OverlayDialog
+      open={isOpen}
+      onClose={onClose}
+      ariaLabel="AI settings"
+      cardClassName="ai-settings-dialog-card"
+    >
         <div className="overlay-dialog-header ai-settings-dialog-header">
           <div className="ai-settings-title-group">
             <h2>AI Settings</h2>
-            <p>Provider, preferences, and local AI data.</p>
+            <p>Connect providers, tune behavior, and manage local AI data.</p>
           </div>
-          <button className="icon-button" onClick={onClose} type="button" aria-label="Close AI settings">
+          <AppIconButton onClick={onClose} aria-label="Close AI settings">
             <X size={16} />
-          </button>
+          </AppIconButton>
         </div>
 
         {status ? (
@@ -361,6 +360,11 @@ const AISettings = ({ isOpen, onClose }) => {
         ) : null}
 
         <div className="ai-settings-content">
+          <div className="ai-settings-intent-header">
+            <h3>Connect Providers</h3>
+            <p>Set up text generation and embeddings, then verify connections.</p>
+          </div>
+
           <section className="ai-settings-section ai-settings-embeddings-card">
             <div className="ai-settings-setup-head">
               <h3>Embeddings</h3>
@@ -375,7 +379,7 @@ const AISettings = ({ isOpen, onClose }) => {
             <div className="api-key-group compact">
               <label htmlFor="hf-token">HuggingFace Token (hf_…)</label>
               <div className="api-key-input-group">
-                <input
+                <AppInput
                   id="hf-token"
                   type="password"
                   className="api-key-input"
@@ -437,7 +441,7 @@ const AISettings = ({ isOpen, onClose }) => {
                 {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
               </label>
               <div className="api-key-combined-row">
-                <input
+                <AppInput
                   id="api-key"
                   type="password"
                   className="api-key-input"
@@ -451,7 +455,7 @@ const AISettings = ({ isOpen, onClose }) => {
                   const providerModels = normalizeProviderModels(providerEntry?.models);
                   if (!providerModels.length) return null;
                   return (
-                    <select
+                    <AppSelect
                       id="provider-model"
                       className="provider-model-select"
                       value={selectedModel}
@@ -467,7 +471,7 @@ const AISettings = ({ isOpen, onClose }) => {
                           {m.note ? `${m.label} — ${m.note}` : m.label}
                         </option>
                       ))}
-                    </select>
+                    </AppSelect>
                   );
                 })()}
                 <button
@@ -515,6 +519,11 @@ const AISettings = ({ isOpen, onClose }) => {
             )}
           </section>
 
+          <div className="ai-settings-intent-header">
+            <h3>Assistant Behavior</h3>
+            <p>Choose how AI features run during everyday note work.</p>
+          </div>
+
           <section className="ai-settings-section ai-settings-features-card">
             <h3>Features</h3>
             <div className="ai-settings-option-list">
@@ -548,74 +557,100 @@ const AISettings = ({ isOpen, onClose }) => {
             </div>
           </section>
 
-          <section className="ai-settings-section ai-settings-generation-card">
-            <h3>Generation</h3>
-            <div className="ai-settings-range-row">
-              <div className="ai-settings-range-label">
-                <span>Max Tokens</span>
-                <strong>{preferences.maxTokensPerQuery}</strong>
-              </div>
-              <input
-                type="range"
-                min="512"
-                max="8192"
-                step="256"
-                value={preferences.maxTokensPerQuery}
-                onChange={(event) => handlePreferenceChange('maxTokensPerQuery', parseInt(event.target.value, 10))}
-                disabled={loading}
-                className="slider"
-              />
-            </div>
-            <div className="ai-settings-range-row">
-              <div className="ai-settings-range-label">
-                <span>Temperature</span>
-                <strong>{preferences.temperature.toFixed(2)}</strong>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={preferences.temperature}
-                onChange={(event) => handlePreferenceChange('temperature', parseFloat(event.target.value))}
-                disabled={loading}
-                className="slider"
-              />
-            </div>
-            <div className="ai-settings-inline-actions compact">
-              <button
-                className="btn btn-primary"
-                onClick={handleSavePreferences}
-                disabled={loading}
-                type="button"
-              >
-                <Save size={12} /> Save
-              </button>
-            </div>
-          </section>
+          <div className="ai-settings-disclosure">
+            <button
+              type="button"
+              className={`ai-settings-disclosure-toggle ${showAdvancedGeneration ? 'active' : ''}`}
+              onClick={() => setShowAdvancedGeneration((value) => !value)}
+              aria-expanded={showAdvancedGeneration}
+            >
+              {showAdvancedGeneration ? 'Hide' : 'Show'} advanced generation tuning
+            </button>
 
-          <section className="ai-settings-section ai-settings-storage-card">
-            <div className="ai-settings-storage-meta">
-              <div className="ai-settings-meta-pill">Local only</div>
-              <div className="ai-settings-meta-pill">SQLite memory</div>
-              <div className="ai-settings-meta-pill">Private persona</div>
-            </div>
-            <div className="data-management compact">
-              <div className="ai-settings-storage-copy">
-                <strong>Data paths</strong>
-                <span><code>.notes-app/app.sqlite</code></span>
-                <span><code>%APPDATA%/Notely/ai-config.json</code></span>
-              </div>
-              <button
-                className="btn btn-danger"
-                onClick={handleClearData}
-                disabled={loading}
-                type="button"
-              >
-                <Trash2 size={12} /> Clear AI Data
-              </button>
-            </div>
-          </section>
+            {showAdvancedGeneration ? (
+              <section className="ai-settings-section ai-settings-generation-card">
+                <h3>Generation</h3>
+                <div className="ai-settings-range-row">
+                  <div className="ai-settings-range-label">
+                    <span>Max tokens</span>
+                    <strong>{preferences.maxTokensPerQuery}</strong>
+                  </div>
+                  <AppInput
+                    type="range"
+                    min="512"
+                    max="8192"
+                    step="256"
+                    value={preferences.maxTokensPerQuery}
+                    onChange={(event) => handlePreferenceChange('maxTokensPerQuery', parseInt(event.target.value, 10))}
+                    disabled={loading}
+                    className="slider"
+                  />
+                </div>
+                <div className="ai-settings-range-row">
+                  <div className="ai-settings-range-label">
+                    <span>Temperature</span>
+                    <strong>{preferences.temperature.toFixed(2)}</strong>
+                  </div>
+                  <AppInput
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={preferences.temperature}
+                    onChange={(event) => handlePreferenceChange('temperature', parseFloat(event.target.value))}
+                    disabled={loading}
+                    className="slider"
+                  />
+                </div>
+                <div className="ai-settings-inline-actions compact">
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSavePreferences}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Save size={12} /> Save
+                  </button>
+                </div>
+              </section>
+            ) : null}
+          </div>
+
+          <div className="ai-settings-disclosure">
+            <button
+              type="button"
+              className={`ai-settings-disclosure-toggle ${showDataControls ? 'active' : ''}`}
+              onClick={() => setShowDataControls((value) => !value)}
+              aria-expanded={showDataControls}
+            >
+              {showDataControls ? 'Hide' : 'Show'} data and privacy controls
+            </button>
+
+            {showDataControls ? (
+              <section className="ai-settings-section ai-settings-storage-card">
+                <div className="ai-settings-storage-meta">
+                  <div className="ai-settings-meta-pill">Local only</div>
+                  <div className="ai-settings-meta-pill">SQLite memory</div>
+                  <div className="ai-settings-meta-pill">Private persona</div>
+                </div>
+                <div className="data-management compact">
+                  <div className="ai-settings-storage-copy">
+                    <strong>Data paths</strong>
+                    <span><code>.notes-app/app.sqlite</code></span>
+                    <span><code>%APPDATA%/Notely/ai-config.json</code></span>
+                  </div>
+                  <button
+                    className="btn btn-danger"
+                    onClick={handleClearData}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Trash2 size={12} /> Clear AI data
+                  </button>
+                </div>
+              </section>
+            ) : null}
+          </div>
         </div>
 
         <div className="ai-settings-footer">
@@ -623,8 +658,7 @@ const AISettings = ({ isOpen, onClose }) => {
             <X size={12} /> Close
           </button>
         </div>
-      </div>
-    </div>
+    </OverlayDialog>
   );
 };
 

@@ -15,6 +15,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { getSemanticGraph } from "../services/electronService.js";
+import AppButton from "./AppButton";
+import AppIconButton from "./AppIconButton";
+import AppInput from "./AppInput";
+import OverlayDialog from "./OverlayDialog";
 import "./WorkspaceGraphPanel.css";
 
 // ── Colour palette ────────────────────────────────────────────────────────────
@@ -38,6 +42,13 @@ function clusterBgColor(idx) {
   return CLUSTER_COLORS[idx % CLUSTER_COLORS.length];
 }
 
+const EDGE_DEFAULT_COLOR = "var(--border-soft)";
+const EDGE_SELECTED_COLOR = "var(--accent-solid)";
+const EDGE_DIMMED_COLOR = "var(--border-default)";
+const BACKGROUND_GRID_COLOR = "var(--border-muted)";
+const MINIMAP_MASK_COLOR = "var(--surface-overlay)";
+const MINIMAP_FALLBACK_NODE_COLOR = "var(--border-soft)";
+
 // ── Custom node component ─────────────────────────────────────────────────────
 function GraphNode({ data }) {
   const { label, color, selected, dimmed, nodeType } = data;
@@ -46,7 +57,7 @@ function GraphNode({ data }) {
   return (
     <div
       className={`wgp-node${selected ? " selected" : ""}${dimmed ? " dimmed" : ""}${isMedia ? " media-node" : ""}`}
-      style={{ background: isMedia ? "rgba(200, 200, 200, 0.1)" : color, border: isMedia ? "1px dashed #999" : undefined }}
+      style={{ background: isMedia ? "var(--surface-muted)" : color, border: isMedia ? "1px dashed var(--text-subtle)" : undefined }}
       title={isMedia ? `Media: ${label}` : label}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
@@ -177,7 +188,7 @@ function ClusterBackground({ clusters, nodes, clusterIdx }) {
         width,
         height,
         background: clusterBgColor(clusterIdx),
-        border: `1px dashed rgba(100, 130, 140, 0.3)`,
+        border: "1px dashed color-mix(in srgb, var(--text-muted) 45%, transparent)",
         borderRadius: 4,
         pointerEvents: "none",
         zIndex: -1,
@@ -227,8 +238,8 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters, showMedia }) {
       .filter((e) => filteredIds.has(e.source) && filteredIds.has(e.target))
       .map((e) => ({
         ...e,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color: "#a0aca8" },
-        style: { stroke: "#a0aca8", strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color: EDGE_DEFAULT_COLOR },
+        style: { stroke: EDGE_DEFAULT_COLOR, strokeWidth: 1.5 },
       }));
   }, [rawData, filteredIds]);
 
@@ -249,9 +260,9 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters, showMedia }) {
       ...e,
       style: selectedId
         ? (e.source === selectedId || e.target === selectedId)
-          ? { stroke: "#2f5d62", strokeWidth: 2 }
-          : { stroke: "#d0cbc0", strokeWidth: 1 }
-        : { stroke: "#a0aca8", strokeWidth: 1.5 },
+          ? { stroke: EDGE_SELECTED_COLOR, strokeWidth: 2 }
+          : { stroke: EDGE_DIMMED_COLOR, strokeWidth: 1 }
+        : { stroke: EDGE_DEFAULT_COLOR, strokeWidth: 1.5 },
     })));
   }, [baseNodes, baseEdges, selectedId, setNodes, setEdges]);
 
@@ -303,15 +314,15 @@ function GraphCanvas({ rawData, filter, onOpenDocument, clusters, showMedia }) {
         wheelSensitivity={0.2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={32} size={1.5} color="#f0f0f0" />
+        <Background gap={32} size={1.5} color={BACKGROUND_GRID_COLOR} />
         {/* Render semantic cluster backgrounds */}
         {clusters && clusters.map((_, idx) => (
           <ClusterBackground key={idx} clusters={clusters} nodes={baseNodes} clusterIdx={idx} />
         ))}
         <Controls />
         <MiniMap
-          nodeColor={(n) => n.data?.color || "#ccc"}
-          maskColor="rgba(255,255,255,0.8)"
+          nodeColor={(n) => n.data?.color || MINIMAP_FALLBACK_NODE_COLOR}
+          maskColor={MINIMAP_MASK_COLOR}
           style={{ width: 140, height: 90 }}
         />
       </ReactFlow>
@@ -411,13 +422,6 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
     }
   }, []);
 
-  // Keyboard: Escape closes
-  useEffect(() => {
-    const handler = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   const folders = useMemo(() => {
     if (!rawData?.nodes) return [];
     const folderSet = new Set(rawData.nodes.filter(n => n.nodeType !== 'media').map((n) => n.folder || "."));
@@ -436,7 +440,12 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
   const clusterCount = clusters?.filter((c) => c.members && c.members.length > 1).length ?? 0;
 
   return (
-    <div className="workspace-graph-overlay" role="dialog" aria-modal="true" aria-label="Workspace Graph">
+    <OverlayDialog
+      onClose={onClose}
+      ariaLabel="Workspace Graph"
+      cardClassName="workspace-graph-overlay"
+      useDefaultCardClass={false}
+    >
       {/* Header */}
       <div className="workspace-graph-header">
         <h2>Workspace Graph</h2>
@@ -447,23 +456,23 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
         )}
         <div className="workspace-graph-header-actions">
           {embeddingsAvailable && !loading && (
-            <button
-              className="small-button"
+            <AppButton
+              variant="small"
               onClick={handleRefreshSemantic}
               disabled={semanticLoading}
               title="Refresh semantic clustering"
             >
               <RefreshCw size={14} />
-            </button>
+            </AppButton>
           )}
           {!embeddingsAvailable && !loading && !error && (
             <span className="embedding-status-badge" title="Semantic clustering unavailable">
               <Zap size={12} /> Embeddings off
             </span>
           )}
-          <button className="workspace-graph-close" onClick={onClose} title="Close (Esc)">
+          <AppIconButton className="workspace-graph-close" onClick={onClose} title="Close (Esc)">
             <X size={18} />
-          </button>
+          </AppIconButton>
         </div>
       </div>
 
@@ -471,16 +480,17 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
       {!loading && !error && (
         <div className="workspace-graph-toolbar">
           {mediaCount > 0 && (
-            <button
-              className={`small-button${showMedia ? " active" : ""}`}
+            <AppButton
+              variant="small"
+              className={showMedia ? "active" : ""}
               onClick={() => setShowMedia(!showMedia)}
               title={showMedia ? "Hide media files" : "Show media files"}
             >
               {showMedia ? <Eye size={14} /> : <EyeOff size={14} />}
               {showMedia ? 'Media On' : 'Media Off'}
-            </button>
+            </AppButton>
           )}
-          <input
+          <AppInput
             className="workspace-graph-filter-input"
             type="search"
             placeholder="Filter notes…"
@@ -498,7 +508,7 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
               ))}
               {mediaCount > 0 && (
                 <span className="workspace-graph-legend-item">
-                  <span className="workspace-graph-legend-dot" style={{ background: "rgba(200,200,200,0.3)", border: "1px dashed #999" }} />
+                  <span className="workspace-graph-legend-dot" style={{ background: "var(--surface-muted)", border: "1px dashed var(--text-subtle)" }} />
                   media
                 </span>
               )}
@@ -527,6 +537,6 @@ export function WorkspaceGraphPanel({ onClose, onOpenDocument }) {
           </ReactFlowProvider>
         )}
       </div>
-    </div>
+    </OverlayDialog>
   );
 }

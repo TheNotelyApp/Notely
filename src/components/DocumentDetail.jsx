@@ -23,8 +23,13 @@ import {
   Sparkles,
   ListTree,
 } from "lucide-react";
+import AppButton from "./AppButton";
+import AppIconButton from "./AppIconButton";
+import AppInput from "./AppInput";
 import { EditorPane } from "./EditorPane";
 import { MediaTab } from "./MediaTab";
+import OverlayDialog from "./OverlayDialog";
+import DialogSelectField from "./DialogSelectField";
 import { formatDate } from "../utils/dateUtils";
 import { downloadPdf } from "../services/electronService";
 import { deleteVersion, readVersion } from "../services/electronService";
@@ -432,7 +437,7 @@ const MetadataPanel = memo(function MetadataPanel({
       <label className="metadata-card metadata-card-input">
         <FileText size={16} />
         <span>Title</span>
-        <input
+        <AppInput
           type="text"
           value={titleText}
           onChange={onTitleChange}
@@ -446,7 +451,7 @@ const MetadataPanel = memo(function MetadataPanel({
       <label className="metadata-card metadata-card-input">
         <User size={16} />
         <span>Name</span>
-        <input
+        <AppInput
           type="text"
           value={nameText}
           onChange={onNameChange}
@@ -459,14 +464,14 @@ const MetadataPanel = memo(function MetadataPanel({
         <span>Time</span>
         <div className="metadata-time-range-row">
           <span className="metadata-time-range-label">From</span>
-          <input
+          <AppInput
             type="datetime-local"
             value={timeFromText}
             onChange={onTimeFromChange}
             aria-label="Start time"
           />
           <span className="metadata-time-range-label">To</span>
-          <input
+          <AppInput
             type="datetime-local"
             value={timeToText}
             onChange={onTimeToChange}
@@ -478,7 +483,7 @@ const MetadataPanel = memo(function MetadataPanel({
       <label className="metadata-card metadata-card-input">
         <MapPin size={16} />
         <span>Location</span>
-        <input
+        <AppInput
           type="text"
           value={locationText}
           onChange={onLocationChange}
@@ -500,12 +505,12 @@ const MetadataPanel = memo(function MetadataPanel({
                 title={`Remove ${tag}`}
                 onClick={() => onTagRemove(tag)}
               >
-                <X size={10} />
+                <X size={12} />
               </button>
             </span>
           )) : <span className="metadata-tag-empty">No tags yet</span>}
         </div>
-        <input
+        <AppInput
           type="text"
           value={tagInputText}
           onChange={onTagsChange}
@@ -537,28 +542,28 @@ const FindReplacePanel = memo(function FindReplacePanel({
 
   return (
     <div className="find-replace-panel" role="region" aria-label="Find and replace">
-      <input
+      <AppInput
         value={findQuery}
         onChange={(event) => setFindQuery(event.target.value)}
         placeholder="Find"
       />
-      <input
+      <AppInput
         value={replaceValue}
         onChange={(event) => setReplaceValue(event.target.value)}
         placeholder="Replace"
       />
       <label className="find-toggle">
-        <input
+        <AppInput
           type="checkbox"
           checked={findCaseSensitive}
           onChange={(event) => setFindCaseSensitive(event.target.checked)}
         />
         Case
       </label>
-      <button className="small-button" type="button" onClick={onFindPrevious}>Prev</button>
-      <button className="small-button" type="button" onClick={onFindNext}>Next</button>
-      <button className="small-button" type="button" onClick={onReplace}>Replace</button>
-      <button className="small-button" type="button" onClick={onReplaceAll}>Replace All</button>
+      <AppButton variant="small" onClick={onFindPrevious}>Prev</AppButton>
+      <AppButton variant="small" onClick={onFindNext}>Next</AppButton>
+      <AppButton variant="small" onClick={onReplace}>Replace</AppButton>
+      <AppButton variant="small" onClick={onReplaceAll}>Replace All</AppButton>
       <span className="find-count">{findMatchTotal ? `${Math.max(findMatchIndex + 1, 1)}/${findMatchTotal}` : "0/0"}</span>
     </div>
   );
@@ -577,28 +582,28 @@ const OutlinePanel = memo(function OutlinePanel({
     <aside className={`outline-panel ${isOutlineCollapsed ? "collapsed" : ""}`}>
       {isOutlineCollapsed ? (
         <div className="outline-collapsed-actions">
-          <button
-            className="small-button"
+          <AppButton
+            variant="small"
             onClick={() => setIsOutlineCollapsed(false)}
             title="Open outline panel"
             aria-expanded="false"
           >
             <ListTree size={16} />
-          </button>
+          </AppButton>
         </div>
       ) : (
         <>
           <div className="panel-title-row">
             <h2>Outline</h2>
             <div className="panel-actions">
-              <button
-                className="small-button"
+              <AppButton
+                variant="small"
                 onClick={() => setIsOutlineCollapsed(true)}
                 title="Close outline panel"
                 aria-expanded="true"
               >
                 <ChevronRight size={16} />
-              </button>
+              </AppButton>
             </div>
           </div>
           {outlineHeadings.length ? (
@@ -973,6 +978,32 @@ export function DocumentDetail({
   const canUndo = !showMediaManager && historyStateRef.current[activeHistoryKey].undo.length > 0;
   const canRedo = !showMediaManager && historyStateRef.current[activeHistoryKey].redo.length > 0;
 
+  const toggleOutlineEnabled = () => {
+    if (isFocusMode) {
+      onNotify?.("Outline is unavailable while Focus mode is enabled.", "info");
+      return;
+    }
+
+    onOutlineEnabledChange?.((value) => {
+      const nextEnabled = value === false;
+      onNotify?.(nextEnabled ? "Outline panel shown." : "Outline panel hidden.", "info");
+      return nextEnabled;
+    });
+  };
+
+  const toggleFocusMode = () => {
+    onFocusModeChange?.((value) => {
+      const nextEnabled = value !== true;
+      onNotify?.(
+        nextEnabled
+          ? "Focus mode on. Outline is hidden; press Ctrl/Cmd+Shift+F to exit."
+          : "Focus mode off. Full layout restored.",
+        "info",
+      );
+      return nextEnabled;
+    });
+  };
+
   const jumpToLine = (line) => {
     const safeLine = Math.max(Number(line) || 1, 1);
     if (mode !== "edit" && mode !== "split") {
@@ -1319,14 +1350,14 @@ export function DocumentDetail({
     textareaRef,
     setFindQuery,
     openFindReplacePanel,
-    toggleOutlineEnabled: () => onOutlineEnabledChange?.((value) => value === false),
+    toggleOutlineEnabled,
     toggleSplitPreview: () => {
       if (!showMediaManager) {
         setMode((value) => (value === "split" ? "edit" : "split"));
         onNotify?.("Split preview toggled.", "info");
       }
     },
-    toggleFocusMode: () => onFocusModeChange?.((value) => value !== true),
+    toggleFocusMode,
     openPdfOptions: () => {
       setPdfExportMode("formal");
       setPdfQualityPreset("full");
@@ -1501,14 +1532,14 @@ export function DocumentDetail({
           <p className="doc-header-file">{document.fileName}</p>
         </div>
         <div className="panel-actions">
-          <button
-            className={`small-button ${showMetadataPanel ? "active" : ""}`}
-            type="button"
+          <AppButton
+            variant="small"
+            className={showMetadataPanel ? "active" : ""}
             title="Toggle note metadata"
             onClick={() => setShowMetadataPanel((value) => !value)}
           >
             {showMetadataPanel ? "Hide details" : "Show details"}
-          </button>
+          </AppButton>
         </div>
       </header>
 
@@ -1537,6 +1568,14 @@ export function DocumentDetail({
       />
 
       <div className={`workspace ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${isFocusMode ? "focus-mode" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
+        {isFocusMode ? (
+          <div className="mode-contract-banner" role="status" aria-live="polite">
+            <span>Focus mode is active. Outline is hidden to reduce distractions.</span>
+            <AppButton variant="small" onClick={toggleFocusMode} title="Exit focus mode">
+              Exit focus mode
+            </AppButton>
+          </div>
+        ) : null}
         <main className="editor-panel">
           <div className="tab-row">
             <div className="tabs">
@@ -1681,32 +1720,39 @@ export function DocumentDetail({
       </div>
 
       {compareModalOpen ? (
-        <div className="diff-modal-overlay" role="dialog" aria-label="Version diff">
-          <div className="diff-modal">
+        <OverlayDialog
+          onClose={() => setCompareModalOpen(false)}
+          ariaLabel="Version diff"
+          overlayClassName="diff-modal-overlay"
+          cardClassName="diff-modal"
+          useDefaultCardClass={false}
+        >
             <div className="diff-modal-header">
               <strong>
                 Compare Latest with {compareMeta?.createdAt ? formatDate(compareMeta.createdAt) : "Version"}
               </strong>
               <div className="diff-modal-controls">
-                <button
-                  className={`small-button ${smartMode ? "active" : ""}`}
+                <AppButton
+                  variant="small"
+                  className={smartMode ? "active" : ""}
                   onClick={() => setSmartMode((value) => !value)}
                   title="Ignore whitespace and collapse unchanged blocks"
                 >
                   <Sparkles size={14} />
                   Smart
-                </button>
-                <button
-                  className={`small-button ${showOnlyChanges ? "active" : ""}`}
+                </AppButton>
+                <AppButton
+                  variant="small"
+                  className={showOnlyChanges ? "active" : ""}
                   onClick={() => setShowOnlyChanges((value) => !value)}
                   title="Toggle changed lines only"
                 >
                   <Filter size={14} />
                   {showOnlyChanges ? "All lines" : "Changes only"}
-                </button>
-                <button className="small-button" onClick={() => setCompareModalOpen(false)} title="Close diff">
+                </AppButton>
+                <AppButton variant="small" onClick={() => setCompareModalOpen(false)} title="Close diff">
                   <X size={14} />
-                </button>
+                </AppButton>
               </div>
             </div>
 
@@ -1752,24 +1798,25 @@ export function DocumentDetail({
                 </div>
               </div>
             )}
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {showHistoryPopover ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Versions">
-          <div className="overlay-dialog-card">
+        <OverlayDialog
+          onClose={() => setShowHistoryPopover(false)}
+          ariaLabel="Versions"
+        >
             <div className="overlay-dialog-header">
               <h2>Versions</h2>
-              <button className="icon-button" onClick={() => setShowHistoryPopover(false)} type="button" aria-label="Close versions dialog">
+              <AppIconButton onClick={() => setShowHistoryPopover(false)} aria-label="Close versions dialog">
                 <X size={16} />
-              </button>
+              </AppIconButton>
             </div>
             <div className="overlay-dialog-actions split">
-              <button className="small-button" onClick={onRefreshHistory} title="Refresh history" type="button">
+              <AppButton variant="small" onClick={onRefreshHistory} title="Refresh history">
                 <RotateCcw size={16} />
                 Refresh
-              </button>
+              </AppButton>
             </div>
             {history.length ? (
               <div className="history-list">
@@ -1778,33 +1825,30 @@ export function DocumentDetail({
                     <strong>{formatDate(entry.createdAt)}</strong>
                     <span>{entry.reason}</span>
                     <div className="history-item-actions">
-                      <button
-                        className="small-button"
+                      <AppButton
+                        variant="small"
                         onClick={() => handleCompareVersion(entry)}
                         title="Compare with latest"
-                        type="button"
                       >
                         <GitCompare size={14} />
                         Compare
-                      </button>
-                      <button
-                        className="small-button"
+                      </AppButton>
+                      <AppButton
+                        variant="small"
                         onClick={() => handleRestoreVersion(entry)}
                         title="Restore this version into the editor"
-                        type="button"
                       >
                         <RotateCcw size={14} />
                         Restore
-                      </button>
-                      <button
-                        className="small-button"
+                      </AppButton>
+                      <AppButton
+                        variant="small"
                         onClick={() => handleDeleteVersion(entry)}
                         title="Delete this version"
-                        type="button"
                       >
                         <Trash2 size={14} />
                         Delete
-                      </button>
+                      </AppButton>
                     </div>
                   </div>
                 ))}
@@ -1812,26 +1856,27 @@ export function DocumentDetail({
             ) : (
               <p className="muted">Versions appear after the first save.</p>
             )}
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {showMediaManager ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Assets">
-          <div className="overlay-dialog-card assets-dialog-card">
+        <OverlayDialog
+          onClose={() => setShowMediaManager(false)}
+          ariaLabel="Assets"
+          cardClassName="assets-dialog-card"
+        >
             <div className="overlay-dialog-header assets-dialog-header">
               <div className="assets-dialog-title-group">
                 <h2>Assets Library</h2>
                 <p>Manage images referenced across your notes.</p>
               </div>
-              <button
-                className="icon-button assets-close-button"
+              <AppIconButton
+                className="assets-close-button"
                 onClick={() => setShowMediaManager(false)}
-                type="button"
                 aria-label="Close assets dialog"
               >
                 <X size={16} />
-              </button>
+              </AppIconButton>
             </div>
             <div className="assets-dialog-body">
               <MediaTab
@@ -1844,56 +1889,51 @@ export function DocumentDetail({
                 }}
               />
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
       {pdfOptionsOpen ? (
-        <div className="overlay-dialog" role="dialog" aria-modal="true" aria-label="Export PDF">
-          <div className="overlay-dialog-card">
+        <OverlayDialog
+          onClose={() => setPdfOptionsOpen(false)}
+          ariaLabel="Export PDF"
+        >
             <div className="overlay-dialog-header">
               <h2>Export PDF</h2>
-              <button className="icon-button" onClick={() => setPdfOptionsOpen(false)} type="button" aria-label="Close export options">
+              <AppIconButton onClick={() => setPdfOptionsOpen(false)} aria-label="Close export options">
                 <X size={16} />
-              </button>
+              </AppIconButton>
             </div>
-            <label className="overlay-dialog-field">
-              <span>Content</span>
-              <select
-                value={pdfExportMode}
-                onChange={(event) => setPdfExportMode(event.target.value)}
-                className="topbar-popover-select"
-              >
+            <DialogSelectField
+              id="pdf-export-content-mode"
+              label="Content"
+              value={pdfExportMode}
+              onChange={(event) => setPdfExportMode(event.target.value)}
+            >
                 <option value="formal">Formal Notes</option>
                 <option value="raw">Raw Notes</option>
                 <option value="both">Both Raw and Formal</option>
-              </select>
-            </label>
-            <label className="overlay-dialog-field">
-              <span>Quality</span>
-              <select
-                value={pdfQualityPreset}
-                onChange={(event) => setPdfQualityPreset(event.target.value)}
-                className="topbar-popover-select"
-              >
+            </DialogSelectField>
+            <DialogSelectField
+              id="pdf-export-quality"
+              label="Quality"
+              value={pdfQualityPreset}
+              onChange={(event) => setPdfQualityPreset(event.target.value)}
+            >
                 <option value="full">Full quality</option>
                 <option value="balanced">Balanced size</option>
                 <option value="compact">Compact file</option>
-              </select>
-            </label>
+            </DialogSelectField>
             <div className="overlay-dialog-actions">
-              <button
-                className="primary-button"
+              <AppButton
+                variant="primary"
                 onClick={handleConfirmPdfExport}
                 disabled={pdfExporting}
-                type="button"
               >
                 <FileDown size={14} />
                 {pdfExporting ? "Exporting..." : "Export"}
-              </button>
+              </AppButton>
             </div>
-          </div>
-        </div>
+        </OverlayDialog>
       ) : null}
 
     </div>

@@ -42,9 +42,11 @@ export function useDocumentEditorActions({
     }
 
     if (menuAction.action === "toggle-outline" || menuAction.action === "toggle-outline-enabled") {
-      if (!isFocusMode) {
-        toggleOutlineEnabled();
+      if (isFocusMode) {
+        onNotify?.("Outline cannot be toggled while Focus mode is active.", "info");
+        return;
       }
+      toggleOutlineEnabled();
       return;
     }
 
@@ -76,6 +78,7 @@ export function useDocumentEditorActions({
     toggleFocusMode,
     openPdfOptions,
     openHistoryVersions,
+    onNotify,
   ]);
 
   useEffect(() => {
@@ -90,7 +93,6 @@ export function useDocumentEditorActions({
         if (showMediaManager) return;
         event.preventDefault();
         toggleFocusMode();
-        onNotify?.("Focus mode toggled.", "info");
         return;
       }
 

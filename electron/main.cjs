@@ -1,4 +1,4 @@
-const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, session, shell } = require("electron");
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
@@ -333,6 +333,34 @@ function writeUserSettings(nextSettings) {
   return mainHelpers.writeUserSettings(nextSettings);
 }
 
+function getThemePreferenceSetting() {
+  const settings = readUserSettings();
+  return settings?.themePreference === "light" || settings?.themePreference === "dark"
+    ? settings.themePreference
+    : "auto";
+}
+
+function getStoredZoomFactor() {
+  const settings = readUserSettings();
+  const numeric = Number(settings?.zoomFactor);
+  if (!Number.isFinite(numeric)) return 1;
+  return Math.max(0.75, Math.min(2, Number(numeric.toFixed(2))));
+}
+
+function resolveEffectiveTheme(themePreference) {
+  if (themePreference === "light" || themePreference === "dark") return themePreference;
+  return nativeTheme.shouldUseDarkColors ? "dark" : "light";
+}
+
+function broadcastThemeChange() {
+  const themePreference = getThemePreferenceSetting();
+  const effectiveTheme = resolveEffectiveTheme(themePreference);
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win || win.isDestroyed()) continue;
+    win.webContents.send("appearance:theme-changed", { themePreference, effectiveTheme });
+  }
+}
+
 function getLastPdfExportPath() {
   return mainHelpers.getLastPdfExportPath();
 }
@@ -650,6 +678,7 @@ const windowLifecycle = createWindowLifecycle({
   rendererUrl,
   buildAppMenu,
   terminalIpc,
+  getInitialZoomFactor: getStoredZoomFactor,
 });
 
 p2pSyncEngine = createP2PSyncEngine({
@@ -681,10 +710,19 @@ const canRunApp = windowLifecycle.registerAppWindowEvents();
 
 if (canRunApp) {
   app.whenReady().then(async () => {
+    const themePreference = getThemePreferenceSetting();
+    nativeTheme.themeSource = themePreference === "auto" ? "system" : themePreference;
+    nativeTheme.on("updated", () => {
+      if (getThemePreferenceSetting() === "auto") {
+        broadcastThemeChange();
+      }
+    });
+
     // Register AI IPC handlers in the ready phase so renderer calls never race missing handlers.
     initializeAIHandlers(app, aiAgent);
     windowLifecycle.applyContentSecurityPolicy();
     windowLifecycle.focusOrCreateWindow();
+    broadcastThemeChange();
 
     // Defer workspace and AI initialization so splash/main window can appear quickly.
     setImmediate(() => {
@@ -756,6 +794,7 @@ registerCoreIpcHandlers(ipcMain, {
     activeProjectSlug = slug;
   },
   createReferenceWindow: (filePath) => windowLifecycle.createReferenceWindow(filePath),
+  nativeTheme,
 });
 
 terminalIpc.registerHandlers(ipcMain);

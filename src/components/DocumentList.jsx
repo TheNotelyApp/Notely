@@ -2,6 +2,7 @@ import { formatDate } from "../utils/dateUtils";
 import { useEffect, useMemo, useState } from "react";
 import { readImage } from "../services/electronService";
 import { DocumentEntryActions } from "./DocumentEntryActions";
+import { getDocumentDensityProfile, normalizeDocumentDensity } from "./documentDensityProfiles";
 
 function EntryIcon({ entryType }) {
   if (entryType === "folder") {
@@ -39,6 +40,18 @@ export function DocumentList({
   emptyMessage,
 }) {
   const [resolvedPreviewImages, setResolvedPreviewImages] = useState({});
+  const normalizedDensity = normalizeDocumentDensity(density);
+  const densityProfile = getDocumentDensityProfile(normalizedDensity);
+  const densityStyle = {
+    "--doc-table-cell-pad-y": `${densityProfile.tableCellPaddingY}px`,
+    "--doc-table-cell-pad-x": `${densityProfile.tableCellPaddingX}px`,
+    "--doc-table-cell-font-size": `${densityProfile.tableCellFontSize}px`,
+    "--doc-card-min-height": `${densityProfile.cardMinHeight}px`,
+    "--doc-card-padding": `${densityProfile.cardPadding}px`,
+    "--doc-card-gap": `${densityProfile.cardGap}px`,
+    "--doc-meta-font-size": `${densityProfile.metaFontSize}px`,
+    "--doc-thumb-height": `${densityProfile.thumbHeight}px`,
+  };
   const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
   const previewRequests = useMemo(() => {
@@ -90,7 +103,12 @@ export function DocumentList({
 
   if (viewMode === "table") {
     return (
-      <div className={`document-table-wrap ${density === "compact" ? "compact" : "comfortable"}`}>
+      <div
+        className={`document-table-wrap ${normalizedDensity}`}
+        style={densityStyle}
+        data-density={normalizedDensity}
+        data-density-target-rows={densityProfile.targetRowsPerViewport}
+      >
         <table className="document-table">
           <thead>
             <tr>
@@ -165,7 +183,12 @@ export function DocumentList({
   }
 
   return (
-    <div className={`document-grid ${density === "compact" ? "compact" : "comfortable"}`}>
+    <div
+      className={`document-grid ${normalizedDensity}`}
+      style={densityStyle}
+      data-density={normalizedDensity}
+      data-density-target-cards={densityProfile.targetCardsPerViewport}
+    >
       {documents.map((doc) => {
         const previewTiles = (doc.previewImages || []).slice(0, 4).map((image, index) => {
           const key = `${doc.filePath}:${index}:${image.sourceFilePath || doc.filePath}:${image.path}`;

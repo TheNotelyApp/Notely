@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { OverlayDialog } from "./OverlayDialog";
 
 function matchesQuery(command, query) {
   const needle = String(query || "").trim().toLowerCase();
@@ -167,16 +168,13 @@ export function CommandPalette({ isOpen, commands = [], pinnedCommandKeys = [], 
   if (!isOpen) return null;
 
   return (
-    <div
-      className="overlay-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Command palette"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+    <OverlayDialog
+      open={isOpen}
+      onClose={onClose}
+      ariaLabel="Command palette"
+      cardClassName="command-palette-card"
+      initialFocusRef={inputRef}
     >
-      <div className="overlay-dialog-card command-palette-card">
         <div className="command-palette-header">
           <input
             ref={inputRef}
@@ -265,7 +263,7 @@ export function CommandPalette({ isOpen, commands = [], pinnedCommandKeys = [], 
                 }
               }
             }}
-            placeholder="Type a command or action"
+            placeholder="Search commands and actions"
             aria-label="Filter commands"
           />
           <span className="command-palette-hint">Esc</span>
@@ -273,7 +271,7 @@ export function CommandPalette({ isOpen, commands = [], pinnedCommandKeys = [], 
 
         <div className="command-palette-results" role="listbox" aria-label="Command results" ref={resultsRef}>
           {!filtered.length ? (
-            <div className="command-palette-empty">No matching command</div>
+            <div className="command-palette-empty">No matching commands</div>
           ) : (
             groupedResults.map((group) => (
               <section className="command-palette-group" key={group.key} aria-label={`${group.title} commands`}>
@@ -316,7 +314,6 @@ export function CommandPalette({ isOpen, commands = [], pinnedCommandKeys = [], 
           <span className="command-palette-footer-item"><kbd>Enter</kbd> Run</span>
           <span className="command-palette-footer-item"><kbd>Esc</kbd> Close</span>
         </footer>
-      </div>
-    </div>
+    </OverlayDialog>
   );
 }

@@ -33,6 +33,9 @@ function buildAppMenu(win, context = {}) {
   const focusModeEnabled = context?.focusModeEnabled === true;
   const typoCheckEnabled = context?.typoCheckEnabled !== false;
   const screenCaptureMode = context?.screenCaptureMode === "review" ? "review" : "auto";
+  const themePreference = ["auto", "light", "dark"].includes(context?.themePreference)
+    ? context.themePreference
+    : "auto";
   const terminalOpen = context?.terminalOpen === true;
   const terminalShell = context?.terminalShell === "bash" || context?.terminalShell === "cmd"
     ? context.terminalShell
@@ -254,6 +257,22 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "toggle-focus-mode")
         },
         { type: "separator" },
+        {
+          label: "Zoom In",
+          accelerator: "CmdOrCtrl+=",
+          click: () => sendMenuAction(win, "zoom-in")
+        },
+        {
+          label: "Zoom Out",
+          accelerator: "CmdOrCtrl+-",
+          click: () => sendMenuAction(win, "zoom-out")
+        },
+        {
+          label: "Reset Zoom",
+          accelerator: "CmdOrCtrl+0",
+          click: () => sendMenuAction(win, "zoom-reset")
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
         ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
@@ -324,6 +343,22 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "view-density-compact")
         },
         { type: "separator" },
+        {
+          label: "Zoom In",
+          accelerator: "CmdOrCtrl+=",
+          click: () => sendMenuAction(win, "zoom-in")
+        },
+        {
+          label: "Zoom Out",
+          accelerator: "CmdOrCtrl+-",
+          click: () => sendMenuAction(win, "zoom-out")
+        },
+        {
+          label: "Reset Zoom",
+          accelerator: "CmdOrCtrl+0",
+          click: () => sendMenuAction(win, "zoom-reset")
+        },
+        { type: "separator" },
         { role: "reload" },
         { role: "forceReload" },
         ...(isDevMode ? [{ role: "toggleDevTools" }] : [])
@@ -345,6 +380,30 @@ function buildAppMenu(win, context = {}) {
     {
       label: "Settings",
       submenu: [
+        {
+          label: "Theme",
+          submenu: [
+            {
+              label: "System",
+              type: "radio",
+              checked: themePreference === "auto",
+              click: () => sendMenuAction(win, "theme-auto")
+            },
+            {
+              label: "Light",
+              type: "radio",
+              checked: themePreference === "light",
+              click: () => sendMenuAction(win, "theme-light")
+            },
+            {
+              label: "Dark",
+              type: "radio",
+              checked: themePreference === "dark",
+              click: () => sendMenuAction(win, "theme-dark")
+            }
+          ]
+        },
+        { type: "separator" },
         {
           label: "Screen Capture",
           submenu: [

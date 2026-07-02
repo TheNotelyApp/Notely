@@ -6,7 +6,7 @@
   width: min(760px, calc(100vw - 28px));
   max-height: calc(100vh - 40px);
   padding: 0;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
@@ -63,6 +63,59 @@
   padding: 6px 8px 8px;
   overflow: visible;
   background: #fbfdfc;
+}
+
+.ai-settings-intent-header {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+  padding: 3px 1px 1px;
+}
+
+.ai-settings-intent-header h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #2c4950;
+}
+
+.ai-settings-intent-header p {
+  margin: 0;
+  font-size: 11px;
+  color: #5f747a;
+}
+
+.ai-settings-disclosure {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+}
+
+.ai-settings-disclosure-toggle {
+  min-height: 28px;
+  border: 1px dashed #b8cbc5;
+  border-radius: 6px;
+  background: #f4f9f7;
+  color: #34555c;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+  padding: 0 10px;
+}
+
+.ai-settings-disclosure-toggle:hover {
+  border-color: #2f5d62;
+  background: #edf5f2;
+}
+
+.ai-settings-disclosure-toggle.active {
+  border-style: solid;
+  border-color: #2f5d62;
+  background: #edf5f2;
+  color: #1d4045;
 }
 
 .ai-settings-section {
