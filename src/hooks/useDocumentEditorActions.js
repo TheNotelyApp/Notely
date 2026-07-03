@@ -98,7 +98,7 @@ export function useDocumentEditorActions({
 
       if (!hasPrimaryModifier) return;
 
-      if (event.shiftKey && key === "f") {
+      if (event.altKey && key === "f") {
         if (showMediaManager) return;
         event.preventDefault();
         toggleFocusMode();

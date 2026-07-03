@@ -621,7 +621,7 @@ export default function AIPalette({
         ) : null}
 
         <div className="ai-palette-footer">
-          <span className="footer-hint">Ctrl/Cmd+K opens the palette. Run a prompt, then insert or replace directly in the editor.</span>
+          <span className="footer-hint">Ctrl/Cmd+Shift+I opens the AI palette. Run a prompt, then insert or replace directly in the editor.</span>
         </div>
     </OverlayDialog>
   );

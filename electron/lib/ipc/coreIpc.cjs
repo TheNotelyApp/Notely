@@ -87,7 +87,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
 
   function normalizeZoomFactor(value) {
     const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return 1;
+    if (!Number.isFinite(numeric)) return 0.8;
     return Math.max(0.75, Math.min(2, Number(numeric.toFixed(2))));
   }
 
@@ -149,13 +149,24 @@ function registerCoreIpcHandlers(ipcMain, deps) {
       },
       {
         slug: "top-tasks",
-        title: "Top 15 Common Tasks",
+        title: "Top Common Tasks",
         fileName: "top-tasks.md",
         summary: "Fast click-by-click steps for the actions users perform most often.",
         highlights: [
           "Create notes and folders",
           "Search, edit, and preview",
           "History, diagrams, and help",
+        ],
+      },
+      {
+        slug: "settings-reference",
+        title: "Settings Reference",
+        fileName: "settings-reference.md",
+        summary: "Reference for appearance, terminal, screen capture, AI, and other configurable behavior.",
+        highlights: [
+          "Theme, zoom, and density",
+          "Terminal and screen capture",
+          "AI providers and privacy controls",
         ],
       },
       {
@@ -189,6 +200,28 @@ function registerCoreIpcHandlers(ipcMain, deps) {
           "Notes not showing",
           "Preview or link issues",
           "Sync and AI troubleshooting",
+        ],
+      },
+      {
+        slug: "faq",
+        title: "FAQ",
+        fileName: "faq.md",
+        summary: "Answers to common questions about workspaces, storage, sync, AI, and exports.",
+        highlights: [
+          "Where data is stored",
+          "Offline and AI behavior",
+          "Export and sync basics",
+        ],
+      },
+      {
+        slug: "release-notes",
+        title: "Release Notes",
+        fileName: "release-notes.md",
+        summary: "Current release highlights and recent documentation-impacting changes.",
+        highlights: [
+          "Latest doc and shortcut changes",
+          "New help content",
+          "Recent workflow additions",
         ],
       },
     ];

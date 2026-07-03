@@ -250,7 +250,7 @@ function buildAppMenu(win, context = {}) {
           label: "Show Outline",
           type: "checkbox",
           checked: outlineEnabled,
-          accelerator: "CmdOrCtrl+Shift+L",
+          accelerator: "CmdOrCtrl+Alt+L",
           click: () => sendMenuAction(win, "toggle-outline-enabled")
         },
         {
@@ -264,7 +264,7 @@ function buildAppMenu(win, context = {}) {
           label: "Focus Mode",
           type: "checkbox",
           checked: focusModeEnabled,
-          accelerator: "CmdOrCtrl+Shift+F",
+          accelerator: "CmdOrCtrl+Alt+F",
           click: () => sendMenuAction(win, "toggle-focus-mode")
         },
         { type: "separator" },
@@ -470,7 +470,7 @@ function buildAppMenu(win, context = {}) {
           ? [
               {
                 label: "Open AI Palette",
-                accelerator: "CmdOrCtrl+K",
+                accelerator: "CmdOrCtrl+Shift+I",
                 click: () => sendMenuAction(win, "open-ai-palette")
               },
               { type: "separator" }

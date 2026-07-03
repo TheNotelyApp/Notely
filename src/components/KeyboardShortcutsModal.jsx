@@ -1,17 +1,8 @@
 import { OverlayDialog } from "./OverlayDialog";
 import AppButton from "./AppButton";
+import { DEFAULT_KEYBOARD_SHORTCUTS } from "../utils/keyboardShortcuts";
 
-const DEFAULT_SHORTCUTS = [
-  { keys: "Ctrl/Cmd+K", action: "Open Command Palette", group: "Global" },
-  { keys: "Ctrl/Cmd+Shift+F", action: "Open Global Search", group: "Global" },
-  { keys: "Ctrl/Cmd+/", action: "Open Keyboard Shortcuts", group: "Global" },
-  { keys: "Ctrl/Cmd+N", action: "Create New Note", group: "Notes" },
-  { keys: "Ctrl/Cmd+F", action: "Find in Current Note", group: "Editor" },
-  { keys: "Ctrl/Cmd+H", action: "Find and Replace in Current Note", group: "Editor" },
-  { keys: "Esc", action: "Close Active Overlay", group: "Global" },
-];
-
-export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_SHORTCUTS }) {
+export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KEYBOARD_SHORTCUTS }) {
   if (!isOpen) return null;
 
   return (
@@ -21,12 +12,16 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_SH
           <AppButton variant="small" onClick={onClose}>Close</AppButton>
         </div>
         <div className="keyboard-shortcuts-table-wrap">
+          <p className="muted">
+            Some shortcuts are context-specific. Check the Scope and Notes columns before relying on a shortcut globally.
+          </p>
           <table className="keyboard-shortcuts-table">
             <thead>
               <tr>
                 <th>Shortcut</th>
                 <th>Action</th>
                 <th>Scope</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -35,6 +30,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_SH
                   <td><kbd>{shortcut.keys}</kbd></td>
                   <td>{shortcut.action}</td>
                   <td>{shortcut.group}</td>
+                  <td>{shortcut.notes || "-"}</td>
                 </tr>
               ))}
             </tbody>

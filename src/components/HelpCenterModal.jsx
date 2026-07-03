@@ -13,12 +13,12 @@ const TREE_GROUPS = [
   {
     id: "features",
     title: "Features",
-    slugs: ["feature-reference", "feature-availability"],
+    slugs: ["feature-reference", "feature-availability", "settings-reference"],
   },
   {
     id: "safety",
     title: "Data and Support",
-    slugs: ["data-sync-security", "troubleshooting"],
+    slugs: ["data-sync-security", "troubleshooting", "faq", "release-notes"],
   },
 ];
 
