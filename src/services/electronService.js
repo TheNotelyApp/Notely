@@ -264,6 +264,18 @@ export async function listWorkspaceTaskDocuments() {
   return Array.isArray(documents) ? documents : [];
 }
 
+export async function getDashboardCache() {
+  const api = getNotesApi();
+  if (typeof api.getDashboardCache !== "function") {
+    return { continueWriting: [], recentNotes: [] };
+  }
+  const cache = await api.getDashboardCache();
+  return {
+    continueWriting: Array.isArray(cache?.continueWriting) ? cache.continueWriting : [],
+    recentNotes: Array.isArray(cache?.recentNotes) ? cache.recentNotes : [],
+  };
+}
+
 export async function createDocument(title, parentPath) {
   const api = getNotesApi();
   if (typeof api.createDocument !== "function") {
@@ -488,6 +500,14 @@ export async function getSemanticGraph() {
 export async function readDocument(filePath) {
   const api = getNotesApi();
   return api.readDocument(filePath);
+}
+
+export async function markDocumentOpened(filePath) {
+  const api = getNotesApi();
+  if (typeof api.markDocumentOpened !== "function") {
+    return false;
+  }
+  return api.markDocumentOpened(filePath);
 }
 
 export async function readMarkdownSource(filePath) {

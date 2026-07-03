@@ -62,6 +62,7 @@ import {
   getHistory,
   getAppInfo,
   getHelpDocuments,
+  getDashboardCache,
   listWorkspaceTaskDocuments,
   updateMenuContext,
   getGitWorkspaceMetadata,
@@ -195,12 +196,6 @@ function normalizePathLikeList(entries) {
   return normalized;
 }
 
-function getRecentDashboardNotes(documents) {
-  return [...(Array.isArray(documents) ? documents : [])]
-    .filter((entry) => entry?.entryType === "file")
-    .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
-}
-
 function getFavoriteDashboardNotes(favorites, recentNotes, continueNotes) {
   const favoriteSet = new Set(Array.isArray(favorites) ? favorites : []);
   const metadataMap = new Map(
@@ -260,6 +255,7 @@ export default function App() {
   const [zoomFactor, setZoomFactorState] = useState(1);
   const [helpDocuments, setHelpDocuments] = useState([]);
   const [workspaceTaskDocuments, setWorkspaceTaskDocuments] = useState([]);
+  const [dashboardCache, setDashboardCache] = useState({ continueWriting: [], recentNotes: [] });
   const [gitWorkspaceMeta, setGitWorkspaceMeta] = useState({
     workspaceRoot: "",
     isGitRoot: false,
@@ -299,8 +295,6 @@ export default function App() {
     documentMenuAction,
     setDocumentMenuAction,
     landingFolderPath,
-    lastSavedDocuments,
-    lastSavedDocument,
     dirty,
     loadDocumentsData,
     openDocument,
@@ -666,6 +660,33 @@ export default function App() {
       cancelled = true;
     };
   }, [activeProject, notesFolderPath, documents]);
+
+  useEffect(() => {
+    const workspaceRoot = normalizePathLikeValue(activeProject?.rootPath || notesFolderPath);
+    if (!workspaceRoot) {
+      setDashboardCache({ continueWriting: [], recentNotes: [] });
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    void getDashboardCache()
+      .then((cache) => {
+        if (cancelled) return;
+        setDashboardCache({
+          continueWriting: Array.isArray(cache?.continueWriting) ? cache.continueWriting : [],
+          recentNotes: Array.isArray(cache?.recentNotes) ? cache.recentNotes : [],
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDashboardCache({ continueWriting: [], recentNotes: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProject, notesFolderPath, documents, current?.filePath]);
 
   useEffect(() => {
     void getAppearanceSettings()
@@ -1645,39 +1666,17 @@ export default function App() {
     ? breadcrumbSegments[breadcrumbSegments.length - 1].label
     : (activeProject?.isRoot ? "Workspace" : (activeProject?.name || "Project"));
 
-  const trackedSavedNotes = useMemo(() => {
-    const list = Array.isArray(lastSavedDocuments) && lastSavedDocuments.length
-      ? lastSavedDocuments
-      : (lastSavedDocument ? [lastSavedDocument] : []);
-    if (!list.length) return [];
-
-    const byPath = new Map(
-      documents
-        .filter((item) => item?.entryType === "file" && item?.filePath)
-        .map((item) => [String(item.filePath).toLowerCase(), item])
-    );
-
-    return list
-      .map((item) => {
-        const key = String(item?.filePath || "").toLowerCase();
-        const fromDocuments = byPath.get(key);
-        if (fromDocuments) {
-          return {
-            ...item,
-            title: fromDocuments.title || item.title,
-            updatedAt: fromDocuments.updatedAt || item.updatedAt,
-          };
-        }
-        return item?.filePath ? item : null;
-      })
-      .filter(Boolean)
-      .slice(0, 4);
-  }, [lastSavedDocuments, lastSavedDocument, documents]);
-
-  const recentDashboardNotes = useMemo(() => getRecentDashboardNotes(documents), [documents]);
+  const continueDashboardNotes = useMemo(
+    () => (Array.isArray(dashboardCache?.continueWriting) ? dashboardCache.continueWriting : []),
+    [dashboardCache]
+  );
+  const recentDashboardNotes = useMemo(
+    () => (Array.isArray(dashboardCache?.recentNotes) ? dashboardCache.recentNotes : []),
+    [dashboardCache]
+  );
   const favoriteDashboardNotes = useMemo(
-    () => getFavoriteDashboardNotes(favoriteNotes, recentDashboardNotes, trackedSavedNotes),
-    [favoriteNotes, recentDashboardNotes, trackedSavedNotes]
+    () => getFavoriteDashboardNotes(favoriteNotes, recentDashboardNotes, continueDashboardNotes),
+    [favoriteNotes, recentDashboardNotes, continueDashboardNotes]
   );
 
   return (
@@ -1809,7 +1808,7 @@ export default function App() {
                   onOpenRecentNotes={() => setRecentNotesPanelOpen(true)}
                   onOpenFavorites={() => setFavoritesPanelOpen(true)}
                   onAction={handleDashboardAction}
-                  continueNotes={trackedSavedNotes}
+                  continueNotes={continueDashboardNotes}
                   favorites={favoriteNotes}
                   layout="rail"
                 />

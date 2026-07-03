@@ -34,6 +34,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     createVersionSnapshot,
     getMetadataStore,
     metadataStore,
+    dashboardCache,
     ensureDir,
     ensureWebPreviewServer,
     prepareDocumentPreview,
@@ -84,6 +85,10 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return listWorkspaceFileEntries(projectRoot);
   });
 
+  registerTrustedHandler("documents:get-dashboard-cache", () => {
+    return dashboardCache?.getDashboardState?.() || { continueWriting: [], recentNotes: [] };
+  });
+
   registerTrustedHandler("documents:create", (_event, payload) => {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;
@@ -102,6 +107,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
         cleansed: created.cleansed || ""
       }
     });
+    dashboardCache?.recordSave?.(created);
     return created;
   });
 
@@ -114,11 +120,16 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   registerTrustedHandler("folders:delete", (_event, payload) => {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;
-    return deleteFolderInProject(rootDir, payload?.folderPath);
+    const result = deleteFolderInProject(rootDir, payload?.folderPath);
+    dashboardCache?.removeFolder?.(payload?.folderPath);
+    return result;
   });
 
   registerTrustedHandler("documents:rename", (_event, payload) => {
-    return renameDocumentFile(payload?.filePath, payload);
+    const previousFilePath = payload?.filePath;
+    const renamed = renameDocumentFile(previousFilePath, payload);
+    dashboardCache?.renameEntry?.(previousFilePath, renamed);
+    return renamed;
   });
 
   registerTrustedHandler("documents:delete", (_event, payload) => {
@@ -144,6 +155,8 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       baseContent: previous
     });
 
+    dashboardCache?.removeFile?.(resolved);
+
     return result;
   });
 
@@ -156,6 +169,23 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       throw new Error("Invalid document path.");
     }
     return parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
+  });
+
+  registerTrustedHandler("documents:mark-opened", (_event, filePath) => {
+    const activeProject = getActiveProject();
+    const notesRoot = getNotesRoot();
+    const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
+    const resolved = path.resolve(String(filePath || ""));
+    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+      throw new Error("Invalid document path.");
+    }
+    if (!fs.existsSync(resolved)) {
+      throw new Error("Document file does not exist.");
+    }
+
+    const parsed = parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
+    dashboardCache?.recordOpen?.(parsed);
+    return true;
   });
 
   registerTrustedHandler("documents:read-markdown-source", (_event, filePath) => {
@@ -186,7 +216,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
 
     const next = buildDocumentContent(payload);
     if (next === previous) {
-      return parseDocument(next, resolved);
+      const unchanged = parseDocument(next, resolved);
+      dashboardCache?.recordSave?.(unchanged);
+      return unchanged;
     }
 
     fs.writeFileSync(resolved, next, "utf8");
@@ -220,7 +252,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       }
     }
 
-    return parseDocument(next, resolved);
+    const parsed = parseDocument(next, resolved);
+    dashboardCache?.recordSave?.(parsed);
+    return parsed;
   });
 
   registerTrustedHandler("documents:history", (_event, filePath) => {

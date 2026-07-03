@@ -34,6 +34,7 @@ const { assertTrustedIpcSender } = require("./lib/ipc/ipcSecurity.cjs");
 const { createP2PSyncEngine } = require("./lib/sync/p2pSyncEngine.cjs");
 const { createWorkspaceEntries, DEFAULT_WALK_EXCLUDE_DIRS } = require("./lib/documents/workspaceEntries.cjs");
 const { createMetadataStore } = require("./lib/core/metadataStore.cjs");
+const { createDashboardCache } = require("./lib/core/dashboardCache.cjs");
 const { createDocumentFileOps } = require("./lib/documents/documentFileOps.cjs");
 const { createMainHelpers } = require("./lib/core/mainHelpers.cjs");
 const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
@@ -70,6 +71,7 @@ let p2pService = null;
 let aiAgent = null;
 let p2pSyncEngine = null;
 let mainHelpers;
+let dashboardCache;
 let shutdownAISystemRef = () => {};
 let aiInitTriggered = false;
 const FULL_SYNC_BATCH_SIZE = 25;
@@ -533,6 +535,16 @@ const workspaceEntries = createWorkspaceEntries({
 
 const { WALK_EXCLUDE_DIRS, shouldHideDirectory, walkFiles, listDirectoryEntries, listWorkspaceFileEntries, listRootEntries } = workspaceEntries;
 
+dashboardCache = createDashboardCache({
+  fs,
+  path,
+  ensureDir,
+  getNotesRoot: () => notesRoot,
+  getActiveProject,
+  filePathWithin,
+  listWorkspaceFileEntries,
+});
+
 mainHelpers = createMainHelpers({
   fs,
   path,
@@ -848,6 +860,7 @@ registerDocumentIpcHandlers(ipcMain, {
   createVersionSnapshot: (...args) => p2pSyncEngine.createVersionSnapshot(...args),
   getMetadataStore: () => metadataStore,
   metadataStore,
+  dashboardCache,
   ensureDir,
   ensureWebPreviewServer: webPreview.ensureWebPreviewServer,
   prepareDocumentPreview: webPreview.prepareDocumentPreview,
