@@ -2285,9 +2285,10 @@ button {
 .landing-list-count {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   justify-content: flex-end;
   min-height: 32px;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   background: var(--surface-bg);
@@ -2295,32 +2296,44 @@ button {
   font-size: var(--font-size-label);
   white-space: nowrap;
 }
+
+.landing-list-count-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.landing-list-count-separator {
+  color: color-mix(in srgb, var(--text-subtle) 74%, transparent);
+  font-weight: 500;
+}
+
+.landing-list-count-icon-item {
+  padding: 2px 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+}
+
+.landing-list-count-icon-item svg {
+  color: var(--text-subtle);
+  flex-shrink: 0;
+}
+
+.landing-list-count-icon-item em {
+  font-style: normal;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
 .landing-list-count strong {
   color: var(--text-strong);
   margin: 0 2px;
 }
 
 .landing-new-note-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 12px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: #1a7f8c;
-  color: var(--text-on-accent);
-  font-size: var(--font-size-label);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color var(--motion-fast);
-}
-.landing-new-note-btn:hover {
-  background: #0d5a65;
-}
-.landing-new-note-btn:active {
-  background: #054347;
+  justify-self: end;
+  white-space: nowrap;
 }
 .landing-new-note-btn svg {
   flex-shrink: 0;
@@ -2343,6 +2356,7 @@ button {
 
   .landing-list-count {
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .landing-new-note-btn {

@@ -1,4 +1,5 @@
-import { FilePlus2 } from "lucide-react";
+import { FilePlus2, FileText, Folder } from "lucide-react";
+import AppButton from "./AppButton";
 import AppSelect from "./AppSelect";
 
 export function LandingListControls({
@@ -10,6 +11,10 @@ export function LandingListControls({
   onSortByChange,
   visibleCount,
   totalCount,
+  visibleFolderCount,
+  totalFolderCount,
+  visibleNoteCount,
+  totalNoteCount,
   onCreateNote,
 }) {
   return (
@@ -53,20 +58,38 @@ export function LandingListControls({
       </label>
 
       <div className="landing-list-count" aria-live="polite">
-        Showing <strong>{visibleCount}</strong> of <strong>{totalCount}</strong>
+        <span className="landing-list-count-item">
+          Showing <strong>{visibleCount}</strong> of <strong>{totalCount}</strong>
+        </span>
+        <span className="landing-list-count-separator" aria-hidden="true">|</span>
+        <span className="landing-list-count-item landing-list-count-icon-item">
+          <Folder size={14} aria-hidden="true" />
+          <strong>{visibleFolderCount}</strong>
+          <span>/</span>
+          <span>{totalFolderCount}</span>
+          <em>Folders</em>
+        </span>
+        <span className="landing-list-count-separator" aria-hidden="true">|</span>
+        <span className="landing-list-count-item landing-list-count-icon-item">
+          <FileText size={14} aria-hidden="true" />
+          <strong>{visibleNoteCount}</strong>
+          <span>/</span>
+          <span>{totalNoteCount}</span>
+          <em>Notes</em>
+        </span>
       </div>
 
       {onCreateNote && (
-        <button
+        <AppButton
+          variant="small"
           className="landing-new-note-btn"
-          type="button"
           onClick={onCreateNote}
           title="Create a new note"
           aria-label="Create a new note"
         >
           <FilePlus2 size={16} />
           <span>New Note</span>
-        </button>
+        </AppButton>
       )}
     </div>
   );

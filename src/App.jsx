@@ -1249,6 +1249,8 @@ export default function App() {
     typeFilter: landingEntryFilter,
     sortBy: landingSortMode,
   });
+  const visibleFolderCount = visibleDocuments.filter((entry) => entry.entryType === "folder").length;
+  const visibleNoteCount = visibleDocuments.length - visibleFolderCount;
   const workspaceTagSuggestions = useMemo(() => {
     const pool = new Set();
     for (const entry of documents) {
@@ -1985,43 +1987,6 @@ export default function App() {
       ) : null}
       {!current ? (
         <div className="landing-shell">
-          <header className="landing-header">
-            <div className="landing-header-main">
-              <div className="landing-title-row">
-                <h1>{landingTitle}</h1>
-                <div className="landing-stats" aria-label="Current folder metrics">
-                  <span><em>Folders</em><strong>{folderCount}</strong></span>
-                  <span><em>Notes</em><strong>{noteCount}</strong></span>
-                </div>
-              </div>
-              {breadcrumbSegments.length ? (
-                <nav
-                  className="landing-path"
-                  aria-label="Folder path"
-                  title={landingFolderPath || activeProject?.rootPath || notesFolderPath || "Path unavailable"}
-                >
-                  {breadcrumbSegments.map((segment, index) => {
-                    const isCurrent = index === breadcrumbSegments.length - 1;
-                    return (
-                      <span className="landing-path-part" key={segment.path}>
-                        <button
-                          className={`landing-path-segment${isCurrent ? " active" : ""}`}
-                          type="button"
-                          onClick={() => handleLandingNavigateTo(segment.path)}
-                          disabled={isCurrent}
-                        >
-                          {segment.label}
-                        </button>
-                        {isCurrent ? null : <span className="landing-path-separator" aria-hidden="true">/</span>}
-                      </span>
-                    );
-                  })}
-                </nav>
-              ) : (
-                <div className="landing-path">Path unavailable</div>
-              )}
-            </div>
-          </header>
           {isRootLandingView ? (
             <div className="landing-workspace-layout">
               <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
@@ -2050,6 +2015,10 @@ export default function App() {
                   onSortByChange={setLandingSortMode}
                   visibleCount={visibleDocuments.length}
                   totalCount={documents.length}
+                  visibleFolderCount={visibleFolderCount}
+                  totalFolderCount={folderCount}
+                  visibleNoteCount={visibleNoteCount}
+                  totalNoteCount={noteCount}
                   onCreateNote={() => handleDashboardAction("new-note")}
                 />
                 <DocumentList
@@ -2076,6 +2045,10 @@ export default function App() {
                 onSortByChange={setLandingSortMode}
                 visibleCount={visibleDocuments.length}
                 totalCount={documents.length}
+                visibleFolderCount={visibleFolderCount}
+                totalFolderCount={folderCount}
+                visibleNoteCount={visibleNoteCount}
+                totalNoteCount={noteCount}
                 onCreateNote={() => handleDashboardAction("new-note")}
               />
               <DocumentList
