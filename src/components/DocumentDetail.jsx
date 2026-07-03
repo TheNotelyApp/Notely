@@ -1745,7 +1745,7 @@ export function DocumentDetail({
           <span className="detail-breadcrumb-current" title={document.title}>{document.title}</span>
         </nav>
         {taskCounts.total > 0 && (
-          <div className="detail-task-summary detail-topbar-separator-left">
+          <div className="detail-task-summary">
             <div
               className="detail-task-counts"
               tabIndex={0}
