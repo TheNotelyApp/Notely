@@ -10,6 +10,20 @@ Use **File -> Open Workspace** to choose the folder where your notes are stored.
 
 Use **File -> Open Recent** to reopen a recently used workspace quickly.
 
+### Opening the workspace externally
+
+On the landing screen, the **File** menu exposes two shortcuts for working with the workspace folder outside Notely:
+
+- **File -> Open Workspace in VS Code** (`Ctrl/Cmd + Shift + O`) — opens the active workspace folder directly in VS Code. Falls back to the system default app if VS Code is not installed.
+- **File -> Reveal Workspace in File Explorer** (`Ctrl/Cmd + Shift + J`) — opens the workspace folder in the native system file browser.
+
+### Opening the website view
+
+The **Web** menu provides quick access to the rendered website output:
+
+- **Web -> Open Current Note Website View** (`Ctrl/Cmd + Shift + W`) — available when a note is open; renders the current note as a website preview in the default browser.
+- **Web -> Open Project Website** (`Ctrl/Cmd + Shift + W`) — available on the landing screen; opens the project website.
+
 ### Project-aware workspace
 
 You can keep notes grouped by project while still working inside one larger workspace.
@@ -18,7 +32,7 @@ You can keep notes grouped by project while still working inside one larger work
 
 The landing view includes lightweight workspace overview panels so you can resume work quickly:
 
-- **Continue Writing** suggests recently edited notes.
+- **Continue Writing** shows the single most recently edited note so you can resume immediately.
 - **Recent Notes** shows recently changed documents.
 - **Favorites** collects starred notes.
 - **Open Tasks** surfaces unchecked tasks across the workspace.

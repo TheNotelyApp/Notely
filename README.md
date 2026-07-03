@@ -15,6 +15,9 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Insert common Markdown snippets from the toolbar.
 - Browse, annotate, optimize, and manage linked media.
 - Open note files in VS Code or the system default app.
+- Open the current workspace folder in VS Code directly from **File -> Open Workspace in VS Code** (`Ctrl/Cmd + Shift + O`) on the landing screen.
+- Reveal the workspace folder in the system File Explorer from **File -> Reveal Workspace in File Explorer** (`Ctrl/Cmd + Shift + J`) on the landing screen.
+- Open the project website or the current note's website view from the **Web** menu (`Ctrl/Cmd + Shift + W`).
 - Compare note history versions and restore context from older revisions.
 - Preview Mermaid diagrams and rendered Markdown content.
 - Visualise the workspace as an interactive note graph.
