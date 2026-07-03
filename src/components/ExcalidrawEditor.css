@@ -1,14 +1,11 @@
 .excalidraw-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: var(--surface-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 2500;
   padding: 1rem;
 }
 
@@ -16,11 +13,12 @@
   width: 95%;
   height: 90%;
   max-width: 1400px;
-  background-color: #ffffff;
-  border-radius: 12px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-overlay);
   overflow: hidden;
 }
 
@@ -29,13 +27,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-bg) 94%, var(--surface-elevated));
 }
 
 .excalidraw-modal-header h2 {
   margin: 0;
-  color: #111827;
+  color: var(--text-strong);
   font-size: 1.5rem;
 }
 
@@ -44,13 +42,31 @@
   width: 320px;
 }
 
+
+.excalidraw-library-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
 .excalidraw-library-search input {
   width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.65rem 0.55rem 30px;
   font-size: 0.86rem;
-  background: #ffffff;
+  background: var(--surface-bg);
+  color: var(--app-text);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
+}
+
+.excalidraw-library-search input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-solid) 28%, var(--border-default));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 8%, transparent);
 }
 
 .excalidraw-library-search-results {
@@ -61,17 +77,28 @@
   z-index: 7;
   max-height: 320px;
   overflow-y: auto;
-  border: 1px solid #d1d5db;
+  border: 1px solid color-mix(in srgb, var(--border-default) 84%, var(--accent-solid));
   border-radius: 8px;
-  background: #ffffff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, white) 0%, color-mix(in srgb, var(--surface-bg) 94%, white) 100%);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+}
+
+.excalidraw-library-search-meta {
+  padding: 0.48rem 0.65rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-muted) 55%, var(--surface-elevated));
+  color: var(--text-subtle);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .excalidraw-library-search-results button {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid #edf0f2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-strong);
   text-align: left;
   padding: 0.45rem 0.65rem;
   display: flex;
@@ -83,9 +110,9 @@
 .library-search-result-preview {
   width: 64px;
   height: 42px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--surface-muted) 72%, var(--surface-elevated));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,12 +128,12 @@
 
 .library-search-result-preview-fallback {
   font-size: 0.68rem;
-  color: #64748b;
+  color: var(--text-subtle);
 }
 
 .library-search-result-name {
   font-size: 0.82rem;
-  color: #0f172a;
+  color: var(--text-strong);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -118,50 +145,24 @@
 }
 
 .excalidraw-library-search-results button:hover {
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--surface-accent) 68%, white);
+}
+
+.excalidraw-library-search-results button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-solid) 20%, transparent);
 }
 
 .excalidraw-library-search-results p {
   margin: 0;
   padding: 0.6rem 0.65rem;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--text-subtle);
 }
 
 .excalidraw-modal-actions {
   display: flex;
   gap: 0.75rem;
-}
-
-.btn {
-  padding: 0.625rem 1.25rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.btn-primary {
-  background-color: #111827;
-  border-color: #111827;
-  color: #ffffff;
-}
-
-.btn-primary:hover {
-  background-color: #000000;
-  border-color: #000000;
-}
-
-.btn-secondary {
-  background-color: #ffffff;
-  color: #111827;
-}
-
-.btn-secondary:hover {
-  background-color: #f9fafb;
-  border-color: #9ca3af;
 }
 
 .excalidraw-editor-container {

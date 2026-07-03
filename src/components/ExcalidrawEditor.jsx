@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Save, Search, X } from "lucide-react";
 import {
   Excalidraw,
   exportToCanvas,
@@ -7,6 +8,7 @@ import {
 } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import { writeDiagramImage } from "../services/diagramService";
+import AppButton from "./AppButton";
 import OverlayDialog from "./OverlayDialog";
 import "./ExcalidrawEditor.css";
 
@@ -17,7 +19,9 @@ const BUNDLED_EXCALIDRAW_LIBRARY_URLS = Object.values(
   ),
 ).sort((a, b) => String(a).localeCompare(String(b)));
 
-const MAX_SEARCH_RESULTS = 12;
+const DEFAULT_VISIBLE_LIBRARY_ITEMS = 16;
+const MAX_FILTERED_SEARCH_RESULTS = 40;
+const MAX_EAGER_PREVIEWS = 12;
 
 function sanitizeAppStateForPersistence(appState) {
   const safeAppState = {
@@ -156,7 +160,10 @@ const ExcalidrawComponent = ({
   onSave,
 }) => {
   const excalidrawAPIRef = useRef(null);
+  const saveButtonRef = useRef(null);
+  const librarySearchRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLibrarySearchOpen, setIsLibrarySearchOpen] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [loadedLibraryItems, setLoadedLibraryItems] = useState([]);
   const [libraryItemPreviews, setLibraryItemPreviews] = useState({});
@@ -164,13 +171,21 @@ const ExcalidrawComponent = ({
   const [libraryLoadError, setLibraryLoadError] = useState("");
   const hasLoadedBundledLibrariesRef = useRef(false);
 
-  const filteredLibraryItems = useMemo(() => {
+  const visibleLibraryItems = useMemo(() => {
     const query = librarySearchQuery.trim().toLowerCase();
-    if (!query) return [];
+    if (!query) {
+      return loadedLibraryItems.slice(0, DEFAULT_VISIBLE_LIBRARY_ITEMS);
+    }
 
     return loadedLibraryItems
       .filter((item) => item.name.toLowerCase().includes(query))
-      .slice(0, MAX_SEARCH_RESULTS);
+      .slice(0, MAX_FILTERED_SEARCH_RESULTS);
+  }, [loadedLibraryItems, librarySearchQuery]);
+
+  const matchingLibraryItemCount = useMemo(() => {
+    const query = librarySearchQuery.trim().toLowerCase();
+    if (!query) return loadedLibraryItems.length;
+    return loadedLibraryItems.filter((item) => item.name.toLowerCase().includes(query)).length;
   }, [loadedLibraryItems, librarySearchQuery]);
 
   const normalizedInitialData = useMemo(
@@ -179,12 +194,16 @@ const ExcalidrawComponent = ({
   );
 
   useEffect(() => {
-    if (!filteredLibraryItems.length) return;
+    if (!visibleLibraryItems.length) return;
 
     let isDisposed = false;
 
     const generatePreviews = async () => {
-      for (const item of filteredLibraryItems) {
+      const previewCandidates = visibleLibraryItems
+        .filter((item) => !libraryItemPreviews[item.key])
+        .slice(0, MAX_EAGER_PREVIEWS);
+
+      for (const item of previewCandidates) {
         if (libraryItemPreviews[item.key]) continue;
 
         try {
@@ -217,7 +236,19 @@ const ExcalidrawComponent = ({
     return () => {
       isDisposed = true;
     };
-  }, [filteredLibraryItems, libraryItemPreviews]);
+  }, [visibleLibraryItems, libraryItemPreviews]);
+
+  useEffect(() => {
+    if (!isLibrarySearchOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (librarySearchRef.current?.contains(event.target)) return;
+      setIsLibrarySearchOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isLibrarySearchOpen]);
 
   useEffect(() => {
     const handleEscape = (event) => {
@@ -227,7 +258,7 @@ const ExcalidrawComponent = ({
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
+  }, [isLibrarySearchOpen, onClose]);
 
   const handleSave = async () => {
     if (!excalidrawAPIRef.current || isSaving) return;
@@ -402,19 +433,33 @@ const ExcalidrawComponent = ({
       overlayClassName="excalidraw-modal-overlay"
       cardClassName="excalidraw-modal-container"
       useDefaultCardClass={false}
+      initialFocusRef={saveButtonRef}
     >
         <div className="excalidraw-modal-header">
           <h2>Create/Edit Diagram</h2>
-          <div className="excalidraw-library-search" aria-label="Search library components">
+          <div
+            ref={librarySearchRef}
+            className="excalidraw-library-search"
+            aria-label="Search library components"
+          >
+            <Search size={14} className="excalidraw-library-search-icon" aria-hidden="true" />
             <input
               value={librarySearchQuery}
               onChange={(event) => setLibrarySearchQuery(event.target.value)}
+              onFocus={() => setIsLibrarySearchOpen(true)}
+              onClick={() => setIsLibrarySearchOpen(true)}
               placeholder="Search library components..."
+              aria-label="Search library components"
             />
-            {librarySearchQuery.trim() ? (
+            {isLibrarySearchOpen ? (
               <div className="excalidraw-library-search-results">
-                {filteredLibraryItems.length ? (
-                  filteredLibraryItems.map((item) => (
+                <div className="excalidraw-library-search-meta" aria-live="polite">
+                  {librarySearchQuery.trim()
+                    ? `${visibleLibraryItems.length}/${matchingLibraryItemCount} matches`
+                    : `${visibleLibraryItems.length}/${matchingLibraryItemCount} items (type to filter)`}
+                </div>
+                {visibleLibraryItems.length ? (
+                  visibleLibraryItems.map((item) => (
                     <button
                       key={item.key}
                       type="button"
@@ -431,19 +476,19 @@ const ExcalidrawComponent = ({
                       <span className="library-search-result-name">{item.name}</span>
                     </button>
                   ))
-                ) : (
-                  <p>No matching library items.</p>
-                )}
+                ) : <p>{librarySearchQuery.trim() ? "No matching library items." : "No library items available."}</p>}
               </div>
             ) : null}
           </div>
           <div className="excalidraw-modal-actions">
-            <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
+            <AppButton ref={saveButtonRef} variant="primary" onClick={handleSave} disabled={isSaving}>
+              <Save size={14} aria-hidden="true" />
               {isSaving ? "Saving..." : "Save Diagram"}
-            </button>
-            <button className="btn btn-secondary" onClick={onClose} disabled={isSaving}>
+            </AppButton>
+            <AppButton variant="small" onClick={onClose} disabled={isSaving}>
+              <X size={14} aria-hidden="true" />
               Cancel
-            </button>
+            </AppButton>
           </div>
         </div>
 

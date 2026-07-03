@@ -5164,9 +5164,19 @@ button {
   min-height: 28px;
   border: 1px solid #d4ddda;
   border-radius: 6px;
+  background: var(--surface-bg);
+  color: var(--app-text);
   padding: 0 10px;
   min-width: 120px;
   width: auto;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
+}
+
+.find-replace-panel input:focus,
+.find-panel-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-solid) 28%, var(--border-default));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 8%, transparent);
 }
 
 .find-panel-input-query {
