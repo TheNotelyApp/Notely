@@ -455,17 +455,32 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const applyIssueAction = (issue) => {
     if (!issue) return;
 
+    const previousView = viewRef.current;
     const previousScrollTop = viewRef.current?.scrollDOM?.scrollTop;
     const previousScrollLeft = viewRef.current?.scrollDOM?.scrollLeft;
+    const previousTopLine = (() => {
+      if (!previousView || !Number.isFinite(previousScrollTop)) return null;
+      const block = previousView.lineBlockAtHeight(previousScrollTop);
+      return previousView.state.doc.lineAt(block.from).number;
+    })();
     const restoreViewport = () => {
       const view = viewRef.current;
       if (!view || !Number.isFinite(previousScrollTop)) return;
-      view.scrollDOM.scrollTop = previousScrollTop;
+
+      if (Number.isFinite(previousTopLine)) {
+        const safeLine = Math.max(1, Math.min(previousTopLine, view.state.doc.lines));
+        const line = view.state.doc.line(safeLine);
+        const block = view.lineBlockAt(line.from);
+        view.scrollDOM.scrollTop = block.top;
+      } else {
+        view.scrollDOM.scrollTop = previousScrollTop;
+      }
       view.scrollDOM.scrollLeft = Number.isFinite(previousScrollLeft) ? previousScrollLeft : 0;
     };
     const scheduleViewportRestore = () => {
       requestAnimationFrame(restoreViewport);
       window.setTimeout(restoreViewport, 80);
+      window.setTimeout(restoreViewport, 220);
     };
 
     const quickFixResult = applyMarkdownQuickFix(value, issue);

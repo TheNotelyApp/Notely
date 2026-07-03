@@ -212,30 +212,27 @@ export function MarkdownToolbar({
     const editor = textareaRef?.current;
     if (!editor) return;
 
+    const topLine = typeof editor.getTopLine === "function"
+      ? Number(editor.getTopLine())
+      : null;
     const scrollTop = Number(editor.scrollTop);
     const scrollLeft = Number(editor.scrollLeft);
-    const selectionStart = Number(editor.selectionStart);
-    const selectionEnd = Number(editor.selectionEnd);
 
     const restore = () => {
       const nextEditor = textareaRef?.current;
       if (!nextEditor) return;
 
-      if (Number.isFinite(scrollTop)) nextEditor.scrollTop = scrollTop;
-      if (Number.isFinite(scrollLeft)) nextEditor.scrollLeft = scrollLeft;
-
-      if (Number.isFinite(selectionStart) && Number.isFinite(selectionEnd)) {
-        if (typeof nextEditor.setSelectionRange === "function") {
-          nextEditor.setSelectionRange(selectionStart, selectionEnd);
-        } else {
-          nextEditor.selectionStart = selectionStart;
-          nextEditor.selectionEnd = selectionEnd;
-        }
+      if (Number.isFinite(topLine) && typeof nextEditor.scrollToLine === "function") {
+        nextEditor.scrollToLine(topLine);
+      } else if (Number.isFinite(scrollTop)) {
+        nextEditor.scrollTop = scrollTop;
       }
+      if (Number.isFinite(scrollLeft)) nextEditor.scrollLeft = scrollLeft;
     };
 
     requestAnimationFrame(restore);
     window.setTimeout(restore, 80);
+    window.setTimeout(restore, 220);
   }
 
   const closeToolbarPanels = () => {
