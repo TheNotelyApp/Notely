@@ -24,7 +24,7 @@ function getDisplayName(filePath) {
 
 function getOpenTasks(documents) {
   const tasks = [];
-  const taskRegex = /^[-*+]\s+\[ \]\s+(.+)/gm;
+  const taskRegex = /^\s*[-*+]?\s*\[ \]\s+(.+)/gm;
 
   documents.forEach((entry) => {
     if (entry.entryType !== "file") return;
@@ -45,8 +45,8 @@ function getOpenTasks(documents) {
 function getTaskCounts(documents) {
   let openCount = 0;
   let closedCount = 0;
-  const openRegex = /^[-*+]\s+\[ \]/gm;
-  const closedRegex = /^[-*+]\s+\[x\]/gim;
+  const openRegex = /^\s*[-*+]?\s*\[ \]/gm;
+  const closedRegex = /^\s*[-*+]?\s*\[x\]/gim;
 
   documents.forEach((entry) => {
     if (entry.entryType !== "file") return;

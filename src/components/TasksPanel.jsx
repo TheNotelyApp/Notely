@@ -2,14 +2,14 @@ import { useMemo, useState } from "react";
 import { CheckSquare, ExternalLink, X, Search } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 
-const TASK_REGEX = /^[-*+]\s+\[ \]\s+(.+)/gm;
+const TASK_REGEX = /^\s*[-*+]?\s*\[ \]\s+(.+)/gm;
 
 function extractTasks(documents) {
   const tasks = [];
   for (const doc of documents) {
     if (doc.entryType !== "file") continue;
     const content = String(doc.searchText || "");
-    if (!content.includes("- [ ]") && !content.includes("* [ ]") && !content.includes("+ [ ]")) continue;
+    if (!content.includes("[ ]")) continue;
 
     TASK_REGEX.lastIndex = 0;
     let match;

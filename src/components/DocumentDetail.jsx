@@ -800,8 +800,8 @@ export function DocumentDetail({
 
   const taskCounts = useMemo(() => {
     const text = String(content || "");
-    const openMatches = text.match(/^[-*+]\s+\[ \]/gm) || [];
-    const closedMatches = text.match(/^[-*+]\s+\[x\]/gmi) || [];
+    const openMatches = text.match(/^\s*[-*+]?\s*\[ \]/gm) || [];
+    const closedMatches = text.match(/^\s*[-*+]?\s*\[x\]/gmi) || [];
     return {
       open: openMatches.length,
       closed: closedMatches.length,
