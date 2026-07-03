@@ -150,6 +150,11 @@ function buildAppMenu(win, context = {}) {
           label: "Open Recent",
           submenu: openRecentSubmenu
         },
+        {
+          label: "Export Workspace as Zip",
+          accelerator: "CmdOrCtrl+Shift+E",
+          click: () => sendMenuAction(win, "export-workspace-zip")
+        },
         { type: "separator" },
         {
           label: `Move ${currentFolderLabel} to Removed`,

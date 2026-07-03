@@ -138,3 +138,19 @@ Use this page when you want quick, direct steps.
 4. If mode is Review, click Save in review dialog.
 
 Set mode in **Settings -> Screen Capture**.
+
+## 22. Review open and completed tasks across workspace
+
+1. Open Command Palette (`Ctrl/Cmd + K`).
+2. Run **Open Tasks Panel** to review pending tasks.
+3. Run **Open All Tasks** to review open + completed tasks together.
+4. Open source notes directly from task rows.
+
+## 23. Export workspace as zip
+
+1. Go to landing view.
+2. Open **File -> Export Workspace as Zip**.
+3. Select format (notes as-is, PDF-only, or web format).
+4. Keep metadata toggle off unless you intentionally need `.notes-app` data.
+5. Browse destination and adjust filename if needed.
+6. Click **Export Zip**.

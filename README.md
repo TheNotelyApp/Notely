@@ -19,7 +19,15 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Preview Mermaid diagrams and rendered Markdown content.
 - Visualise the workspace as an interactive note graph.
 - Use built-in AI features powered by Gemini or Groq for chat, queries, and semantic search.
-- Aggregate tasks across notes with **Tasks Panel** — view all unchecked checkboxes (`- [ ]`) in one place.
+- Aggregate tasks across notes with **Open Tasks** and **All Tasks** panels.
+  - Open Tasks focuses on unchecked items.
+  - All Tasks includes open + closed items with filtering and note grouping.
+  - Dashboard widgets and note-level task summaries help you triage quickly.
+- Export the workspace as a `.zip` bundle from the landing File menu with selectable format.
+  - Notes as-is (`.md` + assets)
+  - PDF-only (one PDF per note)
+  - Web format (static HTML export package)
+  - Optional `.notes-app` metadata inclusion (default off)
 - View note statistics (word count, line count, reading time estimate) in the status bar.
 - Copy note content as HTML or plain text directly from the editor toolbar.
 - Navigate nested folders with breadcrumb links for easy folder traversal.
@@ -47,6 +55,20 @@ Project documentation is organized under `docs/` for maintainability and profess
 - `docs/feature-availability.md` setup and connectivity requirements
 - `docs/versioning-release.md` versioning and release process
 - `docs/troubleshooting.md` troubleshooting and common issue fixes
+
+## Workspace zip export
+
+From the landing screen, open **File -> Export Workspace as Zip**.
+
+The export dialog supports:
+
+- **Format**
+  - Notes as-is (Markdown + linked assets)
+  - PDF-only (workspace notes rendered to PDFs)
+  - Web format (static HTML package)
+- **Include `.notes-app` metadata** toggle (default off)
+- **Destination folder** with Browse and remembered last path
+- **Editable zip file name** (default: `notelyproject.zip`)
 
 ## Workspace Graph
 

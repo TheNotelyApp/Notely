@@ -1167,6 +1167,43 @@ button {
   padding: 0 12px;
 }
 
+.overlay-dialog-field select {
+  min-height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  background: var(--surface-bg);
+  color: var(--text-strong);
+}
+
+.workspace-export-dialog-card {
+  width: min(620px, calc(100vw - 32px));
+}
+
+.workspace-export-intro {
+  margin: 10px 0 0;
+  color: #456068;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.workspace-export-destination-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-export-destination-row input {
+  flex: 1;
+}
+
+@media (max-width: 760px) {
+  .workspace-export-destination-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .overlay-dialog-recents {
   display: flex;
   flex-direction: column;

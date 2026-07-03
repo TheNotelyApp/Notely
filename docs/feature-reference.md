@@ -137,11 +137,20 @@ When embeddings are enabled, the graph can also show semantic clusters of relate
 
 ## 5. Tasks and Workflow
 
-### Tasks Panel
+### Tasks overview
 
-The Tasks Panel aggregates all unchecked task items (`- [ ]` checkboxes) from your entire workspace into a single, searchable view.
+Tasks are parsed from markdown task syntax across workspace notes and surfaced in multiple places:
 
-#### Opening the Tasks Panel
+- **Open Tasks panel**: unchecked tasks (`- [ ]`) only.
+- **All Tasks panel**: open + closed tasks in one searchable list.
+- **Dashboard task summaries**: quick counts and drill-down from landing widgets.
+- **Note-level task summary**: open/closed snapshot for the current note.
+
+### Open Tasks panel
+
+The Open Tasks panel aggregates unchecked task items from your entire workspace into a single searchable view.
+
+#### Opening the Open Tasks panel
 
 Open the panel using the Command Palette:
 
@@ -149,7 +158,7 @@ Open the panel using the Command Palette:
 - Search for "Open Tasks Panel" (or type "tasks", "todos", "checkboxes").
 - Press Enter to open.
 
-#### Using the Tasks Panel
+#### Using the Open Tasks panel
 
 - **Filter tasks**: Use the search input to filter by task text or source note title.
 - **View task count**: The header shows the total number of open tasks.
@@ -159,6 +168,14 @@ Open the panel using the Command Palette:
   - `- [ ] Task text` (dash)
   - `* [ ] Task text` (asterisk)
   - `+ [ ] Task text` (plus)
+
+### All Tasks panel
+
+Use All Tasks when you need both open and completed work in one place.
+
+- Includes open (`[ ]`) and closed (`[x]`) tasks.
+- Supports quick filtering and note-grouped review.
+- Useful for status reviews, audits, and release checklists.
 
 #### Use cases
 
@@ -326,3 +343,19 @@ PDF workflows support image quality behavior and preserve annotation overlays in
 ### Website-style rendering
 
 Website output uses the same content pipeline so rendered notes stay consistent across preview and export surfaces.
+
+### Workspace zip export
+
+From the landing screen, choose **File -> Export Workspace as Zip**.
+
+The workspace export dialog includes:
+
+- **Export format**:
+  - Notes as-is (markdown + assets)
+  - PDF-only workspace bundle
+  - Web format static package
+- **Metadata toggle**: include `.notes-app` folder (default off)
+- **Destination**: browse folder and reuse remembered location
+- **Filename**: default `notelyproject.zip`, editable before export
+
+This flow is intended for backups, handoff, archival snapshots, and portable workspace sharing.

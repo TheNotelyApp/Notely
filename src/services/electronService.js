@@ -592,6 +592,35 @@ export async function downloadPdf(payload) {
   return api.downloadPdf(payload);
 }
 
+export async function getWorkspaceExportDefaults() {
+  const api = getNotesApi();
+  if (typeof api.getWorkspaceExportDefaults !== "function") {
+    return {
+      destinationPath: "",
+      fileName: "notelyproject.zip",
+      includeMetadata: false,
+      mode: "raw",
+    };
+  }
+  return api.getWorkspaceExportDefaults();
+}
+
+export async function browseWorkspaceExportDestination() {
+  const api = getNotesApi();
+  if (typeof api.browseWorkspaceExportDestination !== "function") {
+    throw new Error("Export destination browser unavailable. Please restart the app.");
+  }
+  return api.browseWorkspaceExportDestination();
+}
+
+export async function exportWorkspaceZip(payload) {
+  const api = getNotesApi();
+  if (typeof api.exportWorkspaceZip !== "function") {
+    throw new Error("Workspace export is unavailable. Please restart the app.");
+  }
+  return api.exportWorkspaceZip(payload || {});
+}
+
 export async function saveImage(fileName, base64Data, basePath, options = {}) {
   const api = getNotesApi();
   return api.saveImage({

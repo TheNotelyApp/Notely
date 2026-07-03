@@ -17,7 +17,7 @@ If you are new to Notely, follow this order:
 
 - [User Guide](./user-guide.md): day-to-day note creation, editing, search, media, and diagrams.
 - [Feature Reference](./feature-reference.md): complete feature-by-feature explanation in one place.
-- [Top 15 Common Tasks](./top-tasks.md): fast click-by-click steps for frequent actions.
+- [Top Tasks](./top-tasks.md): fast click-by-click steps for frequent actions, including task dashboards and workspace zip export.
 - [Feature Availability](./feature-availability.md): what works offline, what needs setup, and what needs internet.
 - [Data & Sync](./data-sync-security.md): how your data is stored, synced, and protected.
 - [Troubleshooting](./troubleshooting.md): common issues and quick fixes.

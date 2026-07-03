@@ -12,6 +12,7 @@ This page helps you decide what works offline, what needs optional setup, and wh
 | Markdown validation | Yes | No | No |
 | Typo checking | Yes | No | No |
 | Global search | Yes | No | No |
+| Tasks dashboard and panels | Yes | No | No |
 | Version history | Yes | No | No |
 | Media insert/manage | Yes | No | No |
 | Screen area capture (Windows) | Yes | No | No |
@@ -23,6 +24,7 @@ This page helps you decide what works offline, what needs optional setup, and wh
 | Image annotation overlays | Yes | No | No |
 | Original image restore | Yes | No | No |
 | PDF export | Yes | No | No |
+| Workspace zip export (raw/pdf/web) | Yes | No | No |
 | Website-style preview/export rendering | Yes | No | No |
 | P2P sync | No | Pair trusted peers | Usually local network |
 | AI chat | No | API key/provider setup | Yes |

@@ -55,6 +55,9 @@ const HelpCenterModal = lazy(() =>
 const AboutModal = lazy(() =>
   import("./components/AboutModal").then((m) => ({ default: m.AboutModal }))
 );
+const WorkspaceExportDialog = lazy(() =>
+  import("./components/WorkspaceExportDialog").then((m) => ({ default: m.WorkspaceExportDialog }))
+);
 import {
   onMenuAction,
   notifyBootReady,
@@ -71,6 +74,9 @@ import {
   setThemePreference as persistThemePreference,
   setZoomFactor as persistZoomFactor,
   onThemeChanged,
+  getWorkspaceExportDefaults,
+  browseWorkspaceExportDestination,
+  exportWorkspaceZip,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -159,6 +165,25 @@ function normalizeScreenCaptureMode(rawValue) {
   return rawValue === "review" ? "review" : "auto";
 }
 
+function normalizeWorkspaceExportMode(rawValue) {
+  return ["raw", "pdf", "web"].includes(rawValue) ? rawValue : "raw";
+}
+
+function normalizeWorkspaceExportContentMode(rawValue) {
+  return ["combined", "separate", "raw", "cleansed"].includes(rawValue) ? rawValue : "combined";
+}
+
+function normalizeWorkspaceExportOptions(rawValue) {
+  const source = rawValue && typeof rawValue === "object" ? rawValue : {};
+  return {
+    destinationPath: typeof source.destinationPath === "string" ? source.destinationPath : "",
+    fileName: typeof source.fileName === "string" && source.fileName.trim() ? source.fileName : "notelyproject.zip",
+    includeMetadata: source.includeMetadata === true,
+    mode: normalizeWorkspaceExportMode(source.mode),
+    contentMode: normalizeWorkspaceExportContentMode(source.contentMode),
+  };
+}
+
 function normalizeTypoCheckEnabled(rawValue) {
   return rawValue !== false;
 }
@@ -241,6 +266,11 @@ export default function App() {
   const [allTasksPanelOpen, setAllTasksPanelOpen] = useState(false);
   const [recentNotesPanelOpen, setRecentNotesPanelOpen] = useState(false);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
+  const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
+  const [workspaceExportBusy, setWorkspaceExportBusy] = useState(false);
+  const [workspaceExportOptions, setWorkspaceExportOptions] = useState(
+    normalizeWorkspaceExportOptions(null)
+  );
   const [_appInfoLoading, setAppInfoLoading] = useState(true);
   const [_helpDocsLoading, setHelpDocsLoading] = useState(false);
   const bootReadyNotifiedRef = useRef(false);
@@ -784,6 +814,11 @@ export default function App() {
         return;
       }
 
+      if (action === "export-workspace-zip") {
+        void handleOpenWorkspaceExport();
+        return;
+      }
+
       if (action === "open-recent-workspaces") {
         setRecentWorkspacesDialogOpen(true);
         return;
@@ -1062,6 +1097,65 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, dirty, activeProject, activeTab, landingFolderPath, zoomFactor]);
 
+  async function handleOpenWorkspaceExport() {
+    setWorkspaceExportOpen(true);
+    try {
+      const defaults = await getWorkspaceExportDefaults();
+      setWorkspaceExportOptions((currentValue) => ({
+        ...normalizeWorkspaceExportOptions(defaults),
+        fileName: currentValue?.fileName || normalizeWorkspaceExportOptions(defaults).fileName,
+      }));
+    } catch (error) {
+      notify(error?.message || "Unable to load export defaults.", "error");
+    }
+  }
+
+  function handleWorkspaceExportOptionChange(patch) {
+    setWorkspaceExportOptions((currentValue) => {
+      const nextValue = {
+        ...normalizeWorkspaceExportOptions(currentValue),
+        ...(patch || {}),
+      };
+      return normalizeWorkspaceExportOptions(nextValue);
+    });
+  }
+
+  async function handleBrowseWorkspaceExportDestination() {
+    try {
+      const result = await browseWorkspaceExportDestination();
+      if (result?.canceled || !result?.destinationPath) return;
+      handleWorkspaceExportOptionChange({ destinationPath: result.destinationPath });
+    } catch (error) {
+      notify(error?.message || "Unable to browse export destination.", "error");
+    }
+  }
+
+  async function handleRunWorkspaceExport() {
+    const options = normalizeWorkspaceExportOptions(workspaceExportOptions);
+    if (!options.destinationPath.trim()) {
+      notify("Select an export destination folder.", "warning");
+      return;
+    }
+    if (!options.fileName.trim()) {
+      notify("Provide a zip filename.", "warning");
+      return;
+    }
+
+    setWorkspaceExportBusy(true);
+    try {
+      notify("Workspace export started...", "info");
+      const result = await exportWorkspaceZip(options);
+      if (!result?.canceled) {
+        notify(`Workspace exported: ${result?.filePath || "zip created"}`, "success");
+        setWorkspaceExportOpen(false);
+      }
+    } catch (error) {
+      notify(error?.message || "Workspace export failed.", "error");
+    } finally {
+      setWorkspaceExportBusy(false);
+    }
+  }
+
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
 
@@ -1143,6 +1237,7 @@ export default function App() {
     { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes quick open jump" },
     { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
     { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
+    { id: "export-workspace-zip", label: "Export Workspace as Zip", group: "Workspace", aliases: "export backup archive zip workspace" },
     { id: "open-workspace-graph", label: "Open Workspace Graph", group: "Navigation", aliases: "graph map relationships links topology" },
     { id: "open-tasks-panel", label: "Open Tasks Panel", group: "Navigation", aliases: "tasks todos checkboxes unchecked open items" },
     { id: "open-all-tasks", label: "Open All Tasks", group: "Navigation", aliases: "all tasks completed closed open task list workspace tasks" },
@@ -1444,6 +1539,11 @@ export default function App() {
 
     if (resolvedCommandId === "open-workspace") {
       await handleOpenWorkspacePicker();
+      return;
+    }
+
+    if (resolvedCommandId === "export-workspace-zip") {
+      await handleOpenWorkspaceExport();
       return;
     }
 
@@ -2080,6 +2180,22 @@ export default function App() {
               <p className="overlay-dialog-empty">No recent workspaces yet.</p>
             )}
         </OverlayDialog>
+      ) : null}
+
+      {workspaceExportOpen ? (
+        <Suspense fallback={<div className="lazy-loading">Loading export options...</div>}>
+          <WorkspaceExportDialog
+            isOpen={workspaceExportOpen}
+            values={workspaceExportOptions}
+            loading={workspaceExportBusy}
+            onClose={() => {
+              if (!workspaceExportBusy) setWorkspaceExportOpen(false);
+            }}
+            onChange={handleWorkspaceExportOptionChange}
+            onBrowse={handleBrowseWorkspaceExportDestination}
+            onExport={handleRunWorkspaceExport}
+          />
+        </Suspense>
       ) : null}
 
       {p2pStatusOpen ? (

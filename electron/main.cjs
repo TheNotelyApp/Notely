@@ -37,6 +37,7 @@ const { createMetadataStore } = require("./lib/core/metadataStore.cjs");
 const { createDashboardCache } = require("./lib/core/dashboardCache.cjs");
 const { createDocumentFileOps } = require("./lib/documents/documentFileOps.cjs");
 const { createMainHelpers } = require("./lib/core/mainHelpers.cjs");
+const { registerWorkspaceExportIpcHandlers } = require("./lib/export/workspaceExportIpc.cjs");
 const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
 const { initializeAIHandlers } = require("./ai/aiHandlers.cjs");
 
@@ -867,6 +868,24 @@ registerDocumentIpcHandlers(ipcMain, {
   tryOpenInChrome: webPreview.tryOpenInChrome,
   getLastPdfExportPath,
   rememberPdfExportPath,
+  buildPdfExportMarkdown,
+  buildPdfExportHtml,
+});
+
+registerWorkspaceExportIpcHandlers(ipcMain, {
+  BrowserWindow,
+  dialog,
+  fs,
+  os,
+  path,
+  ensureDir,
+  filePathWithin,
+  getMarkdownIt,
+  readUserSettings,
+  writeUserSettings,
+  getNotesRoot: () => notesRoot,
+  getActiveProject,
+  parseDocument,
   buildPdfExportMarkdown,
   buildPdfExportHtml,
 });

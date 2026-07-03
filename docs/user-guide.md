@@ -98,7 +98,34 @@ Note: restore appears only for diagrams that were created from an image conversi
 - **View -> Focus Mode** to reduce distractions.
 - **Workspace -> Workspace Graph** to explore note and media relationships.
 
-## 9. Get Help Quickly
+## 9. Track Tasks Across Notes
+
+Use markdown task checkboxes in your notes:
+
+- Open task: `- [ ]`
+- Completed task: `- [x]`
+
+Then review tasks centrally:
+
+1. Open Command Palette (`Ctrl/Cmd + K`).
+2. Run **Open Tasks Panel** for pending tasks.
+3. Run **Open All Tasks** to view open + completed tasks.
+4. Open the source note directly from a task row when you need context.
+
+## 10. Export Workspace as Zip
+
+1. Go to the landing screen (notes list view).
+2. Open **File -> Export Workspace as Zip**.
+3. Choose export format:
+	- Notes as-is (Markdown + assets)
+	- PDF-only
+	- Web format
+4. Choose whether to include `.notes-app` metadata (default is off).
+5. Select destination folder (Browse is available and last path is remembered).
+6. Confirm or edit filename (default `notelyproject.zip`).
+7. Click **Export Zip**.
+
+## 11. Get Help Quickly
 
 - **Help -> Documentation** (`F1`) for in-app help.
 - **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) for key bindings.
