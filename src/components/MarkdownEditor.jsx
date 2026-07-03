@@ -721,9 +721,11 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
           role="menu"
           aria-label="Editor context menu"
         >
-          <button type="button" role="menuitem" onClick={() => onJumpToLine?.(contextMenu.line)}>
-            Go to line {contextMenu.line}
-          </button>
+          {Number.isFinite(contextMenu.line) && contextMenu.line !== _activeLine ? (
+            <button type="button" role="menuitem" onClick={() => onJumpToLine?.(contextMenu.line)}>
+              Go to line {contextMenu.line}
+            </button>
+          ) : null}
           {aiEnabled ? (
             <div className="editor-context-menu-group">
               <div className="editor-context-menu-label">AI actions</div>

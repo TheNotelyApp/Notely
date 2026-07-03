@@ -5604,7 +5604,8 @@ button {
 
 .validation-list {
   max-height: 180px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 6px;
 }
@@ -5671,6 +5672,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 6px;
 }
