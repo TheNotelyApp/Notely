@@ -78,6 +78,8 @@ import {
   browseWorkspaceExportDestination,
   exportWorkspaceZip,
   onWorkspaceExportProgress,
+  openWorkspaceInEditor,
+  revealWorkspaceInExplorer,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -567,6 +569,40 @@ export default function App() {
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
     : (landingFolderPath || activeProject?.rootPath || notesFolderPath);
+
+  async function handleOpenWorkspaceInEditor() {
+    const workspacePath = activeProject?.rootPath || notesFolderPath;
+    if (!workspacePath) {
+      notify("Workspace path unavailable.", "error");
+      return;
+    }
+
+    try {
+      const result = await openWorkspaceInEditor(workspacePath);
+      if (result?.openedWith === "default") {
+        notify("VS Code not available. Opened workspace in the system default app.", "info");
+      } else {
+        notify("Opened workspace in VS Code.", "success");
+      }
+    } catch (error) {
+      notify(error?.message || "Unable to open workspace in VS Code.", "error");
+    }
+  }
+
+  async function handleRevealWorkspaceInExplorer() {
+    const workspacePath = activeProject?.rootPath || notesFolderPath;
+    if (!workspacePath) {
+      notify("Workspace path unavailable.", "error");
+      return;
+    }
+
+    try {
+      await revealWorkspaceInExplorer(workspacePath);
+      notify("Revealed workspace in File Explorer.", "success");
+    } catch (error) {
+      notify(error?.message || "Unable to reveal workspace in File Explorer.", "error");
+    }
+  }
 
   async function handleOpenReferencedDocumentFromUI(filePath) {
     await handleOpenReferencedDocument(filePath);
@@ -1064,6 +1100,16 @@ export default function App() {
         } else {
           handleOpenWebsiteFromLanding();
         }
+        return;
+      }
+
+      if (action === "open-workspace-in-editor") {
+        handleOpenWorkspaceInEditor();
+        return;
+      }
+
+      if (action === "reveal-workspace-in-explorer") {
+        handleRevealWorkspaceInExplorer();
         return;
       }
 

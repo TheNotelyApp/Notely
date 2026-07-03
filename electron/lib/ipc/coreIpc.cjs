@@ -91,6 +91,26 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return Math.max(0.75, Math.min(2, Number(numeric.toFixed(2))));
   }
 
+  function resolveWorkspaceFolderPath(rawFolderPath) {
+    const requestedPath = normalizeWorkspacePathValue(rawFolderPath);
+    const notesRoot = normalizeWorkspacePathValue(getNotesRoot());
+    const resolved = requestedPath || notesRoot;
+
+    if (!resolved) {
+      throw new Error("Workspace path is unavailable.");
+    }
+
+    const isSameAsRoot = notesRoot && resolved.toLowerCase() === notesRoot.toLowerCase();
+    if (!isSameAsRoot && !filePathWithin(notesRoot, resolved)) {
+      throw new Error("Invalid workspace path.");
+    }
+    if (!fs.existsSync(resolved)) {
+      throw new Error("Workspace folder does not exist.");
+    }
+
+    return resolved;
+  }
+
   function broadcastThemeChange(themePreference) {
     const effectiveTheme = resolveEffectiveTheme(themePreference);
     for (const win of BrowserWindow.getAllWindows()) {
@@ -310,6 +330,29 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     }
 
     return result.filePaths[0];
+  });
+
+  registerTrustedHandler("workspace:open-in-editor", async (_event, payload) => {
+    const resolved = resolveWorkspaceFolderPath(payload?.folderPath);
+
+    try {
+      const vscodeUri = `vscode://file/${resolved.replace(/\\/g, "/")}`;
+      await shell.openExternal(encodeURI(vscodeUri));
+      return { openedWith: "vscode", folderPath: resolved };
+    } catch {
+      const fallbackResult = await shell.openPath(resolved);
+      if (fallbackResult) {
+        throw new Error(fallbackResult);
+      }
+      return { openedWith: "default", folderPath: resolved };
+    }
+  });
+
+  registerTrustedHandler("workspace:reveal-in-explorer", (_event, payload) => {
+    const resolved = resolveWorkspaceFolderPath(payload?.folderPath);
+
+    shell.showItemInFolder(resolved);
+    return { revealed: true, folderPath: resolved };
   });
 
   registerTrustedHandler("window:open-reference-note", (_event, payload) => {

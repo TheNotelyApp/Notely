@@ -575,6 +575,24 @@ export async function openWebView(filePath, content) {
   return api.openWebView({ filePath, content });
 }
 
+export async function openWorkspaceInEditor(folderPath) {
+  const api = getNotesApi();
+  if (typeof api.openWorkspaceInEditor !== "function") {
+    throw new Error("Workspace open action unavailable. Please restart the app to load the latest desktop API.");
+  }
+
+  return api.openWorkspaceInEditor({ folderPath });
+}
+
+export async function revealWorkspaceInExplorer(folderPath) {
+  const api = getNotesApi();
+  if (typeof api.revealWorkspaceInExplorer !== "function") {
+    throw new Error("Workspace reveal action unavailable. Please restart the app to load the latest desktop API.");
+  }
+
+  return api.revealWorkspaceInExplorer({ folderPath });
+}
+
 export async function openReferenceNoteWindow(filePath) {
   const api = getNotesApi();
   if (typeof api.openReferenceNoteWindow !== "function") {

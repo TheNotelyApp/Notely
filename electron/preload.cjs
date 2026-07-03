@@ -73,6 +73,8 @@ contextBridge.exposeInMainWorld("notesApi", {
     return () => ipcRenderer.removeListener("p2p:full-sync-progress", listener);
   },
   getWorkspaceActivity: (payload) => ipcRenderer.invoke("activity:get-workspace", payload),
+  openWorkspaceInEditor: (payload) => ipcRenderer.invoke("workspace:open-in-editor", payload),
+  revealWorkspaceInExplorer: (payload) => ipcRenderer.invoke("workspace:reveal-in-explorer", payload),
   getWorkspaceGraph: () => ipcRenderer.invoke("workspace:graph-data"),
   getSemanticGraph: () => ipcRenderer.invoke("workspace:semantic-graph"),
   listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),

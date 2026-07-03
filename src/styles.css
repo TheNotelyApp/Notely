@@ -3544,8 +3544,9 @@ button {
   z-index: 20;
   min-width: 280px;
   max-width: 360px;
-  max-height: 320px;
-  overflow: auto;
+  max-height: calc(100vh - var(--app-shell-pad-top) - var(--app-shell-pad-bottom) - 96px);
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 12px;
   border: 1px solid #d5e0dc;
   border-radius: 14px;

@@ -1429,7 +1429,6 @@ export function DocumentDetail({
     }
     editor.scrollTop = Math.max(0, editor.scrollTop - 1);
     setFindMatchIndex(safeIndex);
-    setFindMatchTotal(findMatches.length);
   };
 
   const handleFindNext = () => {

@@ -151,6 +151,17 @@ function buildAppMenu(win, context = {}) {
           label: "Open Recent",
           submenu: openRecentSubmenu
         },
+        { type: "separator" },
+        {
+          label: "Open Workspace in VS Code",
+          accelerator: "CmdOrCtrl+Shift+O",
+          click: () => sendMenuAction(win, "open-workspace-in-editor")
+        },
+        {
+          label: "Reveal Workspace in File Explorer",
+          accelerator: "CmdOrCtrl+Shift+J",
+          click: () => sendMenuAction(win, "reveal-workspace-in-explorer")
+        },
         {
           label: "Export Workspace as Zip",
           accelerator: "CmdOrCtrl+Shift+E",
@@ -514,6 +525,16 @@ function buildAppMenu(win, context = {}) {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")
+        }
+      ]
+    },
+    {
+      label: "Web",
+      submenu: [
+        {
+          label: screen === "document" ? "Open Current Note Website View" : "Open Project Website",
+          accelerator: "CmdOrCtrl+Shift+W",
+          click: () => sendMenuAction(win, "open-website")
         }
       ]
     },
