@@ -2,9 +2,26 @@ const { pathToFileURL } = require("node:url");
 const { ZipFile } = require("yazl");
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 
-const DEFAULT_ZIP_FILE_NAME = "notelyproject.zip";
 const DEFAULT_EXPORT_MODE = "raw";
 const DEFAULT_CONTENT_MODE = "combined";
+
+function getExportType(mode) {
+  if (mode === "pdf") return "pdf";
+  if (mode === "web") return "html";
+  return "docs";
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function buildDatedExportBaseName(mode, now = new Date()) {
+  const exportType = getExportType(mode);
+  const day = pad2(now.getDate());
+  const month = pad2(now.getMonth() + 1);
+  const year = now.getFullYear();
+  return `_${exportType}_${day}-${month}-${year}`;
+}
 
 function normalizeMode(value) {
   return ["raw", "pdf", "web"].includes(value) ? value : DEFAULT_EXPORT_MODE;
@@ -86,9 +103,10 @@ function copyDirectoryRecursive(fs, path, sourceRoot, targetRoot, options = {}) 
   copyDir(sourceRoot, targetRoot);
 }
 
-function zipDirectory(fs, path, sourceDir, zipPath) {
+function zipDirectory(fs, path, sourceDir, zipPath, options = {}) {
   const files = walkFiles(fs, path, sourceDir);
   const zipFile = new ZipFile();
+  const rootFolderName = String(options.rootFolderName || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
 
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(zipPath);
@@ -112,7 +130,8 @@ function zipDirectory(fs, path, sourceDir, zipPath) {
 
     for (const absolutePath of files) {
       const relativePath = path.relative(sourceDir, absolutePath).replace(/\\/g, "/");
-      zipFile.addFile(absolutePath, relativePath);
+      const archivedPath = rootFolderName ? `${rootFolderName}/${relativePath}` : relativePath;
+      zipFile.addFile(absolutePath, archivedPath);
     }
 
     zipFile.end();
@@ -436,11 +455,12 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
   }
 
   registerTrustedHandler("workspace-export:get-defaults", () => {
+    const mode = DEFAULT_EXPORT_MODE;
     return {
       destinationPath: getDefaultDestinationPath(),
-      fileName: DEFAULT_ZIP_FILE_NAME,
+      fileName: `${buildDatedExportBaseName(mode)}.zip`,
       includeMetadata: false,
-      mode: DEFAULT_EXPORT_MODE,
+      mode,
       contentMode: DEFAULT_CONTENT_MODE,
     };
   });
@@ -469,7 +489,9 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
     const includeMetadata = Boolean(payload?.includeMetadata);
     const mode = normalizeMode(payload?.mode);
     const contentMode = normalizeContentMode(payload?.contentMode);
-    const fileName = normalizeZipFileName(payload?.fileName);
+    const requestedFileName = typeof payload?.fileName === "string" ? payload.fileName.trim() : "";
+    const fileName = normalizeZipFileName(requestedFileName || `${buildDatedExportBaseName(mode)}.zip`);
+    const archiveRootName = buildDatedExportBaseName(mode);
 
     if (!destinationPath) {
       throw new Error("Choose an export destination first.");
@@ -551,7 +573,7 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
 
       const outputPath = ensureUniquePath(fs, path, path.join(destinationPath, fileName));
       sendProgress({ phase: "Compressing zip", percent: 88 });
-      const zipResult = await zipDirectory(fs, path, stagingRoot, outputPath);
+      const zipResult = await zipDirectory(fs, path, stagingRoot, outputPath, { rootFolderName: archiveRootName });
 
       rememberExportPath(destinationPath);
       sendProgress({ phase: "Export complete", percent: 100, done: true, filePath: outputPath });
