@@ -79,12 +79,14 @@ export async function validateMarkdownSyntax(content) {
   const text = content || "";
   const file = await markdownLinter.process(text);
 
-  const lintIssues = file.messages.map((message) => ({
-    line: message?.place?.start?.line || 1,
-    column: message?.place?.start?.column || 1,
-    message: message.reason || "Markdown issue detected.",
-    ruleId: message.ruleId || "remark-lint",
-  }));
+  const lintIssues = file.messages
+    .filter((message) => message?.ruleId !== "final-newline")
+    .map((message) => ({
+      line: message?.place?.start?.line || 1,
+      column: message?.place?.start?.column || 1,
+      message: message.reason || "Markdown issue detected.",
+      ruleId: message.ruleId || "remark-lint",
+    }));
 
   const tableIssues = collectTableIssues(text);
   const combined = [...lintIssues, ...tableIssues];

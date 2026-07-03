@@ -563,6 +563,57 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
+  it("preserves editor scroll position after Ctrl+S save", async () => {
+    vi.useFakeTimers();
+
+    let view;
+    let props = {
+      ...baseProps,
+      dirty: true,
+      onNotify: vi.fn(),
+    };
+
+    const onSave = vi.fn().mockImplementation(async () => {
+      props = {
+        ...props,
+        document: {
+          ...props.document,
+          rawNotes: `${props.document.rawNotes}\nSaved`,
+        },
+      };
+      act(() => {
+        view.rerender(props);
+      });
+    });
+
+    props = {
+      ...props,
+      onSave,
+    };
+
+    view = renderDetail(props);
+
+    const initialScroller = view.host.querySelector('.cm-scroller');
+    expect(initialScroller).toBeTruthy();
+
+    act(() => {
+      initialScroller.scrollTop = 140;
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }));
+      await vi.runAllTimersAsync();
+    });
+
+    const scrollerAfterSave = view.host.querySelector('.cm-scroller');
+    expect(scrollerAfterSave).toBeTruthy();
+    expect(scrollerAfterSave.scrollTop).toBe(140);
+    expect(onSave).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+    vi.useRealTimers();
+  });
+
   it("toggles find panel with Ctrl+F", async () => {
     const view = renderDetail(baseProps);
 

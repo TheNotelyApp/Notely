@@ -105,7 +105,8 @@ const editorTheme = EditorView.theme({
     overflowWrap: "anywhere",
     fontFamily: '"Cascadia Code", Consolas, ui-monospace, monospace',
     fontSize: "13px",
-    padding: "14px 0",
+    // Keep generous space below the last line so users can scroll past EOF like VS Code.
+    padding: "14px 0 max(72px, 45vh)",
     minHeight: "100%",
   },
   ".cm-line": {

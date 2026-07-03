@@ -848,7 +848,6 @@ export function DocumentDetail({
   });
   const titleRenameInFlightRef = useRef(false);
   const lastSubmittedTitleRef = useRef("");
-  const saveEditorSnapshotRef = useRef(null);
 
   const findRegexValid = !findUseRegex || isValidFindRegex(findQuery);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
@@ -1040,60 +1039,70 @@ export function DocumentDetail({
     };
   }, [document.filePath]);
 
-  useEffect(() => {
-    if (!saving) return;
+  const captureEditorSnapshot = () => {
     const editor = textareaRef.current;
-    if (!editor) return;
-
-    saveEditorSnapshotRef.current = {
+    if (!editor) return null;
+    return {
       filePath: document.filePath,
       tab: activeTab,
       selectionStart: Number(editor.selectionStart) || 0,
       selectionEnd: Number(editor.selectionEnd) || 0,
       scrollTop: Number(editor.scrollTop) || 0,
     };
-  }, [saving, document.filePath, activeTab]);
+  };
 
-  useEffect(() => {
-    if (saving) return;
-    const snapshot = saveEditorSnapshotRef.current;
+  const restoreEditorSnapshot = (snapshot) => {
     if (!snapshot) return;
 
-    const shouldRestore = snapshot.filePath === document.filePath && snapshot.tab === activeTab;
-    saveEditorSnapshotRef.current = null;
-    if (!shouldRestore) return;
-
     let canceled = false;
-    const restorePosition = () => {
+    const restore = () => {
       if (canceled) return;
       const editor = textareaRef.current;
       if (!editor) return;
-      editor.selectionStart = snapshot.selectionStart;
-      editor.selectionEnd = snapshot.selectionEnd;
+
+      const docLength = String(editor.value || "").length;
+      const nextStart = Math.max(0, Math.min(snapshot.selectionStart, docLength));
+      const nextEnd = Math.max(0, Math.min(snapshot.selectionEnd, docLength));
+      editor.selectionStart = nextStart;
+      editor.selectionEnd = nextEnd;
       editor.scrollTop = snapshot.scrollTop;
     };
 
-    requestAnimationFrame(restorePosition);
-    const lateRestoreA = window.setTimeout(restorePosition, 80);
-    const lateRestoreB = window.setTimeout(restorePosition, 220);
+    requestAnimationFrame(restore);
+    const lateRestoreA = window.setTimeout(restore, 80);
+    const lateRestoreB = window.setTimeout(restore, 220);
 
     return () => {
       canceled = true;
       window.clearTimeout(lateRestoreA);
       window.clearTimeout(lateRestoreB);
     };
-  }, [saving, document.filePath, activeTab]);
+  };
+
+  const savePreservingEditorViewport = async (options) => {
+    const snapshot = captureEditorSnapshot();
+    try {
+      await onSave(options);
+    } finally {
+      const shouldRestore = snapshot
+        && snapshot.filePath === document.filePath
+        && snapshot.tab === activeTab;
+      if (shouldRestore) {
+        restoreEditorSnapshot(snapshot);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!autosaveEnabled || !dirty || saving || showMediaManager) return undefined;
 
     const timer = window.setTimeout(async () => {
-      await onSave({ reason: "autosave", silent: true });
+      await savePreservingEditorViewport({ reason: "autosave", silent: true });
       setLastAutoSaveAt(Date.now());
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes, document.cleansed]);
+  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes, document.cleansed, activeTab]);
 
   useEffect(() => {
     const total = findMatches.length;
@@ -1320,7 +1329,7 @@ export function DocumentDetail({
 
   const handleManualSave = async () => {
     try {
-      await onSave({ reason: "manual-save", silent: true });
+      await savePreservingEditorViewport({ reason: "manual-save", silent: true });
       onNotify?.("Note saved.", "success");
     } catch (error) {
       onNotify?.(error?.message || "Unable to save note.", "error");
