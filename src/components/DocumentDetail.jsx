@@ -842,6 +842,7 @@ export function DocumentDetail({
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
   const [showMediaManager, setShowMediaManager] = useState(false);
+  const [isTaskSummaryOpen, setIsTaskSummaryOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState(document.title || "");
   const [tagDraft, setTagDraft] = useState("");
   const [titleSaving, setTitleSaving] = useState(false);
@@ -944,6 +945,10 @@ export function DocumentDetail({
 
   const openTaskItems = useMemo(() => taskItems.filter((task) => task.status === "open"), [taskItems]);
   const closedTaskItems = useMemo(() => taskItems.filter((task) => task.status === "closed"), [taskItems]);
+  const taskSummaryPopoverId = useMemo(
+    () => `detail-task-popover-${String(document.filePath || document.fileName || "note").toLowerCase().replace(/[^a-z0-9_-]+/g, "-")}`,
+    [document.filePath, document.fileName],
+  );
 
   const getCurrentAIContext = () => {
     const editor = textareaRef.current;
@@ -1745,11 +1750,23 @@ export function DocumentDetail({
           <span className="detail-breadcrumb-current" title={document.title}>{document.title}</span>
         </nav>
         {taskCounts.total > 0 && (
-          <div className="detail-task-summary">
-            <div
+          <div
+            className="detail-task-summary"
+            onMouseEnter={() => setIsTaskSummaryOpen(true)}
+            onMouseLeave={() => setIsTaskSummaryOpen(false)}
+            onFocus={() => setIsTaskSummaryOpen(true)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setIsTaskSummaryOpen(false);
+              }
+            }}
+          >
+            <button
               className="detail-task-counts"
-              tabIndex={0}
+              type="button"
               aria-label={`${taskCounts.open} open tasks and ${taskCounts.closed} closed tasks`}
+              aria-expanded={isTaskSummaryOpen}
+              aria-controls={taskSummaryPopoverId}
             >
               <span className="task-count-item" title="Open tasks">
                 <CheckSquare size={14} />
@@ -1759,8 +1776,13 @@ export function DocumentDetail({
                 <Square size={14} />
                 {taskCounts.closed}
               </span>
-            </div>
-            <div className="detail-task-popover" role="tooltip" aria-label="Note task summary">
+            </button>
+            <div
+              id={taskSummaryPopoverId}
+              className="detail-task-popover"
+              role="tooltip"
+              aria-label="Note task summary"
+            >
               {openTaskItems.length ? (
                 <div className="detail-task-popover-section">
                   <strong>Open</strong>
