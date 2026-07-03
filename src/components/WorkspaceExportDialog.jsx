@@ -14,6 +14,8 @@ export function WorkspaceExportDialog({
 }) {
   if (!isOpen) return null;
   const supportsSectionModes = values.mode === "pdf" || values.mode === "web";
+  const exportFormatLabelId = "workspace-export-mode-label";
+  const sectionExportLabelId = "workspace-export-content-mode-label";
 
   return (
     <OverlayDialog open={isOpen} onClose={onClose} ariaLabel="Export workspace as zip" cardClassName="workspace-export-dialog-card">
@@ -34,10 +36,11 @@ export function WorkspaceExportDialog({
         Create a portable zip bundle for this workspace. Choose the output format, metadata inclusion, destination, and filename.
       </p>
 
-      <label className="overlay-dialog-field" htmlFor="workspace-export-mode">
-        <span>Export format</span>
+      <div className="overlay-dialog-field">
+        <span id={exportFormatLabelId}>Export format</span>
         <AppSelect
           id="workspace-export-mode"
+          aria-labelledby={exportFormatLabelId}
           value={values.mode}
           onChange={(event) => onChange({ mode: event.target.value })}
           disabled={loading}
@@ -46,13 +49,14 @@ export function WorkspaceExportDialog({
           <option value="pdf">PDF-only</option>
           <option value="web">Web format (static HTML package)</option>
         </AppSelect>
-      </label>
+      </div>
 
       {supportsSectionModes ? (
-        <label className="overlay-dialog-field" htmlFor="workspace-export-content-mode">
-          <span>Section export</span>
+        <div className="overlay-dialog-field">
+          <span id={sectionExportLabelId}>Section export</span>
           <AppSelect
             id="workspace-export-content-mode"
+            aria-labelledby={sectionExportLabelId}
             value={values.contentMode || "combined"}
             onChange={(event) => onChange({ contentMode: event.target.value })}
             disabled={loading}
@@ -62,7 +66,7 @@ export function WorkspaceExportDialog({
             <option value="raw">Raw Notes only</option>
             <option value="cleansed">Cleansed only</option>
           </AppSelect>
-        </label>
+        </div>
       ) : null}
 
       <label className="overlay-dialog-checkbox" htmlFor="workspace-export-include-metadata">

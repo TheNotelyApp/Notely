@@ -209,6 +209,35 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
+  it("closes Export PDF content dropdown after selecting an option", () => {
+    const view = renderDetail({
+      ...baseProps,
+      menuAction: { action: "export-pdf", nonce: Date.now() },
+    });
+
+    const contentSelectTrigger = view.host.querySelector("#pdf-export-content-mode");
+    expect(contentSelectTrigger).toBeTruthy();
+
+    act(() => {
+      contentSelectTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(view.host.querySelector(".app-select-panel")).toBeTruthy();
+
+    const rawNotesOption = Array.from(view.host.querySelectorAll(".app-select-option")).find((button) =>
+      button.textContent?.includes("Raw Notes")
+    );
+    expect(rawNotesOption).toBeTruthy();
+
+    act(() => {
+      rawNotesOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(view.host.querySelector(".app-select-panel")).toBeFalsy();
+
+    view.unmount();
+  });
+
   it("opens find-only panel from find action", () => {
     const view = renderDetail({
       ...baseProps,

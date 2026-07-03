@@ -8,18 +8,21 @@ export function DialogSelectField({
   id,
   className = "",
 }) {
+  const labelId = id ? `${id}-label` : undefined;
+
   return (
-    <label className={`overlay-dialog-field${className ? ` ${className}` : ""}`} htmlFor={id}>
-      <span>{label}</span>
+    <div className={`overlay-dialog-field${className ? ` ${className}` : ""}`}>
+      <span id={labelId}>{label}</span>
       <AppSelect
         id={id}
         value={value}
         onChange={onChange}
+        aria-labelledby={labelId}
         className="topbar-popover-select app-select"
       >
         {children}
       </AppSelect>
-    </label>
+    </div>
   );
 }
 

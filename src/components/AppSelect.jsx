@@ -243,12 +243,18 @@ export const AppSelect = forwardRef(function AppSelect(
                     className={`app-select-option${isSelected ? " selected" : ""}${isActive ? " active" : ""}`}
                     aria-selected={isSelected}
                     disabled={option.disabled}
+                    onMouseDown={(event) => {
+                      // Prevent label/default click forwarding that can immediately re-toggle the trigger.
+                      event.preventDefault();
+                    }}
                     onMouseEnter={() => {
                       if (!option.disabled) {
                         setActiveIndex(optionIndex);
                       }
                     }}
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
                       if (!option.disabled) {
                         commitValue(option.value);
                       }
