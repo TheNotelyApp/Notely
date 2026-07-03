@@ -466,12 +466,20 @@ describe("MarkdownToolbar validation panel interactions", () => {
     expect(allButtons().some((button) => button.textContent?.includes("photo.png"))).toBe(true);
     expect(allButtons().some((button) => button.textContent?.includes("spec.pdf"))).toBe(true);
 
-    const filterSelect = view.host.querySelector('.image-linker select');
-    expect(filterSelect).toBeTruthy();
+    const filterTrigger = view.host.querySelector('.image-linker .app-select-trigger');
+    expect(filterTrigger).toBeTruthy();
 
     await act(async () => {
-      filterSelect.value = "image";
-      filterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      filterTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const imageOption = Array.from(view.host.querySelectorAll('.image-linker .app-select-panel .app-select-option'))
+      .find((button) => button.textContent?.trim() === "Images");
+    expect(imageOption).toBeTruthy();
+
+    await act(async () => {
+      imageOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
     });
 
@@ -479,8 +487,16 @@ describe("MarkdownToolbar validation panel interactions", () => {
     expect(allButtons().some((button) => button.textContent?.includes("spec.pdf"))).toBe(false);
 
     await act(async () => {
-      filterSelect.value = "pdf";
-      filterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      filterTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const pdfOption = Array.from(view.host.querySelectorAll('.image-linker .app-select-panel .app-select-option'))
+      .find((button) => button.textContent?.trim() === "PDFs");
+    expect(pdfOption).toBeTruthy();
+
+    await act(async () => {
+      pdfOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
     });
 

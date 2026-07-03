@@ -36,13 +36,13 @@ export function AboutModal({ open, onClose, appInfo }) {
             </p>
             <div className="about-details-list" role="list" aria-label="About details">
               <p className="about-detail-row" role="listitem">
-                <User size={15} aria-hidden="true" />
+                <User size={16} aria-hidden="true" />
                 <span>
                   <strong>Author:</strong> Bikash Narayan Panda
                 </span>
               </p>
               <p className="about-detail-row" role="listitem">
-                <Github size={15} aria-hidden="true" />
+                <Github size={16} aria-hidden="true" />
                 <a
                   href={repositoryUrl}
                   target="_blank"
@@ -53,11 +53,11 @@ export function AboutModal({ open, onClose, appInfo }) {
                   }}
                 >
                   github.com/wglabz/notely
-                  <ExternalLink size={13} aria-hidden="true" />
+                  <ExternalLink size={14} aria-hidden="true" />
                 </a>
               </p>
               <p className="about-detail-row" role="listitem">
-                <Heart size={15} aria-hidden="true" />
+                <Heart size={16} aria-hidden="true" />
                 <span>
                   Made with love by <strong>WGLabz</strong>
                 </span>

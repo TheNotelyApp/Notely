@@ -158,7 +158,7 @@ describe("MarkdownPreview image behaviors", () => {
     expect(link).toBeTruthy();
 
     await act(async () => {
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await waitFor(0);
       await waitFor(0);
     });
@@ -187,7 +187,7 @@ describe("MarkdownPreview image behaviors", () => {
     expect(link).toBeTruthy();
 
     await act(async () => {
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await waitFor(0);
       await waitFor(0);
     });
@@ -215,7 +215,7 @@ describe("MarkdownPreview image behaviors", () => {
     expect(link).toBeTruthy();
 
     await act(async () => {
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await waitFor(0);
       await waitFor(0);
     });
@@ -243,7 +243,7 @@ describe("MarkdownPreview image behaviors", () => {
     expect(link).toBeTruthy();
 
     await act(async () => {
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await waitFor(0);
       await waitFor(0);
     });
