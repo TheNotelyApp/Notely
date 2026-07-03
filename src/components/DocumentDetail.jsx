@@ -22,6 +22,10 @@ import {
   Filter,
   Sparkles,
   ListTree,
+  Clipboard,
+  Code2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppIconButton from "./AppIconButton";
@@ -35,6 +39,7 @@ import { downloadPdf } from "../services/electronService";
 import { deleteVersion, readVersion } from "../services/electronService";
 import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
+import { renderMarkdown } from "../utils/renderUtils";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -793,6 +798,17 @@ export function DocumentDetail({
     return headings;
   }, [content, showMediaManager]);
 
+  const taskCounts = useMemo(() => {
+    const text = String(content || "");
+    const openMatches = text.match(/^[-*+]\s+\[ \]/gm) || [];
+    const closedMatches = text.match(/^[-*+]\s+\[x\]/gmi) || [];
+    return {
+      open: openMatches.length,
+      closed: closedMatches.length,
+      total: openMatches.length + closedMatches.length,
+    };
+  }, [content]);
+
   const getCurrentAIContext = () => {
     const editor = textareaRef.current;
     const currentValue = String(content || "");
@@ -1150,6 +1166,19 @@ export function DocumentDetail({
     } catch (error) {
       onNotify?.(error?.message || "Unable to save note.", "error");
     }
+  };
+
+  const handleCopyAsHtml = () => {
+    const html = renderMarkdown(content || "");
+    navigator.clipboard.writeText(html)
+      .then(() => onNotify?.("Copied as HTML.", "success"))
+      .catch(() => onNotify?.("Unable to copy to clipboard.", "error"));
+  };
+
+  const handleCopyAsText = () => {
+    navigator.clipboard.writeText(content || "")
+      .then(() => onNotify?.("Copied as plain text.", "success"))
+      .catch(() => onNotify?.("Unable to copy to clipboard.", "error"));
   };
 
   const commitTitleRename = async () => {
@@ -1510,6 +1539,18 @@ export function DocumentDetail({
           )}
           <span className="detail-breadcrumb-current" title={document.title}>{document.title}</span>
         </nav>
+        {taskCounts.total > 0 && (
+          <div className="detail-task-counts">
+            <span className="task-count-item" title="Open tasks">
+              <CheckSquare size={14} />
+              {taskCounts.open}
+            </span>
+            <span className="task-count-item" title="Closed tasks">
+              <Square size={14} />
+              {taskCounts.closed}
+            </span>
+          </div>
+        )}
         <div className="save-status">{dirty ? "Unsaved changes" : "Saved"}</div>
         <button
           className={`text-button ${autosaveEnabled ? "active" : ""}`}
@@ -1578,31 +1619,32 @@ export function DocumentDetail({
         ) : null}
         <main className="editor-panel">
           <div className="tab-row">
-            <div className="tabs">
-              <button
-                className={activeTab === "raw" ? "active" : ""}
-                onClick={() => {
-                  setShowMediaManager(false);
-                  setActiveTab("raw");
-                }}
-                title="Quick notes"
-              >
-                <FilePenLine size={16} />
-                <span>Quick Notes</span>
-              </button>
-              <button
-                className={activeTab === "cleansed" ? "active" : ""}
-                onClick={() => {
-                  setShowMediaManager(false);
-                  setActiveTab("cleansed");
-                }}
-                title="Formal notes"
-              >
-                <FileText size={16} />
-                <span>Formal Notes</span>
-              </button>
-            </div>
             <div className="mode-switch">
+              <div className="button-group">
+                <button
+                  className={activeTab === "raw" ? "active" : ""}
+                  onClick={() => {
+                    setShowMediaManager(false);
+                    setActiveTab("raw");
+                  }}
+                  title="Quick notes"
+                >
+                  <FilePenLine size={16} />
+                  <span>Quick Notes</span>
+                </button>
+                <button
+                  className={activeTab === "cleansed" ? "active" : ""}
+                  onClick={() => {
+                    setShowMediaManager(false);
+                    setActiveTab("cleansed");
+                  }}
+                  title="Formal notes"
+                >
+                  <FileText size={16} />
+                  <span>Formal Notes</span>
+                </button>
+              </div>
+              <div className="button-group-separator" />
               <button
                 className={showOriginalImages ? "active" : ""}
                 type="button"
@@ -1629,6 +1671,25 @@ export function DocumentDetail({
               >
                 <Images size={16} />
                 <span>Assets</span>
+              </button>
+              <div className="button-group-separator" />
+              <button
+                type="button"
+                title="Copy note content as rendered HTML"
+                onClick={handleCopyAsHtml}
+                disabled={showMediaManager}
+              >
+                <Code2 size={16} />
+                <span>Copy HTML</span>
+              </button>
+              <button
+                type="button"
+                title="Copy note content as plain text (markdown source)"
+                onClick={handleCopyAsText}
+                disabled={showMediaManager}
+              >
+                <Clipboard size={16} />
+                <span>Copy Text</span>
               </button>
               <div className="button-group-separator" />
               <div className="button-group">
