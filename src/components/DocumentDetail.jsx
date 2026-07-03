@@ -1202,6 +1202,16 @@ export function DocumentDetail({
     openFindPanel({ showReplace: false });
   };
 
+  const toggleFindInNotePanel = () => {
+    if (showFindReplace) {
+      closeFindReplacePanel();
+      onNotify?.("Find panel closed.", "info");
+      return;
+    }
+
+    openFindInNotePanel();
+  };
+
   const openFindReplacePanel = () => {
     openFindPanel({ showReplace: true });
   };
@@ -1563,6 +1573,7 @@ export function DocumentDetail({
     showMediaManager,
     textareaRef,
     setFindQuery,
+    toggleFindInNotePanel,
     openFindInNotePanel,
     openFindReplacePanel,
     toggleOutlineEnabled,
@@ -1965,6 +1976,7 @@ export function DocumentDetail({
             canUndo={canUndo}
             canRedo={canRedo}
             onOpenFind={openFindInNotePanel}
+            onToggleFind={toggleFindInNotePanel}
             aiEnabled={aiEnabled}
             onOpenAIRequest={onOpenAIRequest}
             onOpenAISettings={onOpenAISettings}

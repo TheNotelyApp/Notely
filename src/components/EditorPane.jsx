@@ -36,6 +36,7 @@ export function EditorPane({
   canUndo = false,
   canRedo = false,
   onOpenFind,
+  onToggleFind,
   aiEnabled = true,
   onOpenAIRequest,
   onOpenAISettings,
@@ -346,6 +347,7 @@ export function EditorPane({
       onUndo={onUndo}
       onRedo={onRedo}
       onOpenFind={onOpenFind}
+      onToggleFind={onToggleFind}
       aiEnabled={aiEnabled}
       onOpenAIRequest={onOpenAIRequest}
       onOpenAISettings={onOpenAISettings}

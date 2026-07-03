@@ -563,6 +563,24 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
+  it("toggles find panel with Ctrl+F", async () => {
+    const view = renderDetail(baseProps);
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true }));
+    });
+
+    expect(view.host.querySelector('[aria-label="Find in note"]')).toBeTruthy();
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true }));
+    });
+
+    expect(view.host.querySelector('[aria-label="Find in note"]')).toBeFalsy();
+
+    view.unmount();
+  });
+
   it("commits title rename on Enter", async () => {
     const onRenameTitle = vi.fn().mockResolvedValue(true);
     const view = renderDetail({

@@ -12,6 +12,7 @@ export function useDocumentEditorActions({
   showMediaManager,
   textareaRef,
   setFindQuery,
+  toggleFindInNotePanel,
   openFindInNotePanel,
   openFindReplacePanel,
   toggleOutlineEnabled,
@@ -89,6 +90,8 @@ export function useDocumentEditorActions({
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      if (event.defaultPrevented) return;
+
       const key = event.key.toLowerCase();
       const hasPrimaryModifier = event.ctrlKey || event.metaKey;
       const inInput = isTextInputLike(event.target);
@@ -110,7 +113,7 @@ export function useDocumentEditorActions({
 
       if (key === "f") {
         event.preventDefault();
-        openFindInNotePanel();
+        toggleFindInNotePanel();
         return;
       }
 
@@ -156,6 +159,7 @@ export function useDocumentEditorActions({
   }, [
     showMediaManager,
     textareaRef,
+    toggleFindInNotePanel,
     openFindInNotePanel,
     toggleSplitPreview,
     toggleFocusMode,

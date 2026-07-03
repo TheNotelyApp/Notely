@@ -346,6 +346,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   onUndo,
   onRedo,
   onOpenFind,
+  onToggleFind,
   aiEnabled = true,
   onOpenAIRequest,
   onOpenAISettings,
@@ -639,7 +640,11 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
       {
         key: "Mod-f",
         run() {
-          onOpenFind?.();
+          if (typeof onToggleFind === "function") {
+            onToggleFind();
+          } else {
+            onOpenFind?.();
+          }
           return true;
         },
       },
@@ -665,7 +670,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
     ]),
-  ], [findMatchDecorations, ghostSuggestionDecorations, onChange, onNotify, onOpenFind, onRedo, onUndo, validationDecorations, validationIssues]);
+  ], [findMatchDecorations, ghostSuggestionDecorations, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues]);
 
   return (
     <div className="markdown-editor">
