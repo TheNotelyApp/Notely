@@ -451,6 +451,25 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
+  it("renders source-line anchors for fenced code lines in split mode", () => {
+    const view = renderDetail({
+      ...baseProps,
+      mode: "split",
+      document: {
+        ...baseProps.document,
+        rawNotes: "Intro\n\n```js\nconst alpha = 1;\nconst beta = alpha + 1;\n```\n\nOutro",
+      },
+    });
+
+    const codeLines = Array.from(view.host.querySelectorAll('.preview .markdown-code-line'));
+    expect(codeLines.length).toBeGreaterThanOrEqual(2);
+    codeLines.forEach((line) => {
+      expect(Number(line.getAttribute("data-source-line") || "0")).toBeGreaterThan(0);
+    });
+
+    view.unmount();
+  });
+
   it("shows open and closed tasks in the task summary popover", () => {
     const view = renderDetail({
       ...baseProps,

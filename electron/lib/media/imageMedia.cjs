@@ -1,4 +1,5 @@
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
+const hljs = require("highlight.js");
 
 function createImageMedia(deps) {
   const {
@@ -140,6 +141,75 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
     linkify: true,
     typographer: true
   });
+
+  const escapeCodeHtml = (value) => String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  const highlightCode = (code, language) => {
+    const source = String(code || "");
+    const lang = String(language || "").trim().toLowerCase();
+    try {
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(source, { language: lang, ignoreIllegals: true }).value;
+      }
+      return hljs.highlightAuto(source).value;
+    } catch {
+      return escapeCodeHtml(source);
+    }
+  };
+
+  const getLanguageDisplayLabel = (language) => {
+    const normalized = String(language || "").trim().toLowerCase();
+    if (!normalized) return "text";
+
+    const aliases = {
+      js: "JavaScript",
+      jsx: "JSX",
+      ts: "TypeScript",
+      tsx: "TSX",
+      py: "Python",
+      sh: "Shell",
+      bash: "Bash",
+      zsh: "Zsh",
+      ps1: "PowerShell",
+      csharp: "C#",
+      cs: "C#",
+      cpp: "C++",
+      yml: "YAML",
+      md: "Markdown",
+      html: "HTML",
+      css: "CSS",
+      json: "JSON",
+      sql: "SQL",
+      xml: "XML",
+      plaintext: "text",
+      text: "text",
+    };
+
+    return aliases[normalized] || normalized;
+  };
+
+  markdown.renderer.rules.fence = (tokens, idx) => {
+    const token = tokens[idx];
+    const info = String(token.info || "").trim();
+    const language = (info.split(/\s+/)[0] || "").toLowerCase();
+    const languageLabel = getLanguageDisplayLabel(language);
+    const rawCode = String(token.content || "").replace(/\n$/, "");
+    const highlighted = highlightCode(rawCode, language);
+    const highlightedLines = highlighted.split(/\r?\n/);
+
+    const numberedHtml = highlightedLines
+      .map((line, lineIndex) => {
+        const lineContent = line || "&nbsp;";
+        return `<span class="markdown-code-line"><span class="markdown-code-line-number">${lineIndex + 1}</span><span class="markdown-code-line-content">${lineContent}</span></span>`;
+      })
+      .join("");
+
+    return `<figure class="markdown-code-block"><figcaption class="markdown-code-header"><span class="markdown-code-lang">${escapeCodeHtml(languageLabel)}</span></figcaption><pre class="markdown-code-pre"><code class="hljs${language ? ` language-${escapeCodeHtml(language)}` : ""}">${numberedHtml}</code></pre></figure>`;
+  };
 
   const defaultImage = markdown.renderer.rules.image
     || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));

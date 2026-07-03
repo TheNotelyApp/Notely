@@ -445,6 +445,162 @@ function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "", scopeLabel = "
         font-size: inherit;
       }
 
+      .prose .markdown-code-block {
+        margin: 14px 0;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #f6f8fa;
+        overflow: hidden;
+      }
+
+      .prose .markdown-code-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 34px;
+        padding: 4px 10px;
+        border-bottom: 1px solid #d0d7de;
+        background: #f6f8fa;
+      }
+
+      .prose .markdown-code-lang {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        color: #57606a;
+      }
+
+      .prose .markdown-code-copy {
+        min-height: 28px;
+        width: 28px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #f6f8fa;
+        color: #57606a;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .prose .markdown-code-copy:hover,
+      .prose .markdown-code-copy:focus-visible {
+        border-color: #8c959f;
+        background: #f3f4f6;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+      }
+
+      .prose .markdown-code-copy-icon {
+        position: relative;
+        width: 12px;
+        height: 12px;
+      }
+
+      .prose .markdown-code-copy-icon::before,
+      .prose .markdown-code-copy-icon::after {
+        content: "";
+        position: absolute;
+        border: 1.4px solid currentColor;
+        border-radius: 2px;
+        background: #ffffff;
+      }
+
+      .prose .markdown-code-copy-icon::before {
+        width: 8px;
+        height: 8px;
+        left: 3px;
+        top: 1px;
+      }
+
+      .prose .markdown-code-copy-icon::after {
+        width: 8px;
+        height: 8px;
+        left: 1px;
+        top: 3px;
+      }
+
+      .prose .markdown-code-pre {
+        margin: 0;
+        padding: 0;
+        border-radius: 0;
+        border: 0;
+        background: #f6f8fa;
+      }
+
+      .prose .markdown-code-pre code {
+        display: block;
+        margin: 0;
+        padding: 8px 0;
+        background: transparent;
+        color: #24292f;
+      }
+
+      .prose .markdown-code-line {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
+        align-items: baseline;
+      }
+
+      .prose .markdown-code-line-number {
+        text-align: right;
+        padding: 0 10px 0 0;
+        border-right: 1px solid #d8dee4;
+        color: #6e7781;
+        user-select: none;
+      }
+
+      .prose .markdown-code-line-content {
+        display: block;
+        padding: 0 12px;
+        white-space: pre;
+      }
+
+      .prose .hljs-comment,
+      .prose .hljs-quote {
+        color: #6e7781;
+        font-style: italic;
+      }
+
+      .prose .hljs-keyword,
+      .prose .hljs-selector-tag,
+      .prose .hljs-subst {
+        color: #cf222e;
+        font-weight: 700;
+      }
+
+      .prose .hljs-string,
+      .prose .hljs-attr,
+      .prose .hljs-template-tag,
+      .prose .hljs-template-variable {
+        color: #0a3069;
+      }
+
+      .prose .hljs-number,
+      .prose .hljs-literal,
+      .prose .hljs-variable,
+      .prose .hljs-bullet {
+        color: #0550ae;
+      }
+
+      .prose .hljs-function,
+      .prose .hljs-title,
+      .prose .hljs-title.function_ {
+        color: #8250df;
+      }
+
+      .prose .hljs-type,
+      .prose .hljs-class .hljs-title {
+        color: #953800;
+      }
+
+      .prose .hljs-meta,
+      .prose .hljs-meta .hljs-keyword {
+        color: #57606a;
+      }
+
       .prose blockquote {
         border-left: 3px solid var(--accent);
         padding-left: 14px;
@@ -709,6 +865,32 @@ function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "", scopeLabel = "
       }, { rootMargin: "-20% 0px -75% 0px" });
 
       document.querySelectorAll("h1[id], h2[id], h3[id], h4[id]").forEach((h) => observer.observe(h));
+
+      // ── Code copy buttons ────────────────────────────────
+      document.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const copyButton = target.closest('[data-code-copy="true"]');
+        if (!(copyButton instanceof HTMLButtonElement)) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const rawCode = decodeURIComponent(copyButton.getAttribute("data-code-raw") || "");
+        try {
+          await navigator.clipboard.writeText(rawCode);
+          copyButton.dataset.copyState = "copied";
+          copyButton.title = "Copied";
+        } catch {
+          copyButton.dataset.copyState = "failed";
+          copyButton.title = "Copy failed";
+        }
+
+        window.setTimeout(() => {
+          copyButton.dataset.copyState = "";
+          copyButton.title = "Copy code";
+        }, 900);
+      });
     </script>
   </body>
 </html>`;

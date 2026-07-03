@@ -104,10 +104,11 @@ function buildPdfStyles({ compact = false } = {}) {
     }
 
     pre {
-      background: #0d2029;
-      color: #d6eaf0;
-      border-radius: 8px;
-      padding: 14px 16px;
+      background: #f6f8fa;
+      color: #24292f;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 16px;
       overflow-x: auto;
     }
 
@@ -116,6 +117,111 @@ function buildPdfStyles({ compact = false } = {}) {
       border: 0;
       padding: 0;
       color: inherit;
+    }
+
+    .markdown-code-block {
+      margin: 12px 0;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background: #f6f8fa;
+      overflow: hidden;
+    }
+
+    .markdown-code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 34px;
+      padding: 4px 10px;
+      border-bottom: 1px solid #d0d7de;
+      background: #f6f8fa;
+    }
+
+    .markdown-code-lang {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: #57606a;
+    }
+
+    .markdown-code-pre {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: #f6f8fa;
+    }
+
+    .markdown-code-pre code {
+      display: block;
+      margin: 0;
+      padding: 8px 0;
+      background: transparent;
+      color: #24292f;
+    }
+
+    .markdown-code-line {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      align-items: baseline;
+    }
+
+    .markdown-code-line-number {
+      text-align: right;
+      padding: 0 8px 0 0;
+      border-right: 1px solid #d8dee4;
+      color: #6e7781;
+      user-select: none;
+    }
+
+    .markdown-code-line-content {
+      display: block;
+      padding: 0 10px;
+      white-space: pre;
+    }
+
+    .hljs-comment,
+    .hljs-quote {
+      color: #6e7781;
+      font-style: italic;
+    }
+
+    .hljs-keyword,
+    .hljs-selector-tag,
+    .hljs-subst {
+      color: #cf222e;
+      font-weight: 700;
+    }
+
+    .hljs-string,
+    .hljs-attr,
+    .hljs-template-tag,
+    .hljs-template-variable {
+      color: #0a3069;
+    }
+
+    .hljs-number,
+    .hljs-literal,
+    .hljs-variable,
+    .hljs-bullet {
+      color: #0550ae;
+    }
+
+    .hljs-function,
+    .hljs-title,
+    .hljs-title.function_ {
+      color: #8250df;
+    }
+
+    .hljs-type,
+    .hljs-class .hljs-title {
+      color: #953800;
+    }
+
+    .hljs-meta,
+    .hljs-meta .hljs-keyword {
+      color: #57606a;
     }
 
     table {

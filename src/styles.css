@@ -6334,13 +6334,195 @@ button {
 
 .preview pre {
   overflow: auto;
-  padding: 12px;
+  padding: 16px;
   border-radius: 6px;
-  background: #f2f0eb;
+  border: 1px solid #d0d7de;
+  background: #f6f8fa;
 }
 
 .preview code {
   font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
+}
+
+.preview .markdown-code-block {
+  margin: 12px 0;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  overflow: hidden;
+}
+
+.preview .markdown-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border-bottom: 1px solid #d0d7de;
+  background: #f6f8fa;
+}
+
+.preview .markdown-code-lang {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #57606a;
+}
+
+.preview .markdown-code-copy {
+  min-height: 28px;
+  width: 28px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #57606a;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview .markdown-code-copy:hover,
+.preview .markdown-code-copy:focus-visible {
+  border-color: #8c959f;
+  background: #f3f4f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+}
+
+.preview .markdown-code-copy-icon,
+.webview-page .markdown-code-copy-icon {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+
+.preview .markdown-code-copy-icon::before,
+.preview .markdown-code-copy-icon::after,
+.webview-page .markdown-code-copy-icon::before,
+.webview-page .markdown-code-copy-icon::after {
+  content: "";
+  position: absolute;
+  border: 1.4px solid currentColor;
+  border-radius: 2px;
+  background: #ffffff;
+}
+
+.preview .markdown-code-copy-icon::before,
+.webview-page .markdown-code-copy-icon::before {
+  width: 8px;
+  height: 8px;
+  left: 3px;
+  top: 1px;
+}
+
+.preview .markdown-code-copy-icon::after,
+.webview-page .markdown-code-copy-icon::after {
+  width: 8px;
+  height: 8px;
+  left: 1px;
+  top: 3px;
+}
+
+.preview .markdown-code-pre {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: #f6f8fa;
+}
+
+.preview .markdown-code-pre code {
+  display: block;
+  margin: 0;
+  padding: 8px 0;
+  background: transparent;
+  color: #24292f;
+}
+
+.preview .markdown-code-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.preview .markdown-code-line-number {
+  text-align: right;
+  padding: 0 10px 0 0;
+  border-right: 1px solid #d8dee4;
+  color: #6e7781;
+  user-select: none;
+}
+
+.preview .markdown-code-line-content {
+  display: block;
+  padding: 0 12px;
+  white-space: pre;
+}
+
+.preview .hljs-comment,
+.webview-page .hljs-comment,
+.preview .hljs-quote,
+.webview-page .hljs-quote {
+  color: #6e7781;
+  font-style: italic;
+}
+
+.preview .hljs-keyword,
+.webview-page .hljs-keyword,
+.preview .hljs-selector-tag,
+.webview-page .hljs-selector-tag,
+.preview .hljs-subst,
+.webview-page .hljs-subst {
+  color: #cf222e;
+  font-weight: 700;
+}
+
+.preview .hljs-string,
+.webview-page .hljs-string,
+.preview .hljs-attr,
+.webview-page .hljs-attr,
+.preview .hljs-template-tag,
+.webview-page .hljs-template-tag,
+.preview .hljs-template-variable,
+.webview-page .hljs-template-variable {
+  color: #0a3069;
+}
+
+.preview .hljs-number,
+.webview-page .hljs-number,
+.preview .hljs-literal,
+.webview-page .hljs-literal,
+.preview .hljs-variable,
+.webview-page .hljs-variable,
+.preview .hljs-bullet,
+.webview-page .hljs-bullet {
+  color: #0550ae;
+}
+
+.preview .hljs-function,
+.webview-page .hljs-function,
+.preview .hljs-title,
+.webview-page .hljs-title,
+.preview .hljs-title.function_,
+.webview-page .hljs-title.function_ {
+  color: #8250df;
+}
+
+.preview .hljs-type,
+.webview-page .hljs-type,
+.preview .hljs-class .hljs-title,
+.webview-page .hljs-class .hljs-title {
+  color: #953800;
+}
+
+.preview .hljs-meta,
+.webview-page .hljs-meta,
+.preview .hljs-meta .hljs-keyword,
+.webview-page .hljs-meta .hljs-keyword {
+  color: #57606a;
 }
 
 .preview blockquote {
@@ -6609,10 +6791,11 @@ button {
 
 .webview-page pre {
   overflow: auto;
-  border-radius: 8px;
-  background: #0f2227;
-  color: #e7f2ef;
-  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background: #f6f8fa;
+  color: #24292f;
+  padding: 16px;
 }
 
 .webview-page code {
@@ -6621,6 +6804,90 @@ button {
 
 .webview-page pre code {
   color: inherit;
+}
+
+.webview-page .markdown-code-block {
+  margin: 14px 0;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  overflow: hidden;
+}
+
+.webview-page .markdown-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border-bottom: 1px solid #d0d7de;
+  background: #f6f8fa;
+}
+
+.webview-page .markdown-code-lang {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #57606a;
+}
+
+.webview-page .markdown-code-copy {
+  min-height: 28px;
+  width: 28px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #57606a;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webview-page .markdown-code-copy:hover,
+.webview-page .markdown-code-copy:focus-visible {
+  border-color: #8c959f;
+  background: #f3f4f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+}
+
+.webview-page .markdown-code-pre {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: #f6f8fa;
+}
+
+.webview-page .markdown-code-pre code {
+  display: block;
+  margin: 0;
+  padding: 8px 0;
+  background: transparent;
+  color: #24292f;
+}
+
+.webview-page .markdown-code-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.webview-page .markdown-code-line-number {
+  text-align: right;
+  padding: 0 10px 0 0;
+  border-right: 1px solid #d8dee4;
+  color: #6e7781;
+  user-select: none;
+}
+
+.webview-page .markdown-code-line-content {
+  display: block;
+  padding: 0 12px;
+  white-space: pre;
 }
 
 .webview-page img {

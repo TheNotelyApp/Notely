@@ -448,7 +448,7 @@ export function EditorPane({
   }
 
   if (mode === "web") {
-    return <WebViewPreview content={value} />;
+    return <WebViewPreview content={value} basePath={basePath} />;
   }
 
   if (mode === "split") {

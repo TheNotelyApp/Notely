@@ -113,6 +113,66 @@ describe("Excalidraw legacy path fallbacks", () => {
     expect(html).not.toContain(`/raw/${encodePathForUrl(legacyAsset)}`);
   });
 
+  it("suppresses Excalidraw metadata text and renders rich highlighted code blocks in website preview", () => {
+    const notesRoot = makeTempDir();
+    dirsToCleanup.push(notesRoot);
+
+    const markdownPath = path.join(notesRoot, "note.md");
+    const diagramId = "466eec30";
+    const legacyAsset = `excali-diagrams/postgres-architecture/${diagramId}/diagram.png`;
+
+    fs.mkdirSync(path.join(notesRoot, "excali-diagrams", "postgres-architecture", diagramId), { recursive: true });
+    fs.writeFileSync(path.join(notesRoot, "excali-diagrams", "postgres-architecture", diagramId, "diagram.png"), Buffer.from("png-data"));
+
+    const markdown = [
+      `![Excalidraw Diagram](${legacyAsset}){data-diagram-id=\"${diagramId}\" data-diagram-type=\"excalidraw\"}`,
+      "",
+      "```js",
+      "const value = 42;",
+      "```",
+    ].join("\n");
+    fs.writeFileSync(markdownPath, markdown, "utf8");
+
+    const renderer = createWebsiteRenderer({
+      path,
+      fs,
+      MarkdownIt,
+      escapeHtml: (value) => String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;"),
+      encodePathForUrl,
+      normalizeToPosix,
+      safeDecode,
+      walkFiles: () => [markdownPath],
+      parseDocument: (raw) => ({
+        title: "note",
+        header: "",
+        rawNotes: "",
+        cleansed: "",
+        hasRawNotes: false,
+        hasCleansed: false,
+        hash: raw,
+      }),
+      getImageAnnotationForMarkdownAsset: () => null,
+      renderImageHtmlWithAnnotation: (html) => html,
+      buildWebsiteHtml: ({ bodyHtml }) => `<html><body>${bodyHtml}</body></html>`,
+      WALK_EXCLUDE_DIRS: new Set(),
+      getScopeRoot: () => notesRoot,
+      getScopeLabel: () => "Project",
+      getNotesRoot: () => notesRoot,
+    });
+
+    const html = renderer.renderMarkdownWebsitePage("note.md", markdown, { section: "cleansed" });
+
+    expect(html).not.toContain("data-diagram-id");
+    expect(html).toContain('class="markdown-code-block"');
+    expect(html).toContain('class="markdown-code-line-number"');
+    expect(html).toContain('data-code-copy="true"');
+    expect(html).toContain("hljs-keyword");
+  });
+
   it("resolves legacy slugged Excalidraw path in images:read and serves thumbnail data", async () => {
     const notesRoot = makeTempDir();
     dirsToCleanup.push(notesRoot);

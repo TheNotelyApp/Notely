@@ -111,7 +111,7 @@ function replaceDiagramReferenceWithOriginal(content, options = {}) {
 
   const comparableDiagramPath = toComparableAssetPath(diagramImagePath);
   const replacementMarkdown = createImageMarkdown(originAltText || "Image", originAssetPath || "");
-  const diagramRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)(\{[^}]*\})?/gi;
+  const diagramRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*(\{[^}]*\})?/gi;
   let replaced = false;
 
   const nextContent = source.replace(diagramRegex, (match, imagePath, fallbackDiagramId, attributeBlock) => {
@@ -622,6 +622,20 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     const handleMediaClick = async (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
+
+      const copyButton = target.closest('[data-code-copy="true"]');
+      if (copyButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        const rawCode = decodeURIComponent(copyButton.getAttribute("data-code-raw") || "");
+        try {
+          await navigator.clipboard.writeText(rawCode);
+          onNotify?.("Code copied.", "success");
+        } catch {
+          onNotify?.("Unable to copy code.", "error");
+        }
+        return;
+      }
 
       const imageAction = target.closest?.("[data-image-action]");
       if (imageAction instanceof HTMLButtonElement) {
@@ -1365,17 +1379,14 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           part.type === "mermaid" ? (
             <MermaidBlock code={part.value} index={index} key={`${part.type}-${index}`} />
           ) : part.type === "excalidraw" ? (
-            <ExcalidrawBlock 
+            <ExcalidrawBlock
               imagePath={part.imagePath}
               diagramId={part.diagramId}
               originAssetPath={part.originAssetPath}
               originAltText={part.originAltText}
-              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join('/')}
+              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join("/")}
               index={index}
               key={`${part.type}-${index}`}
-              onUpdate={(newData) => {
-                console.log("Diagram updated:", newData);
-              }}
             />
           ) : (
             <div

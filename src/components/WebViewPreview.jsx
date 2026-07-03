@@ -10,6 +10,35 @@ import { ExcalidrawBlock } from "./ExcalidrawBlock";
 export function WebViewPreview({ content, basePath }) {
   const parts = useMemo(() => parseDiagramBlocks(content), [content]);
 
+  const handlePageClick = async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const copyButton = target.closest('[data-code-copy="true"]');
+    if (!(copyButton instanceof HTMLButtonElement)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rawCode = decodeURIComponent(copyButton.getAttribute("data-code-raw") || "");
+    try {
+      await navigator.clipboard.writeText(rawCode);
+      copyButton.dataset.copyState = "copied";
+      copyButton.title = "Copied";
+      window.setTimeout(() => {
+        copyButton.dataset.copyState = "";
+        copyButton.title = "Copy code";
+      }, 900);
+    } catch {
+      copyButton.dataset.copyState = "failed";
+      copyButton.title = "Copy failed";
+      window.setTimeout(() => {
+        copyButton.dataset.copyState = "";
+        copyButton.title = "Copy code";
+      }, 900);
+    }
+  };
+
   return (
     <div className="webview-shell">
       <div className="webview-browser-bar">
@@ -18,21 +47,18 @@ export function WebViewPreview({ content, basePath }) {
         <span className="dot green" />
         <div className="address-pill">https://notely.local/note</div>
       </div>
-      <article className="webview-page">
+      <article className="webview-page" onClick={handlePageClick}>
         {parts.map((part, index) =>
           part.type === "mermaid" ? (
             <MermaidBlock code={part.value} index={index} key={`${part.type}-${index}`} />
           ) : part.type === "excalidraw" ? (
-            <ExcalidrawBlock 
+            <ExcalidrawBlock
               imagePath={part.imagePath}
               diagramId={part.diagramId}
-              docSlug={basePath?.split(/[/\\]/).pop()?.replace('.md', '') || 'document'}
-              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join('/')}
+              docSlug={basePath?.split(/[/\\]/).pop()?.replace(".md", "") || "document"}
+              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join("/")}
               index={index}
               key={`${part.type}-${index}`}
-              onUpdate={(newData) => {
-                console.log("Diagram updated:", newData);
-              }}
             />
           ) : (
             <div

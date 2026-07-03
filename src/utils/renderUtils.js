@@ -3,6 +3,7 @@
  */
 
 import MarkdownIt from "markdown-it";
+import hljs from "highlight.js";
 
 const md = new MarkdownIt({
   html: false,
@@ -30,6 +31,76 @@ function getImageDisplayName(src, fallback) {
 
 const defaultImageRenderer = md.renderer.rules.image
   || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+
+function highlightCode(content, language) {
+  const code = String(content || "");
+  const lang = String(language || "").trim().toLowerCase();
+
+  try {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  } catch {
+    return escapeHtml(code);
+  }
+}
+
+function getLanguageDisplayLabel(language) {
+  const normalized = String(language || "").trim().toLowerCase();
+  if (!normalized) return "text";
+
+  const aliases = {
+    js: "JavaScript",
+    jsx: "JSX",
+    ts: "TypeScript",
+    tsx: "TSX",
+    py: "Python",
+    sh: "Shell",
+    bash: "Bash",
+    zsh: "Zsh",
+    ps1: "PowerShell",
+    csharp: "C#",
+    cs: "C#",
+    cpp: "C++",
+    yml: "YAML",
+    md: "Markdown",
+    html: "HTML",
+    css: "CSS",
+    json: "JSON",
+    sql: "SQL",
+    xml: "XML",
+    plaintext: "text",
+    text: "text",
+  };
+
+  return aliases[normalized] || normalized;
+}
+
+md.renderer.rules.fence = (tokens, idx, options, env) => {
+  const token = tokens[idx];
+  const info = String(token.info || "").trim();
+  const language = (info.split(/\s+/)[0] || "").toLowerCase();
+  const languageLabel = getLanguageDisplayLabel(language);
+  const rawCode = String(token.content || "").replace(/\n$/, "");
+  const highlighted = highlightCode(rawCode, language);
+  const highlightedLines = highlighted.split(/\r?\n/);
+  const rawCodeData = encodeURIComponent(rawCode);
+  const lineOffset = Number(env?.sourceLineOffset) || 0;
+  const sourceStartLine = Array.isArray(token.map) ? (Number(token.map[0]) || 0) + lineOffset + 1 : 0;
+  const sourceLineAttr = sourceStartLine > 0 ? ` data-source-line="${sourceStartLine}"` : "";
+
+  const numberedHtml = highlightedLines
+    .map((line, lineIndex) => {
+      const lineContent = line || "&nbsp;";
+      const mappedLine = sourceStartLine > 0 ? sourceStartLine + lineIndex : 0;
+      const mappedLineAttr = mappedLine > 0 ? ` data-source-line="${mappedLine}"` : "";
+      return `<span class="markdown-code-line"${mappedLineAttr}><span class="markdown-code-line-number" aria-hidden="true">${lineIndex + 1}</span><span class="markdown-code-line-content">${lineContent}</span></span>`;
+    })
+    .join("");
+
+  return `<figure class="markdown-code-block"${sourceLineAttr}><figcaption class="markdown-code-header"><span class="markdown-code-lang">${escapeHtml(languageLabel)}</span><button type="button" class="markdown-code-copy" data-code-copy="true" data-code-raw="${rawCodeData}" aria-label="Copy code block" title="Copy code"><span class="markdown-code-copy-icon" aria-hidden="true"></span></button></figcaption><pre class="markdown-code-pre"><code class="hljs${language ? ` language-${escapeHtml(language)}` : ""}">${numberedHtml}</code></pre></figure>`;
+};
 
 md.core.ruler.push("notely-source-lines", (state) => {
   const offset = Number(state.env?.sourceLineOffset) || 0;
@@ -59,7 +130,7 @@ export function renderMarkdown(content, options = {}) {
 export function parseDiagramBlocks(content) {
   const chunks = [];
   const mermaidRegex = /```mermaid\s*([\s\S]*?)```/gi;
-  const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)(\{[^}]*\})?/gi;
+  const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*(\{[^}]*\})?/gi;
   const positions = [];
   let match;
 

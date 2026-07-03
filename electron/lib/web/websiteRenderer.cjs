@@ -1,5 +1,7 @@
 // Website & search preview renderers, extracted verbatim from main.cjs.
 // Pure HTML/JSON builders; all environment access is injected via `deps`.
+const hljs = require("highlight.js");
+
 function createWebsiteRenderer(deps) {
   const {
     path,
@@ -21,6 +23,66 @@ function createWebsiteRenderer(deps) {
     getNotesRoot
   } = deps;
 
+function escapeCodeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function highlightCode(content, language) {
+  const code = String(content || "");
+  const lang = String(language || "").trim().toLowerCase();
+
+  try {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  } catch {
+    return escapeCodeHtml(code);
+  }
+}
+
+function getLanguageDisplayLabel(language) {
+  const normalized = String(language || "").trim().toLowerCase();
+  if (!normalized) return "text";
+
+  const aliases = {
+    js: "JavaScript",
+    jsx: "JSX",
+    ts: "TypeScript",
+    tsx: "TSX",
+    py: "Python",
+    sh: "Shell",
+    bash: "Bash",
+    zsh: "Zsh",
+    ps1: "PowerShell",
+    csharp: "C#",
+    cs: "C#",
+    cpp: "C++",
+    yml: "YAML",
+    md: "Markdown",
+    html: "HTML",
+    css: "CSS",
+    json: "JSON",
+    sql: "SQL",
+    xml: "XML",
+    plaintext: "text",
+    text: "text",
+  };
+
+  return aliases[normalized] || normalized;
+}
+
+function normalizeExcalidrawMetadataSuffix(content) {
+  return String(content || "").replace(
+    /(!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?[^/]+)\/diagram\.png)\))\s*\{[^}\n]*\}/gi,
+    "$1"
+  );
+}
+
 function listMarkdownRelativePaths() {
   const scopeRoot = getScopeRoot();
   return walkFiles(scopeRoot, { excludeDirs: Array.from(WALK_EXCLUDE_DIRS) })
@@ -40,6 +102,26 @@ function buildWebsiteMarkdownRenderer() {
     linkify: true,
     typographer: true
   });
+
+  markdown.renderer.rules.fence = (tokens, idx) => {
+    const token = tokens[idx];
+    const info = String(token.info || "").trim();
+    const language = (info.split(/\s+/)[0] || "").toLowerCase();
+    const languageLabel = getLanguageDisplayLabel(language);
+    const rawCode = String(token.content || "").replace(/\n$/, "");
+    const highlighted = highlightCode(rawCode, language);
+    const highlightedLines = highlighted.split(/\r?\n/);
+    const rawCodeData = encodeURIComponent(rawCode);
+
+    const numberedHtml = highlightedLines
+      .map((line, lineIndex) => {
+        const lineContent = line || "&nbsp;";
+        return `<span class="markdown-code-line"><span class="markdown-code-line-number" aria-hidden="true">${lineIndex + 1}</span><span class="markdown-code-line-content">${lineContent}</span></span>`;
+      })
+      .join("");
+
+    return `<figure class="markdown-code-block"><figcaption class="markdown-code-header"><span class="markdown-code-lang">${escapeCodeHtml(languageLabel)}</span><button type="button" class="markdown-code-copy" data-code-copy="true" data-code-raw="${rawCodeData}" aria-label="Copy code block" title="Copy code"><span class="markdown-code-copy-icon" aria-hidden="true"></span></button></figcaption><pre class="markdown-code-pre"><code class="hljs${language ? ` language-${escapeCodeHtml(language)}` : ""}">${numberedHtml}</code></pre></figure>`;
+  };
 
   const headingSlugCounts = new Map();
 
@@ -228,7 +310,8 @@ function renderRootWebsitePage() {
 
 function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
   const markdown = buildWebsiteMarkdownRenderer();
-  const parsed = parseDocument(rawContent, relMdPath);
+  const normalizedContent = normalizeExcalidrawMetadataSuffix(rawContent || "");
+  const parsed = parseDocument(normalizedContent, relMdPath);
   const hasTabbedSections = parsed.hasRawNotes || parsed.hasCleansed;
   const requestedSection = options.section === "raw" ? "raw" : "cleansed";
 
@@ -239,7 +322,7 @@ function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
     activeSection = "cleansed";
   }
 
-  let bodyHtml = `<div class="doc-hero"><h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1><p class="doc-breadcrumb">${escapeHtml(relMdPath)}</p></div><div class="doc-body prose">${markdown.render(rawContent, { relMdPath })}</div>`;
+  let bodyHtml = `<div class="doc-hero"><h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1><p class="doc-breadcrumb">${escapeHtml(relMdPath)}</p></div><div class="doc-body prose">${markdown.render(normalizedContent, { relMdPath })}</div>`;
   if (hasTabbedSections) {
     const headerHtml = parsed.header
       ? `<section class="doc-meta prose">${markdown.render(parsed.header, { relMdPath })}</section>`
@@ -284,11 +367,12 @@ function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
 
 function renderPdfNotePage(relMdPath, markdownContent, options = {}) {
   const markdown = buildWebsiteMarkdownRenderer();
-  const parsed = parseDocument(markdownContent || "", relMdPath);
+  const normalizedContent = normalizeExcalidrawMetadataSuffix(markdownContent || "");
+  const parsed = parseDocument(normalizedContent, relMdPath);
   const hasStructuredSections = parsed.hasRawNotes || parsed.hasCleansed;
   const section = options.section === "raw" ? "raw" : "cleansed";
 
-  let contentToRender = markdownContent || "";
+  let contentToRender = normalizedContent;
   if (hasStructuredSections) {
     contentToRender = section === "raw" ? parsed.rawNotes : parsed.cleansed;
   }
