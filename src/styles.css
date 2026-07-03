@@ -1197,6 +1197,40 @@ button {
   flex: 1;
 }
 
+.workspace-export-progress {
+  margin-top: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-export-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #39565e;
+}
+
+.workspace-export-progress-head strong {
+  font-size: 12px;
+  color: #1c3f46;
+}
+
+.workspace-export-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid #c8d8dc;
+  background: #eff5f6;
+  overflow: hidden;
+}
+
+.workspace-export-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3f8f9a 0%, #5ba7b3 100%);
+  transition: width 180ms ease;
+}
+
 @media (max-width: 760px) {
   .workspace-export-destination-row {
     flex-direction: column;

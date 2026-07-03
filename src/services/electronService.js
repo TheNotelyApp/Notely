@@ -621,6 +621,14 @@ export async function exportWorkspaceZip(payload) {
   return api.exportWorkspaceZip(payload || {});
 }
 
+export function onWorkspaceExportProgress(callback) {
+  const api = getNotesApi();
+  if (typeof api.onWorkspaceExportProgress !== "function") {
+    return () => {};
+  }
+  return api.onWorkspaceExportProgress(callback);
+}
+
 export async function saveImage(fileName, base64Data, basePath, options = {}) {
   const api = getNotesApi();
   return api.saveImage({

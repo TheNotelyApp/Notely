@@ -463,6 +463,7 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
   });
 
   registerTrustedHandler("workspace-export:run", async (_event, payload) => {
+    const event = _event;
     const notesRoot = path.resolve(getNotesRoot());
     const destinationPath = path.resolve(String(payload?.destinationPath || "").trim() || getDefaultDestinationPath());
     const includeMetadata = Boolean(payload?.includeMetadata);
@@ -483,13 +484,28 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "notely-workspace-export-"));
     const stagingRoot = path.join(tempRoot, "staging");
     ensureDir(stagingRoot);
+    const sendProgress = (progressPayload) => {
+      try {
+        event?.sender?.send("workspace-export:progress", {
+          phase: "Preparing export",
+          percent: 0,
+          ...(progressPayload || {}),
+        });
+      } catch {
+        // Best effort progress updates.
+      }
+    };
 
     try {
+      sendProgress({ phase: "Preparing export", percent: 5 });
       if (mode === "raw") {
+        sendProgress({ phase: "Collecting workspace files", percent: 20 });
         copyDirectoryRecursive(fs, path, notesRoot, stagingRoot, {
           excludeDirs: includeMetadata ? [] : [".notes-app"],
         });
+        sendProgress({ phase: "Workspace files staged", percent: 70 });
       } else if (mode === "pdf") {
+        sendProgress({ phase: "Rendering PDF files", percent: 15 });
         await exportPdfWorkspace({
           BrowserWindow,
           fs,
@@ -501,14 +517,17 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
           parseDocument,
           contentMode,
         });
+        sendProgress({ phase: "PDF files rendered", percent: 75 });
 
         if (includeMetadata) {
           const metadataPath = path.join(notesRoot, ".notes-app");
           if (fs.existsSync(metadataPath)) {
+            sendProgress({ phase: "Adding metadata", percent: 80 });
             copyDirectoryRecursive(fs, path, metadataPath, path.join(stagingRoot, ".notes-app"));
           }
         }
       } else {
+        sendProgress({ phase: "Rendering web pages", percent: 15 });
         exportWebWorkspace({
           fs,
           path,
@@ -519,19 +538,23 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
           buildPdfExportMarkdown,
           contentMode,
         });
+        sendProgress({ phase: "Web pages rendered", percent: 75 });
 
         if (includeMetadata) {
           const metadataPath = path.join(notesRoot, ".notes-app");
           if (fs.existsSync(metadataPath)) {
+            sendProgress({ phase: "Adding metadata", percent: 80 });
             copyDirectoryRecursive(fs, path, metadataPath, path.join(stagingRoot, ".notes-app"));
           }
         }
       }
 
       const outputPath = ensureUniquePath(fs, path, path.join(destinationPath, fileName));
+      sendProgress({ phase: "Compressing zip", percent: 88 });
       const zipResult = await zipDirectory(fs, path, stagingRoot, outputPath);
 
       rememberExportPath(destinationPath);
+      sendProgress({ phase: "Export complete", percent: 100, done: true, filePath: outputPath });
 
       return {
         canceled: false,

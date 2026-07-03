@@ -104,6 +104,14 @@ contextBridge.exposeInMainWorld("notesApi", {
   getWorkspaceExportDefaults: () => ipcRenderer.invoke("workspace-export:get-defaults"),
   browseWorkspaceExportDestination: () => ipcRenderer.invoke("workspace-export:browse-destination"),
   exportWorkspaceZip: (payload) => ipcRenderer.invoke("workspace-export:run", payload),
+  onWorkspaceExportProgress: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("workspace-export:progress", listener);
+    return () => ipcRenderer.removeListener("workspace-export:progress", listener);
+  },
   saveImage: (payload) => ipcRenderer.invoke("images:save", payload),
   listImages: (payload) => ipcRenderer.invoke("images:list", payload),
   getImageUsage: (payload) => ipcRenderer.invoke("images:usage", payload),

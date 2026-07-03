@@ -5,6 +5,7 @@ export function WorkspaceExportDialog({
   isOpen,
   values,
   loading = false,
+  progress,
   onClose,
   onChange,
   onBrowse,
@@ -121,6 +122,18 @@ export function WorkspaceExportDialog({
           <span>{loading ? "Exporting..." : "Export Zip"}</span>
         </button>
       </div>
+
+      {loading ? (
+        <div className="workspace-export-progress" aria-live="polite">
+          <div className="workspace-export-progress-head">
+            <strong>{progress?.phase || "Exporting..."}</strong>
+            <span>{Number.isFinite(Number(progress?.percent)) ? `${Math.round(Number(progress.percent))}%` : ""}</span>
+          </div>
+          <div className="workspace-export-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Number(progress?.percent || 0))}>
+            <div className="workspace-export-progress-fill" style={{ width: `${Math.max(0, Math.min(100, Number(progress?.percent || 0)))}%` }} />
+          </div>
+        </div>
+      ) : null}
     </OverlayDialog>
   );
 }

@@ -77,6 +77,7 @@ import {
   getWorkspaceExportDefaults,
   browseWorkspaceExportDestination,
   exportWorkspaceZip,
+  onWorkspaceExportProgress,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -268,6 +269,7 @@ export default function App() {
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
   const [workspaceExportBusy, setWorkspaceExportBusy] = useState(false);
+  const [workspaceExportProgress, setWorkspaceExportProgress] = useState({ phase: "", percent: 0 });
   const [workspaceExportOptions, setWorkspaceExportOptions] = useState(
     normalizeWorkspaceExportOptions(null)
   );
@@ -1099,6 +1101,7 @@ export default function App() {
 
   async function handleOpenWorkspaceExport() {
     setWorkspaceExportOpen(true);
+    setWorkspaceExportProgress({ phase: "", percent: 0 });
     try {
       const defaults = await getWorkspaceExportDefaults();
       setWorkspaceExportOptions((currentValue) => ({
@@ -1142,10 +1145,12 @@ export default function App() {
     }
 
     setWorkspaceExportBusy(true);
+    setWorkspaceExportProgress({ phase: "Preparing export", percent: 2 });
     try {
       notify("Workspace export started...", "info");
       const result = await exportWorkspaceZip(options);
       if (!result?.canceled) {
+        setWorkspaceExportProgress({ phase: "Export complete", percent: 100 });
         notify(`Workspace exported: ${result?.filePath || "zip created"}`, "success");
         setWorkspaceExportOpen(false);
       }
@@ -1155,6 +1160,15 @@ export default function App() {
       setWorkspaceExportBusy(false);
     }
   }
+
+  useEffect(() => {
+    return onWorkspaceExportProgress((payload) => {
+      const phase = String(payload?.phase || "").trim();
+      const parsedPercent = Number(payload?.percent);
+      const percent = Number.isFinite(parsedPercent) ? Math.max(0, Math.min(100, parsedPercent)) : 0;
+      setWorkspaceExportProgress({ phase, percent });
+    });
+  }, []);
 
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
@@ -2188,6 +2202,7 @@ export default function App() {
             isOpen={workspaceExportOpen}
             values={workspaceExportOptions}
             loading={workspaceExportBusy}
+            progress={workspaceExportProgress}
             onClose={() => {
               if (!workspaceExportBusy) setWorkspaceExportOpen(false);
             }}
