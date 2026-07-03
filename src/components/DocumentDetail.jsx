@@ -827,7 +827,6 @@ export function DocumentDetail({
   const [findCaseSensitive, setFindCaseSensitive] = useState(false);
   const [findUseRegex, setFindUseRegex] = useState(false);
   const [findMatchIndex, setFindMatchIndex] = useState(-1);
-  const [findMatchTotal, setFindMatchTotal] = useState(0);
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
   const [showOriginalImages, setShowOriginalImages] = useState(false);
@@ -1098,7 +1097,6 @@ export function DocumentDetail({
 
   useEffect(() => {
     const total = findMatches.length;
-    setFindMatchTotal(total);
     if (!total) {
       setFindMatchIndex(-1);
     } else if (findMatchIndex >= total) {
@@ -1145,7 +1143,7 @@ export function DocumentDetail({
       const nextEnabled = value !== true;
       onNotify?.(
         nextEnabled
-          ? "Focus mode on. Outline is hidden; press Ctrl/Cmd+Shift+F to exit."
+          ? "Focus mode on. Outline is hidden; press Ctrl/Cmd+Alt+F to exit."
           : "Focus mode off. Full layout restored.",
         "info",
       );
@@ -1478,7 +1476,6 @@ export function DocumentDetail({
       const nextEditor = textareaRef.current;
       if (!nextEditor) return;
 
-      const nextMatches = collectMatches(nextValue, findQuery, findCaseSensitive);
       const nextRegexMatches = collectMatches(nextValue, findQuery, findCaseSensitive, findUseRegex);
       if (!nextRegexMatches.length) {
         nextEditor.focus();
@@ -1489,7 +1486,6 @@ export function DocumentDetail({
           nextEditor.selectionEnd = nextCursor;
         }
         setFindMatchIndex(-1);
-        setFindMatchTotal(0);
         return;
       }
 
@@ -1505,7 +1501,6 @@ export function DocumentDetail({
         nextEditor.selectionEnd = nextMatch.end;
       }
       setFindMatchIndex(safeIndex);
-      setFindMatchTotal(nextRegexMatches.length);
     });
   };
 

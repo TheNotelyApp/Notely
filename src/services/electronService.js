@@ -49,7 +49,7 @@ export async function getAppearanceSettings() {
     return {
       themePreference: "auto",
       effectiveTheme: "light",
-      zoomFactor: 1,
+      zoomFactor: 0.8,
     };
   }
   return api.getAppearanceSettings();
@@ -69,7 +69,7 @@ export async function setThemePreference(themePreference) {
 export async function setZoomFactor(zoomFactor) {
   const api = getNotesApi();
   if (typeof api.setZoomFactor !== "function") {
-    return { zoomFactor: 1 };
+    return { zoomFactor: 0.8 };
   }
   return api.setZoomFactor({ zoomFactor });
 }

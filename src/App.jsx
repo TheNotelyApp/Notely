@@ -1244,7 +1244,7 @@ export default function App() {
 
   const paletteCommandsBase = [
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document write jot capture" },
-    { id: "open-ai-palette", label: "Open AI Palette", group: "AI", aliases: "assistant ask ai prompt summarize rewrite" },
+    { id: "open-ai-palette", label: "Open AI Palette", group: "AI", shortcut: "Ctrl/Cmd+Shift+I", aliases: "assistant ask ai prompt summarize rewrite" },
     { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
     { id: "open-about", label: "Open About Notely", group: "Help", aliases: "about version build" },
     { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory organize" },
@@ -1339,6 +1339,22 @@ export default function App() {
       group: "Navigation",
       disabled: !current,
       aliases: "home notes list landing back",
+    },
+    {
+      id: "toggle-focus-mode",
+      label: focusModeEnabled ? "Exit Focus Mode" : "Enter Focus Mode",
+      group: "View",
+      shortcut: "Ctrl/Cmd+Alt+F",
+      disabled: !current,
+      aliases: "focus distraction free writing",
+    },
+    {
+      id: "toggle-outline-enabled",
+      label: outlineEnabled ? "Hide Outline" : "Show Outline",
+      group: "View",
+      shortcut: "Ctrl/Cmd+Alt+L",
+      disabled: !current || focusModeEnabled,
+      aliases: "outline headings navigation sections",
     },
     {
       id: "open-current-note-parent-folder",
@@ -1646,6 +1662,24 @@ export default function App() {
 
     if (resolvedCommandId === "set-density-compact") {
       setNotesDensityMode("compact");
+      return;
+    }
+
+    if (resolvedCommandId === "toggle-focus-mode") {
+      if (!current) {
+        notify("Open a note to use Focus Mode.", "info");
+        return;
+      }
+      setDocumentMenuAction({ action: "toggle-focus-mode", nonce: Date.now() });
+      return;
+    }
+
+    if (resolvedCommandId === "toggle-outline-enabled") {
+      if (!current) {
+        notify("Open a note to use the outline.", "info");
+        return;
+      }
+      setDocumentMenuAction({ action: "toggle-outline-enabled", nonce: Date.now() });
       return;
     }
 

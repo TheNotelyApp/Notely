@@ -1069,6 +1069,13 @@ button {
   gap: 10px;
 }
 
+.keyboard-shortcuts-intro {
+  margin: -4px 4px 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .keyboard-shortcuts-table-wrap {
   border: 1px solid var(--border-ui);
   border-radius: var(--radius-lg);
