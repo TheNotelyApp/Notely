@@ -1413,8 +1413,12 @@ export function DocumentDetail({
     }
 
     editor.focus();
-    editor.selectionStart = match.start;
-    editor.selectionEnd = match.end;
+    if (typeof editor.setSelectionRange === "function") {
+      editor.setSelectionRange(match.start, match.end);
+    } else {
+      editor.selectionStart = match.start;
+      editor.selectionEnd = match.end;
+    }
     editor.scrollTop = Math.max(0, editor.scrollTop - 1);
     setFindMatchIndex(safeIndex);
     setFindMatchTotal(findMatches.length);
@@ -1468,8 +1472,12 @@ export function DocumentDetail({
       const nextRegexMatches = collectMatches(nextValue, findQuery, findCaseSensitive, findUseRegex);
       if (!nextRegexMatches.length) {
         nextEditor.focus();
-        nextEditor.selectionStart = nextCursor;
-        nextEditor.selectionEnd = nextCursor;
+        if (typeof nextEditor.setSelectionRange === "function") {
+          nextEditor.setSelectionRange(nextCursor, nextCursor);
+        } else {
+          nextEditor.selectionStart = nextCursor;
+          nextEditor.selectionEnd = nextCursor;
+        }
         setFindMatchIndex(-1);
         setFindMatchTotal(0);
         return;
@@ -1480,8 +1488,12 @@ export function DocumentDetail({
       const nextMatch = nextRegexMatches[safeIndex];
 
       nextEditor.focus();
-      nextEditor.selectionStart = nextMatch.start;
-      nextEditor.selectionEnd = nextMatch.end;
+      if (typeof nextEditor.setSelectionRange === "function") {
+        nextEditor.setSelectionRange(nextMatch.start, nextMatch.end);
+      } else {
+        nextEditor.selectionStart = nextMatch.start;
+        nextEditor.selectionEnd = nextMatch.end;
+      }
       setFindMatchIndex(safeIndex);
       setFindMatchTotal(nextRegexMatches.length);
     });

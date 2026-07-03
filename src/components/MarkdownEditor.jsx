@@ -279,6 +279,9 @@ function createEditorAdapter(view) {
     focus() {
       view.focus();
     },
+    setSelectionRange(start, end = start) {
+      setSelection(start, end);
+    },
     get selectionStart() {
       return view.state.selection.main.from;
     },
@@ -452,9 +455,23 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const applyIssueAction = (issue) => {
     if (!issue) return;
 
+    const previousScrollTop = viewRef.current?.scrollDOM?.scrollTop;
+    const previousScrollLeft = viewRef.current?.scrollDOM?.scrollLeft;
+    const restoreViewport = () => {
+      const view = viewRef.current;
+      if (!view || !Number.isFinite(previousScrollTop)) return;
+      view.scrollDOM.scrollTop = previousScrollTop;
+      view.scrollDOM.scrollLeft = Number.isFinite(previousScrollLeft) ? previousScrollLeft : 0;
+    };
+    const scheduleViewportRestore = () => {
+      requestAnimationFrame(restoreViewport);
+      window.setTimeout(restoreViewport, 80);
+    };
+
     const quickFixResult = applyMarkdownQuickFix(value, issue);
     if (quickFixResult.changed) {
       onChange(quickFixResult.nextValue);
+      scheduleViewportRestore();
       onNotify?.(quickFixResult.message, "success");
       setContextMenu(null);
       return;
@@ -463,6 +480,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
     const suggestionResult = applyValidationSuggestion(value, issue);
     if (suggestionResult.changed) {
       onChange(suggestionResult.nextValue);
+      scheduleViewportRestore();
       onNotify?.(suggestionResult.message, "success");
       setContextMenu(null);
       return;

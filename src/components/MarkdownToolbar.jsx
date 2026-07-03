@@ -208,6 +208,36 @@ export function MarkdownToolbar({
   const [screenCaptureBusy, setScreenCaptureBusy] = useState(false);
   const [screenCaptureSaving, setScreenCaptureSaving] = useState(false);
 
+  function preserveEditorViewportAfterChange() {
+    const editor = textareaRef?.current;
+    if (!editor) return;
+
+    const scrollTop = Number(editor.scrollTop);
+    const scrollLeft = Number(editor.scrollLeft);
+    const selectionStart = Number(editor.selectionStart);
+    const selectionEnd = Number(editor.selectionEnd);
+
+    const restore = () => {
+      const nextEditor = textareaRef?.current;
+      if (!nextEditor) return;
+
+      if (Number.isFinite(scrollTop)) nextEditor.scrollTop = scrollTop;
+      if (Number.isFinite(scrollLeft)) nextEditor.scrollLeft = scrollLeft;
+
+      if (Number.isFinite(selectionStart) && Number.isFinite(selectionEnd)) {
+        if (typeof nextEditor.setSelectionRange === "function") {
+          nextEditor.setSelectionRange(selectionStart, selectionEnd);
+        } else {
+          nextEditor.selectionStart = selectionStart;
+          nextEditor.selectionEnd = selectionEnd;
+        }
+      }
+    };
+
+    requestAnimationFrame(restore);
+    window.setTimeout(restore, 80);
+  }
+
   const closeToolbarPanels = () => {
     setShowMermaidBuilder(false);
     setShowAssetLinker(false);
@@ -462,6 +492,7 @@ export function MarkdownToolbar({
       return;
     }
     onChange(result.nextValue);
+    preserveEditorViewportAfterChange();
     onNotify?.(result.message, "success");
   }
 
@@ -474,6 +505,7 @@ export function MarkdownToolbar({
     }
 
     onChange(result.nextValue);
+    preserveEditorViewportAfterChange();
     onNotify?.(result.message, "success");
   }
 
