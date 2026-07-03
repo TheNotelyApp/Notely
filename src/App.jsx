@@ -40,6 +40,9 @@ const GlobalSearchOverlay = lazy(() =>
 const KeyboardShortcutsModal = lazy(() =>
   import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
 );
+const TasksPanel = lazy(() =>
+  import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
+);
 const HelpCenterModal = lazy(() =>
   import("./components/HelpCenterModal").then((m) => ({ default: m.HelpCenterModal }))
 );
@@ -205,6 +208,7 @@ export default function App() {
   const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
   const [_appInfoLoading, setAppInfoLoading] = useState(true);
   const [_helpDocsLoading, setHelpDocsLoading] = useState(false);
   const bootReadyNotifiedRef = useRef(false);
@@ -977,6 +981,15 @@ export default function App() {
 
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
+
+  const documentStats = useMemo(() => {
+    if (!current) return null;
+    const text = activeTab === "raw" ? (current.rawNotes || "") : (current.cleansed || "");
+    const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const lineCount = text.split(/\n/).length;
+    const readMinutes = Math.max(1, Math.ceil(wordCount / 200));
+    return { wordCount, lineCount, readMinutes };
+  }, [current, activeTab]);
   const visibleDocuments = applyDocumentListQuery(documents, {
     query: landingListQuery,
     typeFilter: landingEntryFilter,
@@ -1048,6 +1061,7 @@ export default function App() {
     { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
     { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
     { id: "open-workspace-graph", label: "Open Workspace Graph", group: "Navigation", aliases: "graph map relationships links topology" },
+    { id: "open-tasks-panel", label: "Open Tasks Panel", group: "Navigation", aliases: "tasks todos checkboxes unchecked open items" },
     {
       id: "open-recent-workspaces",
       label: "Open Recent Workspace",
@@ -1359,6 +1373,11 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-tasks-panel") {
+      setTasksPanelOpen(true);
+      return;
+    }
+
     if (resolvedCommandId === "open-global-search") {
       setGlobalSearchOpen(true);
       return;
@@ -1641,6 +1660,19 @@ export default function App() {
                 <span className={`terminal-meta-pill ${dirty ? "warn" : ""}`} title="Document save status">
                   {dirty ? "Unsaved" : "Saved"}
                 </span>
+                {documentStats ? (
+                  <>
+                    <span className="terminal-meta-pill" title="Word count for active tab">
+                      {documentStats.wordCount} words
+                    </span>
+                    <span className="terminal-meta-pill" title="Line count for active tab">
+                      {documentStats.lineCount} lines
+                    </span>
+                    <span className="terminal-meta-pill" title="Estimated reading time">
+                      ~{documentStats.readMinutes} min read
+                    </span>
+                  </>
+                ) : null}
               </>
             ) : (
               <span className="terminal-meta-pill" title="Current notes in list">
@@ -2266,6 +2298,20 @@ export default function App() {
           />
         </Suspense>
       )}
+
+      {tasksPanelOpen ? (
+        <Suspense fallback={null}>
+          <TasksPanel
+            isOpen={tasksPanelOpen}
+            documents={documents}
+            onClose={() => setTasksPanelOpen(false)}
+            onOpenNote={async (group) => {
+              const target = documents.find((d) => d.filePath === group.filePath && d.entryType === "file");
+              if (target) await handleOpenListItem(target);
+            }}
+          />
+        </Suspense>
+      ) : null}
 
       {helpCenterOpen ? (
         <Suspense fallback={<div className="lazy-loading">Loading help center…</div>}>
