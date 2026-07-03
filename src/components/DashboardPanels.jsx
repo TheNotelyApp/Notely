@@ -25,7 +25,7 @@ function getDisplayName(filePath) {
   return parts.slice(-2).join("/");
 }
 
-export function DashboardPanels({ documents, taskDocuments = documents, loading, onOpen, onOpenTask, onOpenTasksPanel, onOpenAllTasks, onOpenRecentNotes, onOpenFavorites, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
+export function DashboardPanels({ documents, taskDocuments = documents, loading, onOpen, onOpenTask, onOpenAllTasks, onOpenRecentNotes, onOpenFavorites, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
   const safeDocuments = useMemo(() => (Array.isArray(documents) ? documents : []), [documents]);
   const safeTaskDocuments = useMemo(() => (Array.isArray(taskDocuments) ? taskDocuments : []), [taskDocuments]);
   const safeContinueNotes = useMemo(() => (Array.isArray(continueNotes) ? continueNotes : []), [continueNotes]);
@@ -194,12 +194,17 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
             <h2>Open Tasks</h2>
             <div className="dashboard-task-head-actions">
               {taskCounts.total > 0 && (
-                <button type="button" className="dashboard-task-badge dashboard-task-badge-button" onClick={onOpenAllTasks}>
+                <div
+                  className="dashboard-task-badge dashboard-task-summary"
+                  title={`${taskCounts.open} open | ${taskCounts.closed} closed`}
+                  aria-label={`${taskCounts.open} open tasks and ${taskCounts.closed} closed tasks`}
+                >
                   <span className="task-open">{taskCounts.open}</span>
+                  <span className="dashboard-task-separator" aria-hidden="true">|</span>
                   <span className="task-closed">{taskCounts.closed}</span>
-                </button>
+                </div>
               )}
-              {renderSectionToggle(allOpenTasks, onOpenTasksPanel)}
+              {renderSectionToggle(allOpenTasks, onOpenAllTasks)}
             </div>
           </div>
           {openTasks.length ? (
@@ -333,12 +338,17 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
             <h2>Open Tasks</h2>
             <div className="dashboard-task-head-actions">
               {taskCounts.total > 0 && (
-                <button type="button" className="dashboard-task-badge dashboard-task-badge-button" onClick={onOpenAllTasks}>
+                <div
+                  className="dashboard-task-badge dashboard-task-summary"
+                  title={`${taskCounts.open} open | ${taskCounts.closed} closed`}
+                  aria-label={`${taskCounts.open} open tasks and ${taskCounts.closed} closed tasks`}
+                >
                   <span className="task-open">{taskCounts.open}</span>
+                  <span className="dashboard-task-separator" aria-hidden="true">|</span>
                   <span className="task-closed">{taskCounts.closed}</span>
-                </button>
+                </div>
               )}
-              {renderSectionToggle(allOpenTasks, onOpenTasksPanel)}
+              {renderSectionToggle(allOpenTasks, onOpenAllTasks)}
             </div>
           </div>
           {openTasks.length ? (

@@ -2562,11 +2562,30 @@ button {
   gap: 6px;
 }
 
+.dashboard-task-summary {
+  display: inline-flex;
+  gap: 3px;
+  padding: 1px 5px;
+  border: 1px solid #d5e0dc;
+  border-radius: 999px;
+  background: #ffffff;
+  width: fit-content;
+  max-width: 100%;
+  flex: 0 0 auto;
+}
+
 .dashboard-task-badge-button {
   border: 0;
   background: transparent;
   padding: 0;
   cursor: pointer;
+}
+
+.dashboard-task-separator {
+  color: #55737b;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .dashboard-inline-action {
@@ -2611,6 +2630,17 @@ button {
   background: #d5e5e2;
   color: #55737b;
   title: "Closed tasks";
+}
+
+.dashboard-task-summary .task-open,
+.dashboard-task-summary .task-closed {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 9px;
+  line-height: 1;
 }
 
 .dashboard-task-list {
@@ -2754,10 +2784,17 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 28px;
-  padding: 4px 10px;
+  min-height: 34px;
+  padding: 6px 10px;
   border-bottom: 1px solid #284047;
   background: linear-gradient(180deg, #183138 0%, #112228 100%);
+}
+
+.embedded-terminal-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .embedded-terminal-header strong {
@@ -2801,29 +2838,54 @@ button {
 .embedded-terminal-shell-switch {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
+  border: 1px solid #355057;
+  border-radius: 999px;
+  background: rgba(10, 22, 25, 0.55);
+  overflow: hidden;
+}
+
+.embedded-terminal-shell-switch .small-button {
+  border: 0;
+  border-radius: 0;
+  background: rgba(8, 18, 21, 0.35);
+  color: #7f98a1;
+  min-height: 24px;
+  padding: 0 10px;
+}
+
+.embedded-terminal-shell-switch .small-button:hover {
+  background: rgba(17, 34, 40, 0.85);
+  color: #c5ddd4;
+}
+
+.embedded-terminal-shell-switch .small-button:focus-visible {
+  background: rgba(17, 34, 40, 0.95);
+  color: #d7f1e6;
+  box-shadow: inset 0 0 0 1px #9fd6bc;
+}
+
+.embedded-terminal-shell-switch .small-button + .small-button {
+  border-left: 1px solid #355057;
 }
 
 .embedded-terminal-shell-switch .small-button.active {
-  border-color: #9fd6bc;
-  background: #153238;
+  background: linear-gradient(180deg, #23474f 0%, #173238 100%);
   color: #d7f1e6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.34);
 }
 
-.embedded-terminal-shell-label {
-  color: #9fd6bc;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.embedded-terminal-close {
+  width: 24px;
+  height: 24px;
+  border-color: #355057;
+  background: rgba(10, 22, 25, 0.55);
+  color: #d8ece2;
 }
 
-.embedded-terminal-shell-hint {
-  color: #9bb6bf;
-  font-size: 10px;
-  max-width: min(28vw, 280px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.embedded-terminal-close:hover {
+  background: #153238;
+  border-color: #9fd6bc;
 }
 
 .embedded-terminal-xterm {

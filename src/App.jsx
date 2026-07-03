@@ -1803,7 +1803,6 @@ export default function App() {
                   loading={loading}
                   onOpen={handleOpenListItem}
                   onOpenTask={(task) => handleOpenReferencedDocument(task?.filePath)}
-                  onOpenTasksPanel={() => setTasksPanelOpen(true)}
                   onOpenAllTasks={() => setAllTasksPanelOpen(true)}
                   onOpenRecentNotes={() => setRecentNotesPanelOpen(true)}
                   onOpenFavorites={() => setFavoritesPanelOpen(true)}

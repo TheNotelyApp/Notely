@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { X } from "lucide-react";
 import AppButton from "./AppButton";
+import AppIconButton from "./AppIconButton";
 import {
   createTerminalSession,
   killTerminalSession,
@@ -22,21 +24,15 @@ export function EmbeddedTerminal({
   const sessionIdRef = useRef("");
   const initialCwdRef = useRef(String(cwd || ""));
   const selectedShell = shellPreference === "bash" || shellPreference === "cmd" ? shellPreference : "auto";
-  const [sessionPath, setSessionPath] = useState("");
   const [sessionShellLabel, setSessionShellLabel] = useState("");
   const [sessionError, setSessionError] = useState("");
   const [retryTick, setRetryTick] = useState(0);
-
-  const shellHint = (() => {
-    const normalized = String(sessionShellLabel || "").trim().toLowerCase();
-    if (selectedShell === "auto") {
-      if (normalized === "bash") return "Default: Bash (auto-detected)";
-      if (normalized === "cmd") return "Default: CMD (fallback)";
-      return "Default shell (auto)";
+  const activeShellButton = (() => {
+    if (selectedShell === "bash" || selectedShell === "cmd") {
+      return selectedShell;
     }
-    if (selectedShell === "bash") return "Manual: Bash";
-    if (selectedShell === "cmd") return "Manual: CMD";
-    return "";
+    const normalized = String(sessionShellLabel || "").trim().toLowerCase();
+    return normalized === "bash" || normalized === "cmd" ? normalized : "";
   })();
 
   useEffect(() => {
@@ -97,7 +93,6 @@ export function EmbeddedTerminal({
     })
       .then((session) => {
         sessionIdRef.current = String(session?.sessionId || "");
-        setSessionPath(String(session?.cwd || initialCwdRef.current || ""));
         setSessionShellLabel(String(session?.shellLabel || selectedShell || ""));
         handleResize();
       })
@@ -131,28 +126,28 @@ export function EmbeddedTerminal({
   return (
     <section className="embedded-terminal" aria-label="Embedded terminal">
       <div className="embedded-terminal-header">
-        <strong>Terminal</strong>
-        <div className="embedded-terminal-header-right">
+        <div className="embedded-terminal-header-left">
+          <strong>Terminal</strong>
           <div className="embedded-terminal-shell-switch" role="group" aria-label="Terminal shell selector">
             <AppButton
               variant="small"
-              className={selectedShell === "bash" ? "active" : ""}
-              onClick={() => onShellPreferenceChange?.("bash")}
-              title="Use Bash shell"
-            >
-              Bash
-            </AppButton>
-            <AppButton
-              variant="small"
-              className={selectedShell === "cmd" ? "active" : ""}
+              className={activeShellButton === "cmd" ? "active" : ""}
               onClick={() => onShellPreferenceChange?.("cmd")}
               title="Use CMD shell"
             >
               CMD
             </AppButton>
+            <AppButton
+              variant="small"
+              className={activeShellButton === "bash" ? "active" : ""}
+              onClick={() => onShellPreferenceChange?.("bash")}
+              title="Use BASH shell"
+            >
+              BASH
+            </AppButton>
           </div>
-          {sessionShellLabel ? <span className="embedded-terminal-shell-label">{sessionShellLabel.toUpperCase()}</span> : null}
-          {shellHint ? <span className="embedded-terminal-shell-hint">{shellHint}</span> : null}
+        </div>
+        <div className="embedded-terminal-header-right">
           {sessionError ? (
             <span className="embedded-terminal-error" title={sessionError}>{sessionError}</span>
           ) : null}
@@ -161,8 +156,9 @@ export function EmbeddedTerminal({
               Retry
             </AppButton>
           ) : null}
-          <span title={sessionPath || initialCwdRef.current || ""}>{sessionPath || initialCwdRef.current || ""}</span>
-          <AppButton variant="small" onClick={onClose}>Close</AppButton>
+          <AppIconButton className="embedded-terminal-close" onClick={onClose} aria-label="Close terminal" title="Close terminal">
+            <X size={14} />
+          </AppIconButton>
         </div>
       </div>
       <div className="embedded-terminal-xterm" ref={mountRef} />
