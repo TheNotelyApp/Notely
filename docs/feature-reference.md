@@ -43,6 +43,33 @@ Use **View -> Show Outline** to jump between sections in long notes.
 
 Use **View -> Focus Mode** to reduce visual distractions.
 
+### Note statistics
+
+When editing a note, the status bar displays:
+
+- **Word count**: Live count of words in the active tab content (updates as you type).
+- **Line count**: Total number of lines in the document.
+- **Reading time**: Estimated reading time in minutes (calculated at 200 words per minute).
+
+Statistics update independently for Raw and Formal editing modes.
+
+### Copy and export
+
+Export note content in different formats directly from the toolbar:
+
+- **Copy as HTML**: Renders the markdown to HTML and copies to clipboard for pasting into blogs, wikis, or documentation.
+- **Copy as Plain Text**: Copies the raw markdown source to clipboard for sharing with collaborators.
+
+Both actions show success or error feedback via notifications.
+
+### Breadcrumb navigation
+
+The editor displays a breadcrumb trail showing the full folder hierarchy leading to the current note:
+
+- Click any segment to navigate to that folder.
+- Read-only display that helps orient you in deeply nested workspace structures.
+- Updates dynamically when you switch notes.
+
 ## 3. Quality and Validation
 
 ### Markdown validation
@@ -61,7 +88,35 @@ Validation issues are listed with quick navigation to affected lines.
 
 ### Global search
 
-Search by title, path, metadata, and note content.
+Search by title, path, metadata, and note content across the entire workspace.
+
+#### Regex search
+
+For advanced pattern matching, enable regex mode in global search:
+
+- Click the **`.*`** button in the search filter bar to toggle regex mode.
+- Enter a regex pattern (e.g., `/function_name\(/`, `/Error: \[A-Z0-9_]+/`, `/\/api\/[a-z]+/`).
+- Notely validates the pattern in real-time and shows errors if syntax is invalid.
+- When invalid, the input field highlights in red and an error message appears.
+- Search results update dynamically as you type.
+
+**Example use cases:**
+- Find function definitions: `function\s+\w+\s*\(`
+- Find error patterns: `Error: \[[A-Z0-9_]+\]`
+- Find API routes: `\/api\/[a-z]+`
+- Find imports: `import\s+\{[\w\s,]+\}`
+
+#### Code-aware search
+
+Limit search results to code blocks only:
+
+- Click the **`Code Blocks`** filter button in the search bar (appears alongside All, Notes, Folders, Current Note).
+- Search now only matches inside markdown code blocks (` ``` ` triple backticks and `` ` `` inline code).
+- Matches appear in code context, not surrounding prose.
+- Works with or without regex mode enabled.
+
+**Example use case:**
+- Search for TypeScript patterns only: Select "Code Blocks" filter, search for `interface\s+\w+`
 
 ### Content snippets
 
@@ -80,7 +135,39 @@ Graph capabilities include:
 
 When embeddings are enabled, the graph can also show semantic clusters of related notes.
 
-## 5. Version History and Recovery
+## 5. Tasks and Workflow
+
+### Tasks Panel
+
+The Tasks Panel aggregates all unchecked task items (`- [ ]` checkboxes) from your entire workspace into a single, searchable view.
+
+#### Opening the Tasks Panel
+
+Open the panel using the Command Palette:
+
+- Press `Ctrl/Cmd + K` to open the command palette.
+- Search for "Open Tasks Panel" (or type "tasks", "todos", "checkboxes").
+- Press Enter to open.
+
+#### Using the Tasks Panel
+
+- **Filter tasks**: Use the search input to filter by task text or source note title.
+- **View task count**: The header shows the total number of open tasks.
+- **Group by source**: Tasks are organized by the note they come from for easy navigation.
+- **Open source note**: Click the "Open note" link next to any task to navigate to that note and close the panel.
+- **Supported task syntax**: Recognizes all markdown task formats:
+  - `- [ ] Task text` (dash)
+  - `* [ ] Task text` (asterisk)
+  - `+ [ ] Task text` (plus)
+
+#### Use cases
+
+- Track action items across project notes
+- Get a quick overview of all pending work
+- Find tasks by keyword without opening individual notes
+- Maintain accountability in team workspaces
+
+## 6. Version History and Recovery
 
 ### Version snapshots
 
@@ -90,7 +177,7 @@ Notely stores historical versions of notes to support recovery.
 
 Open **File -> Versions** (`Ctrl/Cmd + Shift + H`) to compare current and previous versions, then restore when needed.
 
-## 6. Media Management
+## 7. Media Management
 
 ### Image and file linking
 
@@ -143,7 +230,7 @@ Before first edit, Notely stores an original image backup and allows restoring i
 
 This helps recover from aggressive crops or accidental edits.
 
-## 7. Diagram Features
+## 8. Diagram Features
 
 ### Mermaid diagrams
 
@@ -161,7 +248,7 @@ This helps recover from aggressive crops or accidental edits.
 - Use diagram-specific right-click actions on Excalidraw previews (separate from normal image actions).
 - Restore the original image reference when a diagram was created from an image. Restore is only shown when origin metadata exists.
 
-## 8. AI Assistance
+## 9. AI Assistance
 
 ### AI settings
 
@@ -196,7 +283,7 @@ Long-running AI actions show in-progress and completion feedback so users know w
 
 Notely tracks embedding freshness and shows staleness indicators in graph workflows.
 
-## 9. Peer-to-Peer Sync
+## 10. Peer-to-Peer Sync
 
 ### Discovery and pairing
 
@@ -210,7 +297,7 @@ Monitor sync progress and resolve conflicts with built-in conflict tools.
 
 Workspace trust and key policies help keep collaboration safe.
 
-## 10. Help and Product Info
+## 11. Help and Product Info
 
 ### Documentation
 
@@ -224,7 +311,7 @@ Open **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`).
 
 Open **Help -> About Notely** to view app identity and version information.
 
-## 11. Preview and Export
+## 12. Preview and Export
 
 ### Web preview
 

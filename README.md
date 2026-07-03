@@ -10,6 +10,8 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Validate Markdown structure while you type.
 - Check typos in the editor.
 - Search notes by title, metadata, path, and in-file content with match previews.
+  - **Regex search** with validation and pattern matching for advanced queries.
+  - **Code-aware search** to find patterns inside code blocks only.
 - Insert common Markdown snippets from the toolbar.
 - Browse, annotate, optimize, and manage linked media.
 - Open note files in VS Code or the system default app.
@@ -17,6 +19,10 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Preview Mermaid diagrams and rendered Markdown content.
 - Visualise the workspace as an interactive note graph.
 - Use built-in AI features powered by Gemini or Groq for chat, queries, and semantic search.
+- Aggregate tasks across notes with **Tasks Panel** — view all unchecked checkboxes (`- [ ]`) in one place.
+- View note statistics (word count, line count, reading time estimate) in the status bar.
+- Copy note content as HTML or plain text directly from the editor toolbar.
+- Navigate nested folders with breadcrumb links for easy folder traversal.
 
 ## In-app Help Center
 
