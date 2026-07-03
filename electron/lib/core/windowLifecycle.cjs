@@ -366,6 +366,8 @@ function createWindowLifecycle(deps) {
       viewMode: "tile",
       densityMode: "comfortable",
       typoCheckEnabled: true,
+      previewImageMode: "thumbnail",
+      embeddedMarkdownMode: "open",
       screenCaptureMode: "auto",
       themePreference: "auto",
       outlineEnabled: true,
@@ -479,6 +481,8 @@ function createWindowLifecycle(deps) {
       viewMode: "tile",
       densityMode: "comfortable",
       typoCheckEnabled: true,
+      previewImageMode: "thumbnail",
+      embeddedMarkdownMode: "open",
       screenCaptureMode: "auto",
       themePreference: "auto",
       outlineEnabled: true,
@@ -504,6 +508,8 @@ function createWindowLifecycle(deps) {
       viewMode: context?.viewMode === "table" ? "table" : "tile",
       densityMode: context?.densityMode === "compact" ? "compact" : "comfortable",
       typoCheckEnabled: context?.typoCheckEnabled !== false,
+      previewImageMode: context?.previewImageMode === "original" ? "original" : "thumbnail",
+      embeddedMarkdownMode: context?.embeddedMarkdownMode === "inline" ? "inline" : "open",
       screenCaptureMode: context?.screenCaptureMode === "review" ? "review" : "auto",
       themePreference: ["auto", "light", "dark"].includes(context?.themePreference)
         ? context.themePreference

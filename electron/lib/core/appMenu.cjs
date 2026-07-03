@@ -32,6 +32,8 @@ function buildAppMenu(win, context = {}) {
   const outlineEnabled = context?.outlineEnabled !== false;
   const splitPreviewEnabled = context?.splitPreviewEnabled === true;
   const focusModeEnabled = context?.focusModeEnabled === true;
+  const previewImageMode = context?.previewImageMode === "original" ? "original" : "thumbnail";
+  const embeddedMarkdownMode = context?.embeddedMarkdownMode === "inline" ? "inline" : "open";
   const typoCheckEnabled = context?.typoCheckEnabled !== false;
   const screenCaptureMode = context?.screenCaptureMode === "review" ? "review" : "auto";
   const themePreference = ["auto", "light", "dark"].includes(context?.themePreference)
@@ -277,6 +279,45 @@ function buildAppMenu(win, context = {}) {
           checked: focusModeEnabled,
           accelerator: "CmdOrCtrl+Alt+F",
           click: () => sendMenuAction(win, "toggle-focus-mode")
+        },
+        {
+          label: "Preview Options",
+          submenu: [
+            {
+              label: "Images",
+              submenu: [
+                {
+                  label: "Thumbnail",
+                  type: "radio",
+                  checked: previewImageMode === "thumbnail",
+                  click: () => sendMenuAction(win, "view-preview-image-thumbnail")
+                },
+                {
+                  label: "Original",
+                  type: "radio",
+                  checked: previewImageMode === "original",
+                  click: () => sendMenuAction(win, "view-preview-image-original")
+                }
+              ]
+            },
+            {
+              label: "Embedded Markdown Files",
+              submenu: [
+                {
+                  label: "Open Linked Note",
+                  type: "radio",
+                  checked: embeddedMarkdownMode === "open",
+                  click: () => sendMenuAction(win, "view-embedded-markdown-open")
+                },
+                {
+                  label: "Inline Render",
+                  type: "radio",
+                  checked: embeddedMarkdownMode === "inline",
+                  click: () => sendMenuAction(win, "view-embedded-markdown-inline")
+                }
+              ]
+            }
+          ]
         },
         { type: "separator" },
         {

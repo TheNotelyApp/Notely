@@ -207,6 +207,14 @@ function normalizeTypoCheckEnabled(rawValue) {
   return rawValue !== false;
 }
 
+function normalizePreviewImageMode(rawValue) {
+  return rawValue === "original" ? "original" : "thumbnail";
+}
+
+function normalizeEmbeddedMarkdownMode(rawValue) {
+  return rawValue === "inline" ? "inline" : "open";
+}
+
 function normalizePathLikeValue(value) {
   if (typeof value === "string") {
     return value.trim();
@@ -484,6 +492,18 @@ export default function App() {
     key: "notes:typo-check-enabled",
     defaultValue: true,
     normalize: normalizeTypoCheckEnabled,
+  });
+  const [previewImageMode, setPreviewImageMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:preview-image-mode",
+    defaultValue: "thumbnail",
+    normalize: normalizePreviewImageMode,
+  });
+  const [embeddedMarkdownMode, setEmbeddedMarkdownMode] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:embedded-markdown-mode",
+    defaultValue: "open",
+    normalize: normalizeEmbeddedMarkdownMode,
   });
 
   const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
@@ -837,6 +857,8 @@ export default function App() {
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       typoCheckEnabled,
+      previewImageMode,
+      embeddedMarkdownMode,
       screenCaptureMode,
       themePreference,
       dirty,
@@ -849,7 +871,7 @@ export default function App() {
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, screenCaptureMode, themePreference, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -1070,7 +1092,32 @@ export default function App() {
         return;
       }
 
-      if (action === "toggle-outline" || action === "toggle-outline-enabled" || action === "toggle-split-preview" || action === "toggle-focus-mode") {
+      if (action === "view-preview-image-thumbnail") {
+        setPreviewImageMode("thumbnail");
+        return;
+      }
+
+      if (action === "view-preview-image-original") {
+        setPreviewImageMode("original");
+        return;
+      }
+
+      if (action === "view-embedded-markdown-open") {
+        setEmbeddedMarkdownMode("open");
+        return;
+      }
+
+      if (action === "view-embedded-markdown-inline") {
+        setEmbeddedMarkdownMode("inline");
+        return;
+      }
+
+      if (
+        action === "toggle-outline"
+        || action === "toggle-outline-enabled"
+        || action === "toggle-split-preview"
+        || action === "toggle-focus-mode"
+      ) {
         if (current) {
           setDocumentMenuAction({
             action: action === "toggle-outline" ? "toggle-outline-enabled" : action,
@@ -2142,6 +2189,8 @@ export default function App() {
             workspaceStorageScope={workspaceStorageScope}
             typoCheckEnabled={typoCheckEnabled}
             screenCaptureMode={screenCaptureMode}
+            showOriginalImages={previewImageMode === "original"}
+            inlineLinkedMarkdown={embeddedMarkdownMode === "inline"}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={setOutlineEnabled}
             focusModeEnabled={focusModeEnabled}

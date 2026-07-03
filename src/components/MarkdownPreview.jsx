@@ -433,11 +433,13 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       image.setAttribute("aria-haspopup", "menu");
       image.setAttribute("aria-label", image.getAttribute("alt") || "Image");
 
+      const existingAssetPath = image.getAttribute("data-asset-path") || "";
       const src = image.getAttribute("src") || "";
-      if (!src || /^(data:|blob:|https?:)/i.test(src)) return;
-
-      const assetPath = image.getAttribute("data-asset-path") || src;
+      const assetPath = existingAssetPath || src;
       image.setAttribute("data-asset-path", assetPath);
+
+      const shouldSkipResolution = !existingAssetPath && (!src || /^(data:|blob:|https?:)/i.test(src));
+      if (shouldSkipResolution) return;
 
       const cache = imageResolveCacheRef.current;
       const variant = showOriginalImages ? "original" : "thumbnail";

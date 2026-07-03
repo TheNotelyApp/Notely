@@ -4,18 +4,18 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   FileText,
   FilePenLine,
   FileDown,
   PenLine,
   SplitSquareHorizontal,
   Eye,
+  EyeOff,
   Clock,
   MapPin,
   User,
   Tag,
-  Image,
-  ImageOff,
   Images,
   GitCompare,
   Trash2,
@@ -493,6 +493,7 @@ const MetadataPanel = memo(function MetadataPanel({
         <span>Title</span>
         <AppInput
           type="text"
+          className="metadata-input"
           value={titleText}
           onChange={onTitleChange}
           onBlur={onTitleBlur}
@@ -507,6 +508,7 @@ const MetadataPanel = memo(function MetadataPanel({
         <span>Name</span>
         <AppInput
           type="text"
+          className="metadata-input"
           value={nameText}
           onChange={onNameChange}
           placeholder="Add name"
@@ -517,20 +519,26 @@ const MetadataPanel = memo(function MetadataPanel({
         <Clock size={16} />
         <span>Time</span>
         <div className="metadata-time-range-row">
-          <span className="metadata-time-range-label">From</span>
-          <AppInput
-            type="datetime-local"
-            value={timeFromText}
-            onChange={onTimeFromChange}
-            aria-label="Start time"
-          />
-          <span className="metadata-time-range-label">To</span>
-          <AppInput
-            type="datetime-local"
-            value={timeToText}
-            onChange={onTimeToChange}
-            aria-label="End time"
-          />
+          <div className="metadata-time-range-field">
+            <span className="metadata-time-range-label">From</span>
+            <AppInput
+              type="datetime-local"
+              className="metadata-input metadata-datetime"
+              value={timeFromText}
+              onChange={onTimeFromChange}
+              aria-label="Start time"
+            />
+          </div>
+          <div className="metadata-time-range-field">
+            <span className="metadata-time-range-label">To</span>
+            <AppInput
+              type="datetime-local"
+              className="metadata-input metadata-datetime"
+              value={timeToText}
+              onChange={onTimeToChange}
+              aria-label="End time"
+            />
+          </div>
         </div>
         {timeRangeWarning ? <div className="metadata-warning" role="alert">{timeRangeWarning}</div> : null}
       </div>
@@ -539,6 +547,7 @@ const MetadataPanel = memo(function MetadataPanel({
         <span>Location</span>
         <AppInput
           type="text"
+          className="metadata-input"
           value={locationText}
           onChange={onLocationChange}
           placeholder="Add location"
@@ -566,6 +575,7 @@ const MetadataPanel = memo(function MetadataPanel({
         </div>
         <AppInput
           type="text"
+          className="metadata-input"
           value={tagInputText}
           onChange={onTagsChange}
           onKeyDown={onTagsKeyDown}
@@ -787,6 +797,8 @@ export function DocumentDetail({
   workspaceStorageScope = "default",
   typoCheckEnabled = true,
   screenCaptureMode = "auto",
+  showOriginalImages = false,
+  inlineLinkedMarkdown = false,
   outlineEnabled = true,
   onOutlineEnabledChange,
   focusModeEnabled = false,
@@ -829,13 +841,6 @@ export function DocumentDetail({
   const [findMatchIndex, setFindMatchIndex] = useState(-1);
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
-  const [showOriginalImages, setShowOriginalImages] = useState(false);
-  const [inlineLinkedMarkdown, setInlineLinkedMarkdown] = useWorkspaceScopedStorage({
-    workspaceScope: workspaceStorageScope,
-    key: "notes:inline-linked-markdown",
-    defaultValue: false,
-    normalize: (value) => value === true,
-  });
   const [showMediaManager, setShowMediaManager] = useState(false);
   const [titleDraft, setTitleDraft] = useState(document.title || "");
   const [tagDraft, setTagDraft] = useState("");
@@ -1740,7 +1745,7 @@ export function DocumentDetail({
           <span className="detail-breadcrumb-current" title={document.title}>{document.title}</span>
         </nav>
         {taskCounts.total > 0 && (
-          <div className="detail-task-summary">
+          <div className="detail-task-summary detail-topbar-separator-left">
             <div
               className="detail-task-counts"
               tabIndex={0}
@@ -1785,16 +1790,18 @@ export function DocumentDetail({
             </div>
           </div>
         )}
-        <div className="save-status">{dirty ? "Unsaved changes" : "Saved"}</div>
-        <button
-          className={`text-button ${autosaveEnabled ? "active" : ""}`}
+        <div className={`save-status ${dirty ? "dirty" : "clean"}`} aria-live="polite">
+          {dirty ? "Unsaved" : "Saved"}
+        </div>
+        <AppButton
+          variant="small"
+          className={`autosave-toggle-btn ${autosaveEnabled ? "active" : ""}`}
           onClick={() => setAutosaveEnabled((value) => !value)}
           title="Toggle autosave"
-          type="button"
         >
           <Save size={18} />
           {autosaveEnabled ? "Autosave On" : "Autosave Off"}
-        </button>
+        </AppButton>
       </div>
 
       {autosaveEnabled && lastAutoSaveAt ? (
@@ -1813,6 +1820,7 @@ export function DocumentDetail({
             title="Toggle note metadata"
             onClick={() => setShowMetadataPanel((value) => !value)}
           >
+            {showMetadataPanel ? <EyeOff size={14} /> : <ListTree size={14} />}
             {showMetadataPanel ? "Hide details" : "Show details"}
           </AppButton>
         </div>
@@ -1854,6 +1862,41 @@ export function DocumentDetail({
         <main className="editor-panel">
           <div className="tab-row">
             <div className="mode-switch">
+              <div className="copy-menu" role="group" aria-label="Copy options">
+                <button
+                  type="button"
+                  className="copy-menu-trigger"
+                  title="Copy note content"
+                  disabled={showMediaManager}
+                >
+                  <Clipboard size={16} />
+                  <span>Copy</span>
+                  <ChevronDown size={14} />
+                </button>
+                <div className="copy-menu-panel" role="menu" aria-label="Copy actions">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    title="Copy note content as rendered HTML"
+                    onClick={handleCopyAsHtml}
+                    disabled={showMediaManager}
+                  >
+                    <Code2 size={16} />
+                    <span>Copy HTML</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    title="Copy note content as plain text (markdown source)"
+                    onClick={handleCopyAsText}
+                    disabled={showMediaManager}
+                  >
+                    <Clipboard size={16} />
+                    <span>Copy Text</span>
+                  </button>
+                </div>
+              </div>
+              <div className="button-group-separator" />
               <div className="button-group">
                 <button
                   className={activeTab === "raw" ? "active" : ""}
@@ -1880,24 +1923,6 @@ export function DocumentDetail({
               </div>
               <div className="button-group-separator" />
               <button
-                className={showOriginalImages ? "active" : ""}
-                type="button"
-                title="Toggle original image rendering in media preview"
-                onClick={() => setShowOriginalImages((value) => !value)}
-              >
-                {showOriginalImages ? <Image size={16} /> : <ImageOff size={16} />}
-                <span>Show Original Images</span>
-              </button>
-              <button
-                className={inlineLinkedMarkdown ? "active" : ""}
-                type="button"
-                title="Render linked markdown files inline in preview"
-                onClick={() => setInlineLinkedMarkdown((value) => !value)}
-              >
-                <FileText size={16} />
-                <span>Inline Linked Notes</span>
-              </button>
-              <button
                 className={showMediaManager ? "active" : ""}
                 type="button"
                 title="Open assets manager"
@@ -1906,27 +1931,7 @@ export function DocumentDetail({
                 <Images size={16} />
                 <span>Assets</span>
               </button>
-              <div className="button-group-separator" />
-              <button
-                type="button"
-                title="Copy note content as rendered HTML"
-                onClick={handleCopyAsHtml}
-                disabled={showMediaManager}
-              >
-                <Code2 size={16} />
-                <span>Copy HTML</span>
-              </button>
-              <button
-                type="button"
-                title="Copy note content as plain text (markdown source)"
-                onClick={handleCopyAsText}
-                disabled={showMediaManager}
-              >
-                <Clipboard size={16} />
-                <span>Copy Text</span>
-              </button>
-              <div className="button-group-separator" />
-              <div className="button-group">
+              <div className="button-group mode-switch-modes">
                 {EDITOR_MODE_OPTIONS.map((item) => (
                   <button
                     className={mode === item.key ? "active" : ""}
