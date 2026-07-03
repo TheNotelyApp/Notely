@@ -86,6 +86,8 @@
       "electron/**/*",
       "src/ai/**/*",
       "docs/**/*",
+      "node_modules/node-pty/**/*",
+      "node_modules/node-addon-api/**/*",
       "scripts/launch-electron.cjs",
       "package.json"
     ],
@@ -103,6 +105,9 @@
       }
     ],
     "asar": true,
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
     "win": {
       "signAndEditExecutable": true,
       "icon": "build/icon.ico",

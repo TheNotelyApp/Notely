@@ -43,6 +43,12 @@ const KeyboardShortcutsModal = lazy(() =>
 const TasksPanel = lazy(() =>
   import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
 );
+const AllTasksPanel = lazy(() =>
+  import("./components/AllTasksPanel").then((m) => ({ default: m.AllTasksPanel }))
+);
+const NoteListPanel = lazy(() =>
+  import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
+);
 const HelpCenterModal = lazy(() =>
   import("./components/HelpCenterModal").then((m) => ({ default: m.HelpCenterModal }))
 );
@@ -56,6 +62,7 @@ import {
   getHistory,
   getAppInfo,
   getHelpDocuments,
+  listWorkspaceTaskDocuments,
   updateMenuContext,
   getGitWorkspaceMetadata,
   setAutoIgnoreGitMetadata,
@@ -188,6 +195,33 @@ function normalizePathLikeList(entries) {
   return normalized;
 }
 
+function getRecentDashboardNotes(documents) {
+  return [...(Array.isArray(documents) ? documents : [])]
+    .filter((entry) => entry?.entryType === "file")
+    .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
+}
+
+function getFavoriteDashboardNotes(favorites, recentNotes, continueNotes) {
+  const favoriteSet = new Set(Array.isArray(favorites) ? favorites : []);
+  const metadataMap = new Map(
+    [...(Array.isArray(recentNotes) ? recentNotes : []), ...(Array.isArray(continueNotes) ? continueNotes : [])]
+      .filter((item) => item?.entryType === "file" && item?.filePath)
+      .map((item) => [String(item.filePath).toLowerCase(), item])
+  );
+
+  return Array.from(favoriteSet)
+    .map((filePath) => {
+      const key = String(filePath || "").toLowerCase();
+      const item = metadataMap.get(key) || { filePath, title: filePath, entryType: "file" };
+      return {
+        ...item,
+        displayName: item.title || filePath,
+      };
+    })
+    .filter((item) => item?.filePath)
+    .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
+}
+
 function parseTagField(value) {
   return String(value || "")
     .split(/[,#]/)
@@ -209,6 +243,9 @@ export default function App() {
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
+  const [allTasksPanelOpen, setAllTasksPanelOpen] = useState(false);
+  const [recentNotesPanelOpen, setRecentNotesPanelOpen] = useState(false);
+  const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   const [_appInfoLoading, setAppInfoLoading] = useState(true);
   const [_helpDocsLoading, setHelpDocsLoading] = useState(false);
   const bootReadyNotifiedRef = useRef(false);
@@ -222,6 +259,7 @@ export default function App() {
   const [effectiveTheme, setEffectiveTheme] = useState("light");
   const [zoomFactor, setZoomFactorState] = useState(1);
   const [helpDocuments, setHelpDocuments] = useState([]);
+  const [workspaceTaskDocuments, setWorkspaceTaskDocuments] = useState([]);
   const [gitWorkspaceMeta, setGitWorkspaceMeta] = useState({
     workspaceRoot: "",
     isGitRoot: false,
@@ -604,6 +642,30 @@ export default function App() {
         setHelpDocsLoading(false);
       });
   }, [helpCenterOpen, helpDocuments.length]);
+
+  useEffect(() => {
+    const workspaceRoot = normalizePathLikeValue(activeProject?.rootPath || notesFolderPath);
+    if (!workspaceRoot) {
+      setWorkspaceTaskDocuments([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    void listWorkspaceTaskDocuments()
+      .then((entries) => {
+        if (cancelled) return;
+        setWorkspaceTaskDocuments(Array.isArray(entries) ? entries : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWorkspaceTaskDocuments([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProject, notesFolderPath, documents]);
 
   useEffect(() => {
     void getAppearanceSettings()
@@ -1062,6 +1124,7 @@ export default function App() {
     { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
     { id: "open-workspace-graph", label: "Open Workspace Graph", group: "Navigation", aliases: "graph map relationships links topology" },
     { id: "open-tasks-panel", label: "Open Tasks Panel", group: "Navigation", aliases: "tasks todos checkboxes unchecked open items" },
+    { id: "open-all-tasks", label: "Open All Tasks", group: "Navigation", aliases: "all tasks completed closed open task list workspace tasks" },
     {
       id: "open-recent-workspaces",
       label: "Open Recent Workspace",
@@ -1378,6 +1441,11 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-all-tasks") {
+      setAllTasksPanelOpen(true);
+      return;
+    }
+
     if (resolvedCommandId === "open-global-search") {
       setGlobalSearchOpen(true);
       return;
@@ -1606,6 +1674,12 @@ export default function App() {
       .slice(0, 4);
   }, [lastSavedDocuments, lastSavedDocument, documents]);
 
+  const recentDashboardNotes = useMemo(() => getRecentDashboardNotes(documents), [documents]);
+  const favoriteDashboardNotes = useMemo(
+    () => getFavoriteDashboardNotes(favoriteNotes, recentDashboardNotes, trackedSavedNotes),
+    [favoriteNotes, recentDashboardNotes, trackedSavedNotes]
+  );
+
   return (
     <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}`}>
       <div className="toast-stack" aria-live="polite" aria-atomic="true">
@@ -1726,8 +1800,14 @@ export default function App() {
               <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
                 <DashboardPanels
                   documents={documents}
+                  taskDocuments={workspaceTaskDocuments}
                   loading={loading}
                   onOpen={handleOpenListItem}
+                  onOpenTask={(task) => handleOpenReferencedDocument(task?.filePath)}
+                  onOpenTasksPanel={() => setTasksPanelOpen(true)}
+                  onOpenAllTasks={() => setAllTasksPanelOpen(true)}
+                  onOpenRecentNotes={() => setRecentNotesPanelOpen(true)}
+                  onOpenFavorites={() => setFavoritesPanelOpen(true)}
                   onAction={handleDashboardAction}
                   continueNotes={trackedSavedNotes}
                   favorites={favoriteNotes}
@@ -2303,12 +2383,48 @@ export default function App() {
         <Suspense fallback={null}>
           <TasksPanel
             isOpen={tasksPanelOpen}
-            documents={documents}
+            documents={workspaceTaskDocuments}
             onClose={() => setTasksPanelOpen(false)}
-            onOpenNote={async (group) => {
-              const target = documents.find((d) => d.filePath === group.filePath && d.entryType === "file");
-              if (target) await handleOpenListItem(target);
-            }}
+            onOpenNote={(group) => handleOpenReferencedDocument(group?.filePath)}
+          />
+        </Suspense>
+      ) : null}
+
+      {recentNotesPanelOpen ? (
+        <Suspense fallback={null}>
+          <NoteListPanel
+            isOpen={recentNotesPanelOpen}
+            title="Recent Notes"
+            type="recent"
+            notes={recentDashboardNotes}
+            emptyMessage="No recent notes available."
+            onClose={() => setRecentNotesPanelOpen(false)}
+            onOpenNote={(note) => handleOpenListItem(note)}
+          />
+        </Suspense>
+      ) : null}
+
+      {favoritesPanelOpen ? (
+        <Suspense fallback={null}>
+          <NoteListPanel
+            isOpen={favoritesPanelOpen}
+            title="Favorites"
+            type="favorites"
+            notes={favoriteDashboardNotes}
+            emptyMessage="No favorites yet. Star notes from the list."
+            onClose={() => setFavoritesPanelOpen(false)}
+            onOpenNote={(note) => handleOpenListItem(note)}
+          />
+        </Suspense>
+      ) : null}
+
+      {allTasksPanelOpen ? (
+        <Suspense fallback={null}>
+          <AllTasksPanel
+            isOpen={allTasksPanelOpen}
+            documents={workspaceTaskDocuments}
+            onClose={() => setAllTasksPanelOpen(false)}
+            onOpenNote={(group) => handleOpenReferencedDocument(group?.filePath)}
           />
         </Suspense>
       ) : null}

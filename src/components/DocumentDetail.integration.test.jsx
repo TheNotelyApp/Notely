@@ -220,6 +220,29 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
+  it("shows open and closed tasks in the task summary popover", () => {
+    const view = renderDetail({
+      ...baseProps,
+      document: {
+        ...baseProps.document,
+        rawNotes: "- [ ] Draft intro\n- [x] Review notes\n- [ ] Ship update",
+      },
+    });
+
+    const summary = view.host.querySelector(".detail-task-summary");
+    expect(summary?.textContent).toContain("2");
+    expect(summary?.textContent).toContain("1");
+
+    const popover = view.host.querySelector(".detail-task-popover");
+    expect(popover?.textContent).toContain("Open");
+    expect(popover?.textContent).toContain("Draft intro");
+    expect(popover?.textContent).toContain("Ship update");
+    expect(popover?.textContent).toContain("Closed");
+    expect(popover?.textContent).toContain("Review notes");
+
+    view.unmount();
+  });
+
   it("keeps remove action out of document topbar", () => {
     const view = renderDetail(baseProps);
     const removeButton = view.host.querySelector('button[title="Move note to removed folder"]');

@@ -255,6 +255,15 @@ export async function listDocuments(folderPath) {
   return api.listDocuments({ folderPath });
 }
 
+export async function listWorkspaceTaskDocuments() {
+  const api = getNotesApi();
+  if (typeof api.listWorkspaceTaskDocuments !== "function") {
+    return [];
+  }
+  const documents = await api.listWorkspaceTaskDocuments();
+  return Array.isArray(documents) ? documents : [];
+}
+
 export async function createDocument(title, parentPath) {
   const api = getNotesApi();
   if (typeof api.createDocument !== "function") {

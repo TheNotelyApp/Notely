@@ -531,7 +531,7 @@ const workspaceEntries = createWorkspaceEntries({
   walkExcludeDirs: DEFAULT_WALK_EXCLUDE_DIRS,
 });
 
-const { WALK_EXCLUDE_DIRS, shouldHideDirectory, walkFiles, listDirectoryEntries, listRootEntries } = workspaceEntries;
+const { WALK_EXCLUDE_DIRS, shouldHideDirectory, walkFiles, listDirectoryEntries, listWorkspaceFileEntries, listRootEntries } = workspaceEntries;
 
 mainHelpers = createMainHelpers({
   fs,
@@ -830,6 +830,7 @@ registerDocumentIpcHandlers(ipcMain, {
   filePathWithin,
   listRootEntries,
   listDirectoryEntries,
+  listWorkspaceFileEntries,
   getNotesRoot: () => notesRoot,
   getVersionsRoot: () => versionsRoot,
   getActiveProject,

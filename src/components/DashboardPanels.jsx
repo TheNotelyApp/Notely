@@ -1,6 +1,9 @@
 import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search } from "lucide-react";
 import { useMemo } from "react";
 import { formatDate } from "../utils/dateUtils";
+import { extractOpenTasksFromDocuments, getTaskCountsFromDocuments } from "../utils/taskUtils";
+
+const DASHBOARD_SECTION_LIMIT = 3;
 
 function getRecentNotes(documents) {
   return [...documents]
@@ -22,46 +25,9 @@ function getDisplayName(filePath) {
   return parts.slice(-2).join("/");
 }
 
-function getOpenTasks(documents) {
-  const tasks = [];
-  const taskRegex = /^\s*[-*+]?\s*\[ \]\s+(.+)/gm;
-
-  documents.forEach((entry) => {
-    if (entry.entryType !== "file") return;
-    const text = entry.searchText || "";
-    let match;
-    while ((match = taskRegex.exec(text)) !== null) {
-      tasks.push({
-        text: match[1],
-        filePath: entry.filePath,
-        title: entry.title || entry.filePath
-      });
-    }
-  });
-
-  return tasks.slice(0, 5); // Show max 5 tasks in dashboard
-}
-
-function getTaskCounts(documents) {
-  let openCount = 0;
-  let closedCount = 0;
-  const openRegex = /^\s*[-*+]?\s*\[ \]/gm;
-  const closedRegex = /^\s*[-*+]?\s*\[x\]/gim;
-
-  documents.forEach((entry) => {
-    if (entry.entryType !== "file") return;
-    const text = entry.searchText || "";
-    const openMatches = text.match(openRegex) || [];
-    const closedMatches = text.match(closedRegex) || [];
-    openCount += openMatches.length;
-    closedCount += closedMatches.length;
-  });
-
-  return { open: openCount, closed: closedCount, total: openCount + closedCount };
-}
-
-export function DashboardPanels({ documents, loading, onOpen, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
+export function DashboardPanels({ documents, taskDocuments = documents, loading, onOpen, onOpenTask, onOpenTasksPanel, onOpenAllTasks, onOpenRecentNotes, onOpenFavorites, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
   const safeDocuments = useMemo(() => (Array.isArray(documents) ? documents : []), [documents]);
+  const safeTaskDocuments = useMemo(() => (Array.isArray(taskDocuments) ? taskDocuments : []), [taskDocuments]);
   const safeContinueNotes = useMemo(() => (Array.isArray(continueNotes) ? continueNotes : []), [continueNotes]);
   const safeFavorites = useMemo(() => (Array.isArray(favorites) ? favorites : []), [favorites]);
 
@@ -71,9 +37,10 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
     .slice(0, 4);
   const continueCandidate = continueCandidates[0] || recentNotes[0] || null;
   const continueHistory = continueCandidates.length > 1 ? continueCandidates.slice(1) : [];
-  const recentSlice = recentNotes.slice(0, 5);
-  const openTasks = useMemo(() => getOpenTasks(safeDocuments), [safeDocuments]);
-  const taskCounts = useMemo(() => getTaskCounts(safeDocuments), [safeDocuments]);
+  const recentSlice = recentNotes.slice(0, DASHBOARD_SECTION_LIMIT);
+  const allOpenTasks = useMemo(() => extractOpenTasksFromDocuments(safeTaskDocuments), [safeTaskDocuments]);
+  const openTasks = useMemo(() => allOpenTasks.slice(0, DASHBOARD_SECTION_LIMIT), [allOpenTasks]);
+  const taskCounts = useMemo(() => getTaskCountsFromDocuments(safeTaskDocuments), [safeTaskDocuments]);
   
   const favoriteSlice = useMemo(() => {
     const favoriteSet = new Set(safeFavorites);
@@ -97,9 +64,22 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         const left = new Date(a.updatedAt || 0).getTime();
         const right = new Date(b.updatedAt || 0).getTime();
         return right - left;
-      })
-      .slice(0, 5);
+      });
   }, [safeFavorites, recentNotes, safeContinueNotes]);
+
+  const visibleFavorites = favoriteSlice.slice(0, DASHBOARD_SECTION_LIMIT);
+
+  function renderSectionToggle(items, onOpenPanel) {
+    if (!Array.isArray(items) || items.length <= DASHBOARD_SECTION_LIMIT) {
+      return null;
+    }
+
+    return (
+      <button type="button" className="dashboard-inline-action" onClick={onOpenPanel}>
+        View all
+      </button>
+    );
+  }
 
   if (loading) return null;
 
@@ -170,6 +150,7 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         <article className="dashboard-panel recent">
           <div className="dashboard-panel-head">
             <h2>Recent Notes</h2>
+            {renderSectionToggle(recentNotes, onOpenRecentNotes)}
           </div>
           {recentSlice.length ? (
             <ul className="dashboard-recent-list compact">
@@ -190,10 +171,11 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         <article className="dashboard-panel favorites">
           <div className="dashboard-panel-head">
             <h2>Favorites</h2>
+            {renderSectionToggle(favoriteSlice, onOpenFavorites)}
           </div>
-          {favoriteSlice.length ? (
+          {visibleFavorites.length ? (
             <ul className="dashboard-recent-list compact">
-              {favoriteSlice.map((note) => (
+              {visibleFavorites.map((note) => (
                 <li key={note.filePath}>
                   <button type="button" onClick={() => onOpen(note)}>
                     <span>{note.displayName}</span>
@@ -210,18 +192,21 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         <article className="dashboard-panel tasks">
           <div className="dashboard-panel-head">
             <h2>Open Tasks</h2>
-            {taskCounts.total > 0 && (
-              <div className="dashboard-task-badge">
-                <span className="task-open">{taskCounts.open}</span>
-                <span className="task-closed">{taskCounts.closed}</span>
-              </div>
-            )}
+            <div className="dashboard-task-head-actions">
+              {taskCounts.total > 0 && (
+                <button type="button" className="dashboard-task-badge dashboard-task-badge-button" onClick={onOpenAllTasks}>
+                  <span className="task-open">{taskCounts.open}</span>
+                  <span className="task-closed">{taskCounts.closed}</span>
+                </button>
+              )}
+              {renderSectionToggle(allOpenTasks, onOpenTasksPanel)}
+            </div>
           </div>
           {openTasks.length ? (
             <ul className="dashboard-task-list compact">
               {openTasks.map((task, idx) => (
                 <li key={`${task.filePath}-${idx}`}>
-                  <button type="button" onClick={() => onOpen({ filePath: task.filePath })}>
+                  <button type="button" onClick={() => (onOpenTask || onOpen)?.(task)}>
                     <CheckSquare size={12} />
                     <span>{task.text}</span>
                     <small>{getDisplayName(task.filePath)}</small>
@@ -304,6 +289,7 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         <article className="dashboard-bar-section recent">
           <div className="dashboard-panel-head">
             <h2>Recent Notes</h2>
+            {renderSectionToggle(recentNotes, onOpenRecentNotes)}
           </div>
           {recentSlice.length ? (
             <ul className="dashboard-recent-list compact">
@@ -324,10 +310,11 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         <article className="dashboard-bar-section favorites">
           <div className="dashboard-panel-head">
             <h2>Favorites</h2>
+            {renderSectionToggle(favoriteSlice, onOpenFavorites)}
           </div>
-          {favoriteSlice.length ? (
+          {visibleFavorites.length ? (
             <ul className="dashboard-recent-list compact">
-              {favoriteSlice.map((note) => (
+              {visibleFavorites.map((note) => (
                 <li key={note.filePath}>
                   <button type="button" onClick={() => onOpen(note)}>
                     <span>{note.displayName}</span>
@@ -344,18 +331,21 @@ export function DashboardPanels({ documents, loading, onOpen, onAction, continue
         <article className="dashboard-bar-section tasks">
           <div className="dashboard-panel-head">
             <h2>Open Tasks</h2>
-            {taskCounts.total > 0 && (
-              <div className="dashboard-task-badge">
-                <span className="task-open">{taskCounts.open}</span>
-                <span className="task-closed">{taskCounts.closed}</span>
-              </div>
-            )}
+            <div className="dashboard-task-head-actions">
+              {taskCounts.total > 0 && (
+                <button type="button" className="dashboard-task-badge dashboard-task-badge-button" onClick={onOpenAllTasks}>
+                  <span className="task-open">{taskCounts.open}</span>
+                  <span className="task-closed">{taskCounts.closed}</span>
+                </button>
+              )}
+              {renderSectionToggle(allOpenTasks, onOpenTasksPanel)}
+            </div>
           </div>
           {openTasks.length ? (
             <ul className="dashboard-task-list compact">
               {openTasks.map((task, idx) => (
                 <li key={`${task.filePath}-${idx}`}>
-                  <button type="button" onClick={() => onOpen({ filePath: task.filePath })}>
+                  <button type="button" onClick={() => (onOpenTask || onOpen)?.(task)}>
                     <CheckSquare size={12} />
                     <span>{task.text}</span>
                     <small>{getDisplayName(task.filePath)}</small>

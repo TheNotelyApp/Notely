@@ -2294,7 +2294,8 @@ button {
   margin-bottom: 0;
   gap: 0;
   height: 100%;
-  overflow: hidden;
+  min-height: 0;
+  overflow: auto;
 }
 
 .landing-workspace-layout {
@@ -2310,6 +2311,7 @@ button {
 .landing-dashboard-rail {
   min-width: 0;
   height: 100%;
+  min-height: 0;
   border: 1px solid #c8d7d1;
   border-radius: 14px;
   background:
@@ -2345,7 +2347,7 @@ button {
   box-shadow: 0 10px 20px rgba(15, 33, 35, 0.08);
   padding: 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1.15fr);
   gap: 10px;
   align-items: start;
 }
@@ -2383,6 +2385,8 @@ button {
 
 .dashboard-panels.rail .dashboard-panel-head {
   margin-bottom: 6px;
+  align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .dashboard-panel-head {
@@ -2403,6 +2407,15 @@ button {
 
 .dashboard-panel-head svg {
   color: #55737b;
+}
+
+.dashboard-task-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .dashboard-continue-card {
@@ -2547,6 +2560,33 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.dashboard-task-badge-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dashboard-inline-action {
+  border: 1px solid #d5e0dc;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #3f5c63;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.dashboard-inline-action:hover,
+.dashboard-task-badge-button:hover .task-open,
+.dashboard-task-badge-button:hover .task-closed {
+  border-color: #1d5360;
+  filter: brightness(0.98);
 }
 
 .dashboard-task-badge span {
@@ -3243,12 +3283,17 @@ button {
   height: 14px;
 }
 
+.detail-task-summary {
+  position: relative;
+}
+
 .detail-task-counts {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 8px;
   border-left: 1px solid #d5e0dc;
+  outline: none;
 }
 
 .detail-task-counts .task-count-item {
@@ -3263,6 +3308,80 @@ button {
 .detail-task-counts .task-count-item svg {
   width: 12px;
   height: 12px;
+}
+
+.detail-task-counts:focus-visible {
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px rgba(20, 50, 56, 0.18);
+}
+
+.detail-task-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 280px;
+  max-width: 360px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #d5e0dc;
+  border-radius: 14px;
+  background: #f8fbfa;
+  box-shadow: 0 18px 38px rgba(20, 50, 56, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.detail-task-summary:hover .detail-task-popover,
+.detail-task-summary:focus-within .detail-task-popover {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.detail-task-popover-section + .detail-task-popover-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #dfe9e6;
+}
+
+.detail-task-popover-section strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #3f5c63;
+}
+
+.detail-task-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.detail-task-popover-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  font-size: 12px;
+  color: #143238;
+}
+
+.detail-task-popover-item.closed {
+  color: #55737b;
+}
+
+.detail-task-popover-marker {
+  font-family: "IBM Plex Mono", "Cascadia Code", monospace;
+  font-size: 11px;
+  color: #55737b;
 }
 
 .detail-breadcrumb {
@@ -6368,6 +6487,33 @@ button {
   outline: none;
 }
 
+.tasks-panel-controls {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.tasks-panel-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tasks-status-chip {
+  border: 1px solid var(--border-ui);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.tasks-status-chip.active {
+  background: var(--surface-accent);
+  color: var(--text-strong);
+  border-color: var(--border-soft);
+}
+
 .tasks-panel-body {
   flex: 1;
   overflow: auto;
@@ -6446,6 +6592,27 @@ button {
   padding: 0;
 }
 
+.task-item.closed .task-text {
+  color: var(--text-secondary);
+}
+
+.task-status-label {
+  margin-left: auto;
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.task-status-label.open {
+  background: var(--surface-accent);
+}
+
+.task-status-label.closed {
+  background: var(--surface-muted);
+}
+
 .task-item {
   display: flex;
   align-items: flex-start;
@@ -6467,6 +6634,47 @@ button {
 .task-text {
   color: var(--text-strong);
   line-height: 1.5;
+}
+
+.note-list-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.note-list-panel-button {
+  width: 100%;
+  border: 1px solid var(--border-ui);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.note-list-panel-button:hover {
+  border-color: var(--accent-solid);
+  background: var(--surface-accent);
+}
+
+.note-list-panel-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+  font-size: var(--font-size-body-sm);
+}
+
+.note-list-panel-button small {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 /* ── Global Search: regex & code-block additions ──────────────── */

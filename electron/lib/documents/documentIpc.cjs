@@ -17,6 +17,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     filePathWithin,
     listRootEntries,
     listDirectoryEntries,
+    listWorkspaceFileEntries,
     getNotesRoot,
     getVersionsRoot,
     getActiveProject,
@@ -74,6 +75,13 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     }
 
     return listDirectoryEntries(targetDir, { includeProjectSlug: false });
+  });
+
+  registerTrustedHandler("documents:list-task-sources", () => {
+    const activeProject = getActiveProject();
+    const notesRoot = getNotesRoot();
+    const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
+    return listWorkspaceFileEntries(projectRoot);
   });
 
   registerTrustedHandler("documents:create", (_event, payload) => {

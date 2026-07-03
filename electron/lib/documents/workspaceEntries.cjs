@@ -83,6 +83,23 @@ function createWorkspaceEntries(deps) {
     return images.slice(0, limit);
   }
 
+  function buildFileEntry(entryPath) {
+    const stat = fs.statSync(entryPath);
+    const content = fs.readFileSync(entryPath, "utf8");
+    const parsed = parseDocument(content, entryPath);
+    return {
+      entryType: "file",
+      filePath: entryPath,
+      fileName: parsed.fileName,
+      title: parsed.title,
+      metadata: parsed.metadata,
+      searchText: [parsed.header, parsed.rawNotes, parsed.cleansed].filter(Boolean).join("\n"),
+      updatedAt: stat.mtime.toISOString(),
+      previewImages: extractPreviewImagesFromMarkdown(content, entryPath),
+      hash: parsed.hash
+    };
+  }
+
   function listDirectoryEntries(rootDir, options = {}) {
     ensureDir(rootDir);
     const { includeProjectSlug = false } = options;
@@ -110,19 +127,7 @@ function createWorkspaceEntries(deps) {
           };
         }
 
-        const content = fs.readFileSync(entryPath, "utf8");
-        const parsed = parseDocument(content, entryPath);
-        return {
-          entryType: "file",
-          filePath: entryPath,
-          fileName: parsed.fileName,
-          title: parsed.title,
-          metadata: parsed.metadata,
-          searchText: [parsed.header, parsed.rawNotes, parsed.cleansed].filter(Boolean).join("\n"),
-          updatedAt: stat.mtime.toISOString(),
-          previewImages: extractPreviewImagesFromMarkdown(content, entryPath),
-          hash: parsed.hash
-        };
+        return buildFileEntry(entryPath);
       })
       .sort((a, b) => {
         if (a.entryType !== b.entryType) {
@@ -130,6 +135,15 @@ function createWorkspaceEntries(deps) {
         }
         return a.title.localeCompare(b.title);
       });
+  }
+
+  function listWorkspaceFileEntries(rootDir) {
+    ensureDir(rootDir);
+
+    return walkFiles(rootDir, { excludeDirs: Array.from(walkExcludeDirs) })
+      .filter((entryPath) => path.extname(entryPath).toLowerCase() === ".md")
+      .map((entryPath) => buildFileEntry(entryPath))
+      .sort((a, b) => a.title.localeCompare(b.title));
   }
 
   function listRootEntries(rootDir) {
@@ -141,6 +155,7 @@ function createWorkspaceEntries(deps) {
     shouldHideDirectory,
     walkFiles,
     listDirectoryEntries,
+    listWorkspaceFileEntries,
     listRootEntries,
   };
 }

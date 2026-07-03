@@ -1,29 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckSquare, ExternalLink, X, Search } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
-
-const TASK_REGEX = /^\s*[-*+]?\s*\[ \]\s+(.+)/gm;
-
-function extractTasks(documents) {
-  const tasks = [];
-  for (const doc of documents) {
-    if (doc.entryType !== "file") continue;
-    const content = String(doc.searchText || "");
-    if (!content.includes("[ ]")) continue;
-
-    TASK_REGEX.lastIndex = 0;
-    let match;
-    while ((match = TASK_REGEX.exec(content)) !== null) {
-      tasks.push({
-        id: `${doc.filePath}::${match.index}`,
-        text: match[1].trim(),
-        filePath: doc.filePath,
-        noteTitle: doc.title || doc.filePath,
-      });
-    }
-  }
-  return tasks;
-}
+import { extractOpenTasksFromDocuments } from "../utils/taskUtils";
 
 function groupTasksByNote(tasks) {
   const groups = new Map();
@@ -39,7 +17,7 @@ function groupTasksByNote(tasks) {
 export function TasksPanel({ isOpen, documents = [], onClose, onOpenNote }) {
   const [filter, setFilter] = useState("");
 
-  const allTasks = useMemo(() => extractTasks(documents), [documents]);
+  const allTasks = useMemo(() => extractOpenTasksFromDocuments(documents), [documents]);
 
   const filteredTasks = useMemo(() => {
     const needle = filter.trim().toLowerCase();

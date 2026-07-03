@@ -76,6 +76,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   getWorkspaceGraph: () => ipcRenderer.invoke("workspace:graph-data"),
   getSemanticGraph: () => ipcRenderer.invoke("workspace:semantic-graph"),
   listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),
+  listWorkspaceTaskDocuments: () => ipcRenderer.invoke("documents:list-task-sources"),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
   createFolder: (payload) => ipcRenderer.invoke("folders:create", payload),
   deleteFolder: (payload) => ipcRenderer.invoke("folders:delete", payload),

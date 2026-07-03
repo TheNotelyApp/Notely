@@ -40,6 +40,7 @@ import { deleteVersion, readVersion } from "../services/electronService";
 import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 import { renderMarkdown } from "../utils/renderUtils";
+import { extractTasksFromText, getTaskCountsFromText } from "../utils/taskUtils";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -798,16 +799,12 @@ export function DocumentDetail({
     return headings;
   }, [content, showMediaManager]);
 
-  const taskCounts = useMemo(() => {
-    const text = String(content || "");
-    const openMatches = text.match(/^\s*[-*+]?\s*\[ \]/gm) || [];
-    const closedMatches = text.match(/^\s*[-*+]?\s*\[x\]/gmi) || [];
-    return {
-      open: openMatches.length,
-      closed: closedMatches.length,
-      total: openMatches.length + closedMatches.length,
-    };
-  }, [content]);
+  const taskItems = useMemo(() => extractTasksFromText(content), [content]);
+
+  const taskCounts = useMemo(() => getTaskCountsFromText(content), [content]);
+
+  const openTaskItems = useMemo(() => taskItems.filter((task) => task.status === "open"), [taskItems]);
+  const closedTaskItems = useMemo(() => taskItems.filter((task) => task.status === "closed"), [taskItems]);
 
   const getCurrentAIContext = () => {
     const editor = textareaRef.current;
@@ -1540,15 +1537,49 @@ export function DocumentDetail({
           <span className="detail-breadcrumb-current" title={document.title}>{document.title}</span>
         </nav>
         {taskCounts.total > 0 && (
-          <div className="detail-task-counts">
-            <span className="task-count-item" title="Open tasks">
-              <CheckSquare size={14} />
-              {taskCounts.open}
-            </span>
-            <span className="task-count-item" title="Closed tasks">
-              <Square size={14} />
-              {taskCounts.closed}
-            </span>
+          <div className="detail-task-summary">
+            <div
+              className="detail-task-counts"
+              tabIndex={0}
+              aria-label={`${taskCounts.open} open tasks and ${taskCounts.closed} closed tasks`}
+            >
+              <span className="task-count-item" title="Open tasks">
+                <CheckSquare size={14} />
+                {taskCounts.open}
+              </span>
+              <span className="task-count-item" title="Closed tasks">
+                <Square size={14} />
+                {taskCounts.closed}
+              </span>
+            </div>
+            <div className="detail-task-popover" role="tooltip" aria-label="Note task summary">
+              {openTaskItems.length ? (
+                <div className="detail-task-popover-section">
+                  <strong>Open</strong>
+                  <ul className="detail-task-popover-list">
+                    {openTaskItems.map((task) => (
+                      <li className="detail-task-popover-item open" key={task.id}>
+                        <span className="detail-task-popover-marker">[ ]</span>
+                        <span>{task.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {closedTaskItems.length ? (
+                <div className="detail-task-popover-section">
+                  <strong>Closed</strong>
+                  <ul className="detail-task-popover-list">
+                    {closedTaskItems.map((task) => (
+                      <li className="detail-task-popover-item closed" key={task.id}>
+                        <span className="detail-task-popover-marker">[x]</span>
+                        <span>{task.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
           </div>
         )}
         <div className="save-status">{dirty ? "Unsaved changes" : "Saved"}</div>
