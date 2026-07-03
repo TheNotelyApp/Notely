@@ -1,5 +1,6 @@
+import { X } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
-import AppButton from "./AppButton";
+import AppIconButton from "./AppIconButton";
 import { DEFAULT_KEYBOARD_SHORTCUTS } from "../utils/keyboardShortcuts";
 
 export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KEYBOARD_SHORTCUTS }) {
@@ -9,12 +10,14 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KE
     <OverlayDialog open={isOpen} onClose={onClose} ariaLabel="Keyboard shortcuts" cardClassName="keyboard-shortcuts-card">
         <div className="overlay-dialog-header">
           <h2>Keyboard Shortcuts</h2>
-          <AppButton variant="small" onClick={onClose}>Close</AppButton>
+          <AppIconButton onClick={onClose} aria-label="Close keyboard shortcuts">
+            <X size={16} />
+          </AppIconButton>
         </div>
+        <p className="keyboard-shortcuts-intro">
+          Some shortcuts only work in specific parts of the app. Check the Scope and Notes columns before using them everywhere.
+        </p>
         <div className="keyboard-shortcuts-table-wrap">
-          <p className="muted">
-            Some shortcuts are context-specific. Check the Scope and Notes columns before relying on a shortcut globally.
-          </p>
           <table className="keyboard-shortcuts-table">
             <thead>
               <tr>
