@@ -5,11 +5,13 @@ Use this guide for everyday work in Notely: creating notes, editing safely, find
 ## 1. Set Up Your Workspace
 
 1. Open Notely.
-2. Go to **File -> Notes Folder**.
+2. Go to **File -> Open Workspace**.
 3. Select the folder where your notes should live.
 4. Confirm and continue.
 
 Result: your notes and folders appear in the main list.
+
+Tip: use **File -> Open Recent** when you want to jump back into a recently used workspace faster.
 
 ## 2. Create and Organize Notes
 
@@ -117,16 +119,16 @@ Then review tasks centrally:
 1. Go to the landing screen (notes list view).
 2. Open **File -> Export Workspace as Zip**.
 3. Choose export format:
-	- Notes as-is (Markdown + assets)
-	- PDF-only
-	- Web format
-4. Choose whether to include `.notes-app` metadata (default is off).
+   - Notes as-is (Markdown + assets)
+   - PDF-only
+   - Web format
+4. Choose whether to include Notely app data from `.notes-app` (default is off).
 5. Select destination folder (Browse is available and last path is remembered).
 6. Confirm or edit filename (default `notelyproject.zip`).
 7. Click **Export Zip**.
 
 ## 11. Get Help Quickly
 
-- **Help -> Documentation** (`F1`) for in-app help.
+- **Help -> Help Center** (`F1`) for in-app help.
 - **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) for key bindings.
 - **Help -> About Notely** for app version details.

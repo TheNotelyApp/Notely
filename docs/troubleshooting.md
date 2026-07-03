@@ -4,7 +4,7 @@ Use this page to quickly fix common issues.
 
 ## 1. Notes Are Not Showing
 
-1. Open **File -> Notes Folder**.
+1. Open **File -> Open Workspace**.
 2. Confirm the selected folder is correct.
 3. Check that the folder contains `.md` files.
 
@@ -35,16 +35,16 @@ After resolving, refresh the note list and verify final content.
 ## 5. AI Features Are Disabled
 
 1. Open **AI -> AI Settings**.
-2. Confirm API key/token is saved.
+2. Confirm your AI sign-in details are saved.
 3. Run connection test.
 
-If a feature remains unavailable, your selected provider may not support it.
+If a feature still does not appear, the AI service you chose may not support it.
 
 ## 6. App Feels Slow in Large Workspaces
 
 - Use folder structure to reduce very large flat note lists.
 - Close unused views (for example, graph or media-heavy previews).
-- Regenerate embeddings only when needed.
+- Refresh AI search data only when you actually need it.
 
 ## 7. Quick Support Details to Share
 
@@ -72,3 +72,19 @@ If Save still appears blocked:
 2. Confirm image preview has loaded.
 3. Try keyboard Enter once.
 4. Retry capture from toolbar.
+
+## 10. Embedded Terminal Does Not Start
+
+1. Open **View -> Show Terminal** again.
+2. Switch shell from **View -> Terminal Shell** and retry.
+3. If strict terminal policy is configured, confirm your command is allowed.
+
+If the terminal still fails, capture the exact error text shown in the terminal panel.
+
+## 11. Workspace Export Does Not Finish
+
+1. Retry export from the landing screen.
+2. Confirm the destination folder is writable.
+3. Try **Notes as-is** first to isolate PDF or web export issues.
+
+If PDF-only export fails, retry with a smaller workspace to identify a problematic note or asset.

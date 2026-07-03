@@ -1,10 +1,10 @@
-# Top 15 Common Tasks
+# Top Common Tasks
 
 Use this page when you want quick, direct steps.
 
-## 1. Set or change notes folder
+## 1. Open or change workspace
 
-1. Open **File -> Notes Folder**.
+1. Open **File -> Open Workspace**.
 2. Select the folder.
 3. Confirm.
 
@@ -92,14 +92,14 @@ Use this page when you want quick, direct steps.
 
 ## 15. Open troubleshooting
 
-1. Open **Help -> Documentation** (`F1`).
+1. Open **Help -> Help Center** (`F1`).
 2. Select **Troubleshooting** in the left menu.
 
 ## 16. Run AI setup and test
 
 1. Open **AI -> AI Settings**.
-2. Add API key/token.
-3. Run provider test.
+2. Add your sign-in details for the AI service you want to use.
+3. Run the connection test.
 
 ## 17. Refresh semantic graph data
 
@@ -151,6 +151,6 @@ Set mode in **Settings -> Screen Capture**.
 1. Go to landing view.
 2. Open **File -> Export Workspace as Zip**.
 3. Select format (notes as-is, PDF-only, or web format).
-4. Keep metadata toggle off unless you intentionally need `.notes-app` data.
+4. Keep the app data toggle off unless you intentionally need `.notes-app` data.
 5. Browse destination and adjust filename if needed.
 6. Click **Export Zip**.

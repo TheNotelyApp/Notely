@@ -12,44 +12,49 @@ This page helps you decide what works offline, what needs optional setup, and wh
 | Markdown validation | Yes | No | No |
 | Typo checking | Yes | No | No |
 | Global search | Yes | No | No |
+| Help Center and shortcut guide | Yes | No | No |
+| Recent workspaces | Yes | No | No |
 | Tasks dashboard and panels | Yes | No | No |
 | Version history | Yes | No | No |
 | Media insert/manage | Yes | No | No |
+| Embedded terminal | Yes | No | No |
+| Theme, zoom, and density controls | Yes | No | No |
 | Screen area capture (Windows) | Yes | No | No |
 | Mermaid diagrams | Yes | No | No |
 | Excalidraw diagrams | Yes | No | No |
 | Workspace graph | Yes | No | No |
-| Semantic graph clusters | No | Embeddings setup | Usually yes |
+| Smarter graph grouping | No | Turn on AI search data | Usually yes |
 | Workspace Health media checks | Yes | No | No |
 | Image annotation overlays | Yes | No | No |
 | Original image restore | Yes | No | No |
 | PDF export | Yes | No | No |
 | Workspace zip export (raw/pdf/web) | Yes | No | No |
+| Workspace activity timeline | Yes | No | No |
 | Website-style preview/export rendering | Yes | No | No |
-| P2P sync | No | Pair trusted peers | Usually local network |
-| AI chat | No | API key/provider setup | Yes |
-| AI palette actions | No | API key/provider setup | Yes |
-| Semantic search | No | Embeddings provider/token | Yes |
-| Pattern detection | No | AI provider setup | Usually yes |
+| Sync with other devices | No | Pair trusted devices | Usually local network |
+| AI chat | No | Sign in to an AI service | Yes |
+| AI palette actions | No | Sign in to an AI service | Yes |
+| Meaning-based search | No | Turn on AI search data | Yes |
+| Pattern detection | No | Set up a supported AI service | Usually yes |
 
 ## Setup-Dependent Features
 
 ### P2P Sync
 
-Needs trust pairing with peers from **P2P -> P2P Status**.
+Requires you to connect and trust the other device first.
 
 ### AI Features
 
-Need provider configuration in **AI -> AI Settings**.
+Need setup in **AI -> AI Settings** before they can work.
 
-- AI Chat: provider API key
-- AI palette actions: provider API key
-- Semantic search: embeddings provider/token
-- Pattern features: supported AI provider
+- AI Chat: sign in to a supported AI service
+- AI palette actions: sign in to a supported AI service
+- Meaning-based search: add the HuggingFace token used for smarter search
+- Pattern features: use an AI service that supports them
 
 ### Semantic Graph Features
 
-Graph clustering and freshness indicators depend on embedding generation and cache freshness.
+The smarter graph grouping depends on AI search data being available and up to date.
 
 ## Practical Guidance
 
@@ -57,6 +62,9 @@ Graph clustering and freshness indicators depend on embedding generation and cac
 - If you collaborate across devices, configure P2P sync.
 - If you need semantic and AI features, complete AI setup first.
 
+In plain terms: most everyday note-writing features work without the internet. AI features need extra setup.
+
 ## Platform Notes
 
 - Screen area capture uses Windows snip integration and is currently Windows-focused.
+- Packaged release artifacts are currently prepared for Windows x64 portable builds.

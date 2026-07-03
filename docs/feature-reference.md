@@ -4,13 +4,24 @@ This page explains every major user-facing feature in Notely.
 
 ## 1. Notes and Workspace
 
-### Notes folder selection
+### Workspace selection
 
-Use **File -> Notes Folder** to choose where your notes are stored.
+Use **File -> Open Workspace** to choose the folder where your notes are stored.
+
+Use **File -> Open Recent** to reopen a recently used workspace quickly.
 
 ### Project-aware workspace
 
-Notely supports project scoping so you can keep notes organized by project while still using a shared root workspace.
+You can keep notes grouped by project while still working inside one larger workspace.
+
+### Landing dashboard
+
+The landing view includes lightweight workspace overview panels so you can resume work quickly:
+
+- **Continue Writing** suggests recently edited notes.
+- **Recent Notes** shows recently changed documents.
+- **Favorites** collects starred notes.
+- **Open Tasks** surfaces unchecked tasks across the workspace.
 
 ### Note and folder creation
 
@@ -43,6 +54,23 @@ Use **View -> Show Outline** to jump between sections in long notes.
 
 Use **View -> Focus Mode** to reduce visual distractions.
 
+### Terminal and workspace tools
+
+Use **View -> Show Terminal** to open the embedded terminal.
+
+Use **View -> Terminal Shell** to switch between Auto, Bash, and CMD.
+
+Use **Workspace -> Workspace Activity** to review recent changes across the active workspace.
+
+### Appearance and layout
+
+Notely includes view and appearance controls for different working styles:
+
+- **Settings -> Theme**: System, Light, or Dark
+- **View -> Tile Notes / Table Notes**: landing list layout
+- **View -> Comfortable Density / Compact Density**: landing list density
+- **View -> Zoom In / Zoom Out / Reset Zoom**: app-scale display controls
+
 ### Note statistics
 
 When editing a note, the status bar displays:
@@ -57,8 +85,8 @@ Statistics update independently for Raw and Formal editing modes.
 
 Export note content in different formats directly from the toolbar:
 
-- **Copy as HTML**: Renders the markdown to HTML and copies to clipboard for pasting into blogs, wikis, or documentation.
-- **Copy as Plain Text**: Copies the raw markdown source to clipboard for sharing with collaborators.
+- **Copy as HTML**: copies a nicely formatted version you can paste into other apps
+- **Copy as Plain Text**: copies the plain note text
 
 Both actions show success or error feedback via notifications.
 
@@ -67,7 +95,7 @@ Both actions show success or error feedback via notifications.
 The editor displays a breadcrumb trail showing the full folder hierarchy leading to the current note:
 
 - Click any segment to navigate to that folder.
-- Read-only display that helps orient you in deeply nested workspace structures.
+- Helps you keep track of where the current note lives.
 - Updates dynamically when you switch notes.
 
 ## 3. Quality and Validation
@@ -78,27 +106,26 @@ Notely reports markdown issues while you edit.
 
 ### Typo checking
 
-Spell and typo checks are integrated into the editor with ignore options for accepted words.
+Notely can flag likely spelling mistakes while you work and lets you ignore words you want to keep.
 
-### Fix-focused workflow
+### Quick problem fixing
 
-Validation issues are listed with quick navigation to affected lines.
+When Notely finds a problem, it shows you where it is so you can jump there quickly.
 
 ## 4. Search and Discovery
 
 ### Global search
 
-Search by title, path, metadata, and note content across the entire workspace.
+Search by note title, folder, details, and note content across the whole workspace.
 
-#### Regex search
+#### Advanced search patterns
 
-For advanced pattern matching, enable regex mode in global search:
+If you know advanced search patterns, you can turn on advanced matching in global search:
 
-- Click the **`.*`** button in the search filter bar to toggle regex mode.
-- Enter a regex pattern (e.g., `/function_name\(/`, `/Error: \[A-Z0-9_]+/`, `/\/api\/[a-z]+/`).
-- Notely validates the pattern in real-time and shows errors if syntax is invalid.
-- When invalid, the input field highlights in red and an error message appears.
-- Search results update dynamically as you type.
+- Click the **`.*`** button in the search bar.
+- Type your search pattern.
+- Notely checks the pattern as you type and tells you if it is invalid.
+- Results update as you type.
 
 **Example use cases:**
 - Find function definitions: `function\s+\w+\s*\(`
@@ -111,9 +138,9 @@ For advanced pattern matching, enable regex mode in global search:
 Limit search results to code blocks only:
 
 - Click the **`Code Blocks`** filter button in the search bar (appears alongside All, Notes, Folders, Current Note).
-- Search now only matches inside markdown code blocks (` ``` ` triple backticks and `` ` `` inline code).
-- Matches appear in code context, not surrounding prose.
-- Works with or without regex mode enabled.
+- Search now only matches code sections inside notes.
+- Matches appear in code, not normal writing.
+- Works with or without advanced matching turned on.
 
 **Example use case:**
 - Search for TypeScript patterns only: Select "Code Blocks" filter, search for `interface\s+\w+`
@@ -124,7 +151,7 @@ Search results show match context so you can confirm relevance before opening.
 
 ### Workspace graph
 
-Open **Workspace -> Workspace Graph** to visualize notes and media relationships.
+Open **Workspace -> Workspace Graph** to see how notes and files connect to each other.
 
 Graph capabilities include:
 
@@ -133,13 +160,13 @@ Graph capabilities include:
 - Interactive zoom, pan, and drag
 - Mini-map for large workspaces
 
-When embeddings are enabled, the graph can also show semantic clusters of related notes.
+When AI search data is available, the graph can also group notes that are closely related.
 
 ## 5. Tasks and Workflow
 
 ### Tasks overview
 
-Tasks are parsed from markdown task syntax across workspace notes and surfaced in multiple places:
+Task checkboxes from your notes appear in several places:
 
 - **Open Tasks panel**: unchecked tasks (`- [ ]`) only.
 - **All Tasks panel**: open + closed tasks in one searchable list.
@@ -148,7 +175,7 @@ Tasks are parsed from markdown task syntax across workspace notes and surfaced i
 
 ### Open Tasks panel
 
-The Open Tasks panel aggregates unchecked task items from your entire workspace into a single searchable view.
+The Open Tasks panel collects unfinished tasks from all of your notes into one searchable list.
 
 #### Opening the Open Tasks panel
 
@@ -162,7 +189,7 @@ Open the panel using the Command Palette:
 
 - **Filter tasks**: Use the search input to filter by task text or source note title.
 - **View task count**: The header shows the total number of open tasks.
-- **Group by source**: Tasks are organized by the note they come from for easy navigation.
+- **Group by source**: Tasks stay grouped by the note they came from.
 - **Open source note**: Click the "Open note" link next to any task to navigate to that note and close the panel.
 - **Supported task syntax**: Recognizes all markdown task formats:
   - `- [ ] Task text` (dash)
@@ -188,7 +215,7 @@ Use All Tasks when you need both open and completed work in one place.
 
 ### Version snapshots
 
-Notely stores historical versions of notes to support recovery.
+Notely keeps older copies of notes so you can recover changes.
 
 ### Compare and restore
 
@@ -198,7 +225,7 @@ Open **File -> Versions** (`Ctrl/Cmd + Shift + H`) to compare current and previo
 
 ### Image and file linking
 
-Insert local media and linked files from note workflows.
+Add images and other files to your notes and link to them when needed.
 
 ### Media actions
 
@@ -233,13 +260,13 @@ Notely helps detect and manage:
 - Unused media
 - Preview failures
 
-You can inspect usage and run cleanup actions, including bulk delete for unused assets.
+You can review where files are used and clean up unused items.
 
 ### Image annotation and lifecycle
 
-Image annotations are stored as metadata (not burned into pixels), so notes remain editable and cleaner over time.
+Image notes and markups are saved separately from the picture itself, so you can keep editing them later.
 
-Notely also preserves metadata behavior across replace, rename, and delete actions.
+Those notes stay in sync when you replace, rename, or remove an image.
 
 ### Original image backup and restore
 
@@ -261,20 +288,20 @@ This helps recover from aggressive crops or accidental edits.
 - Edit visually and save.
 - Re-open diagrams from preview for updates.
 - Convert an existing note image to an Excalidraw diagram from image right-click menu (**Edit with Excalidraw**).
-- Start converted diagrams with the original image on canvas as a resizable base element for tracing and annotation.
-- Use diagram-specific right-click actions on Excalidraw previews (separate from normal image actions).
-- Restore the original image reference when a diagram was created from an image. Restore is only shown when origin metadata exists.
+- Converted diagrams open with the original image already placed underneath so you can trace or mark it up.
+- Excalidraw previews have their own right-click actions.
+- If the diagram started from an image, you can switch back to the original image later.
 
 ## 9. AI Assistance
 
 ### AI settings
 
-Configure providers and API keys in **AI -> AI Settings**.
+Set up AI services and sign-in details in **AI -> AI Settings**.
 
-Supported provider setup types:
+You can set up:
 
-- Text generation providers (for chat and writing assistance)
-- Embedding providers (for semantic and relationship features)
+- a writing assistant service for chat and rewriting
+- a separate service for smarter search and graph features
 
 ### AI chat and commands
 
@@ -282,23 +309,23 @@ Use AI for writing support, note understanding, and quick content actions.
 
 ### Semantic features
 
-When embeddings are enabled, Notely supports semantic search, relationship analysis, and pattern detection.
+When AI search data is turned on, Notely can find related notes by meaning, not just exact words.
 
-### Provider capabilities and model selection
+### What each AI service can do
 
-Provider capabilities are not identical. Some providers support text generation only, while others also support embeddings.
+Not every AI service supports every feature.
 
 Notely shows capability warnings in settings when a selected provider cannot run a feature.
 
-You can also choose provider models directly in AI settings.
+You can also choose which AI model to use in AI settings.
 
 ### AI operation feedback
 
-Long-running AI actions show in-progress and completion feedback so users know what is happening.
+Longer AI actions show progress and completion messages so you know something is happening.
 
-### Embedding freshness indicators
+### How recent the AI search data is
 
-Notely tracks embedding freshness and shows staleness indicators in graph workflows.
+Notely shows whether its AI search data is fresh or getting old.
 
 ## 10. Peer-to-Peer Sync
 
@@ -312,13 +339,13 @@ Monitor sync progress and resolve conflicts with built-in conflict tools.
 
 ### Security controls
 
-Workspace trust and key policies help keep collaboration safe.
+Trust and access controls help keep shared workspaces safer.
 
 ## 11. Help and Product Info
 
 ### Documentation
 
-Open **Help -> Documentation** (`F1`) for in-app help.
+Open **Help -> Help Center** (`F1`) for in-app help.
 
 ### Keyboard shortcuts
 
@@ -336,13 +363,13 @@ Use Web Preview for richer rendered note viewing with media and diagram support.
 
 ### PDF export
 
-Export notes to PDF using the same workspace-aware rendering pipeline.
+Export notes to PDF using the same note preview system used inside the app.
 
-PDF workflows support image quality behavior and preserve annotation overlays in exported output.
+PDF export keeps image quality options and visible image notes where possible.
 
 ### Website-style rendering
 
-Website output uses the same content pipeline so rendered notes stay consistent across preview and export surfaces.
+Website-style output is designed to look close to what you see in preview.
 
 ### Workspace zip export
 
@@ -354,7 +381,7 @@ The workspace export dialog includes:
   - Notes as-is (markdown + assets)
   - PDF-only workspace bundle
   - Web format static package
-- **Metadata toggle**: include `.notes-app` folder (default off)
+- **App data toggle**: include the `.notes-app` folder (off by default)
 - **Destination**: browse folder and reuse remembered location
 - **Filename**: default `notelyproject.zip`, editable before export
 

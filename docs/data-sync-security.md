@@ -4,7 +4,7 @@ This guide explains how Notely stores your data and how to keep work safe when c
 
 ## 1. Where Notely Stores App Data
 
-Notely keeps your notes in your selected notes folder.
+Notely keeps your notes in your selected workspace folder.
 
 It also creates a `.notes-app` folder for app-managed data such as:
 
@@ -12,7 +12,7 @@ It also creates a `.notes-app` folder for app-managed data such as:
 - Workspace settings
 - Image annotations
 
-You normally do not need to edit these files manually.
+You usually do not need to open or edit those files yourself.
 
 ## 2. Keep Your Notes Safe
 
@@ -22,7 +22,7 @@ Notely includes built-in safety features:
 - Managed handling for removed notes/folders
 - Conflict tools when synced changes overlap
 
-Best practice: make sure your notes folder is backed up regularly.
+Best practice: make sure your workspace folder is backed up regularly.
 
 ## 3. Sync with Other Peers (P2P)
 
@@ -36,13 +36,15 @@ Tips:
 - Pair only with trusted devices.
 - Rotate workspace keys when team access changes.
 
+If you do not share notes between devices, you can ignore this section.
+
 ## 4. AI Features for Daily Use
 
 1. Open **AI -> AI Settings**.
-2. Add API keys for your provider.
-3. Use AI chat, semantic search, and pattern features as needed.
+2. Add the sign-in details for the AI service you want to use.
+3. Use AI chat, smarter search, and related-note features as needed.
 
-If a provider does not support a feature, Notely shows a warning in AI Settings.
+If the service you chose cannot do something, Notely shows a warning in AI Settings.
 
 ## 5. When to Use Workspace Graph
 

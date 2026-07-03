@@ -6,7 +6,7 @@ Welcome to the in-app help for Notely. This guide is written for everyday users 
 
 If you are new to Notely, follow this order:
 
-1. Set your notes folder.
+1. Open your workspace.
 2. Create your first note.
 3. Learn editing modes (Edit, Split, Preview).
 4. Scan the full feature list.
@@ -19,13 +19,19 @@ If you are new to Notely, follow this order:
 - [Feature Reference](./feature-reference.md): complete feature-by-feature explanation in one place.
 - [Top Tasks](./top-tasks.md): fast click-by-click steps for frequent actions, including task dashboards and workspace zip export.
 - [Feature Availability](./feature-availability.md): what works offline, what needs setup, and what needs internet.
+- [Settings Reference](./settings-reference.md): themes, AI controls, terminal options, layout settings, and behavioral preferences.
+- [FAQ](./faq.md): common questions about storage, sync, AI, and workspace behavior.
+- [Release Notes](./release-notes.md): current release highlights and documentation-impacting changes.
 - [Data & Sync](./data-sync-security.md): how your data is stored, synced, and protected.
 - [Troubleshooting](./troubleshooting.md): common issues and quick fixes.
 
 ## Keyboard and Help Shortcuts
 
-- Open Help: `F1`
+- Open Help Center: `F1`
 - Open Keyboard Shortcuts: `Ctrl/Cmd + /`
+- Open Workspace: `Ctrl/Cmd + Shift + N`
+- Open Command Palette: `Ctrl/Cmd + K`
+- Search all notes: `Ctrl/Cmd + Shift + F`
 - Find in current note: `Ctrl/Cmd + F`
 
 ## About This Help
