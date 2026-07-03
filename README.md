@@ -53,8 +53,32 @@ Project documentation is organized under `docs/` for maintainability and profess
 - `docs/feature-reference.md` complete end-user feature reference
 - `docs/top-tasks.md` quick task-oriented workflows
 - `docs/feature-availability.md` setup and connectivity requirements
-- `docs/versioning-release.md` versioning and release process
 - `docs/troubleshooting.md` troubleshooting and common issue fixes
+
+## Versioning and release
+
+Notely uses build versions in this format:
+
+- `major.minor.patch-commitHash`
+
+Where:
+
+- `major.minor.patch` are maintained in `app-version.json`
+- `commitHash` resolves from `master` (fallback: `origin/master`, then `HEAD`)
+
+Release flow:
+
+1. Update `app-version.json` when planning a release.
+2. Run `npm run version:generate` to refresh `electron/app-version.generated.json`.
+3. Build/package with the existing scripts (`build`, `pack:win`, `dist:win`).
+4. Verify **Help -> About Notely** reports the expected version string.
+
+Release checklist:
+
+- Version string matches expected `major.minor.patch-commitHash`.
+- Signed artifacts are present when signing inputs are configured.
+- About dialog and Help Center show matching build identity.
+- Docs updates are committed with release changes.
 
 ## Workspace zip export
 
@@ -222,6 +246,12 @@ Validation currently covers:
 - Typo checking
 
 The editor shows validation state in a banner and lets you jump to issue lines.
+
+### Recent editor UX updates
+
+- Pressing `Ctrl/Cmd+F` now toggles Find in note (open on first press, close on second).
+- Spelling alternatives now appear under a cleaner submenu in right-click and validation flows.
+- Suggestion flyout positioning is viewport-aware and flips left/up to avoid clipping near edges.
 
 ## Typo checking
 

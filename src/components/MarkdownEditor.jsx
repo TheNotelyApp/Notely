@@ -386,11 +386,17 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
 
     const viewportPadding = 8;
     const flyoutGap = 6;
+    const minRightSpace = 148;
+    const minBottomSpace = 120;
+    const rightSpace = window.innerWidth - triggerBounds.right;
+    const bottomSpace = window.innerHeight - triggerBounds.top;
     const wouldOverflowRight = triggerBounds.right + flyoutGap + submenuBounds.width > window.innerWidth - viewportPadding;
     const wouldOverflowBottom = triggerBounds.top - 4 + submenuBounds.height > window.innerHeight - viewportPadding;
+    const shouldPreferLeft = rightSpace < minRightSpace;
+    const shouldPreferUp = bottomSpace < minBottomSpace;
 
-    containerElement.classList.toggle("open-left", wouldOverflowRight);
-    containerElement.classList.toggle("open-up", wouldOverflowBottom);
+    containerElement.classList.toggle("open-left", wouldOverflowRight || shouldPreferLeft);
+    containerElement.classList.toggle("open-up", wouldOverflowBottom || shouldPreferUp);
   };
 
   const validationDecorations = useMemo(() => {
