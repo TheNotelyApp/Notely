@@ -171,6 +171,19 @@ const ExcalidrawComponent = ({
   const [libraryLoadError, setLibraryLoadError] = useState("");
   const hasLoadedBundledLibrariesRef = useRef(false);
 
+  const [themeMode, setThemeMode] = useState(() => {
+    return document.documentElement.getAttribute("data-theme") || "light";
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+      setThemeMode(currentTheme);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
   const visibleLibraryItems = useMemo(() => {
     const query = librarySearchQuery.trim().toLowerCase();
     if (!query) {
@@ -502,7 +515,7 @@ const ExcalidrawComponent = ({
                 void loadBundledLibraries();
               }}
               initialData={normalizedInitialData}
-              theme="light"
+              theme={themeMode}
             />
           </div>
         </div>
