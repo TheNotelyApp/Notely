@@ -1,8 +1,22 @@
-# Notely
+<div align="center">
+  <img src="build/icon.png" width="128" alt="Notely Logo" />
+  <h1>Notely</h1>
 
-Notely is a desktop Markdown notes app for team and project workspaces. It is built with Electron + React and is designed for project notes, meeting records, document history, image handling, and markdown authoring in one place.
+  <a href="https://github.com/wglabz/notely/actions">
+    <img src="https://github.com/wglabz/notely/actions/workflows/ci.yml/badge.svg" alt="Build Status">
+  </a>
+  <img src="https://img.shields.io/badge/version-v0.1.0-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-green" alt="License" />
+  <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform" />
 
-## What the app does
+  <p><b>A desktop Markdown notes app for team and project workspaces.</b></p>
+</div>
+
+<br/>
+
+Notely is built with Electron + React and is designed for project notes, meeting records, document history, image handling, and markdown authoring in one place.
+
+## Key Features
 
 - Open and manage Markdown notes inside a chosen workspace folder.
 - Organize work into projects and a root workspace.
@@ -20,7 +34,7 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Open the project website or the current note's website view from the **Web** menu (`Ctrl/Cmd + Shift + W`).
 - Compare note history versions and restore context from older revisions.
 - Preview Mermaid diagrams and rendered Markdown content.
-- Visualise the workspace as an interactive note graph.
+- Visualize the workspace as an interactive note graph.
 - Use built-in AI features powered by Gemini or Groq for chat, queries, and semantic search.
 - Aggregate tasks across notes with **Open Tasks** and **All Tasks** panels.
   - Open Tasks focuses on unchecked items.
@@ -35,7 +49,7 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
 - Copy note content as HTML or plain text directly from the editor toolbar.
 - Navigate nested folders with breadcrumb links for easy folder traversal.
 
-## Supported release and setup
+## Getting Started
 
 Current packaged release target:
 
@@ -130,9 +144,9 @@ The export dialog supports:
 
 ## Workspace Graph
 
-Open **Workspace → Workspace Graph** (`Ctrl+Shift+G`) to visualise all notes and media in the active workspace as an interactive node-edge graph.
+Open **Workspace → Workspace Graph** (`Ctrl+Shift+G`) to visualize all notes and media in the active workspace as an interactive node-edge graph.
 
-- Nodes represent Markdown notes (`.md` files, coloured by folder) and media files (with dashed borders).
+- Nodes represent Markdown notes (`.md` files, colored by folder) and media files (with dashed borders).
 - Edges represent explicit document links (`[[wiki links]]` and `[text](./file.md)`) and media references (images embedded in notes).
 - Media nodes (images, videos, PDFs, etc.) are visually distinct and marked with a 📎 icon.
 - Click a node to highlight its connections.
@@ -605,7 +619,7 @@ If strict mode is enabled and a command is not allowed, it is blocked in-session
 - `build/` app icons and build assets
 - `release/` collected release outputs
 
-## Backlogs
+## Roadmap
 
 Planned additions and improvements for upcoming iterations:
 
