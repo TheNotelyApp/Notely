@@ -7,6 +7,18 @@ if ! npm run ci:check; then
   exit 1
 fi
 
+echo "Running local build (packaging) to verify CD pipeline won't fail..."
+if ! ./build-windows-exe.sh; then
+  echo "Local packaging failed. Aborting release."
+  exit 1
+fi
+
+echo "Running packaged P2P tests..."
+if ! npm run test:p2p:packaged; then
+  echo "Packaged P2P tests failed. Aborting release."
+  exit 1
+fi
+
 # Read current version from app-version.json
 MAJOR=$(grep -o '"major": [0-9]*' app-version.json | awk '{print $2}')
 MINOR=$(grep -o '"minor": [0-9]*' app-version.json | awk '{print $2}')

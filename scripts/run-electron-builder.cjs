@@ -18,6 +18,13 @@ const hasSigningMaterial = Boolean(
 let nextArgs = [...args];
 const childEnv = { ...process.env };
 
+// Remove empty signing variables so electron-builder doesn't try to resolve empty strings to the current directory
+for (const key of ["CSC_LINK", "WIN_CSC_LINK", "CSC_KEY_PASSWORD", "WIN_CSC_KEY_PASSWORD"]) {
+  if (childEnv[key] === "") {
+    delete childEnv[key];
+  }
+}
+
 try {
   if (fs.existsSync(generatedVersionPath)) {
     const generated = JSON.parse(String(fs.readFileSync(generatedVersionPath, "utf8") || "{}"));
