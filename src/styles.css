@@ -164,6 +164,25 @@ button {
   cursor: pointer;
 }
 
+/* Global Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 :where(
     a[href],
     button,
@@ -2853,13 +2872,11 @@ button {
 .dashboard-task-badge .task-open {
   background: #e8f0f0;
   color: #143238;
-  title: "Open tasks";
 }
 
 .dashboard-task-badge .task-closed {
   background: #d5e5e2;
   color: #55737b;
-  title: "Closed tasks";
 }
 
 .dashboard-task-summary .task-open,
@@ -7975,18 +7992,7 @@ button {
   color: #e3efeb !important;
 }
 
-/* Dark mode scrollbars */
-:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background-color: #2b393c !important;
-}
-
-:root[data-theme="dark"] ::-webkit-scrollbar-track {
-  background-color: #141a1c !important;
-}
-
-:root[data-theme="dark"] ::-webkit-scrollbar-corner {
-  background-color: #141a1c !important;
-}
+/* Removed redundant dark mode scrollbars - handled globally via variables */
 
 /* ══════════════════════════════════════════════════════════════════
    DARK THEME — COMPREHENSIVE PATCH (all missed white patches)

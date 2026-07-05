@@ -18,20 +18,6 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.app-select-group::-webkit-scrollbar {
-  width: 6px;
-}
-.app-select-group::-webkit-scrollbar-track {
-  background: transparent;
-}
-.app-select-group::-webkit-scrollbar-thumb {
-  background: var(--border-default);
-  border-radius: 4px;
-}
-.app-select-group::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
 .code-block-editor-container:focus-within {
   border-color: var(--brand-primary, #6366f1);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);

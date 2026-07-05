@@ -553,23 +553,6 @@
   border-color: #dca7a7;
 }
 
-.ai-settings-content::-webkit-scrollbar {
-  width: 0;
-}
-
-.ai-settings-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ai-settings-content::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.ai-settings-content::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
 /* ── Capability Warnings ── */
 .ai-settings-capability-warnings {
   display: flex;
@@ -900,12 +883,4 @@
   background: rgba(93, 153, 163, 0.08);
   border-color: rgba(93, 153, 163, 0.2);
   color: var(--text-muted);
-}
-
-:root[data-theme="dark"] .ai-settings-content::-webkit-scrollbar-thumb {
-  background: var(--border-default);
-}
-
-:root[data-theme="dark"] .ai-settings-content::-webkit-scrollbar-thumb:hover {
-  background: var(--border-soft);
 }
