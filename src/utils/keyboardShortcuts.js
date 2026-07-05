@@ -20,6 +20,11 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     group: "Global",
   },
   {
+    keys: "Ctrl/Cmd+M",
+    action: "Open Markdown Guide",
+    group: "Global",
+  },
+  {
     keys: "Ctrl/Cmd+N",
     action: "Create New Note",
     group: "Notes",

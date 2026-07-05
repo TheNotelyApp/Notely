@@ -1,0 +1,81 @@
+.markdown-guide-card {
+  width: 70vw;
+  max-width: 800px;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-guide-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+}
+
+.markdown-guide-search-icon {
+  color: var(--text-muted);
+}
+
+.markdown-guide-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-default);
+  font-size: 14px;
+}
+
+.markdown-guide-table-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.markdown-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.markdown-guide-table th,
+.markdown-guide-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.markdown-guide-table th {
+  background: var(--surface-bg);
+  font-weight: 600;
+  color: var(--text-strong);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.markdown-guide-syntax {
+  font-family: var(--font-mono);
+  background: var(--surface-elevated);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.markdown-guide-example {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.markdown-guide-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+}

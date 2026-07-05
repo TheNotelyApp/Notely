@@ -548,6 +548,11 @@ function buildAppMenu(win, context = {}) {
           click: () => sendMenuAction(win, "open-help-center")
         },
         {
+          label: "Markdown Guide",
+          accelerator: "CmdOrCtrl+M",
+          click: () => sendMenuAction(win, "open-markdown-guide")
+        },
+        {
           label: "Keyboard Shortcuts",
           accelerator: "CmdOrCtrl+/",
           click: () => sendMenuAction(win, "open-shortcuts")

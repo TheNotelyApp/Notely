@@ -53,6 +53,9 @@ const NoteListPanel = lazy(() =>
 const HelpCenterModal = lazy(() =>
   import("./components/HelpCenterModal").then((m) => ({ default: m.HelpCenterModal }))
 );
+const MarkdownGuideModal = lazy(() =>
+  import("./components/MarkdownGuideModal").then((m) => ({ default: m.MarkdownGuideModal }))
+);
 const AboutModal = lazy(() =>
   import("./components/AboutModal").then((m) => ({ default: m.AboutModal }))
 );
@@ -295,6 +298,7 @@ export default function App() {
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
+  const [markdownGuideOpen, setMarkdownGuideOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
   const [allTasksPanelOpen, setAllTasksPanelOpen] = useState(false);
@@ -832,6 +836,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key.toLowerCase() === "m" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setMarkdownGuideOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
+
+  useEffect(() => {
     void getOnboardingComplete()
       .then((res) => {
         setOnboardingCompleteState(res?.onboardingComplete ?? false);
@@ -949,6 +964,11 @@ export default function App() {
         } else {
           setHelpCenterOpen(true);
         }
+        return;
+      }
+
+      if (action === "open-markdown-guide") {
+        setMarkdownGuideOpen(true);
         return;
       }
 
@@ -2794,12 +2814,21 @@ export default function App() {
       ) : null}
 
       {helpCenterOpen ? (
-        <Suspense fallback={<div className="lazy-loading">Loading help center…</div>}>
+        <Suspense fallback={null}>
           <HelpCenterModal
             open={helpCenterOpen}
             onClose={() => setHelpCenterOpen(false)}
             appInfo={appInfo}
             documents={helpDocuments}
+          />
+        </Suspense>
+      ) : null}
+
+      {markdownGuideOpen ? (
+        <Suspense fallback={null}>
+          <MarkdownGuideModal
+            open={markdownGuideOpen}
+            onClose={() => setMarkdownGuideOpen(false)}
           />
         </Suspense>
       ) : null}
