@@ -240,19 +240,19 @@ function buildAppMenu(win, context = {}) {
           submenu: [
             {
               label: "Auto",
-              type: "radio",
+              type: "checkbox",
               checked: terminalShell === "auto",
               click: () => sendMenuAction(win, "terminal-shell-auto")
             },
             {
               label: "Bash",
-              type: "radio",
+              type: "checkbox",
               checked: terminalShell === "bash",
               click: () => sendMenuAction(win, "terminal-shell-bash")
             },
             {
               label: "CMD",
-              type: "radio",
+              type: "checkbox",
               checked: terminalShell === "cmd",
               click: () => sendMenuAction(win, "terminal-shell-cmd")
             },
@@ -288,13 +288,13 @@ function buildAppMenu(win, context = {}) {
               submenu: [
                 {
                   label: "Thumbnail",
-                  type: "radio",
+                  type: "checkbox",
                   checked: previewImageMode === "thumbnail",
                   click: () => sendMenuAction(win, "view-preview-image-thumbnail")
                 },
                 {
                   label: "Original",
-                  type: "radio",
+                  type: "checkbox",
                   checked: previewImageMode === "original",
                   click: () => sendMenuAction(win, "view-preview-image-original")
                 }
@@ -305,13 +305,13 @@ function buildAppMenu(win, context = {}) {
               submenu: [
                 {
                   label: "Open Linked Note",
-                  type: "radio",
+                  type: "checkbox",
                   checked: embeddedMarkdownMode === "open",
                   click: () => sendMenuAction(win, "view-embedded-markdown-open")
                 },
                 {
                   label: "Inline Render",
-                  type: "radio",
+                  type: "checkbox",
                   checked: embeddedMarkdownMode === "inline",
                   click: () => sendMenuAction(win, "view-embedded-markdown-inline")
                 }
@@ -357,19 +357,19 @@ function buildAppMenu(win, context = {}) {
           submenu: [
             {
               label: "Auto",
-              type: "radio",
+              type: "checkbox",
               checked: terminalShell === "auto",
               click: () => sendMenuAction(win, "terminal-shell-auto")
             },
             {
               label: "Bash",
-              type: "radio",
+              type: "checkbox",
               checked: terminalShell === "bash",
               click: () => sendMenuAction(win, "terminal-shell-bash")
             },
             {
               label: "CMD",
-              type: "radio",
+              type: "checkbox",
               checked: terminalShell === "cmd",
               click: () => sendMenuAction(win, "terminal-shell-cmd")
             },
@@ -379,14 +379,14 @@ function buildAppMenu(win, context = {}) {
         {
           label: "Tile Notes",
           accelerator: "CmdOrCtrl+1",
-          type: "radio",
+          type: "checkbox",
           checked: viewMode === "tile",
           click: () => sendMenuAction(win, "view-tile")
         },
         {
           label: "Table Notes",
           accelerator: "CmdOrCtrl+2",
-          type: "radio",
+          type: "checkbox",
           checked: viewMode === "table",
           click: () => sendMenuAction(win, "view-table")
         },
@@ -394,14 +394,14 @@ function buildAppMenu(win, context = {}) {
         {
           label: "Comfortable Density",
           accelerator: "CmdOrCtrl+3",
-          type: "radio",
+          type: "checkbox",
           checked: densityMode === "comfortable",
           click: () => sendMenuAction(win, "view-density-comfortable")
         },
         {
           label: "Compact Density",
           accelerator: "CmdOrCtrl+4",
-          type: "radio",
+          type: "checkbox",
           checked: densityMode === "compact",
           click: () => sendMenuAction(win, "view-density-compact")
         },
@@ -448,19 +448,19 @@ function buildAppMenu(win, context = {}) {
           submenu: [
             {
               label: "System",
-              type: "radio",
+              type: "checkbox",
               checked: themePreference === "auto",
               click: () => sendMenuAction(win, "theme-auto")
             },
             {
               label: "Light",
-              type: "radio",
+              type: "checkbox",
               checked: themePreference === "light",
               click: () => sendMenuAction(win, "theme-light")
             },
             {
               label: "Dark",
-              type: "radio",
+              type: "checkbox",
               checked: themePreference === "dark",
               click: () => sendMenuAction(win, "theme-dark")
             }
@@ -472,13 +472,13 @@ function buildAppMenu(win, context = {}) {
           submenu: [
             {
               label: "Auto Insert",
-              type: "radio",
+              type: "checkbox",
               checked: screenCaptureMode === "auto",
               click: () => sendMenuAction(win, "settings-screen-capture-auto")
             },
             {
               label: "Review Before Insert",
-              type: "radio",
+              type: "checkbox",
               checked: screenCaptureMode === "review",
               click: () => sendMenuAction(win, "settings-screen-capture-review")
             }
