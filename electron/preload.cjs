@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   notifyBootProgress: (payload) => ipcRenderer.send("app:boot-progress", payload),
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
   getAppearanceSettings: () => ipcRenderer.invoke("settings:get-appearance"),
+  getOnboardingComplete: () => ipcRenderer.invoke("settings:get-onboarding-complete"),
+  setOnboardingComplete: (payload) => ipcRenderer.invoke("settings:set-onboarding-complete", payload),
   setThemePreference: (payload) => ipcRenderer.invoke("settings:set-theme-preference", payload),
   setZoomFactor: (payload) => ipcRenderer.invoke("settings:set-zoom-factor", payload),
   onThemeChanged: (callback) => {

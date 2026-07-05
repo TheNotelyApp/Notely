@@ -55,6 +55,22 @@ export async function getAppearanceSettings() {
   return api.getAppearanceSettings();
 }
 
+export async function getOnboardingComplete() {
+  const api = getNotesApi();
+  if (typeof api.getOnboardingComplete !== "function") {
+    return { onboardingComplete: false };
+  }
+  return api.getOnboardingComplete();
+}
+
+export async function setOnboardingComplete(onboardingComplete) {
+  const api = getNotesApi();
+  if (typeof api.setOnboardingComplete !== "function") {
+    return { onboardingComplete: false };
+  }
+  return api.setOnboardingComplete({ onboardingComplete });
+}
+
 export async function setThemePreference(themePreference) {
   const api = getNotesApi();
   if (typeof api.setThemePreference !== "function") {

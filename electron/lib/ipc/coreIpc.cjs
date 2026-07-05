@@ -272,6 +272,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
       version: String(computed?.version || fallbackVersion),
       versionCore: String(computed?.versionCore || fallbackVersion),
       commitHash: String(computed?.commitHash || ""),
+      isPackaged: Boolean(app?.isPackaged),
     };
   });
 
@@ -399,6 +400,22 @@ function registerCoreIpcHandlers(ipcMain, deps) {
       recentWorkspaces: settings.recentWorkspaces,
       restartRequired: Boolean(process.env.NOTES_ROOT),
       ignoredByEnv: Boolean(process.env.NOTES_ROOT)
+    };
+  });
+
+  registerTrustedHandler("settings:get-onboarding-complete", () => {
+    const settings = readUserSettings();
+    return {
+      onboardingComplete: Boolean(settings?.onboardingComplete)
+    };
+  });
+
+  registerTrustedHandler("settings:set-onboarding-complete", (_event, payload) => {
+    const settings = readUserSettings();
+    settings.onboardingComplete = payload?.onboardingComplete !== false;
+    writeUserSettings(settings);
+    return {
+      onboardingComplete: settings.onboardingComplete
     };
   });
 
