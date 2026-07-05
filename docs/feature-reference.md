@@ -56,6 +56,13 @@ The landing view includes lightweight workspace overview panels so you can resum
 
 Quick insert actions for headings, emphasis, lists, links, tables, diagrams, and validation.
 
+### Code Blocks
+
+Notely provides a rich experience for working with code snippets:
+- **Auto-detection**: Paste a snippet without a language tag and Notely will automatically detect it (e.g., JavaScript, Python, HTML).
+- **Auto-formatting**: Use the 🪄 Format button in the preview hover toolbar or inside the editor to instantly auto-indent and format your code using Prettier.
+- **Dedicated Editor**: Click the ✎ Edit button on any code block in Preview mode to open a distraction-free Code Editor popup with syntax highlighting, search, and language selection.
+
 ### Find and replace
 
 Search inside the current note and jump through results quickly.

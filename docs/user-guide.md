@@ -31,6 +31,7 @@ Helpful actions:
 
 - Find text: `Ctrl/Cmd + F`
 - Use toolbar buttons for headings, lists, links, tables, and diagrams.
+- Format code blocks automatically and use the dedicated code editor popup.
 - Fix issues shown by markdown validation and typo checks.
 
 ## 4. Recover Changes with Version History
