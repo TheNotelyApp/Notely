@@ -27,6 +27,9 @@ jobs:
       
     - name: Build Windows Executable
       shell: bash
+      env:
+        CSC_LINK: ${{ secrets.CSC_LINK }}
+        CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       run: ./build-windows-exe.sh
       
     - name: Create Release
