@@ -17,6 +17,7 @@ import { MermaidBlock } from "./MermaidBlock";
 import { ExcalidrawBlock } from "./ExcalidrawBlock";
 import ExcalidrawComponent from "./ExcalidrawEditor";
 import { ImageCropModal } from "./ImageCropModal";
+import CodeBlockModal from "./CodeBlockModal";
 
 function replaceAllLiteral(source, needle, replacement) {
   if (!needle || needle === replacement) return source;
@@ -127,6 +128,31 @@ function replaceDiagramReferenceWithOriginal(content, options = {}) {
   });
 
   return { nextContent, replaced };
+}
+
+function replaceCodeBlockAtLine(source, targetLine, newLanguage, newCode) {
+  const lines = String(source || "").split("\n");
+  const startIdx = targetLine - 1; // 0-indexed
+
+  if (startIdx < 0 || startIdx >= lines.length || !lines[startIdx].startsWith("```")) {
+    return null;
+  }
+
+  let endIdx = -1;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    if (lines[i].trim() === "```") {
+      endIdx = i;
+      break;
+    }
+  }
+
+  if (endIdx === -1) return null;
+
+  const before = lines.slice(0, startIdx);
+  const after = lines.slice(endIdx + 1);
+  const newBlock = `\`\`\`${newLanguage}\n${newCode}\n\`\`\``;
+
+  return [...before, newBlock, ...after].join("\n");
 }
 
 function inferDataUrlMimeType(dataUrl) {
@@ -408,6 +434,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   const [menuIndex, setMenuIndex] = useState(0);
   const [cropSaving, setCropSaving] = useState(false);
   const [replaceState, setReplaceState] = useState({ busy: false, assetPath: "" });
+  const [codeEditState, setCodeEditState] = useState({ open: false, language: "", code: "", sourceLine: null });
   const [diagramEditState, setDiagramEditState] = useState({
     open: false,
     diagramId: "",
@@ -635,6 +662,52 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           onNotify?.("Code copied.", "success");
         } catch {
           onNotify?.("Unable to copy code.", "error");
+        }
+        return;
+      }
+
+      const formatButton = target.closest('[data-code-format="true"]');
+      if (formatButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        const rawCode = decodeURIComponent(formatButton.getAttribute("data-code-raw") || "");
+        const lang = formatButton.getAttribute("data-code-lang") || "";
+        const figure = formatButton.closest("figure.markdown-code-block");
+        const sourceLine = figure ? Number(figure.getAttribute("data-source-line")) : null;
+        
+        if (sourceLine) {
+          import("../utils/codeFormatter").then(({ formatCode }) => {
+            formatCode(rawCode, lang).then((formatted) => {
+              if (formatted && formatted !== rawCode) {
+                if (onContentChange) {
+                  const nextContent = replaceCodeBlockAtLine(content, sourceLine, lang, formatted);
+                  if (nextContent !== null) {
+                    onContentChange(nextContent);
+                    onNotify?.("Code formatted successfully.", "success");
+                  }
+                }
+              } else {
+                onNotify?.("Code is already formatted or language unsupported.", "info");
+              }
+            });
+          });
+        }
+        return;
+      }
+
+      const editButton = target.closest('[data-code-edit="true"]');
+      if (editButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        const rawCode = decodeURIComponent(editButton.getAttribute("data-code-raw") || "");
+        const lang = editButton.getAttribute("data-code-lang") || "";
+        const figure = editButton.closest("figure.markdown-code-block");
+        const sourceLine = figure ? Number(figure.getAttribute("data-source-line")) : null;
+        
+        if (sourceLine) {
+          setCodeEditState({ open: true, language: lang, code: rawCode, sourceLine });
+        } else {
+          onNotify?.("Unable to determine source line for this block.", "error");
         }
         return;
       }
@@ -1460,6 +1533,21 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         onClose={closeCropModal}
         onRestoreOriginal={handleRestoreOriginal}
         onSave={handleSaveCrop}
+      />
+      <CodeBlockModal
+        open={codeEditState.open}
+        initialLanguage={codeEditState.language}
+        initialCode={codeEditState.code}
+        onClose={() => setCodeEditState((prev) => ({ ...prev, open: false }))}
+        onSave={({ language, code }) => {
+          if (!onContentChange || !codeEditState.sourceLine) return;
+          const nextContent = replaceCodeBlockAtLine(content, codeEditState.sourceLine, language, code);
+          if (nextContent !== null) {
+            onContentChange(nextContent);
+          } else {
+            onNotify?.("Failed to update code block. Source line might have shifted.", "error");
+          }
+        }}
       />
     </>
   );
