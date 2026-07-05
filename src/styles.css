@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --app-viewport-height: 100vh;
   --focus-ring-color: #2f5d62;
   --focus-ring-offset: 2px;
@@ -7490,7 +7490,7 @@ button {
   font-size: 13px;
 }
 
-/* ── Tasks Panel ──────────────────────────────────────────────── */
+/* â”€â”€ Tasks Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .tasks-panel-card {
   width: min(600px, calc(100vw - 32px));
@@ -7813,7 +7813,7 @@ button {
   font-size: var(--font-size-caption);
 }
 
-/* ── Global Search: regex & code-block additions ──────────────── */
+/* â”€â”€ Global Search: regex & code-block additions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .global-search-filter-divider {
   width: 1px;
@@ -7994,11 +7994,11 @@ button {
 
 /* Removed redundant dark mode scrollbars - handled globally via variables */
 
-/* ══════════════════════════════════════════════════════════════════
-   DARK THEME — COMPREHENSIVE PATCH (all missed white patches)
-   ══════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   DARK THEME â€” COMPREHENSIVE PATCH (all missed white patches)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Toast / Notification Items ─────────────────────────────────── */
+/* â”€â”€ Toast / Notification Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .toast-item.info {
   background: var(--status-info-bg) !important;
   border-color: var(--status-info-border) !important;
@@ -8017,7 +8017,7 @@ button {
   color: var(--status-danger-text) !important;
 }
 
-/* ── Help Doc Markdown Table ────────────────────────────────────── */
+/* â”€â”€ Help Doc Markdown Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .help-doc-markdown table {
   background: var(--surface-bg) !important;
   border-color: var(--border-default) !important;
@@ -8038,7 +8038,7 @@ button {
   background: var(--surface-subtle) !important;
 }
 
-/* ── Landing Stats ──────────────────────────────────────────────── */
+/* â”€â”€ Landing Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .landing-stats span {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8053,7 +8053,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── Dashboard Task Summary + Inline Action ─────────────────────── */
+/* â”€â”€ Dashboard Task Summary + Inline Action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .dashboard-task-summary {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8088,14 +8088,14 @@ button {
   border-color: #4f7f8a !important;
 }
 
-/* ── Favorite Toggle Active State ───────────────────────────────── */
+/* â”€â”€ Favorite Toggle Active State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .favorite-toggle.active {
   border-color: #7a5e2a !important;
   background: #352a18 !important;
   color: #e8cb8b !important;
 }
 
-/* ── AI Chat Panel ──────────────────────────────────────────────── */
+/* â”€â”€ AI Chat Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .ai-chat-panel {
   background: linear-gradient(180deg, var(--surface-bg) 0%, var(--surface-subtle) 100%) !important;
   border-color: var(--border-default) !important;
@@ -8170,7 +8170,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── Sidebar Docs ───────────────────────────────────────────────── */
+/* â”€â”€ Sidebar Docs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .sidebar-docs button {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8186,7 +8186,7 @@ button {
   color: var(--text-muted) !important;
 }
 
-/* ── Topbar Popover ─────────────────────────────────────────────── */
+/* â”€â”€ Topbar Popover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .topbar-popover {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8204,7 +8204,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── History Panel ──────────────────────────────────────────────── */
+/* â”€â”€ History Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .history-item {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8218,7 +8218,7 @@ button {
   color: var(--text-muted) !important;
 }
 
-/* ── Diff Modal ─────────────────────────────────────────────────── */
+/* â”€â”€ Diff Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .diff-modal {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8275,7 +8275,7 @@ button {
   color: var(--status-warning-text) !important;
 }
 
-/* ── Summary Pills ──────────────────────────────────────────────── */
+/* â”€â”€ Summary Pills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .summary-pill.added {
   background: var(--status-success-bg) !important;
   color: var(--status-success-text) !important;
@@ -8306,7 +8306,7 @@ button {
   border-color: var(--status-info-border) !important;
 }
 
-/* ── Button Group ───────────────────────────────────────────────── */
+/* â”€â”€ Button Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .button-group {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8326,7 +8326,7 @@ button {
   color: var(--text-strong) !important;
 }
 
-/* ── Find / Replace Panel ───────────────────────────────────────── */
+/* â”€â”€ Find / Replace Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .find-replace-panel {
   background: var(--surface-elevated) !important;
   border-bottom-color: var(--border-default) !important;
@@ -8365,7 +8365,7 @@ button {
   color: var(--status-danger-text) !important;
 }
 
-/* ── Pane Block / Pane Title / Pane Toolbar ─────────────────────── */
+/* â”€â”€ Pane Block / Pane Title / Pane Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .pane-block {
   background: var(--surface-subtle) !important;
 }
@@ -8386,7 +8386,7 @@ button {
   border-bottom-color: var(--border-default) !important;
 }
 
-/* ── Split Sync Toggle ──────────────────────────────────────────── */
+/* â”€â”€ Split Sync Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .split-sync-toggle {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8404,7 +8404,7 @@ button {
   color: var(--accent-soft) !important;
 }
 
-/* ── Validation Banners ─────────────────────────────────────────── */
+/* â”€â”€ Validation Banners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .validation-banner.checking {
   background: var(--surface-elevated) !important;
   color: var(--text-muted) !important;
@@ -8425,7 +8425,7 @@ button {
   color: var(--status-danger-text) !important;
 }
 
-/* ── Toolbar Capture Glyph ──────────────────────────────────────── */
+/* â”€â”€ Toolbar Capture Glyph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .editor-toolbar button.toolbar-btn-capture .toolbar-capture-mode-glyph {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8450,7 +8450,7 @@ button {
   color: var(--status-success-text) !important;
 }
 
-/* ── Toolbar Popups (mermaid, image linker, web linker, doc linker, table, validation) */
+/* â”€â”€ Toolbar Popups (mermaid, image linker, web linker, doc linker, table, validation) */
 :root[data-theme="dark"] .mermaid-builder,
 :root[data-theme="dark"] .image-linker,
 :root[data-theme="dark"] .web-linker,
@@ -8498,7 +8498,7 @@ button {
   color: var(--text-on-accent) !important;
 }
 
-/* ── Validation Items ───────────────────────────────────────────── */
+/* â”€â”€ Validation Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .validation-item {
   background: var(--status-warning-bg) !important;
   border-color: var(--status-warning-border) !important;
@@ -8520,7 +8520,7 @@ button {
   background: rgba(0, 0, 0, 0.3) !important;
 }
 
-/* ── Editor Context Menu ────────────────────────────────────────── */
+/* â”€â”€ Editor Context Menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .editor-context-menu,
 :root[data-theme="dark"] .editor-fix-submenu-flyout .editor-fix-submenu-list {
   background: var(--surface-elevated) !important;
@@ -8541,7 +8541,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── Split Resizer ──────────────────────────────────────────────── */
+/* â”€â”€ Split Resizer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .split-resizer {
   background: linear-gradient(180deg, #1e2b2e 0%, #1a2528 100%) !important;
   border-color: var(--border-default) !important;
@@ -8557,7 +8557,7 @@ button {
   border-color: var(--border-default) !important;
 }
 
-/* ── Address Pill / WebView ─────────────────────────────────────── */
+/* â”€â”€ Address Pill / WebView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .address-pill {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8614,7 +8614,7 @@ button {
   ) !important;
 }
 
-/* ── Reference Window ───────────────────────────────────────────── */
+/* â”€â”€ Reference Window â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .reference-window-shell {
   background: var(--app-bg) !important;
   color: var(--app-text) !important;
@@ -8646,19 +8646,19 @@ button {
   color: var(--text-muted) !important;
 }
 
-/* ── Mermaid Render ─────────────────────────────────────────────── */
+/* â”€â”€ Mermaid Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .mermaid-render {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
 }
 
-/* ── Code Mirror Gutters (light) ────────────────────────────────── */
+/* â”€â”€ Code Mirror Gutters (light) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .markdown-codemirror .cm-gutters {
   background: #1a2326 !important;
   border-right-color: #2f3f44 !important;
 }
 
-/* ── Spell/Grammar Gutter Indicators ───────────────────────────── */
+/* â”€â”€ Spell/Grammar Gutter Indicators â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .markdown-gutter button.has-spelling-issue {
   background-color: #352010 !important;
   color: #e8a77a !important;
@@ -8669,7 +8669,7 @@ button {
   color: #7da8e8 !important;
 }
 
-/* ── Preview hljs colors (dark theme) ──────────────────────────── */
+/* â”€â”€ Preview hljs colors (dark theme) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .preview .hljs-keyword,
 :root[data-theme="dark"] .webview-page .hljs-keyword,
 :root[data-theme="dark"] .preview .hljs-selector-tag,
@@ -8743,7 +8743,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── AI Diff rows in AIPalette dark mode ────────────────────────── */
+/* â”€â”€ AI Diff rows in AIPalette dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .ai-diff-row.added {
   background: color-mix(in srgb, var(--status-success-bg) 55%, var(--surface-bg)) !important;
 }
@@ -8756,14 +8756,14 @@ button {
   background: color-mix(in srgb, var(--status-warning-bg) 55%, var(--surface-bg)) !important;
 }
 
-/* ── AI Panel Reveal Button ─────────────────────────────────────── */
+/* â”€â”€ AI Panel Reveal Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .ai-panel-reveal {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
   color: var(--text-muted) !important;
 }
 
-/* ── Tabs / Mode Switch ─────────────────────────────────────────── */
+/* â”€â”€ Tabs / Mode Switch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .tabs button,
 :root[data-theme="dark"] .mode-switch button {
   background: var(--surface-elevated) !important;
@@ -8777,7 +8777,7 @@ button {
   color: var(--text-on-accent) !important;
 }
 
-/* ── Media Grid Item ────────────────────────────────────────────── */
+/* â”€â”€ Media Grid Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .media-item {
   background: var(--surface-bg) !important;
   border-color: var(--border-default) !important;
@@ -8795,7 +8795,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── Table Preview (in table builder) ──────────────────────────── */
+/* â”€â”€ Table Preview (in table builder) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .table-preview-wrap {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8809,7 +8809,7 @@ button {
   background: var(--border-muted) !important;
 }
 
-/* ── Error / Diagram Error Banner ───────────────────────────────── */
+/* â”€â”€ Error / Diagram Error Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .diagram-error,
 :root[data-theme="dark"] .error-banner {
   background: var(--status-danger-bg) !important;
@@ -8817,7 +8817,7 @@ button {
   color: var(--status-danger-text) !important;
 }
 
-/* ── Empty-state inset box-shadow ───────────────────────────────── */
+/* â”€â”€ Empty-state inset box-shadow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .command-palette-empty,
 :root[data-theme="dark"] .global-search-empty,
 :root[data-theme="dark"] .p2p-status-empty,
@@ -8827,7 +8827,7 @@ button {
 :root[data-theme="dark"] .lazy-loading {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
 }
-/* ── Command Palette remaining patches ───────────────────────────── */
+/* â”€â”€ Command Palette remaining patches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .command-palette-group {
   border-bottom-color: var(--border-default) !important;
 }
@@ -8847,12 +8847,12 @@ button {
   color: var(--text-on-accent) !important;
 }
 
-/* ── Global Search recents ──────────────────────────────────────── */
+/* â”€â”€ Global Search recents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .global-search-recents span {
   color: var(--text-subtle) !important;
 }
 
-/* ── App Select Dropdown ────────────────────────────────────────── */
+/* â”€â”€ App Select Dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .app-select-trigger {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8885,13 +8885,13 @@ button {
   background: var(--surface-muted) !important;
 }
 
-/* ── Overlay Dialog Card ────────────────────────────────────────── */
+/* â”€â”€ Overlay Dialog Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .overlay-dialog-card {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
 }
 
-/* ── Conflict Resolution Panel ──────────────────────────────────── */
+/* â”€â”€ Conflict Resolution Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .conflict-resolution-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8907,12 +8907,12 @@ button {
   border-bottom-color: var(--border-default) !important;
 }
 
-/* ── Splash screen ──────────────────────────────────────────────── */
+/* â”€â”€ Splash screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .splash-version {
   color: var(--text-subtle) !important;
 }
 
-/* ── P2P / Activity panel badges ────────────────────────────────── */
+/* â”€â”€ P2P / Activity panel badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .p2p-status-badge {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8931,7 +8931,7 @@ button {
   color: var(--status-danger-text) !important;
 }
 
-/* ── Embedded Terminal ──────────────────────────────────────────── */
+/* â”€â”€ Embedded Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .terminal-toolbar {
   background: var(--surface-elevated) !important;
   border-top-color: var(--border-default) !important;
@@ -8947,7 +8947,7 @@ button {
   background: var(--surface-accent) !important;
 }
 
-/* ── All-Tasks Panel ────────────────────────────────────────────── */
+/* â”€â”€ All-Tasks Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .all-tasks-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8966,13 +8966,13 @@ button {
   background: var(--surface-accent) !important;
 }
 
-/* ── Note List Panel ────────────────────────────────────────────── */
+/* â”€â”€ Note List Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .note-list-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
 }
 
-/* ── Export Dialog ──────────────────────────────────────────────── */
+/* â”€â”€ Export Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .workspace-export-dialog {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -8992,7 +8992,7 @@ button {
   background: var(--surface-accent-strong) !important;
   border-color: var(--accent-solid) !important;
 }
-/* ── Document Thumb Strip ───────────────────────────────────────── */
+/* â”€â”€ Document Thumb Strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .document-thumb-strip.is-empty {
   background: var(--surface-bg) !important;
   border-color: var(--border-default) !important;
@@ -9007,7 +9007,7 @@ button {
   color: var(--text-muted) !important;
 }
 
-/* ── Overlay Dialog Checkbox ────────────────────────────────────── */
+/* â”€â”€ Overlay Dialog Checkbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .overlay-dialog-empty {
   color: var(--text-muted) !important;
 }
@@ -9025,7 +9025,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── About Info Panel ───────────────────────────────────────────── */
+/* â”€â”€ About Info Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .about-copy {
   color: var(--text-muted) !important;
 }
@@ -9038,7 +9038,7 @@ button {
 :root[data-theme="dark"] .about-detail-row {
   color: var(--text-muted) !important;
 }
-/* ── Missing Text Color Overrides ───────────────────────────────── */
+/* â”€â”€ Missing Text Color Overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .toast-item.success {
   color: var(--status-success-text) !important;
 }
@@ -9093,7 +9093,7 @@ button {
   color: var(--text-strong) !important;
 }
 
-/* ── Conflict Resolution Panel ──────────────────────────────────── */
+/* â”€â”€ Conflict Resolution Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .conflict-resolution-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -9109,12 +9109,12 @@ button {
   border-bottom-color: var(--border-default) !important;
 }
 
-/* ── Splash screen ──────────────────────────────────────────────── */
+/* â”€â”€ Splash screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .splash-version {
   color: var(--text-subtle) !important;
 }
 
-/* ── P2P / Activity panel badges ────────────────────────────────── */
+/* â”€â”€ P2P / Activity panel badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .p2p-status-badge {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -9133,7 +9133,7 @@ button {
   color: var(--status-danger-text) !important;
 }
 
-/* ── Embedded Terminal ──────────────────────────────────────────── */
+/* â”€â”€ Embedded Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .terminal-toolbar {
   background: var(--surface-elevated) !important;
   border-top-color: var(--border-default) !important;
@@ -9149,7 +9149,7 @@ button {
   background: var(--surface-accent) !important;
 }
 
-/* ── All-Tasks Panel ────────────────────────────────────────────── */
+/* â”€â”€ All-Tasks Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .all-tasks-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -9168,13 +9168,13 @@ button {
   background: var(--surface-accent) !important;
 }
 
-/* ── Note List Panel ────────────────────────────────────────────── */
+/* â”€â”€ Note List Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .note-list-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
 }
 
-/* ── Export Dialog ──────────────────────────────────────────────── */
+/* â”€â”€ Export Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .workspace-export-dialog {
   background: var(--surface-elevated) !important;
   border-color: var(--border-default) !important;
@@ -9194,7 +9194,7 @@ button {
   background: var(--surface-accent-strong) !important;
   border-color: var(--accent-solid) !important;
 }
-/* ── Document Thumb Strip ───────────────────────────────────────── */
+/* â”€â”€ Document Thumb Strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .document-thumb-strip.is-empty {
   background: var(--surface-bg) !important;
   border-color: var(--border-default) !important;
@@ -9209,7 +9209,7 @@ button {
   color: var(--text-muted) !important;
 }
 
-/* ── Overlay Dialog Checkbox ────────────────────────────────────── */
+/* â”€â”€ Overlay Dialog Checkbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .overlay-dialog-empty {
   color: var(--text-muted) !important;
 }
@@ -9227,7 +9227,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── About Info Panel ───────────────────────────────────────────── */
+/* â”€â”€ About Info Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .about-copy {
   color: var(--text-muted) !important;
 }
@@ -9240,7 +9240,7 @@ button {
 :root[data-theme="dark"] .about-detail-row {
   color: var(--text-muted) !important;
 }
-/* ── Missing Text Color Overrides ───────────────────────────────── */
+/* â”€â”€ Missing Text Color Overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .toast-item.success {
   color: var(--status-success-text) !important;
 }
@@ -9304,7 +9304,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── Landing Page Text Colors ─────────────────────────────────────── */
+/* â”€â”€ Landing Page Text Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .landing-path {
   color: var(--text-muted) !important;
 }
@@ -9337,7 +9337,7 @@ button {
   color: var(--text-strong) !important;
 }
 
-/* ── Document Item Text Colors ─────────────────────────────────────── */
+/* â”€â”€ Document Item Text Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .document-kind-icon.folder,
 :root[data-theme="dark"] .document-kind-icon.note {
   color: var(--text-muted) !important;
@@ -9347,7 +9347,7 @@ button {
 :root[data-theme="dark"] .document-updated {
   color: var(--text-subtle) !important;
 }
-/* ── Additional Editor Panels ─────────────────────────────────────── */
+/* â”€â”€ Additional Editor Panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .detail-topbar {
   background: var(--surface-bg) !important;
   border-color: var(--border-default) !important;
@@ -9383,7 +9383,7 @@ button {
 :root[data-theme="dark"] .outline-item em {
   color: var(--text-muted) !important;
 }
-/* ── Dashboard Panel Text Colors ─────────────────────────────────────── */
+/* â”€â”€ Dashboard Panel Text Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .dashboard-panel-head h2 {
   color: var(--text-strong) !important;
 }
@@ -9413,7 +9413,7 @@ button {
   color: var(--text-strong) !important;
 }
 
-/* ── Note Editor Header Panels ─────────────────────────────────────── */
+/* â”€â”€ Note Editor Header Panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .detail-breadcrumb-link {
   background: var(--surface-bg) !important;
   border-color: var(--border-default) !important;
@@ -9509,7 +9509,7 @@ button {
   color: var(--text-subtle) !important;
 }
 
-/* ── Validation Badge Text Colors ─────────────────────────────────────── */
+/* â”€â”€ Validation Badge Text Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .validation-kind-badge.spelling,
 :root[data-theme="dark"] .validation-kind-badge.grammar,
 :root[data-theme="dark"] .validation-kind-badge.issue,
@@ -9569,5 +9569,5 @@ button {
 .document-card:nth-child(11), .document-table tbody tr:nth-child(11) { animation-delay: 0.22s; }
 .document-card:nth-child(12), .document-table tbody tr:nth-child(12) { animation-delay: 0.24s; }
 .document-card:nth-child(n+13), .document-table tbody tr:nth-child(n+13) { animation-delay: 0.26s; }
-. c o d e - b l o c k - m o d a l   {   w i d t h :   m i n ( 9 0 v w ,   8 0 0 p x )   ! i m p o r t a n t ;   }  
- 
+
+.code-block-modal { width: min(90vw, 800px) !important; }
