@@ -33,12 +33,17 @@ export function insertTextAtCursor(value, onChange, text, textareaRef) {
 
   // Set focus and selection after React updates
   setTimeout(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.selectionStart = start + text.length;
-      textareaRef.current.selectionEnd = start + text.length;
-      textareaRef.current.scrollTop = previousScrollTop;
-      textareaRef.current.scrollLeft = previousScrollLeft;
+    const el = textareaRef.current;
+    if (el) {
+      el.focus();
+      if (typeof el.setSelectionRange === "function") {
+        el.setSelectionRange(start + text.length, start + text.length);
+      } else {
+        el.selectionStart = start + text.length;
+        el.selectionEnd = start + text.length;
+      }
+      el.scrollTop = previousScrollTop;
+      el.scrollLeft = previousScrollLeft;
     }
   }, 0);
 }
@@ -64,8 +69,14 @@ export function applySnippet(
   onChange(next);
   requestAnimationFrame(() => {
     textarea.focus();
-    textarea.selectionStart = start + before.length;
-    textarea.selectionEnd = start + before.length + selected.length;
+    const newStart = start + before.length;
+    const newEnd = start + before.length + selected.length;
+    if (typeof textarea.setSelectionRange === "function") {
+      textarea.setSelectionRange(newStart, newEnd);
+    } else {
+      textarea.selectionStart = newStart;
+      textarea.selectionEnd = newEnd;
+    }
   });
 }
 

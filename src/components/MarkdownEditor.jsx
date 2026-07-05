@@ -6,6 +6,7 @@ import { Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
 import { createMediaMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertMediaFromFiles } from "../services/imageService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
+import { editorTheme } from "../utils/editorTheme";
 
 function getLineStartIndex(text, lineNumber) {
   const targetLine = Math.max(lineNumber, 1);
@@ -90,103 +91,6 @@ function buildFindMatchDecorations(matches, activeMatchIndex) {
   return builder.finish();
 }
 
-const editorTheme = EditorView.theme({
-  "&": {
-    height: "100%",
-    backgroundColor: "transparent",
-  },
-  ".cm-scroller": {
-    overflow: "auto",
-    fontFamily: '"Cascadia Code", Consolas, ui-monospace, monospace',
-    lineHeight: "1.55",
-  },
-  ".cm-content": {
-    whiteSpace: "pre-wrap",
-    overflowWrap: "anywhere",
-    fontFamily: '"Cascadia Code", Consolas, ui-monospace, monospace',
-    fontSize: "13px",
-    // Keep generous space below the last line so users can scroll past EOF like VS Code.
-    padding: "14px 0 max(72px, 45vh)",
-    minHeight: "100%",
-  },
-  ".cm-line": {
-    padding: "0 16px",
-  },
-  ".cm-gutters": {
-    backgroundColor: "#f7f9f8",
-    borderRight: "1px solid #e1e8e5",
-    color: "#8aa0a7",
-  },
-  ".cm-activeLine, .cm-activeLineGutter": {
-    backgroundColor: "rgba(26, 58, 62, 0.05)",
-  },
-  ".cm-issue-spelling": {
-    backgroundColor: "rgba(184, 108, 0, 0.18)",
-    boxShadow: "inset 0 -2px 0 rgba(184, 108, 0, 0.55)",
-    borderRadius: "4px",
-  },
-  ".cm-issue-other": {
-    backgroundColor: "rgba(142, 61, 90, 0.12)",
-    boxShadow: "inset 0 -2px 0 rgba(142, 61, 90, 0.45)",
-    borderRadius: "4px",
-  },
-  ".cm-ai-ghost-widget": {
-    margin: "8px 16px 0",
-    padding: "10px 12px",
-    border: "1px dashed #a8c2b8",
-    borderRadius: "10px",
-    backgroundColor: "rgba(239, 246, 242, 0.95)",
-    color: "#31535a",
-    display: "grid",
-    gap: "8px",
-  },
-  ".cm-ai-ghost-header": {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "8px",
-    fontSize: "11px",
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-  },
-  ".cm-ai-ghost-actions": {
-    display: "flex",
-    gap: "8px",
-    flexWrap: "wrap",
-  },
-  ".cm-ai-ghost-button": {
-    minHeight: "28px",
-    padding: "0 10px",
-    border: "1px solid #c6d6d1",
-    borderRadius: "999px",
-    backgroundColor: "#ffffff",
-    color: "#17343a",
-    fontSize: "11px",
-    fontWeight: "700",
-    cursor: "pointer",
-  },
-  ".cm-ai-ghost-button.reject": {
-    backgroundColor: "#fff6f1",
-    color: "#8a3a1e",
-  },
-  ".cm-ai-ghost-body": {
-    whiteSpace: "pre-wrap",
-    fontSize: "12px",
-    lineHeight: "1.5",
-    color: "#45666b",
-  },
-  ".cm-find-match": {
-    backgroundColor: "rgba(135, 182, 79, 0.08)",
-    boxShadow: "inset 0 0 0 1px rgba(99, 146, 44, 0.38)",
-    borderRadius: "4px",
-  },
-  ".cm-find-match-active": {
-    backgroundColor: "rgba(46, 125, 50, 0.18)",
-    boxShadow: "inset 0 0 0 2px rgba(35, 102, 39, 0.72)",
-    borderRadius: "4px",
-  },
-});
 
 class AIGhostSuggestionWidget extends WidgetType {
   constructor(text, onAccept, onReject) {

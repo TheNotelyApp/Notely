@@ -26,6 +26,7 @@ import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUtils";
 import { ImageCropModal } from "./ImageCropModal";
+import CodeBlockModal from "./CodeBlockModal";
 
 function canonicalPathKey(pathValue) {
   const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
@@ -208,6 +209,7 @@ export function MarkdownToolbar({
   const [screenCaptureLabel, setScreenCaptureLabel] = useState("");
   const [screenCaptureBusy, setScreenCaptureBusy] = useState(false);
   const [screenCaptureSaving, setScreenCaptureSaving] = useState(false);
+  const [isCodeModalOpen, setCodeModalOpen] = useState(false);
 
   function preserveEditorViewportAfterChange() {
     const editor = textareaRef?.current;
@@ -336,6 +338,11 @@ export function MarkdownToolbar({
     } finally {
       event.target.value = "";
     }
+  };
+
+  const handleInsertCodeBlock = ({ language, code }) => {
+    const markdown = `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
+    insertTextAtCursor(value, onChange, markdown, textareaRef);
   };
 
   const snippets = [
@@ -884,9 +891,13 @@ export function MarkdownToolbar({
       {snippets.map((snippet) => (
         <button
           key={snippet.key}
-          onClick={() =>
-            applySnippet(value, onChange, textareaRef, snippet.before, snippet.after, snippet.placeholder)
-          }
+          onClick={() => {
+            if (snippet.key === "code") {
+              setCodeModalOpen(true);
+            } else {
+              applySnippet(value, onChange, textareaRef, snippet.before, snippet.after, snippet.placeholder);
+            }
+          }}
           data-tooltip={snippet.title}
         >
           <snippet.icon size={18} />
@@ -1415,6 +1426,11 @@ export function MarkdownToolbar({
         saving={screenCaptureSaving}
         onClose={closeScreenCapture}
         onSave={(editedDataUrl) => saveScreenCapture(editedDataUrl)}
+      />
+      <CodeBlockModal
+        open={isCodeModalOpen}
+        onClose={() => setCodeModalOpen(false)}
+        onSave={handleInsertCodeBlock}
       />
     </>
   );

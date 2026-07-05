@@ -1,0 +1,44 @@
+/* src/components/CodeBlockModal.css */
+.code-block-modal-card {
+  width: 70vw;
+  height: 70vh;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-block-editor-container {
+  border: 1px solid var(--border-default, #d1d5db);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-select-group::-webkit-scrollbar {
+  width: 6px;
+}
+.app-select-group::-webkit-scrollbar-track {
+  background: transparent;
+}
+.app-select-group::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 4px;
+}
+.app-select-group::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.code-block-editor-container:focus-within {
+  border-color: var(--brand-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+:root[data-theme="dark"] .code-block-editor-container {
+  border-color: var(--border-default, #444);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
