@@ -524,7 +524,7 @@ describe("DocumentDetail popup and panel toggles", () => {
 
   it("keeps remove action out of document topbar", () => {
     const view = renderDetail(baseProps);
-    const removeButton = view.host.querySelector('button[title="Move note to removed folder"]');
+    const removeButton = view.host.querySelector('button[data-tooltip="Move note to removed folder"]');
 
     expect(removeButton).toBeFalsy();
 
@@ -571,7 +571,7 @@ describe("DocumentDetail popup and panel toggles", () => {
 
     const banner = view.host.querySelector(".mode-contract-banner");
     expect(banner?.textContent).toContain("Focus mode is active");
-    expect(view.host.querySelector('button[title="Exit focus mode"]')).toBeTruthy();
+    expect(view.host.querySelector('button[data-tooltip="Exit focus mode"]')).toBeTruthy();
 
     view.unmount();
   });
@@ -586,7 +586,7 @@ describe("DocumentDetail popup and panel toggles", () => {
 
     const banner = view.host.querySelector(".mode-contract-banner");
     expect(banner).toBeFalsy();
-    expect(view.host.querySelector('button[title="Show outline panel"]')).toBeFalsy();
+    expect(view.host.querySelector('button[data-tooltip="Show outline panel"]')).toBeFalsy();
 
     view.unmount();
   });
@@ -687,7 +687,7 @@ describe("DocumentDetail popup and panel toggles", () => {
       onRenameTitle,
     });
 
-    const toggleDetails = view.host.querySelector('button[title="Toggle note metadata"]');
+    const toggleDetails = view.host.querySelector('button[data-tooltip="Toggle note metadata"]');
     expect(toggleDetails).toBeTruthy();
     act(() => {
       toggleDetails.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -718,7 +718,7 @@ describe("DocumentDetail popup and panel toggles", () => {
       onRenameTitle,
     });
 
-    const toggleDetails = view.host.querySelector('button[title="Toggle note metadata"]');
+    const toggleDetails = view.host.querySelector('button[data-tooltip="Toggle note metadata"]');
     act(() => {
       toggleDetails.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -749,7 +749,7 @@ describe("DocumentDetail popup and panel toggles", () => {
       onRenameTitle,
     });
 
-    const toggleDetails = view.host.querySelector('button[title="Toggle note metadata"]');
+    const toggleDetails = view.host.querySelector('button[data-tooltip="Toggle note metadata"]');
     act(() => {
       toggleDetails.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -778,7 +778,7 @@ describe("DocumentDetail popup and panel toggles", () => {
       onRenameTitle,
     });
 
-    const toggleDetails = view.host.querySelector('button[title="Toggle note metadata"]');
+    const toggleDetails = view.host.querySelector('button[data-tooltip="Toggle note metadata"]');
     act(() => {
       toggleDetails.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });

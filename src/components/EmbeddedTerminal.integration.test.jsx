@@ -149,7 +149,7 @@ describe("EmbeddedTerminal shell behavior", () => {
     const view = renderTerminal({ cwd: "C:/notes", shellPreference: "cmd", onClose: vi.fn() });
     await flushPromises();
 
-    const bashButton = view.host.querySelector('button[title="Use Bash shell"]');
+    const bashButton = view.host.querySelector('button[data-tooltip="Use Bash shell"]');
     expect(bashButton).toBeTruthy();
 
     act(() => {

@@ -75,7 +75,7 @@ describe("MarkdownToolbar validation panel interactions", () => {
       onJumpToLine,
     });
 
-    const validateButton = view.host.querySelector('button[title="Validate markdown syntax"]');
+    const validateButton = view.host.querySelector('button[data-tooltip="Validate markdown syntax"]');
     expect(validateButton).toBeTruthy();
 
     act(() => {
@@ -131,8 +131,8 @@ describe("MarkdownToolbar validation panel interactions", () => {
       onJumpToLine: vi.fn(),
     });
 
-    const undoButton = view.host.querySelector('button[title="Undo (Ctrl/Cmd+Z)"]');
-    const redoButton = view.host.querySelector('button[title="Redo (Ctrl/Cmd+Y)"]');
+    const undoButton = view.host.querySelector('button[data-tooltip="Undo (Ctrl/Cmd+Z)"]');
+    const redoButton = view.host.querySelector('button[data-tooltip="Redo (Ctrl/Cmd+Y)"]');
 
     expect(undoButton).toBeTruthy();
     expect(redoButton).toBeTruthy();
@@ -453,7 +453,7 @@ describe("MarkdownToolbar validation panel interactions", () => {
       onJumpToLine: vi.fn(),
     });
 
-    const openWorkspaceInsert = view.host.querySelector('button[title="Insert workspace asset"]');
+    const openWorkspaceInsert = view.host.querySelector('button[data-tooltip="Insert workspace asset"]');
     expect(openWorkspaceInsert).toBeTruthy();
 
     await act(async () => {
@@ -530,7 +530,7 @@ describe("MarkdownToolbar validation panel interactions", () => {
       onJumpToLine: vi.fn(),
     });
 
-    const openDiagramButton = view.host.querySelector('button[title="Insert diagram"]');
+    const openDiagramButton = view.host.querySelector('button[data-tooltip="Insert diagram"]');
     expect(openDiagramButton).toBeTruthy();
 
     act(() => {
