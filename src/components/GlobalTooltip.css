@@ -1,0 +1,43 @@
+.global-tooltip {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  background-color: var(--bg-tooltip, #333333);
+  color: var(--text-tooltip, #ffffff);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transform: translate(-50%, -10px);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+:root[data-theme="dark"] .global-tooltip {
+  background-color: rgba(30, 30, 30, 0.9);
+  color: #eeeeee;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="light"] .global-tooltip {
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #111111;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.global-tooltip.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.global-tooltip.placement-top {
+  transform: translate(-50%, 10px);
+}
+
+.global-tooltip.placement-top.visible {
+  transform: translate(-50%, 0);
+}

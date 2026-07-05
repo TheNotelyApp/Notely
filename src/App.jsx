@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DashboardPanels } from "./components/DashboardPanels";
 import { LandingListControls } from "./components/LandingListControls";
 import { OverlayDialog } from "./components/OverlayDialog";
+import GlobalTooltip from "./components/GlobalTooltip";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
@@ -2041,7 +2042,7 @@ export default function App() {
               className="terminal-status-button"
               type="button"
               onClick={() => setShowTerminal(true)}
-              title="Open terminal"
+              data-tooltip="Open terminal"
             >
               <Terminal size={16} />
               <strong>Terminal</strong>
@@ -2049,13 +2050,13 @@ export default function App() {
             </button>
           </div>
           <div className="terminal-status-right" aria-label="Terminal metadata">
-            <span className="terminal-meta-pill" title="Current workspace scope">
+            <span className="terminal-meta-pill" data-tooltip="Current workspace scope">
               {activeProject?.isRoot ? "Root" : activeProject?.name || "Project"}
             </span>
-            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot ? "" : "warn"}`} title={gitWorkspaceMeta.isGitRoot ? "Workspace Git branch" : "Workspace is not a Git root"}>
+            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot ? "" : "warn"}`} data-tooltip={gitWorkspaceMeta.isGitRoot ? "Workspace Git branch" : "Workspace is not a Git root"}>
               {gitWorkspaceMeta.isGitRoot ? `Git: ${gitWorkspaceMeta.branch || "(unknown)"}` : "Git: not root"}
             </span>
-            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot && !gitWorkspaceMeta.gitignoreHasNotesApp ? "warn" : ""}`} title=".notes-app gitignore status">
+            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot && !gitWorkspaceMeta.gitignoreHasNotesApp ? "warn" : ""}`} data-tooltip=".notes-app gitignore status">
               {gitWorkspaceMeta.isGitRoot
                 ? (gitWorkspaceMeta.gitignoreHasNotesApp ? ".notes-app ignored" : ".notes-app tracked")
                 : ".notes-app n/a"}
@@ -2063,7 +2064,7 @@ export default function App() {
             <button
               className={`terminal-meta-pill terminal-meta-toggle ${gitWorkspaceMeta.autoIgnoreMetadataInGit ? "active" : ""}`}
               type="button"
-              title="Toggle auto-ignore of .notes-app in workspace .gitignore"
+              data-tooltip="Toggle auto-ignore of .notes-app in workspace .gitignore"
               onClick={() => {
                 void handleToggleAutoIgnoreGitMetadata();
               }}
@@ -2072,28 +2073,28 @@ export default function App() {
             </button>
             {current ? (
               <>
-                <span className="terminal-meta-pill" title="Editor mode and active tab">
+                <span className="terminal-meta-pill" data-tooltip="Editor mode and active tab">
                   {mode === "split" ? "Split" : mode === "preview" ? "Preview" : "Edit"} | {activeTab === "raw" ? "Raw" : "Formal"}
                 </span>
-                <span className={`terminal-meta-pill ${dirty ? "warn" : ""}`} title="Document save status">
+                <span className={`terminal-meta-pill ${dirty ? "warn" : ""}`} data-tooltip="Document save status">
                   {dirty ? "Unsaved" : "Saved"}
                 </span>
                 {documentStats ? (
                   <>
-                    <span className="terminal-meta-pill" title="Word count for active tab">
+                    <span className="terminal-meta-pill" data-tooltip="Word count for active tab">
                       {documentStats.wordCount} words
                     </span>
-                    <span className="terminal-meta-pill" title="Line count for active tab">
+                    <span className="terminal-meta-pill" data-tooltip="Line count for active tab">
                       {documentStats.lineCount} lines
                     </span>
-                    <span className="terminal-meta-pill" title="Estimated reading time">
+                    <span className="terminal-meta-pill" data-tooltip="Estimated reading time">
                       ~{documentStats.readMinutes} min read
                     </span>
                   </>
                 ) : null}
               </>
             ) : (
-              <span className="terminal-meta-pill" title="Current notes in list">
+              <span className="terminal-meta-pill" data-tooltip="Current notes in list">
                 {documents.length} notes
               </span>
             )}
@@ -2165,7 +2166,7 @@ export default function App() {
                             className={`landing-path-segment${isLast ? " active" : ""}`}
                             type="button"
                             disabled={isLast}
-                            title={segment.label}
+                            data-tooltip={segment.label}
                             onClick={() => {
                               if (!isLast) {
                                 void handleLandingNavigateTo(segment.path);
@@ -2416,7 +2417,7 @@ export default function App() {
                       className="overlay-dialog-recent-button"
                       onClick={() => handleOpenRecentWorkspace(workspacePath)}
                       disabled={savingNotesFolder}
-                      title={workspacePath}
+                      data-tooltip={workspacePath}
                       type="button"
                     >
                       {workspacePath}
@@ -2658,7 +2659,7 @@ export default function App() {
                     {conflictCenterData.conflicts.map((entry) => (
                       <tr key={entry.id}>
                         <td className="mono-cell">{entry.relativePath || entry.filePath}</td>
-                        <td className="mono-cell" title={entry.conflictPath}>
+                        <td className="mono-cell" data-tooltip={entry.conflictPath}>
                           {entry.conflictPath.split(/[\\/]/).pop()}
                         </td>
                         <td>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "Unknown"}</td>
@@ -2852,6 +2853,7 @@ export default function App() {
         </button>
       )}
 
+      <GlobalTooltip />
     </div>
   );
 }
