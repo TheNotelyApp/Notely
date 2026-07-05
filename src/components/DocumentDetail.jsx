@@ -1112,7 +1112,8 @@ export function DocumentDetail({
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes, document.cleansed, activeTab, savePreservingEditorViewport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes, document.cleansed, activeTab]);
 
   useEffect(() => {
     const total = findMatches.length;
