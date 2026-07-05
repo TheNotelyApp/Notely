@@ -37,7 +37,11 @@ echo "Updated app-version.json"
 sed -i -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"${NEW_VERSION}\"/" package.json
 echo "Updated package.json"
 
-# 3. Git Add
+# 3. Update README.md version badge
+sed -i -E "s/version-v[0-9]+\.[0-9]+\.[0-9]+/version-v${NEW_VERSION}/" README.md
+echo "Updated README.md"
+
+# 4. Git Add
 git add .
 
 # 4. Git Commit
