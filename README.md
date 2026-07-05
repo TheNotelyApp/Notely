@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="build/icon.png" width="128" alt="Notely Logo" />
+  <img src="assets/icon.png" width="128" alt="Notely Logo" />
   <h1>Notely</h1>
 
   <a href="https://github.com/WGLabz/Notely/actions">
