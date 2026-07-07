@@ -28,6 +28,7 @@ import {
   CheckSquare,
   Square,
   Type,
+  Globe,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppIconButton from "./AppIconButton";

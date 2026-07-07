@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --app-viewport-height: 100vh;
   --focus-ring-color: #2f5d62;
   --focus-ring-offset: 2px;
@@ -6517,7 +6517,7 @@ button {
 
 .preview {
   overflow: auto;
-  padding: 14px 18px;
+  padding: 14px 18px max(72px, 45vh);
   background: #fffefd;
   font-size: 14px;
   line-height: 1.55;
@@ -6525,8 +6525,44 @@ button {
 
 .preview h1,
 .preview h2,
-.preview h3 {
+.preview h3,
+.preview h4,
+.preview h5,
+.preview h6 {
   line-height: 1.25;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  color: var(--text-strong, #17373f);
+}
+
+.preview h1 {
+  font-size: 2em;
+  border-bottom: 1px solid var(--border-soft, #d8dfdc);
+  padding-bottom: 0.3em;
+}
+
+.preview h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--border-soft, #d8dfdc);
+  padding-bottom: 0.3em;
+}
+
+.preview h3 {
+  font-size: 1.25em;
+}
+
+.preview h4 {
+  font-size: 1em;
+}
+
+.preview h5 {
+  font-size: 0.875em;
+}
+
+.preview h6 {
+  font-size: 0.85em;
+  color: var(--text-muted, #57606a);
 }
 
 .preview pre {
