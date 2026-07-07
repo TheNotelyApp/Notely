@@ -108,19 +108,18 @@ export function EditorPane({
     const editorElement = textareaRef?.current;
     const previewElement = previewRef.current;
     if (!editorElement || !previewElement) return undefined;
-    let syncingSource = null;
+    let editorInteractionTime = 1;
+    let previewInteractionTime = 0;
     let lastScrollSource = "editor";
     let editorRaf = 0;
     let previewRaf = 0;
     let resizeRaf = 0;
     let resizeObserver = null;
     let mutationObserver = null;
+    let cachedAnchors = null;
 
-    const releaseSyncLock = () => {
-      requestAnimationFrame(() => {
-        syncingSource = null;
-      });
-    };
+    const markEditorActive = () => { editorInteractionTime = Date.now(); };
+    const markPreviewActive = () => { previewInteractionTime = Date.now(); };
 
     const getScrollRatio = (element) => {
       const scrollable = Math.max(0, element.scrollHeight - element.clientHeight);
@@ -132,96 +131,132 @@ export function EditorPane({
       element.scrollTop = Math.max(0, Math.min(Number(ratio) || 0, 1)) * scrollable;
     };
 
-    const getEditorTopLine = () => {
-      if (typeof editorElement.getTopLine === "function") {
-        return editorElement.getTopLine();
+    const getEditorLineTop = (lineNumber) => {
+      if (typeof editorElement.getLineTop === "function") {
+        return editorElement.getLineTop(lineNumber);
       }
       const lineHeight = typeof editorElement.getLineHeight === "function"
         ? editorElement.getLineHeight()
         : 20;
-      return Math.max(1, Math.floor(editorElement.scrollTop / Math.max(lineHeight, 1)) + 1);
+      return Math.max(0, (Math.max(Number(lineNumber) || 1, 1) - 1) * lineHeight);
     };
 
-    const scrollEditorToLine = (lineNumber) => {
-      if (typeof editorElement.scrollToLine === "function") {
-        editorElement.scrollToLine(lineNumber);
-        return;
-      }
-      const lineHeight = typeof editorElement.getLineHeight === "function"
-        ? editorElement.getLineHeight()
-        : 20;
-      editorElement.scrollTop = Math.max(0, (Math.max(Number(lineNumber) || 1, 1) - 1) * lineHeight);
-    };
-
-    const getPreviewAnchors = () => Array.from(previewElement.querySelectorAll("[data-source-line]"))
-      .map((element) => ({
-        element,
-        line: Number(element.getAttribute("data-source-line")) || 0,
-      }))
-      .filter((item) => item.line > 0)
-      .sort((a, b) => a.line - b.line);
-
-    const findPreviewAnchorForLine = (lineNumber) => {
-      const anchors = getPreviewAnchors();
-      if (!anchors.length) return null;
-      let selected = anchors[0];
-      for (const anchor of anchors) {
-        if (anchor.line > lineNumber) break;
-        selected = anchor;
-      }
-      return selected;
-    };
-
-    const findPreviewAnchorAtTop = () => {
-      const anchors = getPreviewAnchors();
-      if (!anchors.length) return null;
+    const updateAnchors = () => {
+      if (!previewElement || !editorElement) return;
+      const elements = Array.from(previewElement.querySelectorAll("[data-source-line]"));
+      const map = new Map();
       const containerTop = previewElement.getBoundingClientRect().top;
-      let selected = anchors[0];
-      for (const anchor of anchors) {
-        const top = anchor.element.getBoundingClientRect().top - containerTop + previewElement.scrollTop;
-        if (top > previewElement.scrollTop + 8) break;
-        selected = anchor;
+      const currentScroll = previewElement.scrollTop;
+      
+      for (const element of elements) {
+        const line = Number(element.getAttribute("data-source-line")) || 0;
+        if (line > 0 && !map.has(line)) {
+          const previewTop = element.getBoundingClientRect().top - containerTop + currentScroll;
+          map.set(line, { element, line, previewTop });
+        }
       }
-      return selected;
+      cachedAnchors = Array.from(map.values()).sort((a, b) => a.line - b.line);
+    };
+
+    const getPreviewAnchors = () => {
+      if (!cachedAnchors) updateAnchors();
+      return cachedAnchors;
     };
 
     const syncPreviewFromEditor = () => {
-      syncingSource = "editor";
-      const anchor = findPreviewAnchorForLine(getEditorTopLine());
-      if (anchor) {
-        const containerTop = previewElement.getBoundingClientRect().top;
-        const anchorTop = anchor.element.getBoundingClientRect().top - containerTop + previewElement.scrollTop;
-        previewElement.scrollTop = Math.max(0, anchorTop - 8);
-      } else {
+      const anchors = getPreviewAnchors();
+      if (!anchors.length) {
         setScrollRatio(previewElement, getScrollRatio(editorElement));
+        return;
       }
-      releaseSyncLock();
+
+      const editorScroll = editorElement.scrollTop;
+      
+      let prevAnchor = null;
+      let nextAnchor = null;
+      for (const anchor of anchors) {
+        const lineTop = getEditorLineTop(anchor.line);
+        if (lineTop <= editorScroll) {
+          prevAnchor = { ...anchor, editorTop: lineTop };
+        } else {
+          nextAnchor = { ...anchor, editorTop: lineTop };
+          break;
+        }
+      }
+
+      if (!prevAnchor && nextAnchor) {
+        const ratio = nextAnchor.editorTop > 0 ? editorScroll / nextAnchor.editorTop : 0;
+        previewElement.scrollTop = Math.max(0, ratio * nextAnchor.previewTop);
+      } else if (prevAnchor && !nextAnchor) {
+        const editorMaxScroll = Math.max(0, editorElement.scrollHeight - editorElement.clientHeight);
+        const previewMaxScroll = Math.max(0, previewElement.scrollHeight - previewElement.clientHeight);
+        const remainingEditorScroll = Math.max(0, editorMaxScroll - prevAnchor.editorTop);
+        const remainingPreviewScroll = Math.max(0, previewMaxScroll - prevAnchor.previewTop);
+        const ratio = remainingEditorScroll > 0 ? Math.min(1, Math.max(0, editorScroll - prevAnchor.editorTop) / remainingEditorScroll) : (editorScroll >= editorMaxScroll ? 1 : 0);
+        previewElement.scrollTop = prevAnchor.previewTop + ratio * remainingPreviewScroll;
+      } else if (prevAnchor && nextAnchor) {
+        let ratio = 0;
+        const editorDiff = nextAnchor.editorTop - prevAnchor.editorTop;
+        if (editorDiff > 0) {
+          ratio = (editorScroll - prevAnchor.editorTop) / editorDiff;
+        }
+        previewElement.scrollTop = prevAnchor.previewTop + ratio * (nextAnchor.previewTop - prevAnchor.previewTop);
+      }
     };
 
     const syncEditorFromPreview = () => {
-      syncingSource = "preview";
-      const anchor = findPreviewAnchorAtTop();
-      if (anchor) {
-        scrollEditorToLine(anchor.line);
-      } else {
+      const anchors = getPreviewAnchors();
+      if (!anchors.length) {
         setScrollRatio(editorElement, getScrollRatio(previewElement));
+        return;
       }
-      releaseSyncLock();
+
+      const previewScroll = previewElement.scrollTop;
+
+      let prevAnchor = null;
+      let nextAnchor = null;
+      for (const anchor of anchors) {
+        if (anchor.previewTop <= previewScroll) {
+          prevAnchor = anchor;
+        } else {
+          nextAnchor = anchor;
+          break;
+        }
+      }
+
+      if (!prevAnchor && nextAnchor) {
+        const ratio = nextAnchor.previewTop > 0 ? previewScroll / nextAnchor.previewTop : 0;
+        const nextEditorTop = getEditorLineTop(nextAnchor.line);
+        editorElement.scrollTop = Math.max(0, ratio * nextEditorTop);
+      } else if (prevAnchor && !nextAnchor) {
+        const prevEditorTop = getEditorLineTop(prevAnchor.line);
+        const editorMaxScroll = Math.max(0, editorElement.scrollHeight - editorElement.clientHeight);
+        const previewMaxScroll = Math.max(0, previewElement.scrollHeight - previewElement.clientHeight);
+        const remainingPreviewScroll = Math.max(0, previewMaxScroll - prevAnchor.previewTop);
+        const remainingEditorScroll = Math.max(0, editorMaxScroll - prevEditorTop);
+        const ratio = remainingPreviewScroll > 0 ? Math.min(1, Math.max(0, previewScroll - prevAnchor.previewTop) / remainingPreviewScroll) : (previewScroll >= previewMaxScroll ? 1 : 0);
+        editorElement.scrollTop = prevEditorTop + ratio * remainingEditorScroll;
+      } else if (prevAnchor && nextAnchor) {
+        let ratio = 0;
+        const previewDiff = nextAnchor.previewTop - prevAnchor.previewTop;
+        if (previewDiff > 0) {
+          ratio = (previewScroll - prevAnchor.previewTop) / previewDiff;
+        }
+        const prevEditorTop = getEditorLineTop(prevAnchor.line);
+        const nextEditorTop = getEditorLineTop(nextAnchor.line);
+        editorElement.scrollTop = prevEditorTop + ratio * (nextEditorTop - prevEditorTop);
+      }
     };
 
     const handleEditorScroll = () => {
-      if (syncingSource === "preview") {
-        return;
-      }
+      if (previewInteractionTime > editorInteractionTime) return;
       lastScrollSource = "editor";
       cancelAnimationFrame(editorRaf);
       editorRaf = requestAnimationFrame(syncPreviewFromEditor);
     };
 
     const handlePreviewScroll = () => {
-      if (syncingSource === "editor") {
-        return;
-      }
+      if (editorInteractionTime > previewInteractionTime) return;
       lastScrollSource = "preview";
       cancelAnimationFrame(previewRaf);
       previewRaf = requestAnimationFrame(syncEditorFromPreview);
@@ -260,8 +295,18 @@ export function EditorPane({
 
     previewElement.addEventListener("load", syncAfterPreviewResize, true);
 
+    editorElement.addEventListener("pointerdown", markEditorActive);
+    editorElement.addEventListener("touchstart", markEditorActive);
+    editorElement.addEventListener("wheel", markEditorActive);
+    editorElement.addEventListener("keydown", markEditorActive);
     editorElement.addEventListener("scroll", handleEditorScroll, { passive: true });
+
+    previewElement.addEventListener("pointerdown", markPreviewActive);
+    previewElement.addEventListener("touchstart", markPreviewActive);
+    previewElement.addEventListener("wheel", markPreviewActive);
+    previewElement.addEventListener("keydown", markPreviewActive);
     previewElement.addEventListener("scroll", handlePreviewScroll, { passive: true });
+
     syncPreviewFromEditor();
 
     return () => {
@@ -271,7 +316,17 @@ export function EditorPane({
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
       previewElement.removeEventListener("load", syncAfterPreviewResize, true);
+      
+      editorElement.removeEventListener("pointerdown", markEditorActive);
+      editorElement.removeEventListener("touchstart", markEditorActive);
+      editorElement.removeEventListener("wheel", markEditorActive);
+      editorElement.removeEventListener("keydown", markEditorActive);
       editorElement.removeEventListener("scroll", handleEditorScroll);
+
+      previewElement.removeEventListener("pointerdown", markPreviewActive);
+      previewElement.removeEventListener("touchstart", markPreviewActive);
+      previewElement.removeEventListener("wheel", markPreviewActive);
+      previewElement.removeEventListener("keydown", markPreviewActive);
       previewElement.removeEventListener("scroll", handlePreviewScroll);
     };
   }, [mode, textareaRef, editorReadyTick, scrollSyncEnabled]);

@@ -230,6 +230,12 @@ function createEditorAdapter(view) {
       const block = view.lineBlockAt(line.from);
       view.scrollDOM.scrollTop = block.top;
     },
+    getLineTop(lineNumber) {
+      const safeLine = Math.max(1, Math.min(Number(lineNumber) || 1, view.state.doc.lines));
+      const line = view.state.doc.line(safeLine);
+      const block = view.lineBlockAt(line.from);
+      return block.top;
+    },
     addEventListener(type, listener, options) {
       view.scrollDOM.addEventListener(type, listener, options);
     },
