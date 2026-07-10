@@ -832,6 +832,46 @@ export function DocumentDetail({
     fallbackKey: AUTOSAVE_PREF_KEY,
   });
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState(0);
+  const [changedOnDisk, setChangedOnDisk] = useState(false);
+
+  useEffect(() => {
+    setChangedOnDisk(false);
+  }, [document.filePath, document.rawNotes, document.cleansed]);
+
+  useEffect(() => {
+    if (typeof window.notesApi?.onDocumentChangedOnDisk !== "function") return undefined;
+    const unsubscribe = window.notesApi.onDocumentChangedOnDisk((payload) => {
+      if (payload && payload.filePath === document.filePath) {
+        setChangedOnDisk(true);
+        setAutosaveEnabled(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [document.filePath, setAutosaveEnabled]);
+
+  useEffect(() => {
+    const currentPath = document.filePath;
+    if (typeof window.notesApi?.startWatching === "function") {
+      window.notesApi.startWatching(currentPath);
+    }
+    return () => {
+      if (typeof window.notesApi?.stopWatching === "function") {
+        window.notesApi.stopWatching(currentPath);
+      }
+    };
+  }, [document.filePath]);
+
+  const handleReloadFromDisk = async () => {
+    try {
+      if (typeof onOpenDocument === "function") {
+        await onOpenDocument(document.filePath);
+        setChangedOnDisk(false);
+        onNotify?.("Note reloaded from disk.", "success");
+      }
+    } catch (err) {
+      onNotify?.(err?.message || "Failed to reload document.", "error");
+    }
+  };
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showReplaceControls, setShowReplaceControls] = useState(false);
   const [findQuery, setFindQuery] = useState("");
@@ -1339,6 +1379,7 @@ export function DocumentDetail({
   };
 
   const handleManualSave = async () => {
+    if (changedOnDisk) return;
     try {
       await savePreservingEditorViewport({ reason: "manual-save", silent: true });
       onNotify?.("Note saved.", "success");
@@ -1891,7 +1932,45 @@ export function DocumentDetail({
         onTagsKeyDown={handleTagsKeyDown}
       />
 
-      <div className={`workspace ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}>
+      {changedOnDisk && (
+        <div className="disk-change-banner" role="alert" style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          padding: "10px 14px",
+          margin: "0 18px 12px",
+          borderRadius: "8px",
+          border: "1px solid #9b2f2f",
+          backgroundColor: "#fff1f0",
+          color: "#7d2020",
+          fontSize: "13.5px",
+          fontWeight: "550",
+          boxShadow: "0 2px 8px rgba(155, 47, 47, 0.12)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "16px" }}>⚠️</span>
+            <span>Content has been changed on disk by another tool. Autosave is disabled.</span>
+          </div>
+          <AppButton variant="primary" size="small" onClick={handleReloadFromDisk}>
+            Reload content from disk
+          </AppButton>
+        </div>
+      )}
+
+      <div 
+        className={`workspace ${changedOnDisk ? "workspace-disabled" : ""} ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}
+        onKeyDown={(e) => {
+          if (changedOnDisk) {
+            // Let Ctrl+Shift+R pass through, block all other shortcuts/keys
+            const isReload = (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "r";
+            if (!isReload) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }
+        }}
+      >
         <main className="editor-panel">
           {!isFocusMode && (
           <div className="tab-row">

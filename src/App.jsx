@@ -391,6 +391,22 @@ export default function App() {
     handleLandingNavigateTo,
   } = useDocumentManager({ notify });
 
+  const [activeDocumentChangedOnDisk, setActiveDocumentChangedOnDisk] = useState(false);
+
+  useEffect(() => {
+    setActiveDocumentChangedOnDisk(false);
+  }, [current?.filePath, current?.rawNotes, current?.cleansed]);
+
+  useEffect(() => {
+    if (typeof window.notesApi?.onDocumentChangedOnDisk !== "function") return undefined;
+    const unsubscribe = window.notesApi.onDocumentChangedOnDisk((payload) => {
+      if (payload && current && payload.filePath === current.filePath) {
+        setActiveDocumentChangedOnDisk(true);
+      }
+    });
+    return () => unsubscribe();
+  }, [current?.filePath]);
+
   const workspaceStorageScope = useMemo(() => {
     const rawWorkspaceId = activeProject?.slug || activeProject?.rootPath || notesFolderPath || "default";
     return encodeURIComponent(String(rawWorkspaceId));
@@ -916,7 +932,7 @@ export default function App() {
       embeddedMarkdownMode,
       screenCaptureMode,
       themePreference,
-      dirty,
+      dirty: dirty && !activeDocumentChangedOnDisk,
       terminalOpen: showTerminal,
       terminalShell: terminalShellPreference,
       outlineEnabled,
@@ -926,7 +942,7 @@ export default function App() {
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths]);
 
   useEffect(() => {
     return onMenuAction((action) => {
@@ -1121,7 +1137,9 @@ export default function App() {
       }
 
       if (action === "save-document") {
-        saveDocument();
+        if (!activeDocumentChangedOnDisk) {
+          saveDocument();
+        }
         return;
       }
 

@@ -6829,7 +6829,7 @@ button {
 
 .preview .markdown-image-frame {
   position: relative;
-  display: inline-block;
+  display: block;
   max-width: 100%;
   margin: 12px 0;
   vertical-align: top;
@@ -9658,4 +9658,10 @@ button {
   background: rgba(46, 125, 50, 0.2);
   color: #81c784;
   border-color: rgba(129, 199, 132, 0.3);
+}
+
+.workspace.workspace-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  filter: grayscale(10%);
 }

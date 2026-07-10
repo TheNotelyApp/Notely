@@ -29,7 +29,11 @@ function createWindowLifecycle(deps) {
       path.join(process.cwd(), "build", "icon.ico"),
       path.join(process.cwd(), "build", "icon.png"),
       path.join(projectRoot, "build", "icon.ico"),
-      path.join(projectRoot, "build", "icon.png")
+      path.join(projectRoot, "build", "icon.png"),
+      path.join(projectRoot, "assets", "icon.png"),
+      path.join(projectRoot, "assets", "icon.ico"),
+      path.join(process.cwd(), "assets", "icon.png"),
+      path.join(process.cwd(), "assets", "icon.ico")
     ];
     return iconCandidates.find((candidate) => candidate && fs.existsSync(candidate));
   }
@@ -39,7 +43,9 @@ function createWindowLifecycle(deps) {
       const iconCandidates = [
         path.join(process.resourcesPath || "", "icon.png"),
         path.join(process.cwd(), "build", "icon.png"),
-        path.join(projectRoot, "build", "icon.png")
+        path.join(projectRoot, "build", "icon.png"),
+        path.join(projectRoot, "assets", "icon.png"),
+        path.join(process.cwd(), "assets", "icon.png")
       ];
       const iconPath = iconCandidates.find(p => p && fs.existsSync(p));
       if (iconPath) {

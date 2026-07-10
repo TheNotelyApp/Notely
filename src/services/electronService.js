@@ -518,6 +518,22 @@ export async function readDocument(filePath) {
   return api.readDocument(filePath);
 }
 
+export function onDocumentChangedOnDisk(callback) {
+  const api = getNotesApi();
+  if (typeof api.onDocumentChangedOnDisk !== "function") {
+    return () => {};
+  }
+  return api.onDocumentChangedOnDisk(callback);
+}
+
+export async function stopWatching() {
+  const api = getNotesApi();
+  if (typeof api.stopWatching !== "function") {
+    return;
+  }
+  return api.stopWatching();
+}
+
 export async function markDocumentOpened(filePath) {
   const api = getNotesApi();
   if (typeof api.markDocumentOpened !== "function") {

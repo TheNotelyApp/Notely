@@ -91,6 +91,14 @@ contextBridge.exposeInMainWorld("notesApi", {
   markDocumentOpened: (filePath) => ipcRenderer.invoke("documents:mark-opened", filePath),
   readMarkdownSource: (filePath) => ipcRenderer.invoke("documents:read-markdown-source", filePath),
   saveDocument: (payload) => ipcRenderer.invoke("documents:save", payload),
+  startWatching: (filePath) => ipcRenderer.invoke("documents:start-watching", filePath),
+  stopWatching: (filePath) => ipcRenderer.invoke("documents:stop-watching", filePath),
+  onDocumentChangedOnDisk: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("document:changed-on-disk", listener);
+    return () => ipcRenderer.removeListener("document:changed-on-disk", listener);
+  },
   getHistory: (filePath) => ipcRenderer.invoke("documents:history", filePath),
   restoreHistory: (payload) => ipcRenderer.invoke("documents:restore", payload),
   readVersion: (payload) => ipcRenderer.invoke("documents:read-version", payload),

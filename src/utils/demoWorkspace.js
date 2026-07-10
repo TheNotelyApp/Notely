@@ -9,35 +9,67 @@ export async function setupDemoWorkspace(workspacePath) {
       header: "---\ntags:\n  - overview\n  - root\n---\n",
       rawNotes: `# Notely App Overview
 
-Welcome to the Notely app! Notely is a powerful desktop application built with Electron and React, designed specifically for team and project workspaces. It helps you take meeting notes, write documentation, and manage media effortlessly.
+Welcome to the Notely app! Notely is an advanced local-first desktop application built with Electron and React, designed specifically for team collaboration and project document management. It merges traditional Markdown files with rich features like interactive diagrams, local AI search, and secure serverless sync.
 
-### Core Philosophy
+### Architecture Overview
 
-The idea behind Notely is to keep your workspace simple yet incredibly powerful. We achieve this by blending Markdown-based editing with advanced features like AI and P2P sync.
+Notely operates on a hardened multi-process architecture to separate core operating system privileges from user-interface rendering:
 
-#### Key Features
-1. **Split View Editing**: See your raw Markdown alongside a live-rendered preview.
-2. **AI Integration**: Ask questions, find semantic relationships, and chat with your workspace.
-3. **Peer-to-Peer Sync**: Collaborate across devices without relying on a central server.
+\`\`\`mermaid
+graph TD
+    subgraph "Electron Main Process"
+        M[Main Controller] -->|File System Ops| FS[Disk Storage]
+        M -->|Metadata Store| DB[(SQLite/JSON Store)]
+        M -->|P2P Engine| P2P[P2P Live Service]
+    end
 
-### Example Code
+    subgraph "Preload Context Bridge"
+        PCB[preload.cjs - Secure API Gateway]
+    end
 
-Here is a quick snippet of how Notely handles some core operations behind the scenes:
+    subgraph "Renderer Process"
+        R[React UI App] -->|CodeMirror 6| E[Editor Component]
+        R -->|Markdown-It| P[Preview Component]
+    end
+
+    E -->|IPC Invocation| PCB
+    P -->|IPC Invocation| PCB
+    PCB -->|Bridge IPC| M
+\`\`\`
+
+### In-Depth Core Philosophy
+
+Notely is built on a few unyielding principles:
+1. **Local-First Ownership**: Your files are stored as plain text Markdown on your hard drive. No proprietary database formatting, no vendor lock-in. If you uninstall Notely, your notes remain yours.
+2. **Security & Sandboxing**: The embedded terminal and IPC channels are heavily audited. Renderer contexts are isolated, and Node integration is disabled to prevent arbitrary execution vectors.
+3. **Decentralized Team Sync**: Collaborative sync operates directly between peers over LAN/WiFi using secure pairings, eliminating the need for expensive centralized servers.
+
+---
+
+### Core Operations
+
+Here is how Notely handles workspace initializations:
 
 \`\`\`javascript
-function initializeWorkspace(path) {
-  console.log("Setting up workspace at:", path);
-  loadDocuments();
-  startP2PSync();
+/**
+ * Concept of Notely workspace startup sequence
+ */
+async function bootWorkspace(selectedPath) {
+  // Validate path boundaries
+  const isAllowed = await window.notesApi.verifyPath(selectedPath);
+  if (!isAllowed) throw new Error("Sandbox boundary violation");
+
+  // Load files list and configure live watcher
+  const docs = await window.notesApi.listDocuments(selectedPath);
+  await window.notesApi.initializeFileWatcher(selectedPath);
+  
+  return docs;
 }
 \`\`\`
 
-### Image Demo
-![Notely Logo](https://via.placeholder.com/600x200.png?text=Notely+Workspace)
-
-Enjoy exploring the rest of the demo notes!
+Explore the folders to learn more about Markdown custom formatting, assets, AI search, and P2P sync!
 `,
-      cleansed: "Notely App Overview. Welcome to the Notely app!"
+      cleansed: "Notely App Overview. Welcome to the Notely local-first desktop application."
     });
 
     // Create folders
@@ -49,41 +81,48 @@ Enjoy exploring the rest of the demo notes!
     await saveDocument({
       filePath: markdownDoc.filePath,
       header: "---\ntags:\n  - guide\n  - markdown\n---\n",
-      rawNotes: `# Markdown & Core Features
+      rawNotes: `# Markdown & Core Rendering Features
 
-Notely fully embraces Markdown for rapid note-taking. You can write your text seamlessly while taking advantage of our custom extensions.
+Notely is designed to make document formatting simple and powerful. We write in standard Markdown and enrich it with customizable, interactive preview elements.
 
-### Text Formatting
+### The Parsing & Compilation Pipeline
 
-You can use **bold**, *italics*, and even ~~strikethrough~~. We also support blockquotes:
-> "Notely is the best tool for local-first team collaboration."
-
-### Diagram Support
-
-Create flowchart diagrams directly inside your notes using standard Mermaid code blocks. The app will render them beautifully.
+Every time you type in the editor, Notely updates the preview using a custom Markdown parsing pipeline:
 
 \`\`\`mermaid
-graph TD
-    A[Start Onboarding] --> B[Choose Folder]
-    B --> C[Personalize Theme]
-    C --> D[Begin Writing Notes!]
+flowchart LR
+    Editor[CodeMirror 6 Editor] -->|Raw String| Parser[Markdown-It Parser]
+    Parser -->|Parse Blocks| CustomRules{Custom Token Rules?}
+    CustomRules -->|Mermaid Block| MermaidContainer[Inject div.mermaid]
+    CustomRules -->|Excalidraw Link| ExcalidrawContainer[Inject Excalidraw Frame]
+    CustomRules -->|Image Ref| ImageWrapper[Inject markdown-image-frame]
+    MermaidContainer --> Render[Dynamic Module Script Render]
+    ExcalidrawContainer --> Render
+    ImageWrapper --> Render
+    Render --> HTML[Beautiful CSS Grid Preview]
 \`\`\`
 
-### Tables and Task Lists
+### Custom Formatting Enhancements
 
-| Feature | Status |
-| :--- | :--- |
-| Markdown | Active |
-| Excalidraw | Active |
-| AI Chat | Beta |
+Beyond standard headers, **bold**, *italics*, and ~~strikethrough~~, Notely implements:
+- **Interactive Code Blocks**: Code blocks have a header displaying the language, a wand button for formatting, a pencil button for inline edits, and a copy button.
+- **Annotated Image Frames**: Images are wrapped in interactive frames. Hovering reveals actions to annotate or view.
+- **Embedded Diagrams**: Excalidraw and Mermaid render directly in split-screen or preview modes.
 
-- [x] Read this note
-- [ ] Try creating a new note
-- [ ] Connect AI Provider
+### Status Tracker
 
-![Features Preview](https://via.placeholder.com/400x250.png?text=Notely+Features)
+| Feature | Support Level | Implementation |
+| :--- | :--- | :--- |
+| Markdown Rendering | Native | Markdown-It + HLJS |
+| Mermaid Diagrams | Dynamic | ESM CDN Lazy Load |
+| Excalidraw Drawings | Embed | Local SVG / Canvas |
+
+- [x] Read the introductory overview note
+- [x] Read this Markdown formatting note
+- [ ] Create a custom Mermaid diagram of your own
+- [ ] Open the Workspace Graph to see note links
 `,
-      cleansed: "Markdown and Core Features."
+      cleansed: "Markdown & Core Rendering Features guide. Understand the parsing pipeline."
     });
 
     // 3. Guides Folder - Note 2
@@ -93,34 +132,40 @@ graph TD
       header: "---\ntags:\n  - guide\n  - media\n---\n",
       rawNotes: `# Managing Media and Assets
 
-A great workspace isn't just about text. Notely makes handling media files a breeze.
+In Notely, media files are stored locally within your workspace under the hidden \`.notes-app\` metadata folder. This keeps your workspace root clean while preserving all reference paths.
 
-### Drag and Drop
+### Ingestion and Annotation Workflow
 
-You can drag and drop images directly into the editor. We automatically manage the paths and assets folder for your project. 
-Once dropped, you can browse, annotate, and crop them in the **Assets tab** on the landing screen.
+The diagram below outlines the full lifecycle of an asset added to Notely:
 
-### CSS Styling Demo
-
-Notely also allows embedding specific styles or using standard code blocks to document UI elements.
-
-\`\`\`css
-.notely-button {
-  background-color: #0a6b8a;
-  color: white;
-  border-radius: 8px;
-  padding: 10px 20px;
-}
-.notely-button:hover {
-  background-color: #075a75;
-}
+\`\`\`mermaid
+stateDiagram-v2
+    [*] --> DragDrop : Drop image in Editor
+    DragDrop --> FileCopied : Copy to .notes-app/assets/
+    FileCopied --> MarkdownGenerated : Insert ![alt](asset_path)
+    MarkdownGenerated --> EditorView : Render in Preview
+    EditorView --> ImageAnnotation : Hover & Click Annotate
+    ImageAnnotation --> MetadataSaved : Save annotation text to settings
+    MetadataSaved --> RenderedOverlay : Draw text on top of image
 \`\`\`
 
-![Media Workspace](https://via.placeholder.com/500x300.png?text=Media+Manager)
+### Asset Capabilities
+1. **Drag and Drop**: Drop any PNG, JPEG, GIF, PDF, MP4, or MP3 file into the editor, and Notely will handle the rest.
+2. **Crop & Rotate**: Edit images natively in the app without launching external editors.
+3. **Badging**: If you edit an asset, Notely saves the original source and displays an "Original Saved" badge, letting you roll back changes at any time.
 
-That's it for the media guide!
+\`\`\`css
+/* Embedded CSS Demo */
+.notely-image-frame {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+\`\`\`
 `,
-      cleansed: "Managing Media and Assets."
+      cleansed: "Managing Media and Assets. Ingestion and Annotation workflow details."
     });
 
     // 4. Advanced Folder - Note 1
@@ -128,28 +173,33 @@ That's it for the media guide!
     await saveDocument({
       filePath: aiDoc.filePath,
       header: "---\ntags:\n  - advanced\n  - ai\n---\n",
-      rawNotes: `# AI Integration and Search
+      rawNotes: `# AI Integration and Semantic Search
 
-Connect your Gemini or Groq API keys in the settings tab to unlock powerful features.
+Notely's AI subsystem works entirely local-first for data indexation, generating vector embeddings to represent note semantics.
 
-### Semantic Search
+### How Semantic Search and Knowledge Clustering Works
 
-Instead of exact word matching, Notely embeds your notes so you can search across all project files by meaning.
+Instead of traditional keyword searching, Notely leverages cosine similarity computations to map relationships:
 
-\`\`\`python
-# Example of how embeddings work conceptually
-def embed_text(text):
-    vector = ai_model.get_embeddings(text)
-    return store_in_vector_db(vector)
+\`\`\`mermaid
+flowchart TD
+    RawNote[Note Markdown Content] -->|Extract Blocks| CleanText[Text Content]
+    CleanText -->|HuggingFace Embedder| Vector[768-dimension Vector]
+    Vector -->|Store Locally| VectorDB[Local Vector cache]
+    
+    Query[User Semantic Search Query] -->|HF Embedder| QueryVector[Query Vector]
+    QueryVector --> CosineSimilarity[Cosine Similarity Check]
+    VectorDB --> CosineSimilarity
+    CosineSimilarity -->|Matches threshold| UI[List Relevant Notes]
+    CosineSimilarity -->|Clusters mapping| Graph[Visual Knowledge Graph Nodes]
 \`\`\`
 
-### Interactive Note Graph
-
-Visualize and navigate links between your notes dynamically. As you write, Notely builds a knowledge graph.
-
-![AI Graph Visualization](https://via.placeholder.com/600x300.png?text=Knowledge+Graph)
+### Features Included:
+- **Semantic Search**: Search for concepts like "getting started tips" and retrieve files matching that concept, even if the exact words don't match.
+- **Smart Note Graph**: Documents are clustered by mathematical distance, highlighting related docs and hidden connections.
+- **AI Assist Palette**: Ask AI to draft notes, polish selected text, or summarize details.
 `,
-      cleansed: "AI Integration and Search."
+      cleansed: "AI Integration and Semantic Search. Knowledge clustering mechanics."
     });
 
     // 5. Advanced Folder - Note 2
@@ -157,33 +207,38 @@ Visualize and navigate links between your notes dynamically. As you write, Notel
     await saveDocument({
       filePath: syncDoc.filePath,
       header: "---\ntags:\n  - advanced\n  - p2p\n---\n",
-      rawNotes: `# Peer-to-Peer Sync
+      rawNotes: `# Decentralized Peer-to-Peer Sync
 
-Notely offers a decentralized way to collaborate. 
+Notely's sync engine lets you share notes between devices directly without cloud servers, maintaining data sovereignty and absolute privacy.
 
-### How it Works
+### P2P Handshake and Update Propagation
 
-Using a local-first approach, your notes stay on your machine. You can pair devices using P2P keys.
+Syncing relies on a secure pairing protocol and encrypted queue propagation:
 
-1. Go to Settings -> Sync.
-2. Generate an invite code on your primary device.
-3. Enter the code on your secondary device.
+\`\`\`mermaid
+sequenceDiagram
+    autonumber
+    participant Alice as "Alice (Notely Client A)"
+    participant Bob as "Bob (Notely Client B)"
 
-\`\`\`javascript
-// Concept behind P2P pairing
-async function pairDevice(inviteCode) {
-  const peer = await P2PNetwork.connect(inviteCode);
-  if (peer.isTrusted) {
-    syncWorkspace(peer);
-  }
-}
+    Alice->>Alice: Generate LAN Broadcast invite code
+    Bob->>Alice: Connect and submit handshake code
+    Note over Alice,Bob: Handshake pairs keys via Noise Protocol
+    Alice->>Bob: Sync Workspace Metadata & History
+    Note over Alice,Bob: Peer-to-Peer connection established
+    
+    rect rgb(240, 248, 255)
+        Note left of Alice: Alice edits note.md
+        Alice->>Alice: Hash content & queue change in outbox
+        Alice->>Bob: Propagate Sync Event (AES-256-GCM Encrypted)
+        Bob->>Bob: Verify hash signature & apply updates
+    end
 \`\`\`
 
-![Sync Diagram](https://via.placeholder.com/500x200.png?text=P2P+Sync)
-
-You are now ready to master Notely!
+### Conflict Management
+If the same document is edited on both devices while disconnected, Notely detects the fork, halts automatic overwriting, and prompts you to resolve the conflict in the **Conflict Center**. You can review the diff side-by-side and choose local, remote, or merged text.
 `,
-      cleansed: "Peer-to-Peer Sync details."
+      cleansed: "Decentralized Peer-to-Peer Sync. Secure key handshakes and propagation."
     });
 
   } catch (err) {

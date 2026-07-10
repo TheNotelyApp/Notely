@@ -783,20 +783,43 @@ function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "", scopeLabel = "
     </div>
 
     <script type="module">
-      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      let mermaidRef = null;
+      async function renderMermaid() {
+        try {
+          const blocks = Array.from(document.querySelectorAll("pre code.language-mermaid"));
+          if (blocks.length > 0) {
+            if (!mermaidRef) {
+              const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+              mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base",
+                themeVariables: { primaryColor: "#e6f3f8", primaryBorderColor: "#0a6b8a", primaryTextColor: "#0d1f26", lineColor: "#4e6a75" }
+              });
+              mermaidRef = mermaid;
+            }
+            for (const block of blocks) {
+              const contentLines = Array.from(block.querySelectorAll(".markdown-code-line-content"));
+              const source = contentLines.length > 0
+                ? contentLines.map((line) => line.textContent || "").join("\\n")
+                : (block.textContent || "");
+              const container = document.createElement("div");
+              container.className = "mermaid";
+              container.textContent = source;
+              block.parentElement.replaceWith(container);
+            }
+          }
 
-      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base",
-        themeVariables: { primaryColor: "#e6f3f8", primaryBorderColor: "#0a6b8a", primaryTextColor: "#0d1f26", lineColor: "#4e6a75" }
-      });
-      const blocks = Array.from(document.querySelectorAll("pre code.language-mermaid"));
-      for (const block of blocks) {
-        const source = block.textContent || "";
-        const container = document.createElement("div");
-        container.className = "mermaid";
-        container.textContent = source;
-        block.parentElement.replaceWith(container);
+          if (mermaidRef) {
+            const visibleUnrendered = Array.from(document.querySelectorAll(".mermaid:not([data-processed])"))
+              .filter((el) => el.offsetParent !== null);
+            if (visibleUnrendered.length > 0) {
+              await mermaidRef.run({ nodes: visibleUnrendered });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to render Mermaid diagrams:", err);
+        }
       }
-      await mermaid.run({ querySelector: ".mermaid" });
+
+      renderMermaid();
 
       // ── Ctrl/Cmd+K → search ───────────────────────────────
       document.addEventListener("keydown", (e) => {
@@ -817,6 +840,7 @@ function buildWebsiteHtml({ title, bodyHtml, navigationHtml = "", scopeLabel = "
           buttons.forEach((b) => b.classList.toggle("active", b.getAttribute("data-tab-target") === target));
           panels.forEach((p) => p.classList.toggle("active", p.getAttribute("data-tab-panel") === target));
           buildToc();
+          renderMermaid();
         };
         buttons.forEach((b) => b.addEventListener("click", () => activate(b.getAttribute("data-tab-target"))));
         // honour URL hash for tab

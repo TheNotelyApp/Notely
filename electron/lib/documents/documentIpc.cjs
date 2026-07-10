@@ -89,6 +89,65 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     });
   }
 
+  const lastAppHashes = new Map();
+  let currentWatcher = null;
+  let watchedPath = null;
+
+  function stopWatching(filePath) {
+    if (filePath) {
+      const resolved = path.resolve(filePath);
+      if (watchedPath === resolved) {
+        try {
+          fs.unwatchFile(watchedPath);
+          console.log(`[Watcher] Stopped watch on: "${watchedPath}"`);
+        } catch (e) {
+          console.error("[Watcher] Unwatch error:", e);
+        }
+        watchedPath = null;
+      }
+    } else if (watchedPath) {
+      try {
+        fs.unwatchFile(watchedPath);
+        console.log(`[Watcher] Stopped watch on: "${watchedPath}"`);
+      } catch (e) {
+        console.error("[Watcher] Unwatch error:", e);
+      }
+      watchedPath = null;
+    }
+  }
+
+  function startWatching(filePath, webContents) {
+    stopWatching();
+    watchedPath = path.resolve(filePath);
+    console.log(`[Watcher] Starting poll watch on: "${watchedPath}"`);
+
+    try {
+      fs.watchFile(watchedPath, { interval: 500 }, (curr, prev) => {
+        if (curr.mtimeMs !== prev.mtimeMs) {
+          console.log(`[Watcher] File mod time changed: ${prev.mtime} -> ${curr.mtime}`);
+          try {
+            if (fs.existsSync(watchedPath)) {
+              const content = fs.readFileSync(watchedPath, "utf8");
+              const currentHash = hashContent(content);
+              const knownHash = lastAppHashes.get(watchedPath);
+              console.log(`[Watcher] File hash check: current="${currentHash}", known="${knownHash}"`);
+              if (knownHash && currentHash !== knownHash) {
+                console.log(`[Watcher] Hash mismatch detected! Sending notification for: "${watchedPath}"`);
+                if (webContents && !webContents.isDestroyed()) {
+                  webContents.send("document:changed-on-disk", { filePath: watchedPath });
+                }
+              }
+            }
+          } catch (e) {
+            console.error("[Watcher] Read error:", e);
+          }
+        }
+      });
+    } catch (e) {
+      console.error("[Watcher] Setup error:", e);
+    }
+  }
+
   registerTrustedHandler("documents:list", (_event, payload) => {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
@@ -189,7 +248,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return result;
   });
 
-  registerTrustedHandler("documents:read", (_event, filePath) => {
+  registerTrustedHandler("documents:read", (event, filePath) => {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
@@ -197,10 +256,12 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
-    return parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
+    const content = fs.readFileSync(resolved, "utf8");
+    lastAppHashes.set(resolved, hashContent(content));
+    return parseDocument(content, resolved);
   });
 
-  registerTrustedHandler("documents:mark-opened", (_event, filePath) => {
+  registerTrustedHandler("documents:mark-opened", (event, filePath) => {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
@@ -212,8 +273,28 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       throw new Error("Document file does not exist.");
     }
 
-    const parsed = parseDocument(fs.readFileSync(resolved, "utf8"), resolved);
+    const content = fs.readFileSync(resolved, "utf8");
+    lastAppHashes.set(resolved, hashContent(content));
+
+    const parsed = parseDocument(content, resolved);
     dashboardCache?.recordOpen?.(parsed);
+    return true;
+  });
+
+  registerTrustedHandler("documents:start-watching", (event, filePath) => {
+    const activeProject = getActiveProject();
+    const notesRoot = getNotesRoot();
+    const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
+    const resolved = path.resolve(filePath);
+    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+      throw new Error("Invalid document path.");
+    }
+    startWatching(resolved, event.sender);
+    return true;
+  });
+
+  registerTrustedHandler("documents:stop-watching", (_event, filePath) => {
+    stopWatching(filePath);
     return true;
   });
 
@@ -250,6 +331,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       return unchanged;
     }
 
+    lastAppHashes.set(resolved, hashContent(next));
     fs.writeFileSync(resolved, next, "utf8");
 
     emitLocalP2PSyncEvent({
