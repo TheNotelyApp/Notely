@@ -156,33 +156,13 @@ npm run ci:check
 
 ## Packaging
 
-Windows packaging scripts are included in the repo:
-
-- `npm run pack:win` builds an unpacked Windows app.
-- `npm run dist:win` builds distributable Windows installers.
-- `./build-windows-exe.sh` is available for the current packaging flow.
-
-### Build versioning & Release
-
-Notely build versions are tracked in `app-version.json` and `package.json`.
-
-To release a new version of Notely, simply run the automated release script:
+To build the executable for Windows, run the packaging script:
 
 ```bash
-./release.sh
+./build-windows-exe.sh
 ```
 
-This script will:
-- Run the local CI suite (`npm run ci:check`)
-- Automatically bump the patch version in both `app-version.json` and `package.json`
-- Update the version badge in this `README.md`
-- Ask for your confirmation
-- Commit the changes and tag the repo (`vX.Y.Z`)
-- Push the tag to GitHub
-
-Pushing the `v*` tag triggers the Continuous Deployment (CD) pipeline (`.github/workflows/cd.yml`), which automatically builds the Windows `.exe` and publishes it to GitHub Releases.
-
-
+This script generates the compiled Windows application installer and unpacked outputs.
 
 ## Project structure
 
@@ -191,7 +171,6 @@ Pushing the `v*` tag triggers the Continuous Deployment (CD) pipeline (`.github/
 - `scripts/` packaging and release helpers
 - `notes/` sample notes and workspace content
 - `build/` app icons and build assets
-- `release/` collected release outputs
 
 ## Roadmap
 
