@@ -426,6 +426,12 @@ function applyNotesRoot(nextRootPath) {
     console.warn("[startup] Unable to migrate legacy removed folder:", error?.message || error);
   }
 
+  try {
+    cleanupLegacyInTreeThumbnails(notesRoot);
+  } catch (error) {
+    console.warn("[startup] Unable to clean up legacy thumbnails folder:", error?.message || error);
+  }
+
   metadataStore = createMetadataStore({
     fs,
     path,
@@ -515,6 +521,18 @@ function migrateLegacyRemovedDirectory() {
     fs.rmSync(legacyRemovedDir, { recursive: true, force: false });
   } catch {
     // Best-effort cleanup: leaving an empty legacy folder is harmless.
+  }
+}
+
+function cleanupLegacyInTreeThumbnails(workspaceRoot) {
+  const legacyThumbnailsDir = path.join(workspaceRoot, "media", "images", "thumbnails");
+  if (fs.existsSync(legacyThumbnailsDir)) {
+    try {
+      fs.rmSync(legacyThumbnailsDir, { recursive: true, force: true });
+      console.info("[startup] Cleaned up legacy in-tree thumbnails directory.");
+    } catch (err) {
+      console.warn("[startup] Failed to remove legacy thumbnails folder:", err.message);
+    }
   }
 }
 
