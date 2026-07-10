@@ -548,9 +548,9 @@ describe("MarkdownToolbar validation panel interactions", () => {
 
     expect(onChange).toHaveBeenCalled();
     const inserted = String(onChange.mock.calls.at(-1)?.[0] || "");
-    expect(inserted).toContain("![Excalidraw Diagram](.notes-app/excali-diagrams/");
-    expect(inserted).not.toContain(".notes-app/excali-diagrams/architecture-note/");
-    expect(inserted).toContain('/diagram.png){data-diagram-id="');
+    expect(inserted).toContain("![Excalidraw Diagram](media/diagrams/");
+    expect(inserted).not.toContain("media/diagrams/architecture-note/");
+    expect(inserted).toContain('.png){data-diagram-id="');
     expect(inserted).toContain('data-diagram-type="excalidraw"}');
     expect(onNotify).toHaveBeenCalledWith("Excalidraw reference inserted.", "success");
 

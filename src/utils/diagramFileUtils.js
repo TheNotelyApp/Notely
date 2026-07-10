@@ -48,7 +48,7 @@ export function getDiagramSourcePath(docSlug, diagramId) {
  * @returns {string} Path to rendered PNG image
  */
 export function getDiagramImagePath(docSlug, diagramId) {
-  return `${getDiagramPath(docSlug, diagramId)}/diagram.png`;
+  return `media/diagrams/${diagramId}.png`;
 }
 
 /**
@@ -141,14 +141,14 @@ export function createDiagramMarkdown(docSlug, diagramId, _diagramData) {
 export function extractDiagramReferences(markdown) {
   const diagramRefs = [];
   
-  // Match both current and legacy diagram reference paths.
-  const pattern = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*\{data-diagram-id=["“]([^"”]+)["”]/g;
+  // Match both current (media/diagrams) and legacy diagram reference paths.
+  const pattern = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*\{data-diagram-id=["“]([^"”]+)["”]/g;
   
   let match;
   while ((match = pattern.exec(markdown)) !== null) {
     diagramRefs.push({
       imagePath: match[1],
-      diagramId: match[2] || match[3],
+      diagramId: match[4] || match[2] || match[3],
     });
   }
   

@@ -130,7 +130,7 @@ export function renderMarkdown(content, options = {}) {
 export function parseDiagramBlocks(content) {
   const chunks = [];
   const mermaidRegex = /```mermaid\s*([\s\S]*?)```/gi;
-  const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*(\{[^}]*\})?/gi;
+  const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
   const positions = [];
   let match;
 
@@ -156,7 +156,7 @@ export function parseDiagramBlocks(content) {
 
   // Find all excalidraw image references
   while ((match = excalidrawRegex.exec(content || ""))) {
-    const attributeBlock = match[3] || "";
+    const attributeBlock = match[4] || "";
     const explicitDiagramId = readAttribute(attributeBlock, "data-diagram-id");
     const originAssetPath = readAttribute(attributeBlock, "data-origin-asset");
     const originAltText = readAttribute(attributeBlock, "data-origin-alt");
@@ -166,7 +166,7 @@ export function parseDiagramBlocks(content) {
       type: "excalidraw",
       imagePath: match[1],
       // Prefer explicit data-diagram-id if present, else derive from path segment.
-      diagramId: explicitDiagramId || match[2],
+      diagramId: explicitDiagramId || match[2] || match[3],
       originAssetPath,
       originAltText,
       fullMatch: match[0],

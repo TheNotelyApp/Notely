@@ -144,16 +144,21 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
    */
   ipcMain.handle('diagram:write-image', async (event, { documentPath, diagramId, imageData }) => {
     try {
-      const diagramDir = getCurrentDiagramDir(documentPath, diagramId);
-      const imageFile = path.join(diagramDir, 'diagram.png');
+      const notesRoot = getNotesRoot();
+      const mediaDiagramsDir = path.join(notesRoot, 'media', 'diagrams');
+      const imageFile = path.join(mediaDiagramsDir, `${diagramId}.png`);
       const existed = fsSync.existsSync(imageFile);
       const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
       const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
       
-      // Create directory if it doesn't exist
-      await mkdirRecursive(diagramDir);
+      // Legacy path for backward compatibility
+      const legacyDir = getCurrentDiagramDir(documentPath, diagramId);
+      const legacyImageFile = path.join(legacyDir, 'diagram.png');
 
-      
+      // Create directories if they don't exist
+      await mkdirRecursive(mediaDiagramsDir);
+      await mkdirRecursive(legacyDir);
+
       // Handle both base64 strings and buffers
       let buffer;
       if (typeof imageData === 'string') {
@@ -164,7 +169,10 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
         buffer = imageData;
       }
       
+      // Write to both locations
       await fs.writeFile(imageFile, buffer);
+      await fs.writeFile(legacyImageFile, buffer);
+
       emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
@@ -251,7 +259,11 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
    */
   ipcMain.handle('diagram:read-image', async (event, { documentPath, diagramId }) => {
     try {
-      const imageFile = path.join(getPreferredExistingDiagramDir(documentPath, diagramId), 'diagram.png');
+      const notesRoot = getNotesRoot();
+      let imageFile = path.join(notesRoot, 'media', 'diagrams', `${diagramId}.png`);
+      if (!fsSync.existsSync(imageFile)) {
+        imageFile = path.join(getPreferredExistingDiagramDir(documentPath, diagramId), 'diagram.png');
+      }
       const imageData = await fs.readFile(imageFile);
       const base64 = imageData.toString('base64');
       

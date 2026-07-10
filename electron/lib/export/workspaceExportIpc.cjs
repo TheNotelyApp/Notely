@@ -574,6 +574,14 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
         copyDirectoryRecursive(fs, path, notesRoot, stagingRoot, {
           excludeDirs: includeMetadata ? [] : [".notes-app"],
         });
+        if (!includeMetadata) {
+          const diagramsSrc = path.join(notesRoot, ".notes-app", "excali-diagrams");
+          if (fs.existsSync(diagramsSrc)) {
+            const diagramsDest = path.join(stagingRoot, ".notes-app", "excali-diagrams");
+            ensureDir(path.dirname(diagramsDest));
+            copyDirectoryRecursive(fs, path, diagramsSrc, diagramsDest);
+          }
+        }
         sendProgress({ phase: "Workspace files staged", percent: 70 });
       } else if (mode === "pdf") {
         sendProgress({ phase: "Rendering PDF files", percent: 15 });
