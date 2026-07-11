@@ -56,6 +56,16 @@ The landing view includes lightweight workspace overview panels so you can resum
 
 Quick insert actions for headings, emphasis, lists, links, tables, diagrams, and validation.
 
+### Inline table editor
+
+When the cursor is inside a markdown table, Notely opens an inline table editor overlay with focused controls:
+
+- Edit headers and cells in a grid view.
+- Add/remove rows and columns from contextual action chips.
+- Set per-column alignment (left, center, right) from header actions.
+- Save and cancel explicitly from compact top controls.
+- Background page scrolling is locked while editing to keep interaction scoped to the table editor.
+
 ### Code Blocks
 
 Notely provides a rich experience for working with code snippets:

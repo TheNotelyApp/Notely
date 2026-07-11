@@ -4,14 +4,25 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ## Unreleased
 
+### Added
+
+- Added an inline markdown table editor overlay with grid-based cell/header editing
+- Added contextual row/column action chips and column alignment controls for table editing
+- Added regression tests for markdown table parsing/serialization behavior in `src/utils/tableUtils.test.js`
+
 ### Changed
 
 - Refined note detail topbar visual consistency by normalizing control height and shared corner-radius usage
+- Improved inline table edit behavior to preserve original table formatting when table shape and alignments are unchanged
+- Updated table editor controls with compact labeled actions and improved interaction ergonomics
 
 ### Fixed
 
 - Fixed project website/web preview scope refresh after workspace (notes folder) changes so newly selected workspaces render correctly
 - Improved note task summary trigger semantics for better keyboard and screen-reader compatibility
+- Fixed inline table parsing to preserve escaped pipes and plain backslashes in cell content
+- Fixed inline table delete actions so row/column deletion keeps focus inside the table editor
+- Fixed table editor scroll handling to prevent background scrolling while preserving table panel scrolling
 
 ## 2026-07-03
 

@@ -30,6 +30,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - **Regex search** with validation and pattern matching for advanced queries.
   - **Code-aware search** to find patterns inside code blocks only.
 - Insert common Markdown snippets from the toolbar.
+- Edit Markdown tables inline with a focused grid editor (row/column add/remove, alignment controls, and compact action chips).
 - Browse, annotate, optimize, and manage linked media.
 - Open note files in VS Code or the system default app.
 - Open the current workspace folder in VS Code directly from **File -> Open Workspace in VS Code** (`Ctrl/Cmd + Shift + O`) on the landing screen.

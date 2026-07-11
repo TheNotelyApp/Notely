@@ -1,5 +1,24 @@
 # Release Notes
 
+## 2026-07-11 (latest)
+
+### New features
+
+- **Inline markdown table editor** — placing the cursor inside a markdown table now opens a focused grid editor for direct cell/header updates.
+
+### Refinements
+
+- **Compact table actions** — row/column controls now use labeled compact action chips for quicker recognition and less visual noise.
+- **Table edit interaction flow** — deleting rows/columns keeps editing context active instead of dropping back to the main editor.
+- **Table formatting preservation** — same-shape table edits now preserve the original table style (spacing and delimiter style) where possible.
+
+### Fixes
+
+- **Escaped content safety** — table parsing now preserves escaped pipes and plain backslashes in cell content (including Windows-style paths).
+- **Scroll behavior during table edits** — background scrolling is disabled while table editing is active; table content scrolling remains within the editor panel.
+
+---
+
 ## 2026-07-03 (latest)
 
 ### New features

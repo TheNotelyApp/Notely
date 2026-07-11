@@ -45,6 +45,7 @@
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.405.0",
     "markdown-it": "^14.1.0",
+    "markdown-table": "^3.0.4",
     "mermaid": "^11.6.0",
     "node-pty": "^1.1.0",
     "nspell": "^2.1.5",

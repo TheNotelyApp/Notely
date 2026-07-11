@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { Search, Copy, Sparkles, MessageSquare, RefreshCcw, FileSearch, List, Wand2, EyeOff, Settings } from "lucide-react";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
 import { createMediaMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
+import { syntaxTree } from "@codemirror/language";
+import { MarkdownTableEditor } from "./MarkdownTableEditor";
 import { insertMediaFromFiles } from "../services/imageService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 import { editorTheme } from "../utils/editorTheme";
@@ -275,6 +277,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const [contextMenu, setContextMenu] = useState(null);
   const [_activeLine, setActiveLine] = useState(1);
   const [docLength, setDocLength] = useState(String(value || "").length);
+  const [activeTableInfo, setActiveTableInfo] = useState(null);
 
   const [themeMode, setThemeMode] = useState(() => {
     return document.documentElement.getAttribute("data-theme") || "light";
@@ -486,7 +489,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   };
 
   const editorExtensions = useMemo(() => [
-    markdown(),
+    markdown({ base: markdownLanguage }),
     editorTheme,
     EditorView.decorations.of(findMatchDecorations),
     EditorView.decorations.of(validationDecorations),
@@ -636,11 +639,75 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
           if (textareaRef && viewRef.current) {
             textareaRef.current = createEditorAdapter(viewRef.current);
           }
+
+          if (update.selectionSet || update.docChanged || update.viewportChanged) {
+            if (activeTableInfo && update.state.selection.main.from === update.state.selection.main.to) {
+              // Allow overlay to handle itself, unless cursor completely moved away
+            }
+            const pos = update.state.selection.main.head;
+            const tree = syntaxTree(update.state);
+            let node = tree.resolveInner(pos, -1);
+            let tableNode = null;
+            while (node) {
+              if (node.name === "Table") {
+                tableNode = node;
+                break;
+              }
+              node = node.parent;
+            }
+
+            if (tableNode) {
+              const from = tableNode.from;
+              const to = tableNode.to;
+              const text = update.state.sliceDoc(from, to);
+              const coordsAtStart = update.view.coordsAtPos(from) || update.view.coordsAtPos(pos);
+              
+              if (coordsAtStart) {
+                setActiveTableInfo(current => {
+                  if (current && current.from === from && current.text === text && Math.abs(current.style.top - coordsAtStart.top) < 10) {
+                    return current;
+                  }
+                  return {
+                    from,
+                    to,
+                    text,
+                    style: {
+                      position: 'fixed',
+                      top: Math.max(0, coordsAtStart.top - 40),
+                      left: Math.max(10, coordsAtStart.left - 20),
+                      zIndex: 100
+                    }
+                  };
+                });
+              }
+            } else {
+              setActiveTableInfo(null);
+            }
+          }
         }}
         onChange={(nextValue) => {
           onChange(nextValue);
         }}
       />
+      {activeTableInfo && (
+        <MarkdownTableEditor
+          initialMarkdown={activeTableInfo.text}
+          style={activeTableInfo.style}
+          onCommit={(newMarkdown) => {
+            if (viewRef.current) {
+              viewRef.current.dispatch({
+                changes: { from: activeTableInfo.from, to: activeTableInfo.to, insert: newMarkdown }
+              });
+            }
+            setActiveTableInfo(null);
+            viewRef.current?.focus();
+          }}
+          onCancel={() => {
+            setActiveTableInfo(null);
+            viewRef.current?.focus();
+          }}
+        />
+      )}
       {contextMenu ? (
         <div
           ref={menuRef}
