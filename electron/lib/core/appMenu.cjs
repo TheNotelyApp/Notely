@@ -92,11 +92,6 @@ function buildAppMenu(win, context = {}) {
           accelerator: "CmdOrCtrl+Shift+E",
           click: () => sendMenuAction(win, "export-pdf")
         },
-        {
-          label: "Versions",
-          accelerator: "CmdOrCtrl+Shift+H",
-          click: () => sendMenuAction(win, "manage-versions")
-        },
         { type: "separator" },
         {
           label: "Rename Note",
@@ -475,6 +470,97 @@ function buildAppMenu(win, context = {}) {
           label: screen === "document" ? "Open Current Note Website View" : "Open Project Website",
           accelerator: "CmdOrCtrl+Shift+W",
           click: () => sendMenuAction(win, "open-website")
+        }
+      ]
+    },
+    {
+      label: "Version Control",
+      submenu: [
+        {
+          label: "Open Version Control",
+          accelerator: "CmdOrCtrl+Shift+G",
+          click: () => sendMenuAction(win, "open-git-version-control")
+        },
+        { type: "separator" },
+        {
+          label: "Commit\u2026",
+          accelerator: "CmdOrCtrl+Shift+K",
+          click: () => sendMenuAction(win, "git-commit")
+        },
+        {
+          label: "History",
+          accelerator: "CmdOrCtrl+Shift+H",
+          enabled: screen === "document",
+          click: () => sendMenuAction(win, "git-history")
+        },
+        {
+          label: "Diff Current Note",
+          enabled: screen === "document",
+          click: () => sendMenuAction(win, "git-diff-current")
+        },
+        {
+          label: "Compare Versions",
+          click: () => sendMenuAction(win, "git-compare")
+        },
+        { type: "separator" },
+        {
+          label: "Branches",
+          submenu: [
+            {
+              label: "Create Branch",
+              click: () => sendMenuAction(win, "git-create-branch")
+            },
+            {
+              label: "Switch Branch",
+              click: () => sendMenuAction(win, "git-switch-branch")
+            },
+            {
+              label: "Merge Branch",
+              click: () => sendMenuAction(win, "git-merge-branch")
+            }
+          ]
+        },
+        {
+          label: "Tags\u2026",
+          click: () => sendMenuAction(win, "git-tags")
+        },
+        {
+          label: "Stash\u2026",
+          click: () => sendMenuAction(win, "git-stash")
+        },
+        { type: "separator" },
+        {
+          label: "Push",
+          accelerator: "CmdOrCtrl+Shift+U",
+          click: () => sendMenuAction(win, "git-push")
+        },
+        {
+          label: "Pull",
+          click: () => sendMenuAction(win, "git-pull")
+        },
+        {
+          label: "Fetch",
+          click: () => sendMenuAction(win, "git-fetch")
+        },
+        {
+          label: "Sync (Pull then Push)",
+          click: () => sendMenuAction(win, "git-sync")
+        },
+        { type: "separator" },
+        {
+          label: "Ignore App Data in Git",
+          type: "checkbox",
+          checked: Boolean(context?.autoIgnoreMetadataInGit !== false),
+          click: () => sendMenuAction(win, "toggle-auto-ignore-git-metadata")
+        },
+        { type: "separator" },
+        {
+          label: "Open Repository in Explorer",
+          click: () => sendMenuAction(win, "git-reveal-repo")
+        },
+        {
+          label: "Reveal .git Folder",
+          click: () => sendMenuAction(win, "git-reveal-git-dir")
         }
       ]
     },

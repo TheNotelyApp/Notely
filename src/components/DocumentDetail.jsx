@@ -38,7 +38,7 @@ import OverlayDialog from "./OverlayDialog";
 import DialogSelectField from "./DialogSelectField";
 import { formatDate } from "../utils/dateUtils";
 import { downloadPdf } from "../services/electronService";
-import { deleteVersion, readVersion } from "../services/electronService";
+import { GitNoteHistoryPanel } from "./GitNoteHistoryPanel";
 import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 import { renderMarkdown } from "../utils/renderUtils";
@@ -767,6 +767,8 @@ const OutlinePanel = memo(function OutlinePanel({
 export function DocumentDetail({
   document,
   history,
+  workspacePath,
+  branch,
   activeTab,
   setActiveTab,
   mode,
@@ -2225,61 +2227,20 @@ export function DocumentDetail({
       ) : null}
 
       {showHistoryPopover ? (
-        <OverlayDialog
+        <GitNoteHistoryPanel
+          open={showHistoryPopover}
           onClose={() => setShowHistoryPopover(false)}
-          ariaLabel="Versions"
-        >
-            <div className="overlay-dialog-header">
-              <h2>Versions</h2>
-              <AppIconButton onClick={() => setShowHistoryPopover(false)} aria-label="Close versions dialog">
-                <X size={16} />
-              </AppIconButton>
-            </div>
-            <div className="overlay-dialog-actions split">
-              <AppButton variant="small" onClick={onRefreshHistory} data-tooltip="Refresh history">
-                <RotateCcw size={16} />
-                Refresh
-              </AppButton>
-            </div>
-            {history.length ? (
-              <div className="history-list">
-                {history.map((entry) => (
-                  <div className="history-item" key={entry.versionPath}>
-                    <strong>{formatDate(entry.createdAt)}</strong>
-                    <span>{entry.reason}</span>
-                    <div className="history-item-actions">
-                      <AppButton
-                        variant="small"
-                        onClick={() => handleCompareVersion(entry)}
-                        data-tooltip="Compare with latest"
-                      >
-                        <GitCompare size={14} />
-                        Compare
-                      </AppButton>
-                      <AppButton
-                        variant="small"
-                        onClick={() => handleRestoreVersion(entry)}
-                        data-tooltip="Restore this version into the editor"
-                      >
-                        <RotateCcw size={14} />
-                        Restore
-                      </AppButton>
-                      <AppButton
-                        variant="small"
-                        onClick={() => handleDeleteVersion(entry)}
-                        data-tooltip="Delete this version"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </AppButton>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="muted">Versions appear after the first save.</p>
-            )}
-        </OverlayDialog>
+          filePath={document?.filePath}
+          workspacePath={workspacePath}
+          branch={branch}
+          onNotify={onNotify}
+          onRestored={async () => {
+            // Trigger refresh/re-read of the note from disk
+            if (typeof onRefreshHistory === "function") {
+              await onRefreshHistory();
+            }
+          }}
+        />
       ) : null}
 
       {showMediaManager ? (

@@ -15,7 +15,6 @@ import {
   renameDocument as renameDocumentApi,
   saveDocument as saveDocumentApi,
   setNotesRootSetting,
-  getHistory,
 } from "../services/electronService";
 
 function normalizePathValue(value) {
@@ -154,7 +153,7 @@ export function useDocumentManager({ notify }) {
     if (!options.preserveActiveTab) {
       setActiveTab("raw");
     }
-    setHistory(await getHistory(filePath));
+    setHistory([]);
   }
 
   async function saveDocument(options = {}) {
@@ -180,7 +179,7 @@ export function useDocumentManager({ notify }) {
           cleansed: saved.cleansed,
         })
       );
-      setHistory(await getHistory(saved.filePath));
+      setHistory([]);
       await loadDocumentsData();
       if (!silent) {
         notify("Note saved.", "success");
@@ -237,7 +236,7 @@ export function useDocumentManager({ notify }) {
           cleansed: renamed.cleansed,
         })
       );
-      setHistory(await getHistory(renamed.filePath));
+      setHistory([]);
       await loadDocumentsData();
       notify("Note renamed.", "success");
       return true;

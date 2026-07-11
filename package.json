@@ -56,6 +56,7 @@
     "remark-gfm": "^4.0.1",
     "remark-lint": "^10.0.1",
     "remark-preset-lint-recommended": "^7.0.1",
+    "simple-git": "^3.36.0",
     "uuid": "^14.0.1",
     "yazl": "^3.3.1"
   },

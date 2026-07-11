@@ -40,6 +40,9 @@ const { createMainHelpers } = require("./lib/core/mainHelpers.cjs");
 const { registerWorkspaceExportIpcHandlers } = require("./lib/export/workspaceExportIpc.cjs");
 const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
 const { initializeAIHandlers } = require("./ai/aiHandlers.cjs");
+const { registerGitIpcHandlers } = require("./lib/git/gitIpc.cjs");
+const gitService = require("./lib/git/gitService.cjs");
+
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const projectRoot = app.getAppPath();
@@ -460,7 +463,21 @@ function applyNotesRoot(nextRootPath) {
   p2pService.init();
 
   activeProjectSlug = ROOT_PROJECT_SLUG;
+
+  // Trigger one-time legacy history migration (async, best-effort, non-blocking)
+  gitService.detectGit().then((detection) => {
+    if (!detection.ok || !detection.data.available) return;
+    gitService.migrateFromLegacy(notesRoot, metadataStore).then((result) => {
+      if (!result.ok) return;
+      if (!result.data.alreadyMigrated && result.data.migrated > 0) {
+        console.log(`[git] Migrated ${result.data.migrated} legacy version(s) to git commits.`);
+      }
+    }).catch((err) => {
+      console.warn("[git] Legacy migration error:", err?.message || err);
+    });
+  });
 }
+
 
 function readP2PStatusSnapshot() {
   return mainHelpers.readP2PStatusSnapshot();
@@ -943,4 +960,10 @@ setupDiagramHandlers(ipcMain, appDataDir, {
   filePathWithin,
   emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
   hashContent,
+});
+
+registerGitIpcHandlers(ipcMain, {
+  assertTrustedIpcSender,
+  BrowserWindow,
+  getNotesRoot: () => notesRoot,
 });

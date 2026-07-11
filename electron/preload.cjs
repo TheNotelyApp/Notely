@@ -99,10 +99,6 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("document:changed-on-disk", listener);
     return () => ipcRenderer.removeListener("document:changed-on-disk", listener);
   },
-  getHistory: (filePath) => ipcRenderer.invoke("documents:history", filePath),
-  restoreHistory: (payload) => ipcRenderer.invoke("documents:restore", payload),
-  readVersion: (payload) => ipcRenderer.invoke("documents:read-version", payload),
-  deleteVersion: (payload) => ipcRenderer.invoke("documents:delete-version", payload),
   readDiagramSource: (payload) => ipcRenderer.invoke("diagram:read-source", payload),
   writeDiagramSource: (payload) => ipcRenderer.invoke("diagram:write-source", payload),
   writeDiagramImage: (payload) => ipcRenderer.invoke("diagram:write-image", payload),
@@ -156,5 +152,43 @@ contextBridge.exposeInMainWorld("notesApi", {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("terminal:exit", listener);
     return () => ipcRenderer.removeListener("terminal:exit", listener);
-  }
+  },
+
+  // ── Git Version Control ────────────────────────────────────────────────────
+  gitDetect: () => ipcRenderer.invoke("git:detect"),
+  gitGetRepoInfo: (payload) => ipcRenderer.invoke("git:get-repo-info", payload),
+  gitInitRepo: (payload) => ipcRenderer.invoke("git:init-repo", payload),
+  gitGetStatus: (payload) => ipcRenderer.invoke("git:get-status", payload),
+  gitGetLog: (payload) => ipcRenderer.invoke("git:get-log", payload),
+  gitGetCommitFiles: (payload) => ipcRenderer.invoke("git:get-commit-files", payload),
+  gitGetFileAtCommit: (payload) => ipcRenderer.invoke("git:get-file-at-commit", payload),
+  gitGetFileDiff: (payload) => ipcRenderer.invoke("git:get-file-diff", payload),
+  gitCommit: (payload) => ipcRenderer.invoke("git:commit", payload),
+  gitRestoreFileAtCommit: (payload) => ipcRenderer.invoke("git:restore-file-at-commit", payload),
+  gitListBranches: (payload) => ipcRenderer.invoke("git:list-branches", payload),
+  gitCreateBranch: (payload) => ipcRenderer.invoke("git:create-branch", payload),
+  gitRenameBranch: (payload) => ipcRenderer.invoke("git:rename-branch", payload),
+  gitDeleteBranch: (payload) => ipcRenderer.invoke("git:delete-branch", payload),
+  gitSwitchBranch: (payload) => ipcRenderer.invoke("git:switch-branch", payload),
+  gitMergeBranch: (payload) => ipcRenderer.invoke("git:merge-branch", payload),
+  gitListTags: (payload) => ipcRenderer.invoke("git:list-tags", payload),
+  gitCreateTag: (payload) => ipcRenderer.invoke("git:create-tag", payload),
+  gitDeleteTag: (payload) => ipcRenderer.invoke("git:delete-tag", payload),
+  gitStashList: (payload) => ipcRenderer.invoke("git:stash-list", payload),
+  gitStashPush: (payload) => ipcRenderer.invoke("git:stash-push", payload),
+  gitStashPop: (payload) => ipcRenderer.invoke("git:stash-pop", payload),
+  gitStashDrop: (payload) => ipcRenderer.invoke("git:stash-drop", payload),
+  gitListRemotes: (payload) => ipcRenderer.invoke("git:list-remotes", payload),
+  gitAddRemote: (payload) => ipcRenderer.invoke("git:add-remote", payload),
+  gitRemoveRemote: (payload) => ipcRenderer.invoke("git:remove-remote", payload),
+  gitPush: (payload) => ipcRenderer.invoke("git:push", payload),
+  gitPull: (payload) => ipcRenderer.invoke("git:pull", payload),
+  gitFetch: (payload) => ipcRenderer.invoke("git:fetch", payload),
+  gitSearch: (payload) => ipcRenderer.invoke("git:search", payload),
+  gitGetDeletedFiles: (payload) => ipcRenderer.invoke("git:get-deleted-files", payload),
+  gitGetWorkspaceStats: (payload) => ipcRenderer.invoke("git:get-workspace-stats", payload),
+  gitMigrateLegacy: (payload) => ipcRenderer.invoke("git:migrate-legacy", payload),
+  gitEnsureManagedGitignore: (payload) => ipcRenderer.invoke("git:ensure-managed-gitignore", payload),
+  gitRemoveManagedGitignore: (payload) => ipcRenderer.invoke("git:remove-managed-gitignore", payload),
 });
+

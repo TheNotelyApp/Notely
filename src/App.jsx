@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NotebookPen, Terminal, X } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -41,6 +41,14 @@ const GlobalSearchOverlay = lazy(() =>
 const KeyboardShortcutsModal = lazy(() =>
   import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
 );
+const GitVersionControlPage = lazy(() =>
+  import("./components/GitVersionControlPage").then((m) => ({ default: m.GitVersionControlPage }))
+);
+const GitCommitDialog = lazy(() =>
+  import("./components/GitCommitDialog").then((m) => ({ default: m.GitCommitDialog }))
+);
+import { GitStatusBar } from "./components/GitStatusBar";
+
 const TasksPanel = lazy(() =>
   import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
 );
@@ -66,7 +74,6 @@ import {
   onMenuAction,
   notifyBootReady,
   notifyBootProgress,
-  getHistory,
   getAppInfo,
   getHelpDocuments,
   getDashboardCache,
@@ -88,6 +95,7 @@ import {
   setOnboardingComplete,
   getNotesRootSetting,
   setNotesRootSetting,
+  gitGetStatus,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -301,6 +309,8 @@ export default function App() {
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   const [markdownGuideOpen, setMarkdownGuideOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [gitVCOpen, setGitVCOpen] = useState(false);
+  const [globalCommitDialogOpen, setGlobalCommitDialogOpen] = useState(false);
   const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
   const [allTasksPanelOpen, setAllTasksPanelOpen] = useState(false);
   const [recentNotesPanelOpen, setRecentNotesPanelOpen] = useState(false);
@@ -335,6 +345,8 @@ export default function App() {
     branch: "",
     autoIgnoreMetadataInGit: true,
     gitignoreHasNotesApp: false,
+    pendingCount: 0,
+    files: [],
   });
 
   const {
@@ -664,17 +676,30 @@ export default function App() {
   async function refreshGitWorkspaceMeta() {
     try {
       const meta = await getGitWorkspaceMetadata();
+      let pendingCount = 0;
+      let files = [];
+      if (meta?.isGitRoot && notesFolderPath) {
+        const statusResult = await gitGetStatus(notesFolderPath);
+        if (statusResult?.ok) {
+          pendingCount = statusResult.data.files?.length || 0;
+          files = statusResult.data.files || [];
+        }
+      }
       setGitWorkspaceMeta({
         workspaceRoot: String(meta?.workspaceRoot || ""),
         isGitRoot: meta?.isGitRoot === true,
         branch: String(meta?.branch || ""),
         autoIgnoreMetadataInGit: meta?.autoIgnoreMetadataInGit !== false,
         gitignoreHasNotesApp: meta?.gitignoreHasNotesApp === true,
+        pendingCount,
+        files,
       });
     } catch {
       setGitWorkspaceMeta((currentValue) => ({
         ...currentValue,
         isGitRoot: false,
+        pendingCount: 0,
+        files: [],
       }));
     }
   }
@@ -699,10 +724,20 @@ export default function App() {
     }
   }
 
+  const handleGitStateChange = useCallback(({ branch, pendingCount }) => {
+    setGitWorkspaceMeta((meta) => {
+      if (meta.branch === branch && meta.pendingCount === pendingCount) return meta;
+      return {
+        ...meta,
+        branch,
+        pendingCount,
+      };
+    });
+  }, []);
+
   useEffect(() => {
     void refreshGitWorkspaceMeta();
-    // notesFolderPath updates when notes root changes.
-  }, [notesFolderPath]);
+  }, [notesFolderPath, currentFilePath, dirty]);
 
   useEffect(() => {
     function onGlobalKeyDown(event) {
@@ -857,7 +892,7 @@ export default function App() {
 
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      if (e.key.toLowerCase() === "m" && (e.ctrlKey || e.metaKey)) {
+      if (e.key && e.key.toLowerCase() === "m" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         setMarkdownGuideOpen(true);
       }
@@ -1021,6 +1056,58 @@ export default function App() {
         setWorkspaceGraphOpen(true);
         return;
       }
+
+      if (action === "open-git-version-control") {
+        setGitVCOpen(true);
+        return;
+      }
+
+      if (action === "git-commit") {
+        setGlobalCommitDialogOpen(true);
+        return;
+      }
+
+      if (action === "git-history") {
+        if (current) {
+          setDocumentMenuAction({ action, nonce: Date.now() });
+        } else {
+          notify("Open a note to view its history.", "info");
+        }
+        return;
+      }
+
+      if (action === "git-diff-current") {
+        if (current) {
+          setDocumentMenuAction({ action, nonce: Date.now() });
+        } else {
+          notify("Open a note to diff.", "info");
+        }
+        return;
+      }
+
+      if (action === "git-compare") {
+        setGitVCOpen(true);
+        // Switch tab to compare after mounting if possible (we default to status, compare can be chosen)
+        return;
+      }
+
+      if (action === "toggle-auto-ignore-git-metadata") {
+        void handleToggleAutoIgnoreGitMetadata();
+        return;
+      }
+
+      if (action === "git-reveal-repo" || action === "git-reveal-git-dir") {
+        if (gitWorkspaceMeta.isGitRoot && gitWorkspaceMeta.workspaceRoot) {
+          const targetPath = action === "git-reveal-git-dir" 
+            ? `${gitWorkspaceMeta.workspaceRoot}/.git`
+            : gitWorkspaceMeta.workspaceRoot;
+          revealWorkspaceInExplorer({ folderPath: targetPath });
+        } else {
+          notify("Workspace is not a Git repository.", "warning");
+        }
+        return;
+      }
+
 
       if (action === "open-p2p-sync-help") {
         setP2PSyncHelpOpen(true);
@@ -1214,9 +1301,7 @@ export default function App() {
       }
 
       if (action === "manage-versions") {
-        if (current) {
-          setDocumentMenuAction({ action, nonce: Date.now() });
-        }
+        // Deprecated version action
         return;
       }
 
@@ -2105,24 +2190,16 @@ export default function App() {
             <span className="terminal-meta-pill" data-tooltip="Current workspace scope">
               {activeProject?.isRoot ? "Root" : activeProject?.name || "Project"}
             </span>
-            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot ? "" : "warn"}`} data-tooltip={gitWorkspaceMeta.isGitRoot ? "Workspace Git branch" : "Workspace is not a Git root"}>
-              {gitWorkspaceMeta.isGitRoot ? `Git: ${gitWorkspaceMeta.branch || "(unknown)"}` : "Git: not root"}
-            </span>
-            <span className={`terminal-meta-pill ${gitWorkspaceMeta.isGitRoot && !gitWorkspaceMeta.gitignoreHasNotesApp ? "warn" : ""}`} data-tooltip=".notes-app gitignore status">
-              {gitWorkspaceMeta.isGitRoot
-                ? (gitWorkspaceMeta.gitignoreHasNotesApp ? ".notes-app ignored" : ".notes-app tracked")
-                : ".notes-app n/a"}
-            </span>
-            <button
-              className={`terminal-meta-pill terminal-meta-toggle ${gitWorkspaceMeta.autoIgnoreMetadataInGit ? "active" : ""}`}
-              type="button"
-              data-tooltip="Toggle auto-ignore of .notes-app in workspace .gitignore"
-              onClick={() => {
-                void handleToggleAutoIgnoreGitMetadata();
+            <GitStatusBar
+              gitState={{
+                gitAvailable: gitWorkspaceMeta.isGitRoot || gitWorkspaceMeta.branch !== "",
+                isRepo: gitWorkspaceMeta.isGitRoot,
+                branch: gitWorkspaceMeta.branch,
+                pendingCount: gitWorkspaceMeta.pendingCount || 0,
+                loading: false,
               }}
-            >
-              {gitWorkspaceMeta.autoIgnoreMetadataInGit ? "Ignore .notes-app: On" : "Ignore .notes-app: Off"}
-            </button>
+              onClick={() => setGitVCOpen(true)}
+            />
             {current ? (
               <>
                 <span className="terminal-meta-pill" data-tooltip="Editor mode and active tab">
@@ -2296,6 +2373,8 @@ export default function App() {
           <DocumentDetail
             document={current}
             history={history}
+            workspacePath={notesFolderPath}
+            branch={gitWorkspaceMeta.branch}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             mode={mode}
@@ -2303,7 +2382,7 @@ export default function App() {
             onChange={setCurrent}
             onSave={saveDocument}
             onRenameTitle={handleRenameCurrentDocument}
-            onRefreshHistory={async () => setHistory(await getHistory(current.filePath))}
+            onRefreshHistory={async () => setHistory([])}
             saving={saving}
             dirty={dirty}
             menuAction={documentMenuAction}
@@ -2913,6 +2992,38 @@ export default function App() {
         >
           Dev: Reset Onboarding
         </button>
+      )}
+
+      {gitVCOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
+            <GitVersionControlPage
+              workspacePath={notesFolderPath}
+              onBack={() => setGitVCOpen(false)}
+              onNotify={notify}
+              onGitStateChange={handleGitStateChange}
+              currentFilePath={current?.filePath}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {globalCommitDialogOpen && (
+        <Suspense fallback={null}>
+          <GitCommitDialog
+            open={globalCommitDialogOpen}
+            onClose={() => setGlobalCommitDialogOpen(false)}
+            onCommit={async (payload) => {
+              const result = await gitCommit({ workspacePath: notesFolderPath, ...payload });
+              if (!result?.ok) throw new Error(result?.error || "Commit failed.");
+              notify("Committed successfully.", "success");
+              void refreshGitWorkspaceMeta();
+            }}
+            stagedFiles={gitWorkspaceMeta.files || []}
+            workspacePath={notesFolderPath}
+            currentFilePath={current?.filePath}
+          />
+        </Suspense>
       )}
 
       <GlobalTooltip />

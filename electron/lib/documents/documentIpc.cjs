@@ -347,59 +347,12 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       })
     });
 
-    if (!isAutoSave) {
-      const previousHash = hashContent(previous);
-      if (!hasMatchingFileBackedVersion(resolved, previousHash)) {
-        const versionPath = createVersionSnapshot(resolved, previous, saveReason);
-
-        resolveMetadataStore().addHistory({
-          filePath: resolved,
-          versionPath,
-          fileHash: previousHash,
-          reason: saveReason,
-          createdAt: new Date().toISOString()
-        });
-      }
-    }
-
     const parsed = parseDocument(next, resolved);
     dashboardCache?.recordSave?.(parsed);
     return parsed;
   });
 
-  registerTrustedHandler("documents:history", (_event, filePath) => {
-    const resolved = path.resolve(filePath);
-    return resolveMetadataStore().getHistory(resolved);
-  });
 
-  registerTrustedHandler("documents:restore", (_event, payload) => {
-    const notesRoot = getNotesRoot();
-    const versionsRoot = getVersionsRoot();
-    const resolved = path.resolve(payload.filePath);
-    const versionPath = path.resolve(payload.versionPath);
-    if (!filePathWithin(notesRoot, resolved) || !filePathWithin(versionsRoot, versionPath)) {
-      throw new Error("Invalid restore path.");
-    }
-
-    const current = fs.readFileSync(resolved, "utf8");
-    const rollbackDir = path.join(versionsRoot, slugify(path.basename(resolved)));
-    ensureDir(rollbackDir);
-    const rollbackPath = path.join(rollbackDir, `${nowStamp()}-before-restore.md`);
-    fs.writeFileSync(rollbackPath, current, "utf8");
-
-    const restored = fs.readFileSync(versionPath, "utf8");
-    fs.writeFileSync(resolved, restored, "utf8");
-
-    resolveMetadataStore().addHistory({
-      filePath: resolved,
-      versionPath: rollbackPath,
-      fileHash: hashContent(current),
-      reason: "before-restore",
-      createdAt: new Date().toISOString()
-    });
-
-    return parseDocument(restored, resolved);
-  });
 
   registerTrustedHandler("documents:open-in-editor", async (_event, filePath) => {
     const notesRoot = getNotesRoot();
@@ -546,44 +499,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     }
   });
 
-  registerTrustedHandler("documents:read-version", (_event, payload) => {
-    const notesRoot = getNotesRoot();
-    const versionsRoot = getVersionsRoot();
-    const resolvedFilePath = path.resolve(payload?.filePath || "");
-    const resolvedVersionPath = path.resolve(payload?.versionPath || "");
 
-    if (!filePathWithin(notesRoot, resolvedFilePath) || path.extname(resolvedFilePath).toLowerCase() !== ".md") {
-      throw new Error("Invalid document path.");
-    }
-    if (!filePathWithin(versionsRoot, resolvedVersionPath) || path.extname(resolvedVersionPath).toLowerCase() !== ".md") {
-      throw new Error("Invalid version path.");
-    }
-    if (!fs.existsSync(resolvedVersionPath)) {
-      throw new Error("Version file does not exist.");
-    }
-
-    return fs.readFileSync(resolvedVersionPath, "utf8");
-  });
-
-  registerTrustedHandler("documents:delete-version", (_event, payload) => {
-    const notesRoot = getNotesRoot();
-    const versionsRoot = getVersionsRoot();
-    const resolvedFilePath = path.resolve(payload?.filePath || "");
-    const resolvedVersionPath = path.resolve(payload?.versionPath || "");
-
-    if (!filePathWithin(notesRoot, resolvedFilePath) || path.extname(resolvedFilePath).toLowerCase() !== ".md") {
-      throw new Error("Invalid document path.");
-    }
-    if (!filePathWithin(versionsRoot, resolvedVersionPath) || path.extname(resolvedVersionPath).toLowerCase() !== ".md") {
-      throw new Error("Invalid version path.");
-    }
-
-    if (fs.existsSync(resolvedVersionPath)) {
-      fs.unlinkSync(resolvedVersionPath);
-    }
-    metadataStore.deleteHistoryVersion(resolvedFilePath, resolvedVersionPath);
-    return true;
-  });
 
   registerTrustedHandler("workspace:graph-data", () => {
     const activeProject = getActiveProject();
