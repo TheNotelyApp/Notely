@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { GitCommit, X } from "lucide-react";
+import { GitCommit, X, FilePlus2, FileEdit, FileMinus2, FileQuestion } from "lucide-react";
 import OverlayDialog from "./OverlayDialog";
 import AppButton from "./AppButton";
 import AppInput from "./AppInput";
@@ -131,12 +131,13 @@ export function GitCommitDialog({
                     onChange={() => togglePath(f.path)}
                     disabled={committing}
                   />
-                  <span
-                    className={`git-commit-dialog__file-status git-file-status--${(f.status === "?" || f.status === "U" ? "u" : f.status || "m").toLowerCase()}`}
-                    aria-label={`Status: ${f.status}`}
-                  >
-                    {f.status === "?" ? "U" : f.status || "M"}
-                  </span>
+                  {(() => {
+                    const status = f.status || "M";
+                    if (status === "A") return <FilePlus2 size={14} className="git-file-status--a" title="Added" style={{ minWidth: "14px" }} />;
+                    if (status === "D") return <FileMinus2 size={14} className="git-file-status--d" title="Deleted" style={{ minWidth: "14px" }} />;
+                    if (status === "?" || status === "U") return <FileQuestion size={14} className="git-file-status--u" title="Untracked" style={{ minWidth: "14px" }} />;
+                    return <FileEdit size={14} className="git-file-status--m" title="Modified" style={{ minWidth: "14px" }} />;
+                  })()}
                   <span className="git-commit-dialog__file-path" title={f.path}>
                     {f.path}
                   </span>

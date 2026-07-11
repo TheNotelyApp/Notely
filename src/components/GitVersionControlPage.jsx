@@ -69,7 +69,6 @@ const TABS = [
   { id: "tags", label: "Tags", icon: Tag },
   { id: "stashes", label: "Stashes", icon: Layers },
   { id: "remotes", label: "Remotes", icon: Cloud },
-  { id: "repository", label: "Repository", icon: Package },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -190,15 +189,6 @@ function StatusTab({ status, workspacePath, onRefresh, onNotify, onCommitSuccess
             </div>
           )}
 
-          <div className="git-vc-status__actions">
-            <AppButton
-              variant="primary"
-              onClick={() => setCommitDialogOpen(true)}
-            >
-              <GitCommit size={14} />
-              Commit…
-            </AppButton>
-          </div>
         </div>
       )}
 
@@ -391,7 +381,7 @@ function CompareTab({ commits, workspacePath, currentFilePath }) {
           onClick={handleCompare}
           disabled={!hashA || !hashB || !filePathFilter.trim() || loading}
           aria-busy={loading}
-          style={{ height: "38px" }}
+          style={{ height: "32px" }}
         >
           <GitCompare size={14} />
           {loading ? "Comparing…" : "Compare"}
@@ -902,89 +892,7 @@ function RemotesTab({ workspacePath, onNotify, status }) {
   );
 }
 
-// ── Repository Tab ────────────────────────────────────────────────────────────
 
-function RepositoryTab({ workspacePath, repoRoot }) {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!workspacePath) return;
-    setLoading(true);
-    gitGetWorkspaceStats(workspacePath)
-      .then((r) => { if (r?.ok) setStats(r.data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [workspacePath]);
-
-  function formatBytes(bytes) {
-    if (!bytes) return "0 B";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1048576).toFixed(1)} MB`;
-  }
-
-  function handleRevealInExplorer() {
-    if (typeof window.notesApi?.revealWorkspaceInExplorer === "function") {
-      window.notesApi.revealWorkspaceInExplorer({ folderPath: repoRoot || workspacePath });
-    }
-  }
-
-  return (
-    <div className="git-vc-repository">
-      <h3 className="git-vc-section-title">Repository Info</h3>
-
-      <dl className="git-vc-repository__stats">
-        <div className="git-vc-repository__stat">
-          <dt>Repository root</dt>
-          <dd><code className="git-vc-repository__path">{repoRoot || workspacePath}</code></dd>
-        </div>
-      </dl>
-
-      {loading ? (
-        <div className="git-vc-loading">Loading stats…</div>
-      ) : stats ? (
-        <dl className="git-vc-repository__stats">
-          <div className="git-vc-repository__stat">
-            <dt>Total commits</dt>
-            <dd>{stats.totalCommits.toLocaleString()}</dd>
-          </div>
-          <div className="git-vc-repository__stat">
-            <dt>Branches</dt>
-            <dd>{stats.branches}</dd>
-          </div>
-          <div className="git-vc-repository__stat">
-            <dt>Tags</dt>
-            <dd>{stats.tags}</dd>
-          </div>
-          <div className="git-vc-repository__stat">
-            <dt>Git object storage</dt>
-            <dd>{formatBytes(stats.repoSizeBytes)}</dd>
-          </div>
-          {stats.contributors?.length > 0 && (
-            <div className="git-vc-repository__stat">
-              <dt>Contributors</dt>
-              <dd>
-                <ul className="git-vc-repository__contributors">
-                  {stats.contributors.slice(0, 5).map((c) => (
-                    <li key={c.name}>{c.name} ({c.commits})</li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
-          )}
-        </dl>
-      ) : null}
-
-      <div className="git-vc-repository__actions">
-        <AppButton variant="small" onClick={handleRevealInExplorer}>
-          <ExternalLink size={13} />
-          Reveal in Explorer
-        </AppButton>
-      </div>
-    </div>
-  );
-}
 
 // ── Settings Tab ──────────────────────────────────────────────────────────────
 
@@ -1296,9 +1204,7 @@ export function GitVersionControlPage({
                 status={status}
               />
             )}
-            {activeTab === "repository" && (
-              <RepositoryTab workspacePath={workspacePath} repoRoot={repoRoot} />
-            )}
+
             {activeTab === "settings" && (
               <SettingsTab workspacePath={workspacePath} />
             )}

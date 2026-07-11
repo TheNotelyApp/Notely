@@ -10306,14 +10306,14 @@ button {
 
 .git-vc-compare__input {
   width: 100%;
-  height: 38px;
-  padding: 0 var(--space-3, 0.75rem);
+  height: 32px;
+  padding: 0 var(--space-2, 0.5rem);
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-sm, 6px);
   color: var(--app-text);
   font-family: inherit;
-  font-size: var(--font-size-body, 14px);
+  font-size: var(--font-size-body-sm, 13px);
   cursor: pointer;
   outline: none;
 }
@@ -10337,13 +10337,34 @@ button {
   gap: var(--space-2, 0.5rem);
 }
 
+/* Input fields inside Git VC */
+.git-vc-page input[type="text"],
+.git-vc-page input[type="password"] {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-3, 0.75rem);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: var(--font-size-body-sm, 13px);
+  outline: none;
+  transition: border-color var(--motion-fast, 120ms ease);
+}
+
+.git-vc-page input[type="text"]:focus,
+.git-vc-page input[type="password"]:focus {
+  border-color: var(--accent-solid);
+}
+
 /* Branches, Tags, Stashes */
 .git-vc-branches,
 .git-vc-tags,
 .git-vc-stashes {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8, 2rem);
+  gap: var(--space-5, 1.25rem);
 }
 
 .git-vc-section-title {
@@ -10581,12 +10602,19 @@ button {
 }
 
 .git-status-bar--pending {
-  color: var(--status-warning-text);
-  border-left: 2px solid var(--status-warning-border);
+  background: var(--status-warning-bg) !important;
+  color: var(--status-warning-text) !important;
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--status-warning-border) !important;
 }
 
 .git-status-bar--clean {
-  color: var(--status-success-text);
+  background: var(--status-success-bg) !important;
+  color: var(--status-success-text) !important;
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--status-success-border) !important;
 }
 
 .git-status-bar__branch {
@@ -10913,6 +10941,7 @@ button {
 .git-file-status--m { color: var(--status-warning-text); }
 .git-file-status--a { color: var(--status-success-text); }
 .git-file-status--d { color: var(--status-danger-text); }
+.git-file-status--u { color: var(--text-muted); }
 
 .git-commit-dialog__file-path {
   font-family: monospace;
@@ -11187,6 +11216,13 @@ button {
   background: #3a1f20;
   color: #ebb0b5;
 }
+
+.git-vc-page .p2p-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
 
 
 
