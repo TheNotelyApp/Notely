@@ -131,15 +131,6 @@ function registerCoreIpcHandlers(ipcMain, deps) {
   }));
 
 
-
-  registerTrustedHandler("help:open-window", (event) => {
-    const sender = event.sender;
-    const parentWin = BrowserWindow.fromWebContents(sender);
-    const { createHelpWindow } = require("../core/helpWindow.cjs");
-    createHelpWindow(parentWin);
-    return true;
-  });
-
   registerTrustedHandler("settings:get-app-info", () => {
     const fallbackName = String(app?.getName?.() || "Notely");
     const fallbackVersion = String(app?.getVersion?.() || "0.0.0");

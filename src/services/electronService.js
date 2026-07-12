@@ -211,16 +211,6 @@ export async function getAppInfo() {
   return api.getAppInfo();
 }
 
-
-
-export async function openHelpWindow(url) {
-  const api = getNotesApi();
-  if (typeof api.openHelpWindow !== "function") {
-    return;
-  }
-  return api.openHelpWindow({ url });
-}
-
 export async function setNotesRootSetting(notesRoot) {
   const api = getNotesApi();
   if (typeof api.setNotesRootSetting !== "function") {

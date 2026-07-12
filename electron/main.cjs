@@ -56,11 +56,7 @@ if (process.platform === "win32") {
   app.setAppUserModelId("app.notely.desktop");
 }
 
-// Register help-doc scheme as privileged so CSS/JS files can load and make requests
-const { protocol } = require("electron");
-protocol.registerSchemesAsPrivileged([
-  { scheme: "help-doc", privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
-]);
+// Register protocols here if needed
 
 try {
   fs.mkdirSync(chromiumCachePath, { recursive: true });
@@ -798,50 +794,6 @@ if (canRunApp) {
       if (getThemePreferenceSetting() === "auto") {
         broadcastThemeChange();
       }
-    });
-
-    const { contentTypeForFile } = require("./lib/shared/utils.cjs");
-
-    // Register custom protocol to handle docs absolute paths (e.g. /assets/...) cleanly
-    protocol.registerFileProtocol("help-doc", (request, callback) => {
-      console.log("[help-doc protocol] Request URL:", request.url);
-      let urlPath = request.url.replace(/^help-doc:\/\/docs\//, "");
-      // Also strip root help-doc:// if docs/ was bypassed
-      urlPath = urlPath.replace(/^help-doc:\/\//, "");
-      // Remove query parameters or hash anchors
-      urlPath = urlPath.split(/[?#]/)[0];
-      // Decode path
-      urlPath = decodeURIComponent(urlPath);
-      // Map to docs-site-dist
-      let fullPath = path.join(app.getAppPath(), "docs-site-dist", urlPath);
-
-      // Resolve directories and paths without extensions to files
-      const fs = require("node:fs");
-      try {
-        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-          fullPath = path.join(fullPath, "index.html");
-        } else if (!path.extname(fullPath)) {
-          if (fs.existsSync(fullPath + ".html")) {
-            fullPath = fullPath + ".html";
-          } else if (fs.existsSync(path.join(fullPath, "index.html"))) {
-            fullPath = path.join(fullPath, "index.html");
-          }
-        }
-      } catch (e) {
-        console.error("[help-doc protocol] Error checking path stats:", e);
-      }
-
-      const mime = contentTypeForFile(fullPath);
-      console.log("[help-doc protocol] Resolved File Path:", fullPath, "Mime:", mime);
-      
-      const response = { path: fullPath };
-      if (mime && mime !== "application/octet-stream") {
-        response.headers = {
-          "content-type": mime,
-          "cache-control": "no-cache"
-        };
-      }
-      callback(response);
     });
 
     // Register AI IPC handlers in the ready phase so renderer calls never race missing handlers.

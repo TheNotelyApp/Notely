@@ -342,29 +342,29 @@ function createWindowLifecycle(deps) {
     const isDev = Boolean(rendererUrl);
  
     const scriptSrc = isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' help-doc:"
-      : "script-src 'self' help-doc:";
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'";
  
     const connectSrc = isDev
-      ? "connect-src 'self' https://api.languagetool.org ws: http://127.0.0.1:* http://localhost:* help-doc:"
-      : "connect-src 'self' https://api.languagetool.org help-doc:";
+      ? "connect-src 'self' https://api.languagetool.org ws: http://127.0.0.1:* http://localhost:*"
+      : "connect-src 'self' https://api.languagetool.org";
  
     return [
-      "default-src 'self' help-doc:",
+      "default-src 'self'",
       scriptSrc,
-      "style-src 'self' 'unsafe-inline' help-doc: data:",
-      "img-src 'self' data: blob: file: help-doc:",
-      "media-src 'self' data: blob: file: help-doc:",
-      "font-src 'self' data: help-doc:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data:",
+      "img-src 'self' data: blob: file:",
+      "media-src 'self' data: blob: file:",
+      "font-src 'self' https://fonts.gstatic.com data:",
       connectSrc,
-      "worker-src 'self' blob: help-doc:",
+      "worker-src 'self' blob:",
       "object-src 'none'",
-      "base-uri 'self' help-doc:",
+      "base-uri 'self'",
       "form-action 'none'",
       "frame-src 'none'"
     ].join("; ");
   }
-
+ 
   function applyContentSecurityPolicy() {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       const responseHeaders = { ...details.responseHeaders };
@@ -377,14 +377,14 @@ function createWindowLifecycle(deps) {
       callback({ responseHeaders });
     });
   }
-
+ 
   function isAppOriginUrl(targetUrl) {
     try {
       const parsed = new URL(targetUrl);
       if (rendererUrl) {
         return parsed.origin === new URL(rendererUrl).origin;
       }
-      return parsed.protocol === "file:" || parsed.protocol === "help-doc:";
+      return parsed.protocol === "file:";
     } catch {
       return false;
     }

@@ -64,6 +64,9 @@ const MarkdownGuideModal = lazy(() =>
 const AboutModal = lazy(() =>
   import("./components/AboutModal").then((m) => ({ default: m.AboutModal }))
 );
+const HelpConfirmationModal = lazy(() =>
+  import("./components/HelpConfirmationModal").then((m) => ({ default: m.HelpConfirmationModal }))
+);
 const WorkspaceExportDialog = lazy(() =>
   import("./components/WorkspaceExportDialog").then((m) => ({ default: m.WorkspaceExportDialog }))
 );
@@ -72,7 +75,6 @@ import {
   notifyBootReady,
   notifyBootProgress,
   getAppInfo,
-  openHelpWindow,
   getDashboardCache,
   listWorkspaceTaskDocuments,
   updateMenuContext,
@@ -306,6 +308,7 @@ export default function App() {
   const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
   const [markdownGuideOpen, setMarkdownGuideOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [helpConfirmationOpen, setHelpConfirmationOpen] = useState(false);
   const [gitVCOpen, setGitVCOpen] = useState(false);
   const [gitVCInitialTab, setGitVCInitialTab] = useState("status");
   const [globalCommitDialogOpen, setGlobalCommitDialogOpen] = useState(false);
@@ -1006,7 +1009,7 @@ export default function App() {
         if (action === "open-about") {
           setAboutOpen(true);
         } else {
-          void openHelpWindow();
+          setHelpConfirmationOpen(true);
         }
         return;
       }
@@ -1815,7 +1818,7 @@ export default function App() {
     }
 
     if (resolvedCommandId === "open-help-center") {
-      void openHelpWindow();
+      setHelpConfirmationOpen(true);
       return;
     }
 
@@ -2938,6 +2941,15 @@ export default function App() {
             open={aboutOpen}
             onClose={() => setAboutOpen(false)}
             appInfo={appInfo}
+          />
+        </Suspense>
+      ) : null}
+
+      {helpConfirmationOpen ? (
+        <Suspense fallback={null}>
+          <HelpConfirmationModal
+            open={helpConfirmationOpen}
+            onClose={() => setHelpConfirmationOpen(false)}
           />
         </Suspense>
       ) : null}

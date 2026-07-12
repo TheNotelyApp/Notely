@@ -1,6 +1,6 @@
 {
   "name": "notely",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "private": true,
   "description": "Notely desktop markdown notes app.",
   "license": "CC-BY-NC-4.0",
@@ -95,7 +95,6 @@
       "dist/**/*",
       "electron/**/*",
       "src/ai/**/*",
-      "docs-site-dist/**/*",
       "node_modules/node-pty/**/*",
       "node_modules/node-addon-api/**/*",
       "scripts/launch-electron.cjs",
