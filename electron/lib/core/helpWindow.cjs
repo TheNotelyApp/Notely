@@ -9,7 +9,6 @@
 "use strict";
 
 const { BrowserWindow, nativeTheme } = require("electron");
-const path = require("node:path");
 
 let helpWindowInstance = null;
 

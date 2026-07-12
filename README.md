@@ -3,12 +3,15 @@
   <h1>Notely</h1>
 
   <a href="https://github.com/WGLabz/Notely/actions">
+    <img src="https://github.com/WGLabz/Notely/actions/workflows/docs.yml/badge.svg" alt="Docs Deploy Status">
+  </a>
+  <a href="https://github.com/WGLabz/Notely/actions">
     <img src="https://github.com/WGLabz/Notely/actions/workflows/ci.yml/badge.svg" alt="CI Status">
   </a>
   <a href="https://github.com/WGLabz/Notely/actions">
     <img src="https://github.com/WGLabz/Notely/actions/workflows/cd.yml/badge.svg" alt="CD Status">
   </a>
-  <img src="https://img.shields.io/badge/version-v0.1.9-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-v0.1.10-blue" alt="Version" />
   <img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform" />
 

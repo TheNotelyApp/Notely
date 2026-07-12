@@ -17,7 +17,10 @@ export default [
       ".artifacts/**",
       "node_modules/**",
       ".notes-app/**",
-      ".versions/**"
+      ".versions/**",
+      "docs-site-dist/**",
+      "docs-site/**",
+      "docs-site/.vitepress/theme/tokens.css"
     ]
   },
 

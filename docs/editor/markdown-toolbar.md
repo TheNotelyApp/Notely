@@ -28,7 +28,7 @@ The Markdown toolbar sits above the editor and provides quick-insert actions for
 | **Image** | Open file picker → insert image | Uses workspace-relative path |
 | **Table** | Insert 3×3 table skeleton | Opens inline table editor on click |
 | **Ordered list** | Insert `1.` list item | |
-| **Unordered list** | Insert `- ` list item | |
+| **Unordered list** | Insert `-` list item | |
 | **Task** | Insert `- [ ]` task | |
 | **HR** | Insert `---` | |
 

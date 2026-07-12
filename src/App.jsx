@@ -58,9 +58,6 @@ const AllTasksPanel = lazy(() =>
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
 );
-const HelpCenterModal = lazy(() =>
-  import("./components/HelpCenterModal").then((m) => ({ default: m.HelpCenterModal }))
-);
 const MarkdownGuideModal = lazy(() =>
   import("./components/MarkdownGuideModal").then((m) => ({ default: m.MarkdownGuideModal }))
 );
@@ -75,7 +72,6 @@ import {
   notifyBootReady,
   notifyBootProgress,
   getAppInfo,
-  getHelpDocuments,
   openHelpWindow,
   getDashboardCache,
   listWorkspaceTaskDocuments,
@@ -308,7 +304,6 @@ export default function App() {
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
-  const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   const [markdownGuideOpen, setMarkdownGuideOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [gitVCOpen, setGitVCOpen] = useState(false);
@@ -325,7 +320,6 @@ export default function App() {
     normalizeWorkspaceExportOptions(null)
   );
   const [_appInfoLoading, setAppInfoLoading] = useState(true);
-  const [_helpDocsLoading, setHelpDocsLoading] = useState(false);
   const bootReadyNotifiedRef = useRef(false);
   const [appInfo, setAppInfo] = useState({
     appName: "Notely",
@@ -339,7 +333,6 @@ export default function App() {
   const [themePreference, setThemePreferenceState] = useState("auto");
   const [effectiveTheme, setEffectiveTheme] = useState("light");
   const [zoomFactor, setZoomFactorState] = useState(1);
-  const [helpDocuments, setHelpDocuments] = useState([]);
   const [workspaceTaskDocuments, setWorkspaceTaskDocuments] = useState([]);
   const [dashboardCache, setDashboardCache] = useState({ continueWriting: [], recentNotes: [] });
   const [gitWorkspaceMeta, setGitWorkspaceMeta] = useState({
@@ -797,22 +790,7 @@ export default function App() {
       });
   }, []);
 
-  useEffect(() => {
-    if (!helpCenterOpen) return;
-    if (helpDocuments.length > 0) return;
 
-    setHelpDocsLoading(true);
-    void getHelpDocuments()
-      .then((docs) => {
-        setHelpDocuments(Array.isArray(docs) ? docs : []);
-      })
-      .catch(() => {
-        setHelpDocuments([]);
-      })
-      .finally(() => {
-        setHelpDocsLoading(false);
-      });
-  }, [helpCenterOpen, helpDocuments.length]);
 
   useEffect(() => {
     const workspaceRoot = normalizePathLikeValue(activeProject?.rootPath || notesFolderPath);

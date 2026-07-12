@@ -211,14 +211,7 @@ export async function getAppInfo() {
   return api.getAppInfo();
 }
 
-export async function getHelpDocuments() {
-  const api = getNotesApi();
-  if (typeof api.getHelpDocuments !== "function") {
-    return [];
-  }
-  const docs = await api.getHelpDocuments();
-  return Array.isArray(docs) ? docs : [];
-}
+
 
 export async function openHelpWindow(url) {
   const api = getNotesApi();

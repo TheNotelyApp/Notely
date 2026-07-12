@@ -11,7 +11,6 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     path,
     shell,
     filePathWithin,
-    projectRoot,
     ensureDir,
     readUserSettings,
     writeUserSettings,
@@ -131,137 +130,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     }).slice(0, RECENT_WORKSPACES_LIMIT)
   }));
 
-  registerTrustedHandler("help:get-documents", () => {
-    const docsRoot = path.join(projectRoot, "docs");
-    const entries = [
-      {
-        slug: "overview",
-        title: "Start Here",
-        fileName: "index.md",
-        summary: "Quick orientation for first-time users and a map to the most important guides.",
-        highlights: [
-          "First-use checklist",
-          "Keyboard shortcuts for core tasks",
-          "Guide map by user goal",
-        ],
-      },
-      {
-        slug: "user-guide",
-        title: "User Guide",
-        fileName: "user-guide.md",
-        summary: "Step-by-step daily workflows: setup, writing, search, media, and version recovery.",
-        highlights: [
-          "Create and organize notes",
-          "Edit with preview and validation",
-          "Work with diagrams and images",
-        ],
-      },
-      {
-        slug: "feature-reference",
-        title: "Feature Reference",
-        fileName: "feature-reference.md",
-        summary: "Complete explanation of all major user-facing features in Notely.",
-        highlights: [
-          "Editor, search, and versioning",
-          "Media, Mermaid, and Excalidraw",
-          "AI assistance and P2P sync",
-        ],
-      },
-      {
-        slug: "top-tasks",
-        title: "Top Common Tasks",
-        fileName: "top-tasks.md",
-        summary: "Fast click-by-click steps for the actions users perform most often.",
-        highlights: [
-          "Create notes and folders",
-          "Search, edit, and preview",
-          "History, diagrams, and help",
-        ],
-      },
-      {
-        slug: "settings-reference",
-        title: "Settings Reference",
-        fileName: "settings-reference.md",
-        summary: "Reference for appearance, terminal, screen capture, AI, and other configurable behavior.",
-        highlights: [
-          "Theme, zoom, and density",
-          "Terminal and screen capture",
-          "AI providers and privacy controls",
-        ],
-      },
-      {
-        slug: "feature-availability",
-        title: "Feature Availability",
-        fileName: "feature-availability.md",
-        summary: "See what works offline and what requires optional setup or internet access.",
-        highlights: [
-          "Offline vs online features",
-          "AI setup dependencies",
-          "P2P sync prerequisites",
-        ],
-      },
-      {
-        slug: "data-sync-security",
-        title: "Data & Sync",
-        fileName: "data-sync-security.md",
-        summary: "How your data is stored, how sync works, and the privacy basics to know.",
-        highlights: [
-          "Where app data is stored",
-          "P2P pairing and conflict basics",
-          "Daily safety checklist",
-        ],
-      },
-      {
-        slug: "troubleshooting",
-        title: "Troubleshooting",
-        fileName: "troubleshooting.md",
-        summary: "Quick fixes for common issues with notes, preview, links, sync, and AI setup.",
-        highlights: [
-          "Notes not showing",
-          "Preview or link issues",
-          "Sync and AI troubleshooting",
-        ],
-      },
-      {
-        slug: "faq",
-        title: "FAQ",
-        fileName: "faq.md",
-        summary: "Answers to common questions about workspaces, storage, sync, AI, and exports.",
-        highlights: [
-          "Where data is stored",
-          "Offline and AI behavior",
-          "Export and sync basics",
-        ],
-      },
-      {
-        slug: "release-notes",
-        title: "Release Notes",
-        fileName: "release-notes.md",
-        summary: "Current release highlights and recent documentation-impacting changes.",
-        highlights: [
-          "Latest doc and shortcut changes",
-          "New help content",
-          "Recent workflow additions",
-        ],
-      },
-    ];
 
-    return entries
-      .map((entry) => {
-        const fullPath = path.join(docsRoot, entry.fileName);
-        if (!fs.existsSync(fullPath)) return null;
-        const markdown = String(fs.readFileSync(fullPath, "utf8") || "");
-        return {
-          slug: entry.slug,
-          title: entry.title,
-          fileName: entry.fileName,
-          summary: entry.summary,
-          highlights: Array.isArray(entry.highlights) ? entry.highlights : [],
-          markdown,
-        };
-      })
-      .filter(Boolean);
-  });
 
   registerTrustedHandler("help:open-window", (event) => {
     const sender = event.sender;
