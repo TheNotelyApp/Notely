@@ -76,6 +76,7 @@ import {
   notifyBootProgress,
   getAppInfo,
   getHelpDocuments,
+  openHelpWindow,
   getDashboardCache,
   listWorkspaceTaskDocuments,
   updateMenuContext,
@@ -1027,7 +1028,7 @@ export default function App() {
         if (action === "open-about") {
           setAboutOpen(true);
         } else {
-          setHelpCenterOpen(true);
+          void openHelpWindow();
         }
         return;
       }
@@ -1836,7 +1837,7 @@ export default function App() {
     }
 
     if (resolvedCommandId === "open-help-center") {
-      setHelpCenterOpen(true);
+      void openHelpWindow();
       return;
     }
 
@@ -2942,16 +2943,7 @@ export default function App() {
         </Suspense>
       ) : null}
 
-      {helpCenterOpen ? (
-        <Suspense fallback={null}>
-          <HelpCenterModal
-            open={helpCenterOpen}
-            onClose={() => setHelpCenterOpen(false)}
-            appInfo={appInfo}
-            documents={helpDocuments}
-          />
-        </Suspense>
-      ) : null}
+
 
       {markdownGuideOpen ? (
         <Suspense fallback={null}>

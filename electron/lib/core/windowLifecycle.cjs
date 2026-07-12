@@ -340,26 +340,26 @@ function createWindowLifecycle(deps) {
 
   function buildContentSecurityPolicy() {
     const isDev = Boolean(rendererUrl);
-
+ 
     const scriptSrc = isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-      : "script-src 'self'";
-
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' help-doc:"
+      : "script-src 'self' help-doc:";
+ 
     const connectSrc = isDev
-      ? "connect-src 'self' https://api.languagetool.org ws: http://127.0.0.1:* http://localhost:*"
-      : "connect-src 'self' https://api.languagetool.org";
-
+      ? "connect-src 'self' https://api.languagetool.org ws: http://127.0.0.1:* http://localhost:* help-doc:"
+      : "connect-src 'self' https://api.languagetool.org help-doc:";
+ 
     return [
-      "default-src 'self'",
+      "default-src 'self' help-doc:",
       scriptSrc,
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: file:",
-      "media-src 'self' data: blob: file:",
-      "font-src 'self' data:",
+      "style-src 'self' 'unsafe-inline' help-doc:",
+      "img-src 'self' data: blob: file: help-doc:",
+      "media-src 'self' data: blob: file: help-doc:",
+      "font-src 'self' data: help-doc:",
       connectSrc,
-      "worker-src 'self' blob:",
+      "worker-src 'self' blob: help-doc:",
       "object-src 'none'",
-      "base-uri 'self'",
+      "base-uri 'self' help-doc:",
       "form-action 'none'",
       "frame-src 'none'"
     ].join("; ");
@@ -384,7 +384,7 @@ function createWindowLifecycle(deps) {
       if (rendererUrl) {
         return parsed.origin === new URL(rendererUrl).origin;
       }
-      return parsed.protocol === "file:";
+      return parsed.protocol === "file:" || parsed.protocol === "help-doc:";
     } catch {
       return false;
     }

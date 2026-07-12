@@ -1,0 +1,437 @@
+/**
+ * theme.css
+ *
+ * Maps VitePress built-in CSS variables to Notely design tokens.
+ * Zero hardcoded color values — everything references tokens.css variables.
+ *
+ * tokens.css is auto-generated from src/styles.css.
+ * Run: node scripts/sync-design-tokens.cjs
+ */
+
+/* ─── Brand colors ──────────────────────────────────────────────── */
+:root {
+  --vp-c-brand-1: var(--accent-solid);
+  --vp-c-brand-2: var(--accent-soft);
+  --vp-c-brand-3: var(--accent-strong);
+  --vp-c-brand-soft: var(--surface-accent);
+
+  --vp-c-text-1: var(--text-strong);
+  --vp-c-text-2: var(--text-muted);
+  --vp-c-text-3: var(--text-subtle);
+
+  --vp-c-bg: var(--app-bg);
+  --vp-c-bg-soft: var(--surface-muted);
+  --vp-c-bg-mute: var(--surface-accent);
+  --vp-c-bg-alt: var(--surface-elevated);
+
+  --vp-c-border: var(--border-default);
+  --vp-c-divider: var(--border-subtle);
+
+  --vp-c-tip-1: var(--status-success-text);
+  --vp-c-tip-2: var(--status-success-border);
+  --vp-c-tip-soft: var(--status-success-bg);
+
+  --vp-c-warning-1: var(--status-warning-text);
+  --vp-c-warning-2: var(--status-warning-border);
+  --vp-c-warning-soft: var(--status-warning-bg);
+
+  --vp-c-danger-1: var(--status-danger-text);
+  --vp-c-danger-2: var(--status-danger-border);
+  --vp-c-danger-soft: var(--status-danger-bg);
+
+  --vp-c-caution-1: var(--status-danger-text);
+  --vp-c-caution-2: var(--status-danger-border);
+  --vp-c-caution-soft: var(--status-danger-bg);
+}
+
+/* ─── Typography ────────────────────────────────────────────────── */
+:root {
+  --vp-font-family-base: Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vp-font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+}
+
+/* ─── Nav bar ───────────────────────────────────────────────────── */
+:root {
+  --vp-nav-bg-color: var(--surface-bg);
+  --vp-nav-screen-bg-color: var(--surface-bg);
+}
+
+.VPNav {
+  border-bottom: 1px solid var(--border-default) !important;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(12px);
+  background: rgba(var(--surface-bg), 0.92) !important;
+}
+
+.VPNavBar .title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong) !important;
+}
+
+/* ─── Sidebar ───────────────────────────────────────────────────── */
+.VPSidebar {
+  background: var(--surface-bg) !important;
+  border-right: 1px solid var(--border-subtle) !important;
+}
+
+.VPSidebarItem .text {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color var(--motion-standard);
+}
+
+.VPSidebarItem.is-active > .item .text {
+  color: var(--accent-solid) !important;
+  font-weight: 600;
+}
+
+.VPSidebarItem:hover > .item .text {
+  color: var(--text-strong);
+}
+
+.VPSidebarGroup .title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle) !important;
+}
+
+/* Active sidebar indicator */
+.VPSidebarItem.is-active > .item {
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+}
+
+/* ─── Content area ──────────────────────────────────────────────── */
+.VPContent {
+  background: var(--app-bg);
+}
+
+.VPDoc .content-container {
+  max-width: 760px;
+}
+
+/* ─── Headings ──────────────────────────────────────────────────── */
+.vp-doc h1 {
+  font-size: var(--font-size-display);
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-7);
+}
+
+.vp-doc h2 {
+  font-size: var(--font-size-heading-lg);
+  font-weight: 600;
+  color: var(--text-strong);
+  border-bottom: 1px solid var(--border-muted);
+  padding-bottom: var(--space-3);
+  margin-top: var(--space-8);
+}
+
+.vp-doc h3 {
+  font-size: var(--font-size-heading-md);
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.vp-doc h4 {
+  font-size: var(--font-size-title);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Body text ─────────────────────────────────────────────────── */
+.vp-doc p,
+.vp-doc li {
+  font-size: var(--font-size-body);
+  line-height: 1.7;
+  color: var(--app-text);
+}
+
+/* ─── Links ─────────────────────────────────────────────────────── */
+.vp-doc a {
+  color: var(--accent-solid);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid transparent;
+  transition:
+    color var(--motion-fast),
+    border-color var(--motion-fast);
+}
+
+.vp-doc a:hover {
+  color: var(--accent-strong);
+  border-bottom-color: var(--accent-solid);
+}
+
+/* ─── Code ──────────────────────────────────────────────────────── */
+.vp-doc code:not(pre code) {
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  border: 1px solid var(--border-muted);
+  color: var(--accent-strong);
+}
+
+.vp-doc pre {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Tables ────────────────────────────────────────────────────── */
+.vp-doc table {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-body-sm);
+}
+
+.vp-doc th {
+  background: var(--surface-accent);
+  color: var(--text-strong);
+  font-weight: 600;
+  font-size: var(--font-size-label);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.vp-doc td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--app-text);
+  vertical-align: top;
+}
+
+.vp-doc tr:last-child td {
+  border-bottom: none;
+}
+
+.vp-doc tbody tr:hover {
+  background: var(--surface-muted);
+}
+
+/* ─── Keyboard keys ─────────────────────────────────────────────── */
+.vp-doc kbd {
+  display: inline-block;
+  font-size: 11px;
+  font-family: var(--vp-font-family-mono);
+  padding: 2px 6px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--text-strong);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ─── Callout / custom containers ───────────────────────────────── */
+.vp-doc .custom-block.tip {
+  background: var(--status-success-bg);
+  border-color: var(--status-success-border);
+  color: var(--status-success-text);
+}
+
+.vp-doc .custom-block.info {
+  background: var(--status-info-bg);
+  border-color: var(--status-info-border);
+  color: var(--status-info-text);
+}
+
+.vp-doc .custom-block.warning {
+  background: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
+}
+
+.vp-doc .custom-block.danger {
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger-text);
+}
+
+.vp-doc .custom-block .custom-block-title {
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-3);
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ─── Outline / TOC ─────────────────────────────────────────────── */
+.VPDocAside .outline-link {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--motion-fast);
+}
+
+.VPDocAside .outline-link.active {
+  color: var(--accent-solid);
+  font-weight: 600;
+}
+
+/* ─── Search ────────────────────────────────────────────────────── */
+.VPLocalSearchBox .search-input {
+  border: 1px solid var(--border-default);
+  background: var(--surface-bg);
+  border-radius: var(--radius-md);
+  color: var(--text-strong);
+  font-size: var(--font-size-body);
+}
+
+.VPLocalSearchBox {
+  --vp-local-search-highlight-bg: var(--surface-accent-strong);
+  --vp-local-search-highlight-text: var(--accent-strong);
+}
+
+/* ─── Footer ────────────────────────────────────────────────────── */
+.VPFooter {
+  border-top: 1px solid var(--border-subtle) !important;
+  background: var(--surface-bg) !important;
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
+}
+
+/* ─── Buttons (hero CTA, etc) ───────────────────────────────────── */
+.VPButton.medium.brand {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition:
+    background var(--motion-fast),
+    box-shadow var(--motion-fast);
+}
+
+.VPButton.medium.brand:hover {
+  background: var(--accent-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.VPButton.medium.alt {
+  border: 1px solid var(--border-default);
+  background: var(--surface-bg);
+  color: var(--text-strong);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast);
+}
+
+.VPButton.medium.alt:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+/* ─── Breadcrumbs ───────────────────────────────────────────────── */
+.VPDocFooter .pager-link {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  transition:
+    background var(--motion-standard),
+    border-color var(--motion-standard);
+}
+
+.VPDocFooter .pager-link:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+/* ─── Badge ─────────────────────────────────────────────────────── */
+.vp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-pill);
+  padding: 2px 7px;
+}
+
+.vp-badge.tip {
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
+}
+
+.vp-badge.warning {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+
+.vp-badge.danger {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+
+/* ─── Home hero ─────────────────────────────────────────────────── */
+.VPHero .name {
+  background: linear-gradient(
+    135deg,
+    var(--accent-strong) 0%,
+    var(--accent-solid) 50%,
+    var(--accent-soft) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.VPHero .tagline {
+  color: var(--text-muted);
+}
+
+.VPFeature {
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  transition:
+    box-shadow var(--motion-standard),
+    border-color var(--motion-standard);
+}
+
+.VPFeature:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-soft);
+}
+
+.VPFeature .title {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.VPFeature .details {
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
+}
