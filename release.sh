@@ -7,6 +7,12 @@ if ! npm run ci:check; then
   exit 1
 fi
 
+echo "Verifying documentation builds successfully..."
+if ! npm run docs:build; then
+  echo "Documentation build failed. Aborting release."
+  exit 1
+fi
+
 echo "Running local build (packaging) to verify CD pipeline won't fail..."
 if ! ./build-windows-exe.sh; then
   echo "Local packaging failed. Aborting release."

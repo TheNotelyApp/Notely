@@ -56,6 +56,12 @@ if (process.platform === "win32") {
   app.setAppUserModelId("app.notely.desktop");
 }
 
+// Register help-doc scheme as privileged so CSS/JS files can load and make requests
+const { protocol } = require("electron");
+protocol.registerSchemesAsPrivileged([
+  { scheme: "help-doc", privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
+]);
+
 try {
   fs.mkdirSync(chromiumCachePath, { recursive: true });
   app.setPath("sessionData", sessionDataPath);
@@ -792,6 +798,18 @@ if (canRunApp) {
       if (getThemePreferenceSetting() === "auto") {
         broadcastThemeChange();
       }
+    });
+
+    // Register custom protocol to handle docs absolute paths (e.g. /assets/...) cleanly
+    protocol.registerFileProtocol("help-doc", (request, callback) => {
+      let urlPath = request.url.replace(/^help-doc:\/\/docs\//, "");
+      // Remove query parameters or hash anchors
+      urlPath = urlPath.split(/[?#]/)[0];
+      // Decode path
+      urlPath = decodeURIComponent(urlPath);
+      // Map to docs-site-dist
+      const fullPath = path.join(app.getAppPath(), "docs-site-dist", urlPath);
+      callback({ path: fullPath });
     });
 
     // Register AI IPC handlers in the ready phase so renderer calls never race missing handlers.
