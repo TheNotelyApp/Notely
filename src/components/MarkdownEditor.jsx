@@ -10,6 +10,7 @@ import { MarkdownTableEditor } from "./MarkdownTableEditor";
 import { insertMediaFromFiles } from "../services/imageService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 import { editorTheme } from "../utils/editorTheme";
+import { generateDiagramId } from "../utils/diagramFileUtils";
 
 function getLineStartIndex(text, lineNumber) {
   const targetLine = Math.max(lineNumber, 1);
@@ -550,18 +551,44 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
 
         void (async () => {
           try {
-            const results = await insertMediaFromFiles(files);
-            const markdownImages = results.map((result) =>
-              createMediaMarkdown(result.altText, result.mediaPath || result.imagePath)
+            const drawioFiles = Array.from(files).filter(
+              (file) => file.name.endsWith(".drawio") || file.name.endsWith(".drawio.xml")
             );
-            const adapter = createEditorAdapter(view);
-            insertTextAtCursor(
-              view.state.doc.toString(),
-              onChange,
-              `${markdownImages.join("\n\n")}\n`,
-              { current: adapter }
+            const otherFiles = Array.from(files).filter(
+              (file) => !file.name.endsWith(".drawio") && !file.name.endsWith(".drawio.xml")
             );
-            onNotify?.(`Inserted ${results.length} media item${results.length > 1 ? "s" : ""}.`, "success");
+
+            const insertedBlocks = [];
+
+            // Process Draw.io files
+            for (const file of drawioFiles) {
+              const xmlContent = await file.text();
+              const diagramId = generateDiagramId();
+              if (window.notesApi?.drawioWriteSource) {
+                await window.notesApi.drawioWriteSource({ diagramId, data: xmlContent });
+                insertedBlocks.push(`![Draw.io Diagram](media/draw.io/${diagramId}.png){data-diagram-id="${diagramId}"}`);
+              }
+            }
+
+            // Process other media files
+            if (otherFiles.length > 0) {
+              const results = await insertMediaFromFiles(otherFiles);
+              const markdownImages = results.map((result) =>
+                createMediaMarkdown(result.altText, result.mediaPath || result.imagePath)
+              );
+              insertedBlocks.push(...markdownImages);
+            }
+
+            if (insertedBlocks.length > 0) {
+              const adapter = createEditorAdapter(view);
+              insertTextAtCursor(
+                view.state.doc.toString(),
+                onChange,
+                `\n\n${insertedBlocks.join("\n\n")}\n`,
+                { current: adapter }
+              );
+              onNotify?.(`Inserted ${insertedBlocks.length} item(s).`, "success");
+            }
           } catch (error) {
             console.error("Media drop insertion failed:", error);
             onNotify?.(error?.message || "Failed to insert dropped media.", "error");

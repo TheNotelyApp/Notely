@@ -12,6 +12,7 @@ export function OverlayDialog({
   cardRef = null,
   onCardKeyDown,
   children,
+  closeOnClickOutside = true,
 }) {
   const dialogRef = useFocusTrap(open, initialFocusRef);
 
@@ -56,7 +57,9 @@ export function OverlayDialog({
       aria-label={ariaLabel}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
-          onClose?.();
+          if (closeOnClickOutside) {
+            onClose?.();
+          }
         }
       }}
     >

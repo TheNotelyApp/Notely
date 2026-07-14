@@ -160,6 +160,37 @@ const ExcalidrawComponent = ({
   onSave,
 }) => {
   const excalidrawAPIRef = useRef(null);
+  const lastSavedElementsRef = useRef(initialData?.elements || []);
+
+  useEffect(() => {
+    if (initialData?.elements) {
+      lastSavedElementsRef.current = initialData.elements;
+    }
+  }, [initialData]);
+
+  const hasUnsavedChanges = () => {
+    if (!excalidrawAPIRef.current) return false;
+    const currentElements = excalidrawAPIRef.current.getSceneElements().filter((el) => !el.isDeleted);
+    const savedElements = (lastSavedElementsRef.current || []).filter((el) => !el.isDeleted);
+
+    if (currentElements.length !== savedElements.length) return true;
+
+    for (const curr of currentElements) {
+      const saved = savedElements.find((el) => el.id === curr.id);
+      if (!saved) return true;
+      if (curr.version !== saved.version) return true;
+    }
+    return false;
+  };
+
+  const handleClose = () => {
+    if (hasUnsavedChanges()) {
+      const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to discard them?");
+      if (!confirmClose) return;
+    }
+    onClose?.();
+  };
+
   const saveButtonRef = useRef(null);
   const librarySearchRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -266,12 +297,12 @@ const ExcalidrawComponent = ({
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
-        onClose?.();
+        handleClose();
       }
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isLibrarySearchOpen, onClose]);
+  }, [isLibrarySearchOpen, handleClose]);
 
   const handleSaveRef = useRef(null);
   useEffect(() => {
@@ -323,6 +354,7 @@ const ExcalidrawComponent = ({
         await writeDiagramImage(documentPath, diagramId, imageData);
       }
 
+      lastSavedElementsRef.current = elements;
       onSave?.(diagramData, imageData);
     } catch (err) {
       console.error("Failed to save Excalidraw diagram:", err);
@@ -460,7 +492,8 @@ const ExcalidrawComponent = ({
 
   return (
     <OverlayDialog
-      onClose={onClose}
+      onClose={handleClose}
+      closeOnClickOutside={false}
       ariaLabel="Create or edit diagram"
       overlayClassName="excalidraw-modal-overlay"
       cardClassName="excalidraw-modal-container"
@@ -517,7 +550,7 @@ const ExcalidrawComponent = ({
               <Save size={14} aria-hidden="true" />
               {isSaving ? "Saving..." : "Save Diagram"}
             </AppButton>
-            <AppButton variant="small" onClick={onClose} disabled={isSaving}>
+            <AppButton variant="small" onClick={handleClose} disabled={isSaving}>
               <X size={14} aria-hidden="true" />
               Close
             </AppButton>

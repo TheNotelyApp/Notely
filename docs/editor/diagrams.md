@@ -7,7 +7,7 @@ category: Editor
 
 # Diagrams
 
-Notely supports two diagram formats: **Mermaid** for text-based diagrams written in code, and **Excalidraw** for freehand whiteboard-style drawing.
+Notely supports three diagram formats: **Mermaid** for text-based diagrams written in code, **Excalidraw** for freehand whiteboard-style drawing, and **Draw.io** for structured technical schemas and system architectures.
 
 ## Mermaid Diagrams
 
@@ -104,11 +104,29 @@ The **Restore original image** option only appears for Excalidraw diagrams that 
 
 ---
 
-## Choosing Between Mermaid and Excalidraw
+## Draw.io Diagrams
 
-| | Mermaid | Excalidraw |
-|---|---|---|
-| **Best for** | Technical diagrams, flows, schemas | Freehand sketches, annotations |
-| **Editing** | Text syntax | Visual canvas |
-| **Version control** | Full diff support (text) | Binary file storage |
-| **Offline** | ✓ | ✓ |
+[Draw.io](https://embed.diagrams.net/) (diagrams.net) is integrated into Notely for precise, professional engineering schematics, UML designs, and network/cloud architectures.
+
+### Insert a Draw.io Diagram
+
+1. Click the **Insert Diagram** icon (`⚡`) on the toolbar.
+2. Click **Draw.io**.
+3. In Preview mode, click on the placeholder to open the Draw.io editor.
+4. Build your diagram and click **Save Diagram**.
+5. The diagram saves XML source metadata to `media/draw.io/*.drawio` and renders a preview image to `media/draw.io/*.png`.
+
+### Import Diagrams via Drag and Drop
+
+Drop any existing `.drawio` or `.drawio.xml` file directly into the Markdown Editor. Notely will parse the file, copy it into the workspace media directory, and embed it as an interactive diagram block.
+
+---
+
+## Choosing a Diagram Tool
+
+| Feature | Mermaid | Excalidraw | Draw.io |
+|---|---|---|---|
+| **Best for** | Fast text-based flows, timelines | Casual sketching, wireframes | Engineering schematics, network charts |
+| **Editing** | Text syntax | Visual canvas | Visual canvas |
+| **Storage** | Plain Markdown text | XML drawing + PNG preview | XML drawing + PNG preview |
+| **Offline** | ✓ | ✓ | ✓ |

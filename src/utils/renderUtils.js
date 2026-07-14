@@ -131,6 +131,7 @@ export function parseDiagramBlocks(content) {
   const chunks = [];
   const mermaidRegex = /```mermaid\s*([\s\S]*?)```/gi;
   const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
+  const drawioRegex = /!\[(?:Drawio|Draw\.io|draw\.io) Diagram\]\((media\/draw\.io\/([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
   const positions = [];
   let match;
 
@@ -173,6 +174,20 @@ export function parseDiagramBlocks(content) {
     });
   }
 
+  // Find all drawio image references
+  while ((match = drawioRegex.exec(content || ""))) {
+    const attributeBlock = match[3] || "";
+    const explicitDiagramId = readAttribute(attributeBlock, "data-diagram-id");
+    positions.push({
+      index: match.index,
+      endIndex: drawioRegex.lastIndex,
+      type: "drawio",
+      imagePath: match[1],
+      diagramId: explicitDiagramId || match[2],
+      fullMatch: match[0],
+    });
+  }
+
   // Sort by position
   positions.sort((a, b) => a.index - b.index);
 
@@ -195,6 +210,13 @@ export function parseDiagramBlocks(content) {
         diagramId: pos.diagramId,
         originAssetPath: pos.originAssetPath,
         originAltText: pos.originAltText,
+        startLine: currentLine,
+      });
+    } else if (pos.type === "drawio") {
+      chunks.push({
+        type: "drawio",
+        imagePath: pos.imagePath,
+        diagramId: pos.diagramId,
         startLine: currentLine,
       });
     }

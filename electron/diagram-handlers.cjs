@@ -285,6 +285,193 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       };
     }
   });
+
+  /**
+   * Read drawio source file
+   */
+  ipcMain.handle('drawio:read-source', async (event, { diagramId }) => {
+    try {
+      const notesRoot = getNotesRoot();
+      const sourceFile = path.join(notesRoot, 'media', 'draw.io', `${diagramId}.drawio`);
+      const data = await fs.readFile(sourceFile, 'utf-8');
+      
+      return {
+        success: true,
+        data,
+      };
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return {
+          success: false,
+          notFound: true,
+        };
+      }
+      console.error('Failed to read drawio source:', err);
+      return {
+        success: false,
+        error: err.message,
+      };
+    }
+  });
+
+  /**
+   * Write drawio source file
+   */
+  ipcMain.handle('drawio:write-source', async (event, { diagramId, data }) => {
+    try {
+      const notesRoot = getNotesRoot();
+      const drawioDir = path.join(notesRoot, 'media', 'draw.io');
+      const sourceFile = path.join(drawioDir, `${diagramId}.drawio`);
+      const existed = fsSync.existsSync(sourceFile);
+      const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
+      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
+      
+      await mkdirRecursive(drawioDir);
+      await fs.writeFile(sourceFile, data, 'utf-8');
+      emitDiagramSync(sourceFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
+      
+      return {
+        success: true,
+      };
+    } catch (err) {
+      console.error('Failed to write drawio source:', err);
+      return {
+        success: false,
+        error: err.message,
+      };
+    }
+  });
+
+  /**
+   * Write drawio image file
+   */
+  ipcMain.handle('drawio:write-image', async (event, { diagramId, imageData }) => {
+    try {
+      const notesRoot = getNotesRoot();
+      const drawioDir = path.join(notesRoot, 'media', 'draw.io');
+      const imageFile = path.join(drawioDir, `${diagramId}.png`);
+      const existed = fsSync.existsSync(imageFile);
+      const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
+      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
+      
+      await mkdirRecursive(drawioDir);
+
+      let buffer;
+      if (typeof imageData === 'string') {
+        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        buffer = imageData;
+      }
+      
+      await fs.writeFile(imageFile, buffer);
+      emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
+      
+      return {
+        success: true,
+      };
+    } catch (err) {
+      console.error('Failed to write drawio image:', err);
+      return {
+        success: false,
+        error: err.message,
+      };
+    }
+  });
+
+  /**
+   * Read drawio image file as base64
+   */
+  ipcMain.handle('drawio:read-image', async (event, { diagramId }) => {
+    try {
+      const notesRoot = getNotesRoot();
+      const imageFile = path.join(notesRoot, 'media', 'draw.io', `${diagramId}.png`);
+      const imageData = await fs.readFile(imageFile);
+      const base64 = imageData.toString('base64');
+      
+      return {
+        success: true,
+        data: `data:image/png;base64,${base64}`,
+      };
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return {
+          success: false,
+          notFound: true,
+        };
+      }
+      console.error('Failed to read drawio image:', err);
+      return {
+        success: false,
+        error: err.message,
+      };
+    }
+  });
+
+  /**
+   * Delete drawio files
+   */
+  ipcMain.handle('drawio:delete', async (event, { diagramId }) => {
+    try {
+      const notesRoot = getNotesRoot();
+      const drawioDir = path.join(notesRoot, 'media', 'draw.io');
+      const sourceFile = path.join(drawioDir, `${diagramId}.drawio`);
+      const imageFile = path.join(drawioDir, `${diagramId}.png`);
+
+      const sourceHash = (typeof hashContent === 'function' && fsSync.existsSync(sourceFile))
+        ? hashContent(fsSync.readFileSync(sourceFile).toString('base64'))
+        : null;
+      const imageHash = (typeof hashContent === 'function' && fsSync.existsSync(imageFile))
+        ? hashContent(fsSync.readFileSync(imageFile).toString('base64'))
+        : null;
+
+      if (fsSync.existsSync(sourceFile)) {
+        await fs.unlink(sourceFile);
+        emitDiagramSync(sourceFile, { op: 'delete', baseHash: sourceHash });
+      }
+      if (fsSync.existsSync(imageFile)) {
+        await fs.unlink(imageFile);
+        emitDiagramSync(imageFile, { op: 'delete', baseHash: imageHash });
+      }
+      
+      return {
+        success: true,
+      };
+    } catch (err) {
+      console.error('Failed to delete drawio diagram:', err);
+      return {
+        success: false,
+        error: err.message,
+      };
+    }
+  });
+
+  /**
+   * Check if drawio diagram exists
+   */
+  ipcMain.handle('drawio:exists', async (event, { diagramId }) => {
+    try {
+      const notesRoot = getNotesRoot();
+      const sourceFile = path.join(notesRoot, 'media', 'draw.io', `${diagramId}.drawio`);
+      
+      try {
+        await fs.access(sourceFile);
+        return {
+          exists: true,
+        };
+      } catch {
+        return {
+          exists: false,
+        };
+      }
+    } catch (err) {
+      console.error('Failed to check drawio existence:', err);
+      return {
+        exists: false,
+        error: err.message,
+      };
+    }
+  });
 }
 
 /**

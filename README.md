@@ -45,6 +45,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - Toggle between rich visual **Markdown Preview Mode** (with correct pathing for local images/Excalidraw diagrams) and standard raw **Code View** for line differences.
   - Word-level inline diff highlights, automatic legacy history-to-commit migrations on startup, and direct commit tagging.
 - Preview Mermaid diagrams and rendered Markdown content.
+- Create and edit structured technical diagrams with **Draw.io integration** directly from markdown previews, supporting drag-and-drop import for `.drawio` and `.drawio.xml` files, image export, and offline drawing.
 - Visualize the workspace as an interactive note graph.
 - Use built-in AI features powered by Gemini or Groq for chat, queries, and semantic search.
 - Aggregate tasks across notes with **Open Tasks** and **All Tasks** panels.

@@ -361,7 +361,7 @@ function createWindowLifecycle(deps) {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'none'",
-      "frame-src 'none'"
+      "frame-src 'self' https://embed.draw.io https://viewer.diagrams.net https://embed.diagrams.net https://app.diagrams.net"
     ].join("; ");
   }
  

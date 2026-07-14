@@ -17,6 +17,7 @@ import { removeImageReferenceFromMarkdown } from "../utils/imageMarkdownReferenc
 import { MermaidBlock } from "./MermaidBlock";
 import { ExcalidrawBlock } from "./ExcalidrawBlock";
 import ExcalidrawComponent from "./ExcalidrawEditor";
+import { DrawioBlock } from "./DrawioBlock";
 import { ImageCropModal } from "./ImageCropModal";
 import CodeBlockModal from "./CodeBlockModal";
 
@@ -1520,6 +1521,13 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               documentPath={basePath?.split(/[/\\]/).slice(0, -1).join("/")}
               onNotify={onNotify}
               index={index}
+              key={`${part.type}-${index}`}
+            />
+          ) : part.type === "drawio" ? (
+            <DrawioBlock
+              imagePath={part.imagePath}
+              diagramId={part.diagramId}
+              onNotify={onNotify}
               key={`${part.type}-${index}`}
             />
           ) : (

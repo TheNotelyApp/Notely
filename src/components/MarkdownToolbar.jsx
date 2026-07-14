@@ -18,6 +18,9 @@ import {
   Scan,
   Maximize,
   Minimize,
+  Workflow,
+  PenTool,
+  Grid,
 } from "lucide-react";
 import AppSelect from "./AppSelect";
 import { applySnippet, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
@@ -738,6 +741,22 @@ export function MarkdownToolbar({
     onNotify?.("Excalidraw reference inserted.", "success");
   };
 
+  const insertDrawioDiagram = () => {
+    const diagramId = generateDiagramId();
+    const rawMarkdown = `![Draw.io Diagram](media/draw.io/${diagramId}.png){data-diagram-id="${diagramId}"}`;
+    const normalizedMarkdown = rawMarkdown.replace(/\(([^)]+)\)/, (_match, pathValue) => {
+      return `(${normalizeImagePathForMarkdown(pathValue)})`;
+    });
+
+    insertTextAtCursor(value, onChange, `\n\n${normalizedMarkdown}\n`, textareaRef);
+    setShowMermaidBuilder(false);
+    if (!basePath) {
+      onNotify?.("Draw.io reference inserted. Save this note to resolve diagram files.", "info");
+      return;
+    }
+    onNotify?.("Draw.io reference inserted.", "success");
+  };
+
   const createScreenshotFileName = () => {
     const now = new Date();
     const pad = (value) => String(value).padStart(2, "0");
@@ -1343,13 +1362,28 @@ export function MarkdownToolbar({
 
           {diagramMode === "picker" ? (
             <>
-              <div className="mermaid-type-switch">
-                <button onClick={() => setDiagramMode("mermaid")}>Mermaid</button>
-                <button onClick={insertExcalidrawDiagram}>Excalidraw</button>
+              <div className="mermaid-type-switch" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                <button onClick={() => setDiagramMode("mermaid")} style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
+                  <Workflow size={14} />
+                  Mermaid
+                </button>
+                <button onClick={insertExcalidrawDiagram} style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
+                  <PenTool size={14} />
+                  Excalidraw
+                </button>
+                <button onClick={insertDrawioDiagram} style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
+                  <Grid size={14} />
+                  Draw.io
+                </button>
               </div>
-              <p className="toolbar-inline-note">
-                Mermaid inserts an editable code block. Excalidraw inserts an image reference + metadata tag.
-              </p>
+              <div className="diagram-doc-section" style={{ marginTop: "12px", borderTop: "1px solid var(--border-soft)", paddingTop: "12px", fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                <div style={{ fontWeight: "600", marginBottom: "6px", color: "var(--text-strong)" }}>Tool Selection Guide:</div>
+                <ul style={{ paddingLeft: "14px", margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong>Mermaid</strong>: Quick code-based diagrams (flows, sequences, trees). Saved as inline text.</li>
+                  <li><strong>Excalidraw</strong>: Hand-drawn style wireframes, sketches, and collaborative brainstorm boards.</li>
+                  <li><strong>Draw.io</strong>: Structured professional schemas, network charts, and architecture models.</li>
+                </ul>
+              </div>
             </>
           ) : null}
 
