@@ -72,6 +72,7 @@ Notely provides a rich experience for working with code snippets:
 - **Auto-detection**: Paste a snippet without a language tag and Notely will automatically detect it (e.g., JavaScript, Python, HTML).
 - **Auto-formatting**: Use the 🪄 Format button in the preview hover toolbar or inside the editor to instantly auto-indent and format your code using Prettier.
 - **Dedicated Editor**: Click the ✎ Edit button on any code block in Preview mode to open a distraction-free Code Editor popup with syntax highlighting, search, and language selection.
+- **Code Execution**: Click the ▶ Run button in the hover toolbar or inside the popup editor to execute JavaScript (`js`, `javascript`) and Python (`py`, `python`) snippets locally. Output is displayed in an integrated high-contrast dark terminal output drawer (with exit status and a "Clear" button). Execution times out automatically after 10 seconds to prevent hanging. For other languages, the run button is disabled with a helpful tooltip.
 
 ### Find and replace
 

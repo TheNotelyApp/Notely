@@ -26,6 +26,7 @@ const { createWebsiteRenderer } = require("./lib/web/websiteRenderer.cjs");
 const { createImageMedia } = require("./lib/media/imageMedia.cjs");
 const { createTerminalIpc } = require("./lib/ipc/terminalIpc.cjs");
 const { registerCoreIpcHandlers } = require("./lib/ipc/coreIpc.cjs");
+const { registerCodeExecutorIpcHandlers } = require("./lib/ipc/codeExecutorIpc.cjs");
 const { registerDocumentIpcHandlers } = require("./lib/documents/documentIpc.cjs");
 const { registerSyncIpcHandlers } = require("./lib/sync/syncIpc.cjs");
 const { createWebPreview } = require("./lib/web/webPreview.cjs");
@@ -876,6 +877,7 @@ registerCoreIpcHandlers(ipcMain, {
 });
 
 terminalIpc.registerHandlers(ipcMain);
+registerCodeExecutorIpcHandlers(ipcMain, { BrowserWindow });
 
 registerSyncIpcHandlers(ipcMain, {
   BrowserWindow,

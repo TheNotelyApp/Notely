@@ -196,5 +196,6 @@ contextBridge.exposeInMainWorld("notesApi", {
   gitMigrateLegacy: (payload) => ipcRenderer.invoke("git:migrate-legacy", payload),
   gitEnsureManagedGitignore: (payload) => ipcRenderer.invoke("git:ensure-managed-gitignore", payload),
   gitRemoveManagedGitignore: (payload) => ipcRenderer.invoke("git:remove-managed-gitignore", payload),
+  executeCodeBlock: (payload) => ipcRenderer.invoke("code:execute", payload),
 });
 

@@ -33,6 +33,7 @@ Notely is a desktop Markdown notes app for team and project workspaces. It is bu
   - Optional `.notes-app` metadata inclusion (default off)
 - View note statistics (word count, line count, reading time estimate) in the status bar.
 - Copy note content as HTML or plain text directly from the editor toolbar.
+- Execute JavaScript (`js`/`javascript`) and Python (`py`/`python`) code blocks locally using the interactive ▶ Run (Play) button in both Markdown Previews and the popup Code Editor modal. Outputs are displayed in an integrated high-contrast dark terminal output frame.
 - Navigate nested folders with breadcrumb links for easy folder traversal.
 
 ## Supported release and setup

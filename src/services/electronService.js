@@ -1022,3 +1022,11 @@ export async function checkForUpdates() {
   return api.checkForUpdates();
 }
 
+export async function executeCodeBlock(language, code) {
+  const api = getNotesApi();
+  if (typeof api.executeCodeBlock !== "function") {
+    return { success: false, stdout: "", stderr: "Code execution API is not available", exitCode: -1 };
+  }
+  return api.executeCodeBlock({ language, code });
+}
+

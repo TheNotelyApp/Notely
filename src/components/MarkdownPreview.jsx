@@ -651,9 +651,100 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       });
     };
 
+    const handleRunCodeBlock = async (runButton) => {
+      const rawCode = decodeURIComponent(runButton.getAttribute("data-code-raw") || "");
+      const lang = runButton.getAttribute("data-code-lang") || "";
+      const figure = runButton.closest("figure.markdown-code-block");
+      if (!figure) return;
+
+      let outputDiv = figure.querySelector(".code-execution-output");
+      if (!outputDiv) {
+        outputDiv = document.createElement("div");
+        outputDiv.className = "code-execution-output";
+        outputDiv.style.marginTop = "8px";
+        outputDiv.style.borderRadius = "4px";
+        outputDiv.style.border = "1px solid #282c34";
+        outputDiv.style.background = "#181a1f";
+        outputDiv.style.color = "#abb2bf";
+        outputDiv.style.fontFamily = "Consolas, Monaco, 'Courier New', monospace";
+        outputDiv.style.fontSize = "12px";
+        outputDiv.style.padding = "8px 12px";
+
+        const header = document.createElement("div");
+        header.style.display = "flex";
+        header.style.justify = "space-between";
+        header.style.alignItems = "center";
+        header.style.paddingBottom = "6px";
+        header.style.borderBottom = "1px solid #282c34";
+        header.style.marginBottom = "6px";
+        header.style.fontSize = "11px";
+        header.style.fontWeight = "600";
+        header.style.color = "#5c6370";
+        header.innerHTML = `
+          <span class="status-label">EXECUTION OUTPUT</span>
+          <button type="button" class="clear-output-btn" style="background:none; border:none; color:#e06c75; cursor:pointer; font-size:11px; padding: 2px 6px;">Clear</button>
+        `;
+        outputDiv.appendChild(header);
+
+        const pre = document.createElement("pre");
+        pre.style.margin = "0";
+        pre.style.whiteSpace = "pre-wrap";
+        pre.style.wordBreak = "break-all";
+        pre.style.maxHeight = "200px";
+        pre.style.overflowY = "auto";
+        pre.style.color = "#abb2bf";
+        outputDiv.appendChild(pre);
+
+        figure.appendChild(outputDiv);
+
+        const clearBtn = header.querySelector(".clear-output-btn");
+        clearBtn.onclick = () => {
+          outputDiv.remove();
+        };
+      }
+
+      const pre = outputDiv.querySelector("pre");
+      const statusLabel = outputDiv.querySelector(".status-label");
+
+      statusLabel.textContent = "EXECUTING...";
+      statusLabel.style.color = "#61afef";
+      pre.textContent = "Running script...";
+      pre.style.color = "#abb2bf";
+
+      try {
+        const { executeCodeBlock } = await import("../services/electronService");
+        const result = await executeCodeBlock(lang, rawCode);
+
+        if (result.success) {
+          statusLabel.textContent = `SUCCESS (exit code ${result.exitCode})`;
+          statusLabel.style.color = "#98c379";
+          pre.textContent = result.stdout || "(No output)";
+          pre.style.color = "#abb2bf";
+        } else {
+          statusLabel.textContent = `FAILED (exit code ${result.exitCode})`;
+          statusLabel.style.color = "#e06c75";
+          pre.textContent = result.stderr || result.stdout || "Execution failed with no output.";
+          pre.style.color = "#e06c75";
+        }
+      } catch (err) {
+        statusLabel.textContent = "ERROR";
+        statusLabel.style.color = "#e06c75";
+        pre.textContent = err.message || "Failed to execute code block.";
+        pre.style.color = "#e06c75";
+      }
+    };
+
     const handleMediaClick = async (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
+
+      const runButton = target.closest('[data-code-run="true"]');
+      if (runButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleRunCodeBlock(runButton);
+        return;
+      }
 
       const copyButton = target.closest('[data-code-copy="true"]');
       if (copyButton instanceof HTMLButtonElement) {

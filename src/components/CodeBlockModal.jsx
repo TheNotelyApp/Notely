@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import OverlayDialog from "./OverlayDialog";
 import AppButton from "./AppButton";
-import { Check, X, ChevronDown, Search, Copy, Wand2 } from "lucide-react";
+import { executeCodeBlock } from "../services/electronService";
+import { Check, X, ChevronDown, Search, Copy, Wand2, Play } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { editorTheme } from "../utils/editorTheme";
 import { langs } from "@uiw/codemirror-extensions-langs";
@@ -114,6 +115,8 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
   const [userSelectedLang, setUserSelectedLang] = useState(!!initialLanguage);
   const [isFormatting, setIsFormatting] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [execResult, setExecResult] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -122,6 +125,8 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
       setUserSelectedLang(!!initialLanguage);
       setIsFormatting(false);
       setCopying(false);
+      setExecuting(false);
+      setExecResult(null);
       
       const updateTheme = () => setIsDark(document.documentElement.getAttribute("data-theme") === "dark");
       updateTheme();
@@ -175,6 +180,28 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
     }
   };
 
+  const handleExecute = async () => {
+    const l = String(langSearch || "").toLowerCase();
+    const canRun = l === "javascript" || l === "js" || l === "python" || l === "py";
+    if (!canRun || !code) return;
+
+    setExecuting(true);
+    setExecResult(null);
+    try {
+      const res = await executeCodeBlock(l, code);
+      setExecResult(res);
+    } catch (err) {
+      setExecResult({
+        success: false,
+        stdout: "",
+        stderr: err.message || "Failed to execute script.",
+        exitCode: -1
+      });
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   const handleSave = () => {
     onSave({ language: langSearch, code });
     onClose();
@@ -202,6 +229,9 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
     return exts;
   }, [langSearch]);
 
+  const lowerLang = String(langSearch || "").toLowerCase();
+  const canRun = lowerLang === "javascript" || lowerLang === "js" || lowerLang === "python" || lowerLang === "py";
+
   return (
     <OverlayDialog 
       open={open} 
@@ -222,6 +252,20 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
           <SearchableLanguageSelect value={langSearch} onChange={handleLangSelect} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <AppButton 
+            variant="small" 
+            onClick={handleExecute} 
+            disabled={executing || !code}
+            title={canRun ? "Execute code block" : "Only JavaScript and Python code blocks can be executed locally"}
+            style={{ opacity: canRun ? 1 : 0.4, cursor: canRun ? "pointer" : "not-allowed" }}
+          >
+            {executing ? (
+              <span className="spinner" style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", marginRight: "4px", animation: "spin 1s linear infinite" }} />
+            ) : (
+              <Play size={14} style={{ marginRight: "4px" }} />
+            )}
+            <span>{executing ? "Running..." : "Execute"}</span>
+          </AppButton>
           <AppButton variant="small" onClick={handleFormat} disabled={isFormatting || !langSearch}>
             <Wand2 size={14} />
             <span>{isFormatting ? "Formatting..." : "Format"}</span>
@@ -264,6 +308,50 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
           }}
         />
       </div>
+
+      {executing && (
+        <div style={{
+          marginTop: "12px",
+          padding: "8px 12px",
+          background: "#181a1f",
+          border: "1px solid #282c34",
+          borderRadius: "4px",
+          fontFamily: "Consolas, Monaco, monospace",
+          fontSize: "12px",
+          color: "#61afef"
+        }}>
+          Executing code block...
+        </div>
+      )}
+
+      {execResult && (
+        <div style={{
+          marginTop: "12px",
+          padding: "8px 12px",
+          background: "#181a1f",
+          border: "1px solid #282c34",
+          borderRadius: "4px",
+          maxHeight: "150px",
+          overflowY: "auto",
+          fontFamily: "Consolas, Monaco, monospace",
+          fontSize: "12px"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", borderBottom: "1px solid #282c34", paddingBottom: "4px" }}>
+            <span style={{ fontSize: "11px", fontWeight: "bold", color: execResult.success ? "#98c379" : "#e06c75" }}>
+              {execResult.success ? `SUCCESS (exit code ${execResult.exitCode})` : `FAILED (exit code ${execResult.exitCode})`}
+            </span>
+            <button
+              onClick={() => setExecResult(null)}
+              style={{ background: "none", border: "none", color: "#5c6370", cursor: "pointer", fontSize: "11px" }}
+            >
+              Clear
+            </button>
+          </div>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: execResult.success ? "#abb2bf" : "#e06c75" }}>
+            {execResult.stderr || execResult.stdout || "(No output)"}
+          </pre>
+        </div>
+      )}
 
       <div className="overlay-dialog-actions">
         <AppButton variant="small" onClick={onClose}>

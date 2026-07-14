@@ -11,7 +11,7 @@
   <a href="https://github.com/WGLabz/Notely/actions">
     <img src="https://github.com/WGLabz/Notely/actions/workflows/cd.yml/badge.svg" alt="CD Status">
   </a>
-  <img src="https://img.shields.io/badge/version-v0.1.17-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-v0.1.18-blue" alt="Version" />
   <img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform" />
 
@@ -59,6 +59,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - Optional `.notes-app` metadata inclusion (default off)
 - View note statistics (word count, line count, reading time estimate) in the status bar.
 - Copy note content as HTML or plain text directly from the editor toolbar.
+- Execute JavaScript (`js`/`javascript`) and Python (`py`/`python`) code blocks locally with the interactive ▶ Run (Play) button in both Markdown Previews and the popup Code Editor modal. Outputs (stdout/stderr) are rendered in an integrated high-contrast dark terminal output pane.
 - Navigate nested folders with breadcrumb links for easy folder traversal.
 
 ## Getting Started
