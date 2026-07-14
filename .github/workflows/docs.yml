@@ -41,7 +41,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: docs-site-dist
-          repository-name: WGLabz/notelyapp.github.io
+          repository-name: WGLabz/thenotelyapp.github.io
           branch: main
           token: ${{ secrets.DEPLOY_DOCS_TOKEN || secrets.GITHUB_TOKEN }}
           clean: true
