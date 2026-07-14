@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NotebookPen, Terminal, X } from "lucide-react";
+import { NotebookPen, Terminal, X, Eye } from "lucide-react";
 import { DocumentList } from "./components/DocumentList";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DashboardPanels } from "./components/DashboardPanels";
@@ -96,7 +96,9 @@ import {
   setNotesRootSetting,
   gitGetStatus,
   gitCommit,
+  checkForUpdates,
 } from "./services/electronService";
+import UpdateModal from "./components/UpdateModal";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
 import { useAIAssistant } from "./hooks/useAIAssistant";
@@ -347,6 +349,9 @@ export default function App() {
     pendingCount: 0,
     files: [],
   });
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [updateDetails, setUpdateDetails] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const {
     documents,
@@ -734,6 +739,24 @@ export default function App() {
     });
   }, []);
 
+  const handleManualUpdateCheck = useCallback(async () => {
+    setUpdateStatus("checking");
+    setShowUpdateModal(true);
+    try {
+      const res = await checkForUpdates();
+      if (res.success) {
+        setUpdateStatus(res.updateAvailable ? "available" : "up-to-date");
+        setUpdateDetails(res);
+      } else {
+        setUpdateStatus("error");
+        setUpdateDetails({ error: res.error });
+      }
+    } catch (err) {
+      setUpdateStatus("error");
+      setUpdateDetails({ error: err.message });
+    }
+  }, []);
+
   useEffect(() => {
     void refreshGitWorkspaceMeta();
   }, [notesFolderPath, currentFilePath, dirty, refreshGitWorkspaceMeta]);
@@ -790,6 +813,21 @@ export default function App() {
       })
       .finally(() => {
         setAppInfoLoading(false);
+        // Trigger auto-check for updates on load
+        void (async () => {
+          try {
+            const res = await checkForUpdates();
+            if (res.success && res.updateAvailable) {
+              setUpdateStatus("available");
+              setUpdateDetails(res);
+            } else if (res.success) {
+              setUpdateStatus("up-to-date");
+              setUpdateDetails(res);
+            }
+          } catch {
+            // Silently ignore update errors on startup auto-check
+          }
+        })();
       });
   }, []);
 
@@ -1005,9 +1043,11 @@ export default function App() {
         return;
       }
 
-      if (action === "open-help-center" || action === "open-about") {
+      if (action === "open-help-center" || action === "open-about" || action === "check-for-updates") {
         if (action === "open-about") {
           setAboutOpen(true);
+        } else if (action === "check-for-updates") {
+          void handleManualUpdateCheck();
         } else {
           setHelpConfirmationOpen(true);
         }
@@ -2231,6 +2271,70 @@ export default function App() {
       ) : null}
       {!current ? (
         <div className="landing-shell">
+          {updateStatus === "available" && (
+            <div
+              className="update-banner"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "var(--surface-accent)",
+                border: "1px solid var(--border-soft)",
+                borderRadius: "var(--radius-md)",
+                padding: "6px 12px",
+                fontSize: "0.82rem",
+                color: "var(--accent-strong)",
+                fontWeight: "500",
+                zIndex: 2,
+                marginBottom: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>🎉</span>
+                <span>A new version of Notely (v{String(updateDetails?.latestVersion || "").replace(/^v/, "")}) is available!</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  onClick={() => setShowUpdateModal(true)}
+                  style={{
+                    background: "var(--accent-solid)",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    fontSize: "0.72rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                  type="button"
+                >
+                  <Eye size={12} />
+                  View Update
+                </button>
+                <button
+                  onClick={() => setUpdateStatus("dismissed")}
+                  style={{
+                    background: "transparent",
+                    color: "var(--text-muted)",
+                    border: "none",
+                    fontSize: "0.72rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "3px 6px"
+                  }}
+                  type="button"
+                >
+                  <X size={12} />
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
           {isRootLandingView ? (
             <div className="landing-workspace-layout">
               <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
@@ -2943,6 +3047,15 @@ export default function App() {
             appInfo={appInfo}
           />
         </Suspense>
+      ) : null}
+
+      {showUpdateModal ? (
+        <UpdateModal
+          isOpen={showUpdateModal}
+          onClose={() => setShowUpdateModal(false)}
+          status={updateStatus}
+          details={updateDetails}
+        />
       ) : null}
 
       {helpConfirmationOpen ? (

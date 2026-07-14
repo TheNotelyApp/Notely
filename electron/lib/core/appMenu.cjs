@@ -617,6 +617,10 @@ function buildAppMenu(win, context = {}) {
         },
         { type: "separator" },
         {
+          label: "Check for Updates",
+          click: () => sendMenuAction(win, "check-for-updates")
+        },
+        {
           label: "About Notely",
           click: () => sendMenuAction(win, "open-about")
         }

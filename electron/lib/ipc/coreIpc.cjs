@@ -1,4 +1,5 @@
 const { assertTrustedIpcSender } = require("./ipcSecurity.cjs");
+const https = require("https");
 
 function registerCoreIpcHandlers(ipcMain, deps) {
   const {
@@ -358,6 +359,93 @@ function registerCoreIpcHandlers(ipcMain, deps) {
           // Best effort window restoration.
         }
       }
+    }
+  });
+
+  function fetchLatestGitHubRelease(targetUrl) {
+    return new Promise((resolve, reject) => {
+      const urlStr = targetUrl || "https://api.github.com/repos/oksbwn/Notely/releases/latest";
+
+      const req = https.get(
+        urlStr,
+        {
+          headers: {
+            "User-Agent": "Notely-App",
+          },
+        },
+        (res) => {
+          if ([301, 302, 307, 308].includes(res.statusCode)) {
+            const redirectUrl = res.headers.location;
+            if (redirectUrl) {
+              resolve(fetchLatestGitHubRelease(redirectUrl));
+            } else {
+              reject(new Error("Redirect location header missing"));
+            }
+            return;
+          }
+
+          let data = "";
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => {
+            if (res.statusCode === 200) {
+              try {
+                const parsed = JSON.parse(data);
+                resolve(parsed);
+              } catch {
+                reject(new Error("Failed to parse release data"));
+              }
+            } else {
+              reject(new Error(`Failed to fetch release: ${res.statusCode}`));
+            }
+          });
+        }
+      );
+
+      req.on("error", (err) => {
+        reject(err);
+      });
+    });
+  }
+
+  function isNewerVersion(current, latest) {
+    const cleanCurr = String(current || "0.0.0").replace(/^v/, "");
+    const cleanLat = String(latest || "0.0.0").replace(/^v/, "");
+
+    const currParts = cleanCurr.split(".").map(Number);
+    const latParts = cleanLat.split(".").map(Number);
+
+    for (let i = 0; i < Math.max(currParts.length, latParts.length); i++) {
+      const currPart = currParts[i] || 0;
+      const latPart = latParts[i] || 0;
+      if (latPart > currPart) return true;
+      if (currPart > latPart) return false;
+    }
+    return false;
+  }
+
+  registerTrustedHandler("app:check-for-updates", async () => {
+    try {
+      const release = await fetchLatestGitHubRelease();
+      const latestVersion = release.tag_name;
+      const currentVersion = getAppInfo().version;
+      const updateAvailable = isNewerVersion(currentVersion, latestVersion);
+
+      return {
+        success: true,
+        updateAvailable,
+        currentVersion,
+        latestVersion,
+        releaseUrl: release.html_url,
+        releaseNotes: release.body,
+      };
+    } catch (err) {
+      console.error("Failed to check for updates:", err);
+      return {
+        success: false,
+        error: err.message,
+      };
     }
   });
 

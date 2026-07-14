@@ -1014,3 +1014,11 @@ export async function gitRemoveManagedGitignore(workspacePath) {
   return api.gitRemoveManagedGitignore({ workspacePath });
 }
 
+export async function checkForUpdates() {
+  const api = getNotesApi();
+  if (typeof api.checkForUpdates !== "function") {
+    return { success: false, error: "Auto-updater API not available" };
+  }
+  return api.checkForUpdates();
+}
+
