@@ -629,6 +629,7 @@ function createWindowLifecycle(deps) {
       outlineEnabled: context?.outlineEnabled !== false,
       splitPreviewEnabled: context?.splitPreviewEnabled === true,
       focusModeEnabled: context?.focusModeEnabled === true,
+      autosaveEnabled: context?.autosaveEnabled === true,
       terminalOpen: context?.terminalOpen === true,
       terminalShell: context?.terminalShell === "bash" || context?.terminalShell === "cmd"
         ? context.terminalShell
