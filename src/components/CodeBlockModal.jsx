@@ -182,7 +182,8 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
 
   const handleExecute = async () => {
     const l = String(langSearch || "").toLowerCase();
-    const canRun = l === "javascript" || l === "js" || l === "python" || l === "py";
+    const runnableLangs = ["javascript", "js", "python", "py", "bash", "sh", "powershell", "ps1", "html"];
+    const canRun = runnableLangs.includes(l);
     if (!canRun || !code) return;
 
     setExecuting(true);
@@ -230,7 +231,8 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
   }, [langSearch]);
 
   const lowerLang = String(langSearch || "").toLowerCase();
-  const canRun = lowerLang === "javascript" || lowerLang === "js" || lowerLang === "python" || lowerLang === "py";
+  const runnableLangs = ["javascript", "js", "python", "py", "bash", "sh", "powershell", "ps1", "html"];
+  const canRun = runnableLangs.includes(lowerLang);
 
   return (
     <OverlayDialog 
@@ -256,7 +258,7 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
             variant="small" 
             onClick={handleExecute} 
             disabled={executing || !code}
-            title={canRun ? "Execute code block" : "Only JavaScript and Python code blocks can be executed locally"}
+            title={canRun ? "Execute code block" : "Unsupported language for local execution"}
             style={{ opacity: canRun ? 1 : 0.4, cursor: canRun ? "pointer" : "not-allowed" }}
           >
             {executing ? (
@@ -331,14 +333,14 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
           background: "#181a1f",
           border: "1px solid #282c34",
           borderRadius: "4px",
-          maxHeight: "150px",
+          maxHeight: execResult.isHtml ? "270px" : "150px",
           overflowY: "auto",
           fontFamily: "Consolas, Monaco, monospace",
           fontSize: "12px"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", borderBottom: "1px solid #282c34", paddingBottom: "4px" }}>
             <span style={{ fontSize: "11px", fontWeight: "bold", color: execResult.success ? "#98c379" : "#e06c75" }}>
-              {execResult.success ? `SUCCESS (exit code ${execResult.exitCode})` : `FAILED (exit code ${execResult.exitCode})`}
+              {execResult.isHtml ? "HTML PREVIEW" : (execResult.success ? `SUCCESS (exit code ${execResult.exitCode})` : `FAILED (exit code ${execResult.exitCode})`)}
             </span>
             <button
               onClick={() => setExecResult(null)}
@@ -347,9 +349,24 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
               Clear
             </button>
           </div>
-          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: execResult.success ? "#abb2bf" : "#e06c75" }}>
-            {execResult.stderr || execResult.stdout || "(No output)"}
-          </pre>
+          {execResult.isHtml ? (
+            <iframe
+              srcDoc={execResult.htmlContent}
+              sandbox="allow-scripts"
+              style={{
+                width: "100%",
+                height: "200px",
+                border: "none",
+                background: "#ffffff",
+                borderRadius: "4px",
+                marginTop: "4px"
+              }}
+            />
+          ) : (
+            <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: execResult.success ? "#abb2bf" : "#e06c75" }}>
+              {execResult.stderr || execResult.stdout || "(No output)"}
+            </pre>
+          )}
         </div>
       )}
 

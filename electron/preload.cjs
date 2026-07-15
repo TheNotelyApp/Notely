@@ -197,5 +197,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   gitEnsureManagedGitignore: (payload) => ipcRenderer.invoke("git:ensure-managed-gitignore", payload),
   gitRemoveManagedGitignore: (payload) => ipcRenderer.invoke("git:remove-managed-gitignore", payload),
   executeCodeBlock: (payload) => ipcRenderer.invoke("code:execute", payload),
+  checkIsDirectory: (payload) => ipcRenderer.invoke("system:is-directory", payload),
+  openFolder: (payload) => ipcRenderer.invoke("shell:open-folder", payload),
 });
 

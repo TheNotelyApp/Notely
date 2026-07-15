@@ -5,7 +5,7 @@ import {
   parseDiagramBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
-import { readMarkdownSource } from "../services/electronService";
+import { readMarkdownSource, checkIsDirectory, openFolder } from "../services/electronService";
 import { readImage, replaceImage, deleteImage, renameImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal } from "../services/electronService";
 import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { createImageMarkdown, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
@@ -695,6 +695,17 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         pre.style.color = "#abb2bf";
         outputDiv.appendChild(pre);
 
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.style.width = "100%";
+        iframe.style.height = "250px";
+        iframe.style.border = "none";
+        iframe.style.background = "#ffffff";
+        iframe.style.borderRadius = "2px";
+        iframe.style.marginTop = "4px";
+        iframe.sandbox = "allow-scripts";
+        outputDiv.appendChild(iframe);
+
         figure.appendChild(outputDiv);
 
         const clearBtn = header.querySelector(".clear-output-btn");
@@ -704,33 +715,60 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       }
 
       const pre = outputDiv.querySelector("pre");
+      const iframe = outputDiv.querySelector("iframe");
       const statusLabel = outputDiv.querySelector(".status-label");
 
       statusLabel.textContent = "EXECUTING...";
       statusLabel.style.color = "#61afef";
-      pre.textContent = "Running script...";
-      pre.style.color = "#abb2bf";
+      if (iframe) iframe.style.display = "none";
+      if (pre) {
+        pre.style.display = "block";
+        pre.textContent = "Running script...";
+        pre.style.color = "#abb2bf";
+      }
 
       try {
         const { executeCodeBlock } = await import("../services/electronService");
         const result = await executeCodeBlock(lang, rawCode);
 
         if (result.success) {
-          statusLabel.textContent = `SUCCESS (exit code ${result.exitCode})`;
-          statusLabel.style.color = "#98c379";
-          pre.textContent = result.stdout || "(No output)";
-          pre.style.color = "#abb2bf";
+          if (result.isHtml) {
+            statusLabel.textContent = "HTML PREVIEW";
+            statusLabel.style.color = "#98c379";
+            if (pre) pre.style.display = "none";
+            if (iframe) {
+              iframe.style.display = "block";
+              iframe.srcdoc = result.htmlContent;
+            }
+          } else {
+            statusLabel.textContent = `SUCCESS (exit code ${result.exitCode})`;
+            statusLabel.style.color = "#98c379";
+            if (iframe) iframe.style.display = "none";
+            if (pre) {
+              pre.style.display = "block";
+              pre.textContent = result.stdout || "(No output)";
+              pre.style.color = "#abb2bf";
+            }
+          }
         } else {
           statusLabel.textContent = `FAILED (exit code ${result.exitCode})`;
           statusLabel.style.color = "#e06c75";
-          pre.textContent = result.stderr || result.stdout || "Execution failed with no output.";
-          pre.style.color = "#e06c75";
+          if (iframe) iframe.style.display = "none";
+          if (pre) {
+            pre.style.display = "block";
+            pre.textContent = result.stderr || result.stdout || "Execution failed with no output.";
+            pre.style.color = "#e06c75";
+          }
         }
       } catch (err) {
         statusLabel.textContent = "ERROR";
         statusLabel.style.color = "#e06c75";
-        pre.textContent = err.message || "Failed to execute code block.";
-        pre.style.color = "#e06c75";
+        if (iframe) iframe.style.display = "none";
+        if (pre) {
+          pre.style.display = "block";
+          pre.textContent = err.message || "Failed to execute code block.";
+          pre.style.color = "#e06c75";
+        }
       }
     };
 
@@ -820,7 +858,6 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
-      // Handle markdown links to media files (e.g., [file](./images/file.pdf))
       const linkElement = target.closest("a");
       if (linkElement instanceof HTMLAnchorElement) {
         const rawHref = (linkElement.getAttribute("href") || "").trim();
@@ -829,6 +866,23 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           event.stopPropagation();
           onNotify?.("Directory links like ./ are not supported here. Link a specific .md file.", "info");
           return;
+        }
+
+        if (rawHref) {
+          try {
+            const resolvedDirPath = await checkIsDirectory(rawHref, basePath);
+            if (resolvedDirPath) {
+              event.preventDefault();
+              event.stopPropagation();
+              const confirmed = window.confirm(`Are you sure you want to open this folder in File Explorer?\n\nPath: ${resolvedDirPath}`);
+              if (confirmed) {
+                await openFolder(resolvedDirPath);
+              }
+              return;
+            }
+          } catch (dirCheckErr) {
+            console.warn("Failed to check if link is directory:", dirCheckErr);
+          }
         }
 
         if (inlineLinkedMarkdown) {

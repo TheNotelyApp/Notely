@@ -24,6 +24,8 @@ vi.mock("../services/electronService", () => ({
   deleteImage: (...args) => deleteImageMock(...args),
   renameImage: (...args) => renameImageMock(...args),
   readMarkdownSource: (...args) => readMarkdownSourceMock(...args),
+  checkIsDirectory: vi.fn().mockResolvedValue(false),
+  openFolder: vi.fn(),
 }));
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;

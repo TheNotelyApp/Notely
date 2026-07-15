@@ -449,6 +449,48 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     }
   });
 
+  registerTrustedHandler("system:is-directory", async (_event, payload) => {
+    const { folderPath, relativeTo } = payload || {};
+    if (typeof folderPath !== "string") return false;
+    try {
+      let targetPath = folderPath;
+      // Clean up file:// prefix
+      if (targetPath.startsWith("file:///")) {
+        targetPath = targetPath.substring(8);
+      } else if (targetPath.startsWith("file://")) {
+        targetPath = targetPath.substring(7);
+      }
+
+      // Replace forward/backward slashes based on platform
+      targetPath = targetPath.replace(/\\/g, "/");
+
+      if (relativeTo && typeof relativeTo === "string" && !path.isAbsolute(targetPath)) {
+        const parentDir = path.dirname(relativeTo);
+        targetPath = path.resolve(parentDir, targetPath);
+      } else {
+        targetPath = path.resolve(targetPath);
+      }
+
+      const stats = fs.statSync(targetPath);
+      return stats.isDirectory() ? targetPath : false;
+    } catch {
+      return false;
+    }
+  });
+
+  registerTrustedHandler("shell:open-folder", async (_event, payload) => {
+    const { folderPath } = payload || {};
+    if (typeof folderPath !== "string") {
+      throw new Error("Invalid folderPath payload");
+    }
+    const resolved = path.resolve(folderPath);
+    const openResult = await shell.openPath(resolved);
+    if (openResult) {
+      throw new Error(openResult);
+    }
+    return { success: true };
+  });
+
   return {
     getActiveProjectSlug,
   };

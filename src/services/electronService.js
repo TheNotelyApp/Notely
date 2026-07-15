@@ -1030,3 +1030,19 @@ export async function executeCodeBlock(language, code) {
   return api.executeCodeBlock({ language, code });
 }
 
+export async function checkIsDirectory(folderPath, relativeTo) {
+  const api = getNotesApi();
+  if (typeof api.checkIsDirectory !== "function") {
+    return false;
+  }
+  return api.checkIsDirectory({ folderPath, relativeTo });
+}
+
+export async function openFolder(folderPath) {
+  const api = getNotesApi();
+  if (typeof api.openFolder !== "function") {
+    throw new Error("Shell openFolder API is not available");
+  }
+  return api.openFolder({ folderPath });
+}
+
