@@ -89,7 +89,6 @@ function getBlockRange(value, anchorIndex) {
 
 
 
-const AUTOSAVE_PREF_KEY = "notely:autosave-enabled";
 const AUTOSAVE_DELAY_MS = 1200;
 const EDITOR_MODE_OPTIONS = [
   { key: "edit", label: "Edit", icon: PenLine, announceLabel: "Edit" },
