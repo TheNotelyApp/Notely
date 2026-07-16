@@ -316,6 +316,16 @@ const EMPTY_ARRAY = [];
 
 export default function App() {
   const { toasts, notify } = useToast();
+
+  useEffect(() => {
+    const handleToast = (e) => {
+      if (e.detail && e.detail.message) {
+        notify(e.detail.message, e.detail.type || "info");
+      }
+    };
+    window.addEventListener("app:toast", handleToast);
+    return () => window.removeEventListener("app:toast", handleToast);
+  }, [notify]);
   const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);

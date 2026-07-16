@@ -1,31 +1,32 @@
 import { formatDate } from "../utils/dateUtils";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { readImage } from "../services/electronService";
 import { DocumentEntryActions } from "./DocumentEntryActions";
 import { getDocumentDensityProfile, normalizeDocumentDensity } from "./documentDensityProfiles";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
+import { getContrastColor } from "../utils/colorUtils";
 import { IconColorPickerModal } from "./IconColorPickerModal";
 import * as LucideIcons from "lucide-react";
 
-function EntryIcon({ entryType, icon, color }) {
-  const style = color ? { color } : {};
-  const className = `document-kind-icon ${entryType} ${icon || color ? 'custom-avatar' : ''}`;
+function EntryIcon({ entryType, icon }) {
+  const className = `document-kind-icon ${entryType} ${icon ? 'custom-avatar' : ''}`;
   
   if (icon && LucideIcons[icon]) {
     const IconComp = LucideIcons[icon];
-    return <IconComp className={className} style={style} />;
+    return <IconComp className={className} />;
   }
 
   if (entryType === "folder") {
     return (
-      <svg className={className} style={style} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <svg className={className} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
         <path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h4.1a2 2 0 0 1 1.4.58l1.02 1.02A1 1 0 0 0 11.24 6H16a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 16 16H4a1.5 1.5 0 0 1-1.5-1.5z" />
       </svg>
     );
   }
 
   return (
-    <svg className={className} style={style} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+    <svg className={className} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
       <path d="M5 2.5h6.6a2 2 0 0 1 1.4.58l2.92 2.92A2 2 0 0 1 16.5 7.4V15A2.5 2.5 0 0 1 14 17.5H5A2.5 2.5 0 0 1 2.5 15V5A2.5 2.5 0 0 1 5 2.5m0 1.5A1 1 0 0 0 4 5v10a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V7.6a.5.5 0 0 0-.15-.36l-2.9-2.9a.5.5 0 0 0-.35-.14z" />
     </svg>
   );
@@ -52,6 +53,8 @@ export function DocumentList({
 }) {
   const { getMetadata, updateMetadata } = useWorkspaceMetadata();
   const [pickerState, setPickerState] = useState({ isOpen: false, entry: null });
+  const [contextMenu, setContextMenu] = useState(null);
+  const menuRef = useRef(null);
   const [resolvedPreviewImages, setResolvedPreviewImages] = useState({});
   const normalizedDensity = normalizeDocumentDensity(density);
   const densityProfile = getDocumentDensityProfile(normalizedDensity);
@@ -106,6 +109,30 @@ export function DocumentList({
     };
   }, [previewRequests]);
 
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setContextMenu(null);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setContextMenu(null);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [contextMenu]);
+
   if (loading) {
     return <div className="empty-state">Loading notes and folders...</div>;
   }
@@ -137,10 +164,17 @@ export function DocumentList({
               return (
               <tr
                 key={doc.filePath}
+                style={meta.color ? {
+                  backgroundColor: meta.color,
+                  color: getContrastColor(meta.color),
+                  "--text-strong": getContrastColor(meta.color),
+                  "--text-muted": getContrastColor(meta.color)
+                } : {}}
                 onClick={() => onOpen(doc)}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  setPickerState({ isOpen: true, entry: doc });
+                  e.stopPropagation();
+                  setContextMenu({ x: e.clientX, y: e.clientY, entry: doc });
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -155,7 +189,7 @@ export function DocumentList({
                 <td>
                   <span className="document-name-cell">
                     <EntryIcon entryType={doc.entryType} icon={meta.icon} color={meta.color} />
-                    <span style={meta.color ? { color: meta.color, fontWeight: '500' } : {}}>{doc.title}</span>
+                    <span style={meta.color ? { fontWeight: '500' } : {}}>{doc.title}</span>
                     {doc.entryType === "file" ? (
                       <DocumentEntryActions
                         entry={doc}
@@ -207,6 +241,26 @@ export function DocumentList({
             onSave={(updates) => updateMetadata(pickerState.entry?.filePath, updates)}
           />
         )}
+        {contextMenu && createPortal(
+          <div
+            ref={menuRef}
+            className="editor-context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            role="menu"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setPickerState({ isOpen: true, entry: contextMenu.entry });
+                setContextMenu(null);
+              }}
+            >
+              <LucideIcons.Palette size={14} /> Customize icon & color...
+            </button>
+          </div>,
+          document.body
+        )}
       </div>
     );
   }
@@ -228,11 +282,21 @@ export function DocumentList({
         const hasPreview = previewTiles.some(Boolean);
 
         return (
-          <button className="document-card" key={doc.filePath} onClick={() => onOpen(doc)} onContextMenu={(e) => { e.preventDefault(); setPickerState({ isOpen: true, entry: doc }); }}>
+          <button 
+            className="document-card" 
+            key={doc.filePath} 
+            style={meta.color ? {
+              backgroundColor: meta.color,
+              color: getContrastColor(meta.color),
+              "--text-strong": getContrastColor(meta.color),
+              "--text-muted": getContrastColor(meta.color)
+            } : {}}
+            onClick={() => onOpen(doc)} 
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, entry: doc }); }}>
             <span className="document-card-header">
               <span className="document-title-wrap">
                 <EntryIcon entryType={doc.entryType} icon={meta.icon} color={meta.color} />
-                <span className="document-title" style={meta.color ? { color: meta.color, fontWeight: '500' } : {}}>{doc.title}</span>
+                <span className="document-title" style={meta.color ? { fontWeight: '500' } : {}}>{doc.title}</span>
               </span>
               <DocumentEntryActions
                 entry={doc}
@@ -267,6 +331,26 @@ export function DocumentList({
           targetName={pickerState.entry?.title}
           onSave={(updates) => updateMetadata(pickerState.entry?.filePath, updates)}
         />
+      )}
+      {contextMenu && createPortal(
+        <div
+          ref={menuRef}
+          className="editor-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          role="menu"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setPickerState({ isOpen: true, entry: contextMenu.entry });
+              setContextMenu(null);
+            }}
+          >
+            <LucideIcons.Palette size={14} /> Customize icon & color...
+          </button>
+        </div>,
+        document.getElementById('root') || document.body
       )}
     </div>
   );

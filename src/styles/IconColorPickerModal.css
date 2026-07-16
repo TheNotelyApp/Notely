@@ -159,28 +159,39 @@
   border: 1px solid var(--border-subtle);
 }
 
-.color-preview {
-  height: 56px;
-  border-radius: var(--radius-lg);
+
+.icon-modal-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-body-sm);
   font-weight: 600;
-  font-size: var(--font-size-body);
-  letter-spacing: 0.05em;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: background 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
-.color-preview::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%);
-  pointer-events: none;
+.icon-modal-btn.primary {
+  background: var(--accent-solid);
+  color: var(--text-on-accent);
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.2);
 }
+
+.icon-modal-btn.primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.icon-modal-btn.secondary {
+  background: transparent;
+  color: var(--text-strong);
+  border-color: var(--border-strong);
+}
+
+.icon-modal-btn.secondary:hover {
+  background: var(--surface-hover);
+}
+

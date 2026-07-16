@@ -1,7 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { IconColorPickerModal } from "./IconColorPickerModal";
+import { getContrastColor } from "../utils/colorUtils";
 
 export function NoteTabBar({
   openTabs = [],
@@ -145,6 +147,8 @@ export function NoteTabBar({
           const isActive = filePath === activeTabPath;
           const isDirty = isTabDirty(filePath);
           const title = getTabTitle(filePath);
+          const meta = getMetadata(filePath) || {};
+          const TabIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : null;
 
           return (
             <div
@@ -154,16 +158,23 @@ export function NoteTabBar({
               aria-selected={isActive}
               title={filePath}
               onContextMenu={(e) => handleContextMenu(e, filePath)}
+              style={meta.color ? {
+                backgroundColor: meta.color,
+                color: getContrastColor(meta.color),
+                '--tab-text': getContrastColor(meta.color)
+              } : {}}
             >
               <button
                 className="note-tab-title-btn"
                 type="button"
                 onClick={() => onSelectTab?.(filePath)}
+                style={meta.color ? { color: 'inherit' } : {}}
               >
-                <span className="note-tab-text" style={getMetadata(filePath)?.color ? { color: getMetadata(filePath).color } : {}}>
+                {TabIcon && <TabIcon size={14} style={{ marginRight: 6 }} />}
+                <span className="note-tab-text">
                   {title}
                 </span>
-                {isDirty && <span className="note-tab-dirty-dot" aria-label="Unsaved changes" />}
+                {isDirty && <span className="note-tab-dirty-dot" aria-label="Unsaved changes" style={meta.color ? { backgroundColor: 'currentColor' } : {}} />}
               </button>
               <button
                 className="note-tab-close-btn"
@@ -173,6 +184,7 @@ export function NoteTabBar({
                   onCloseTab?.(filePath);
                 }}
                 aria-label={`Close ${title}`}
+                style={meta.color ? { color: 'inherit' } : {}}
               >
                 <X size={12} />
               </button>
@@ -204,6 +216,8 @@ export function NoteTabBar({
                   const isDirty = isTabDirty(filePath);
                   const title = getTabTitle(filePath);
                   const isActive = filePath === activeTabPath;
+                  const meta = getMetadata(filePath) || {};
+                  const TabIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : null;
 
                   return (
                     <button
@@ -217,9 +231,14 @@ export function NoteTabBar({
                       }}
                       onContextMenu={(e) => handleContextMenu(e, filePath)}
                       title={filePath}
+                      style={meta.color ? {
+                        backgroundColor: meta.color,
+                        color: getContrastColor(meta.color)
+                      } : {}}
                     >
+                      {TabIcon && <TabIcon size={14} style={{ marginRight: 6 }} />}
                       <span className="note-tab-text">{title}</span>
-                      {isDirty && <span className="note-tab-dirty-dot" />}
+                      {isDirty && <span className="note-tab-dirty-dot" style={meta.color ? { backgroundColor: 'currentColor' } : {}} />}
                     </button>
                   );
                 })}
