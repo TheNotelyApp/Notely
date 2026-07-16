@@ -1177,15 +1177,97 @@ button {
 }
 
 .keyboard-shortcuts-card {
-  width: min(720px, calc(100vw - 32px));
-  max-height: calc(100vh - 120px);
+  width: min(960px, 80vw);
+  height: min(600px, 70vh);
+  max-height: min(80vh, calc(100vh - 100px));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+.shortcuts-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.shortcuts-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-ui);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  padding: 0 8px;
+  height: 32px;
+}
+
+.shortcuts-search-icon {
+  color: var(--text-muted);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.shortcuts-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--app-text);
+  font-size: var(--font-size-body-sm);
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.shortcuts-search-input::placeholder {
+  color: var(--text-soft);
+}
+
+.shortcuts-search-clear {
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.shortcuts-search-clear:hover {
+  color: var(--accent-solid);
+}
+
+.shortcuts-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.shortcuts-filter-pill {
+  border: 1px solid var(--border-ui);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
+  padding: 3px 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all var(--motion-fast);
+}
+
+.shortcuts-filter-pill:hover {
+  background: var(--surface-accent);
+  color: var(--text-strong);
+}
+
+.shortcuts-filter-pill.active {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: var(--text-on-accent);
 }
 
 .keyboard-shortcuts-intro {
-  margin: -4px 4px 2px;
+  margin: 0 4px;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.35;
@@ -1195,7 +1277,7 @@ button {
   border: 1px solid var(--border-ui);
   border-radius: var(--radius-lg);
   overflow: auto;
-  max-height: min(62vh, 460px);
+  flex: 1;
   background: var(--surface-bg);
 }
 
@@ -1206,8 +1288,8 @@ button {
 
 .keyboard-shortcuts-table th,
 .keyboard-shortcuts-table td {
-  padding: 9px 10px;
-  border-bottom: 1px solid #e6eeeb;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-muted);
   text-align: left;
   font-size: var(--font-size-label);
 }
@@ -1219,18 +1301,59 @@ button {
   color: var(--text-secondary);
   text-transform: uppercase;
   font-size: var(--font-size-caption);
+  z-index: 2;
 }
 
-.keyboard-shortcuts-table td kbd {
-  min-height: 22px;
-  padding: 0 8px;
-  border: 1px solid var(--border-ui);
-  border-radius: var(--radius-sm);
-  background: var(--surface-elevated);
-  color: var(--text-secondary);
-  font-size: 11px;
+.shortcut-keycap-combo {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.shortcut-keycap {
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border-ui);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  font-size: 10.5px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shortcut-keycap-plus {
+  color: var(--text-soft);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.shortcut-scope-badge {
+  background: var(--surface-accent);
+  color: var(--accent-solid);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.shortcuts-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  gap: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-body-sm);
 }
 
 .assets-dialog-card {
