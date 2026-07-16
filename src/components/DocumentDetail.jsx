@@ -1702,7 +1702,7 @@ export function DocumentDetail({
               variant="small"
               onClick={handleManualSave}
               disabled={saving || changedOnDisk}
-              title="Save note (Ctrl+S)"
+              data-tooltip="Save note (Ctrl+S)"
               style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
             >
               <Save size={14} />
@@ -1744,14 +1744,14 @@ export function DocumentDetail({
       {isFocusMode && (
         <div className="mode-contract-banner" role="status" aria-live="polite">
           <span>Focus mode is active — press F11 to exit</span>
-          <button
-            type="button"
+          <AppButton
+            variant="small"
             data-tooltip="Exit focus mode"
             className="mode-contract-exit"
             onClick={() => onFocusModeChange?.(false)}
           >
             Exit
-          </button>
+          </AppButton>
         </div>
       )}
 

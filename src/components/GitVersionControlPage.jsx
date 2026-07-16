@@ -1317,7 +1317,7 @@ export function GitVersionControlPage({
             />
           </div>
           <div className="overlay-dialog-actions">
-            <AppButton variant="secondary" onClick={() => {
+            <AppButton variant="small" onClick={() => {
               setTagDialogOpen(false);
               setTagCommit(null);
             }}>Cancel</AppButton>
