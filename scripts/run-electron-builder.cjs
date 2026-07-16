@@ -41,6 +41,9 @@ try {
   console.warn("[packaging] Unable to read generated app version metadata:", error?.message || error);
 }
 
+// Disable auto-publishing by electron-builder. The CD workflow handles release uploading separately.
+nextArgs.push("--publish", "never");
+
 if (isWindowsBuild && !hasSigningMaterial) {
   console.warn("[packaging] Windows signing material not found.");
   console.warn("[packaging] Provide CSC_LINK/CSC_KEY_PASSWORD (PFX) or Azure Trusted Signing variables before distributing binaries.");
