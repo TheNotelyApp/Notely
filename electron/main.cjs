@@ -772,6 +772,25 @@ const windowLifecycle = createWindowLifecycle({
   buildAppMenu,
   terminalIpc,
   getInitialZoomFactor: getStoredZoomFactor,
+  getStoredWindowBounds: () => {
+    try {
+      const settings = readUserSettings();
+      return settings?.windowBounds || null;
+    } catch {
+      return null;
+    }
+  },
+  saveWindowBounds: (bounds) => {
+    try {
+      const settings = readUserSettings();
+      writeUserSettings({
+        ...settings,
+        windowBounds: bounds,
+      });
+    } catch (err) {
+      console.warn("[settings] Failed to save window bounds:", err?.message || err);
+    }
+  },
 });
 
 p2pSyncEngine = createP2PSyncEngine({

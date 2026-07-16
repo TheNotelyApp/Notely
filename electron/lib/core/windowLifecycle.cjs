@@ -13,6 +13,8 @@ function createWindowLifecycle(deps) {
     buildAppMenu,
     terminalIpc,
     getInitialZoomFactor,
+    getStoredWindowBounds,
+    saveWindowBounds,
   } = deps;
 
   let mainWindow = null;
@@ -425,7 +427,9 @@ function createWindowLifecycle(deps) {
 
     createSplashWindow(windowIconPath);
 
-    const win = new BrowserWindow({
+    const { screen } = require("electron");
+    const storedBounds = typeof getStoredWindowBounds === "function" ? getStoredWindowBounds() : null;
+    let windowOpts = {
       width: 1280,
       height: 840,
       minWidth: 860,
@@ -440,7 +444,41 @@ function createWindowLifecycle(deps) {
         sandbox: true,
         webviewTag: false
       }
-    });
+    };
+
+    if (storedBounds && typeof storedBounds === "object") {
+      const { x, y, width, height } = storedBounds;
+      if (Number.isInteger(x) && Number.isInteger(y) && Number.isInteger(width) && Number.isInteger(height)) {
+        const match = screen.getDisplayMatching({ x, y, width, height });
+        if (match) {
+          windowOpts.x = x;
+          windowOpts.y = y;
+          windowOpts.width = width;
+          windowOpts.height = height;
+        }
+      }
+    }
+
+    const win = new BrowserWindow(windowOpts);
+
+    const saveBounds = () => {
+      if (!win.isDestroyed() && !win.isMaximized() && !win.isMinimized() && !win.isFullScreen()) {
+        try {
+          saveWindowBounds?.(win.getBounds());
+        } catch (err) {
+          console.warn("[settings] Failed to save window geometry:", err?.message || err);
+        }
+      }
+    };
+
+    let saveTimeout = null;
+    const throttledSaveBounds = () => {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveBounds, 300);
+    };
+
+    win.on("resize", throttledSaveBounds);
+    win.on("move", throttledSaveBounds);
 
     const initialZoom = Number.isFinite(getInitialZoomFactor?.()) ? getInitialZoomFactor() : 1;
     win.webContents.setZoomFactor(Math.max(0.75, Math.min(2, initialZoom)));
@@ -496,6 +534,10 @@ function createWindowLifecycle(deps) {
     mainWindow = win;
 
     win.on("closed", () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+      }
       terminalIpc.disposeForWindow(win.id);
 
       if (mainWindow === win) {
