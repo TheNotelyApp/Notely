@@ -41,6 +41,7 @@ The landing view includes lightweight workspace overview panels so you can resum
 
 - Create notes from **File -> New Note** (`Ctrl/Cmd + N`).
 - Create folders to group related notes.
+- Customize the icon and color of any folder or note by right-clicking it and selecting "Customize icon & color..." or from the context menu in the open tabs.
 - Rename and delete notes from list actions.
 
 ## 2. Editor and Writing Experience

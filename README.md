@@ -26,6 +26,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
 
 - Open and manage Markdown notes inside a chosen workspace folder.
 - Organize work into projects and a root workspace.
+- Customize folder and note icons and colors for a highly personalized workspace.
 - Edit Markdown in raw, split, preview, and web modes.
 - Validate Markdown structure while you type.
 - Check typos in the editor with a built-in Hunspell-powered spelling engine. Add custom jargon/vocabulary to a workspace spelling dictionary, and manage added words in a dedicated dictionary overlay.
