@@ -112,105 +112,75 @@ export function LandingView({
         </div>
       )}
 
-      {isRootLandingView ? (
-        <div
-          className="landing-workspace-layout"
-          ref={landingLayoutRef}
-          style={{
-            gridTemplateColumns: `${landingSidebarWidth}px 8px minmax(0, 1fr)`,
-          }}
-        >
-          <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
-            <DashboardPanels
-              documents={documents}
-              taskDocuments={workspaceTaskDocuments}
-              loading={loading}
-              onOpen={onOpenListItem}
-              onOpenTask={onOpenReferencedDocument}
-              onOpenAllTasks={onOpenAllTasks}
-              onOpenRecentNotes={onOpenRecentNotes}
-              onOpenFavorites={onOpenFavorites}
-              onAction={onDashboardAction}
-              continueNotes={continueDashboardNotes}
-              favorites={favoriteNotes}
-              layout="rail"
-            />
-          </aside>
-          <div
-            className="split-resizer"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize workspace sidebar"
-            aria-valuemin={200}
-            aria-valuemax={450}
-            aria-valuenow={landingSidebarWidth}
-            aria-valuetext={`${landingSidebarWidth}px sidebar width`}
-            tabIndex={0}
-            onPointerDown={startLandingSidebarResize}
-            onKeyDown={handleLandingSidebarResizerKeyDown}
+      <div
+        className="landing-workspace-layout"
+        ref={landingLayoutRef}
+        style={{
+          gridTemplateColumns: `${landingSidebarWidth}px 8px minmax(0, 1fr)`,
+        }}
+      >
+        <aside className="landing-dashboard-rail" aria-label="Workspace dashboard rail">
+          <DashboardPanels
+            documents={documents}
+            taskDocuments={workspaceTaskDocuments}
+            loading={loading}
+            onOpen={onOpenListItem}
+            onOpenTask={onOpenReferencedDocument}
+            onOpenAllTasks={onOpenAllTasks}
+            onOpenRecentNotes={onOpenRecentNotes}
+            onOpenFavorites={onOpenFavorites}
+            onAction={onDashboardAction}
+            continueNotes={continueDashboardNotes}
+            favorites={favoriteNotes}
+            layout="rail"
           />
-          <div className="landing-notes-pane">
-            <LandingListControls
-              query={landingListQuery}
-              onQueryChange={setLandingListQuery}
-              typeFilter={landingEntryFilter}
-              onTypeFilterChange={setLandingEntryFilter}
-              sortBy={landingSortMode}
-              onSortByChange={setLandingSortMode}
-              visibleCount={visibleDocuments.length}
-              totalCount={documents.length}
-              visibleFolderCount={visibleFolderCount}
-              totalFolderCount={folderCount}
-              visibleNoteCount={visibleNoteCount}
-              totalNoteCount={noteCount}
-              onCreateNote={() => onDashboardAction("new-note")}
-            />
-            <DocumentList
-              documents={visibleDocuments}
-              onOpen={onOpenListItem}
-              onRemove={onRemoveListEntry}
-              loading={loading}
-              viewMode={notesViewMode}
-              density={notesDensityMode}
-              favorites={favoriteNotes}
-              onToggleFavorite={onToggleFavorite}
-              emptyMessage="No notes or folders match your current filters."
-              onCopyLinkPath={onCopyLinkPath}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="landing-notes-pane standalone">
-          <div className="landing-header">
-            <div className="landing-header-main">
-              <div className="landing-title-row">
-                <h1>{landingTitle}</h1>
+        </aside>
+        <div
+          className="split-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize workspace sidebar"
+          aria-valuemin={200}
+          aria-valuemax={450}
+          aria-valuenow={landingSidebarWidth}
+          aria-valuetext={`${landingSidebarWidth}px sidebar width`}
+          tabIndex={0}
+          onPointerDown={startLandingSidebarResize}
+          onKeyDown={handleLandingSidebarResizerKeyDown}
+        />
+        <div className="landing-notes-pane">
+          {!isRootLandingView && (
+            <div className="landing-header" style={{ marginBottom: "var(--space-4)" }}>
+              <div className="landing-header-main">
+                <div className="landing-title-row">
+                  <h1>{landingTitle}</h1>
+                </div>
+                <nav className="landing-path" aria-label="Folder path">
+                  {breadcrumbSegments.map((segment, index) => {
+                    const isLast = index === breadcrumbSegments.length - 1;
+                    return (
+                      <span className="landing-path-part" key={segment.path}>
+                        <button
+                          className={`landing-path-segment${isLast ? " active" : ""}`}
+                          type="button"
+                          disabled={isLast}
+                          data-tooltip={segment.label}
+                          onClick={() => {
+                            if (!isLast) {
+                              void onLandingNavigateTo(segment.path);
+                            }
+                          }}
+                        >
+                          {segment.label}
+                        </button>
+                        {!isLast ? <span className="landing-path-separator" aria-hidden="true">/</span> : null}
+                      </span>
+                    );
+                  })}
+                </nav>
               </div>
-              <nav className="landing-path" aria-label="Folder path">
-                {breadcrumbSegments.map((segment, index) => {
-                  const isLast = index === breadcrumbSegments.length - 1;
-                  return (
-                    <span className="landing-path-part" key={segment.path}>
-                      <button
-                        className={`landing-path-segment${isLast ? " active" : ""}`}
-                        type="button"
-                        disabled={isLast}
-                        data-tooltip={segment.label}
-                        onClick={() => {
-                          if (!isLast) {
-                            void onLandingNavigateTo(segment.path);
-                          }
-                        }}
-                      >
-                        {segment.label}
-                      </button>
-                      {!isLast ? <span className="landing-path-separator" aria-hidden="true">/</span> : null}
-                    </span>
-                  );
-                })}
-              </nav>
             </div>
-          </div>
+          )}
           <LandingListControls
             query={landingListQuery}
             onQueryChange={setLandingListQuery}
@@ -239,7 +209,7 @@ export function LandingView({
             onCopyLinkPath={onCopyLinkPath}
           />
         </div>
-      )}
+      </div>
     </div>
   );
 }
