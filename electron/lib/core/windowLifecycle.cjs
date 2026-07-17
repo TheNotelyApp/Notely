@@ -436,6 +436,7 @@ function createWindowLifecycle(deps) {
       minHeight: 560,
       show: false,
       backgroundColor: "#f5f3ef",
+      titleBarStyle: "hidden",
       ...(windowIconPath ? { icon: windowIconPath } : {}),
       webPreferences: {
         preload: path.join(__dirname, "..", "..", "preload.cjs"),
@@ -479,6 +480,16 @@ function createWindowLifecycle(deps) {
 
     win.on("resize", throttledSaveBounds);
     win.on("move", throttledSaveBounds);
+    win.on("maximize", () => {
+      if (!win.isDestroyed() && win.webContents) {
+        win.webContents.send("window:maximized-changed", true);
+      }
+    });
+    win.on("unmaximize", () => {
+      if (!win.isDestroyed() && win.webContents) {
+        win.webContents.send("window:maximized-changed", false);
+      }
+    });
 
     const initialZoom = Number.isFinite(getInitialZoomFactor?.()) ? getInitialZoomFactor() : 1;
     win.webContents.setZoomFactor(Math.max(0.75, Math.min(2, initialZoom)));
@@ -531,6 +542,9 @@ function createWindowLifecycle(deps) {
       currentFolderLabel: "",
     };
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
+    if (!win.isDestroyed() && win.webContents) {
+      win.webContents.send("window:menu-updated");
+    }
     mainWindow = win;
 
     win.on("closed", () => {
@@ -652,6 +666,9 @@ function createWindowLifecycle(deps) {
       recentWorkspacePaths: [],
     };
     Menu.setApplicationMenu(buildAppMenu(win, context));
+    if (!win.isDestroyed() && win.webContents) {
+      win.webContents.send("window:menu-updated");
+    }
   }
 
   function handleMenuContextUpdate(event, context) {
@@ -685,6 +702,9 @@ function createWindowLifecycle(deps) {
     };
 
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));
+    if (!win.isDestroyed() && win.webContents) {
+      win.webContents.send("window:menu-updated");
+    }
   }
 
   function registerAppWindowEvents() {

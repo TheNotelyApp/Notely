@@ -28,6 +28,7 @@ const WorkspaceGraphPanel = lazy(() =>
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
+import { TitleBar } from "./components/layout/TitleBar";
 const EmbeddedTerminal = lazy(() =>
   import("./components/EmbeddedTerminal").then((m) => ({ default: m.EmbeddedTerminal }))
 );
@@ -2395,7 +2396,9 @@ export default function App() {
 
   return (
     <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}${focusModeEnabled && current ? " focus-mode-active" : ""}`}>
-      <div className="toast-stack" aria-live="polite" aria-atomic="true">
+      <TitleBar title={current ? current.title : (activeProject ? activeProject.name : "Notely")} />
+      <div className="app-main-layout">
+        <div className="toast-stack" aria-live="polite" aria-atomic="true">
         {toasts.map((toast) => {
           let IconComponent = Info;
           if (toast.type === "success") IconComponent = CheckCircle2;
@@ -3237,7 +3240,7 @@ export default function App() {
       )}
 
       {gitVCOpen && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: 0, left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
           <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
             <GitVersionControlPage
               workspacePath={notesFolderPath}
@@ -3270,6 +3273,7 @@ export default function App() {
         </Suspense>
       )}
 
+      </div>
       <GlobalTooltip />
     </div>
   );

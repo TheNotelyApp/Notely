@@ -27,6 +27,26 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("appearance:theme-changed", listener);
     return () => ipcRenderer.removeListener("appearance:theme-changed", listener);
   },
+  minimizeWindow: () => ipcRenderer.send("window:minimize"),
+  maximizeWindow: () => ipcRenderer.send("window:maximize"),
+  closeWindow: () => ipcRenderer.send("window:close"),
+  isWindowMaximized: () => ipcRenderer.invoke("window:is-maximized"),
+  onWindowMaximizedChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, isMaximized) => callback(isMaximized);
+    ipcRenderer.on("window:maximized-changed", listener);
+    return () => ipcRenderer.removeListener("window:maximized-changed", listener);
+  },
+  popupAppMenu: (payload) => ipcRenderer.send("window:popup-app-menu", payload),
+  getMenuLabels: () => ipcRenderer.invoke("window:get-menu-labels"),
+  getMenuStructure: () => ipcRenderer.invoke("window:get-menu-structure"),
+  executeMenuItem: (payload) => ipcRenderer.send("window:execute-menu-item", payload),
+  onMenuUpdated: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = () => callback();
+    ipcRenderer.on("window:menu-updated", listener);
+    return () => ipcRenderer.removeListener("window:menu-updated", listener);
+  },
   aiQuery: (payload) => ipcRenderer.invoke("ai:query", payload),
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
   aiSetApiKey: (payload) => ipcRenderer.invoke("ai:config:set-api-key", payload),
