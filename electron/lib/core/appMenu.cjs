@@ -332,15 +332,20 @@ function buildAppMenuTemplate(win, context = {}) {
             }
           ]
         },
-        { type: "separator" },
-        {
-          label: "Developer",
-          submenu: [
-            { role: "reload" },
-            { role: "forceReload" },
-            ...(isDevMode ? [{ type: "separator" }, { role: "toggleDevTools" }] : [])
-          ]
-        }
+        ...(isDevMode
+          ? [
+              { type: "separator" },
+              {
+                label: "Developer",
+                submenu: [
+                  { role: "reload" },
+                  { role: "forceReload" },
+                  { type: "separator" },
+                  { role: "toggleDevTools" }
+                ]
+              }
+            ]
+          : [])
       ]
     : [
         {
@@ -428,15 +433,20 @@ function buildAppMenuTemplate(win, context = {}) {
             }
           ]
         },
-        { type: "separator" },
-        {
-          label: "Developer",
-          submenu: [
-            { role: "reload" },
-            { role: "forceReload" },
-            ...(isDevMode ? [{ type: "separator" }, { role: "toggleDevTools" }] : [])
-          ]
-        }
+        ...(isDevMode
+          ? [
+              { type: "separator" },
+              {
+                label: "Developer",
+                submenu: [
+                  { role: "reload" },
+                  { role: "forceReload" },
+                  { type: "separator" },
+                  { role: "toggleDevTools" }
+                ]
+              }
+            ]
+          : [])
       ];
 
   const template = [

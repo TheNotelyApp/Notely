@@ -48,6 +48,16 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring-color) 35%, transparent) !important;
 }
 
+:where(
+    input,
+    select,
+    textarea
+  ):focus-visible {
+  outline: none;
+  border-color: var(--focus-ring-color) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent) !important;
+}
+
 .app-shell {
   --terminal-status-height: 28px;
   --app-shell-pad-x: var(--space-6);

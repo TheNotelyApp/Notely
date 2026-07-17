@@ -56,33 +56,33 @@ export function LandingView({
             background: "var(--surface-accent)",
             border: "1px solid var(--border-soft)",
             borderRadius: "var(--radius-md)",
-            padding: "6px 12px",
-            fontSize: "0.82rem",
+            padding: "var(--space-3) var(--space-5)",
+            fontSize: "var(--font-size-body-sm)",
             color: "var(--accent-strong)",
             fontWeight: "500",
             zIndex: 2,
-            marginBottom: "12px",
+            marginBottom: "var(--space-5)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
             <span>🎉</span>
             <span>A new version of Notely (v{String(updateDetails?.latestVersion || "").replace(/^v/, "")}) is available!</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
             <button
               onClick={onShowUpdateModal}
               style={{
                 background: "var(--accent-solid)",
-                color: "#ffffff",
+                color: "var(--text-on-accent)",
                 border: "none",
                 padding: "3px 8px",
-                borderRadius: "4px",
-                fontSize: "0.72rem",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "var(--font-size-caption)",
                 fontWeight: "600",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: "4px"
+                gap: "var(--space-2)",
               }}
               type="button"
             >
@@ -95,12 +95,12 @@ export function LandingView({
                 background: "transparent",
                 color: "var(--text-muted)",
                 border: "none",
-                fontSize: "0.72rem",
+                fontSize: "var(--font-size-caption)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
-                padding: "3px 6px"
+                gap: "var(--space-2)",
+                padding: "var(--space-2) var(--space-3)",
               }}
               type="button"
             >

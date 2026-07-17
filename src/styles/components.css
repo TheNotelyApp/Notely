@@ -1083,8 +1083,8 @@
 .project-select .app-select-trigger:focus-visible,
 .project-toolbar input:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent-solid) 28%, var(--border-default));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 8%, transparent);
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
 }
 
 .app-select-root {
@@ -1273,10 +1273,10 @@
   font-size: 12px;
   font-weight: 500;
   transition:
-    border-color var(--motion-fast),
-    background var(--motion-fast),
-    color var(--motion-fast),
-    box-shadow var(--motion-fast);
+    border-color var(--motion-standard),
+    background var(--motion-standard),
+    color var(--motion-standard),
+    box-shadow var(--motion-standard);
 }
 
 .primary-button {
@@ -1293,10 +1293,10 @@
   font-size: 12px;
   font-weight: 700;
   transition:
-    border-color var(--motion-fast),
-    background var(--motion-fast),
-    color var(--motion-fast),
-    box-shadow var(--motion-fast);
+    border-color var(--motion-standard),
+    background var(--motion-standard),
+    color var(--motion-standard),
+    box-shadow var(--motion-standard);
 }
 
 .text-button {
@@ -1558,8 +1558,8 @@
 .metadata-input:focus,
 .metadata-input:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent-solid) 30%, var(--border-default));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 10%, transparent);
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
 }
 
 .metadata-card-span-full {
@@ -2093,8 +2093,8 @@
 
 .ai-chat-input:focus {
   outline: none;
-  border-color: color-mix(in srgb, #2f5d62 28%, var(--border-default));
-  box-shadow: 0 0 0 2px rgba(47, 93, 98, 0.08);
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
 }
 
 .ai-chat-composer-actions {
@@ -2647,8 +2647,8 @@
 .find-replace-panel input:focus,
 .find-panel-input:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent-solid) 28%, var(--border-default));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 8%, transparent);
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
 }
 
 .find-panel-input-query {
@@ -4238,4 +4238,78 @@
 @keyframes settingsFadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Skeleton Loaders */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 25%,
+    var(--border-muted) 37%,
+    var(--surface-muted) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.document-card.skeleton {
+  pointer-events: none;
+}
+.document-card.skeleton .skeleton-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+}
+.document-card.skeleton .skeleton-title {
+  height: 14px;
+  width: 55%;
+  margin-left: 8px;
+}
+.document-card.skeleton .skeleton-meta {
+  height: 12px;
+  width: 75%;
+  margin-top: 10px;
+}
+.document-card.skeleton .skeleton-updated {
+  height: 12px;
+  width: 40%;
+  margin-top: 10px;
+}
+.document-card.skeleton .skeleton-thumb-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 12px;
+  min-height: var(--doc-thumb-height, 42px);
+}
+.document-card.skeleton .skeleton-thumb {
+  height: var(--doc-thumb-height, 42px);
+  border-radius: 6px;
+}
+
+.document-table tr.skeleton {
+  pointer-events: none;
+}
+.document-table tr.skeleton td {
+  padding: var(--doc-table-cell-pad-y, 8px) var(--doc-table-cell-pad-x, 12px);
+}
+.document-table tr.skeleton .skeleton-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  vertical-align: middle;
+}
+.document-table tr.skeleton .skeleton-text {
+  height: 12px;
+  vertical-align: middle;
+  margin-left: 8px;
 }

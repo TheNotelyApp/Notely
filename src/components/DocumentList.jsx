@@ -134,7 +134,74 @@ export function DocumentList({
   }, [contextMenu]);
 
   if (loading) {
-    return <div className="empty-state">Loading notes and folders...</div>;
+    if (viewMode === "table") {
+      return (
+        <div
+          className={`document-table-wrap ${normalizedDensity}`}
+          style={densityStyle}
+          data-density={normalizedDensity}
+        >
+          <table className="document-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Metadata</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="skeleton">
+                  <td>
+                    <span className="document-name-cell">
+                      <span className="skeleton-icon skeleton-shimmer" />
+                      <span className="skeleton-text skeleton-shimmer" style={{ width: "120px", display: "inline-block" }} />
+                    </span>
+                  </td>
+                  <td>
+                    <span className="skeleton-text skeleton-shimmer" style={{ width: "180px", display: "inline-block" }} />
+                  </td>
+                  <td>
+                    <span className="skeleton-text skeleton-shimmer" style={{ width: "80px", display: "inline-block" }} />
+                  </td>
+                  <td>
+                    <span className="skeleton-text skeleton-shimmer" style={{ width: "40px", display: "inline-block" }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`document-grid ${normalizedDensity}`}
+        style={densityStyle}
+        data-density={normalizedDensity}
+      >
+        {Array.from({ length: 6 }).map((_, idx) => (
+          <div className="document-card skeleton" key={idx}>
+            <span className="document-card-header">
+              <span className="document-title-wrap" style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                <span className="skeleton-icon skeleton-shimmer" />
+                <span className="skeleton-title skeleton-shimmer" />
+              </span>
+            </span>
+            <span className="skeleton-meta skeleton-shimmer" />
+            <span className="skeleton-updated skeleton-shimmer" />
+            <span className="skeleton-thumb-strip">
+              <span className="skeleton-thumb skeleton-shimmer" />
+              <span className="skeleton-thumb skeleton-shimmer" />
+              <span className="skeleton-thumb skeleton-shimmer" />
+              <span className="skeleton-thumb skeleton-shimmer" />
+            </span>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (!documents.length) {

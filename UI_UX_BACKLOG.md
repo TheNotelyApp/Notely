@@ -4,10 +4,10 @@ This backlog outlines targeted, actionable, and testable improvements to make No
 
 ## UI
 
-- [ ] Standardize the focus ring colors globally to use `--focus-ring-color` instead of custom inline styles or mixed variables.
-- [ ] Align elements in the update banner within [LandingView.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/layout/LandingView.jsx) using theme design tokens.
-- [ ] Add loading skeleton preview cards in [DocumentList.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DocumentList.jsx) to replace the simple "Loading notes and folders..." text.
-- [ ] Polish hover transitions for all buttons inside [AppButton.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/AppButton.jsx) using standard timing token `--motion-standard`.
+- [x] Standardize the focus ring colors globally to use `--focus-ring-color` instead of custom inline styles or mixed variables.
+- [x] Align elements in the update banner within [LandingView.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/layout/LandingView.jsx) using theme design tokens.
+- [x] Add loading skeleton preview cards in [DocumentList.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DocumentList.jsx) to replace the simple "Loading notes and folders..." text.
+- [x] Polish hover transitions for all buttons inside [AppButton.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/AppButton.jsx) using standard timing token `--motion-standard`.
 
 ## UX
 
