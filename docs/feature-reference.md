@@ -44,6 +44,14 @@ The landing view includes lightweight workspace overview panels so you can resum
 - Customize the icon and color of any folder or note by right-clicking it and selecting "Customize icon & color..." or from the context menu in the open tabs.
 - Rename and delete notes from list actions.
 
+### Trash Recovery Bin
+
+When folders or notes are deleted, they are moved to a temporary Trash Bin instead of being permanently erased immediately. The Trash Bin recovery drawer (`Trash` quick action on the landing view) supports:
+
+- Browsing deleted files and folders with their deletion timestamps.
+- Restoring items back to their original paths.
+- Permanently emptying the trash bin to free up disk space.
+
 ## 2. Editor and Writing Experience
 
 ### Multiple edit modes
