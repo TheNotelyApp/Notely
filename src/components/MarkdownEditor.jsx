@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, memo } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { Search, Copy, Sparkles, MessageSquare, RefreshCcw, FileSearch, List, Wand2, Settings, BookPlus } from "lucide-react";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -416,7 +416,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
     }
   }, [contextMenu]);
 
-  const withViewportRestore = (applyChange) => {
+  const withViewportRestore = useCallback((applyChange) => {
     const previousView = viewRef.current;
     const previousScrollTop = viewRef.current?.scrollDOM?.scrollTop;
     const previousScrollLeft = viewRef.current?.scrollDOM?.scrollLeft;
@@ -446,9 +446,9 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
     };
 
     applyChange(scheduleViewportRestore);
-  };
+  }, []);
 
-  const applyIssueSuggestion = (issue, selectedSuggestion = null) => {
+  const applyIssueSuggestion = useCallback((issue, selectedSuggestion = null) => {
     withViewportRestore((scheduleViewportRestore) => {
       const suggestionResult = applyValidationSuggestion(value, issue, selectedSuggestion);
       if (!suggestionResult.changed) {
@@ -461,9 +461,9 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
       onNotify?.(suggestionResult.message, "success");
       setContextMenu(null);
     });
-  };
+  }, [value, onChange, onNotify, withViewportRestore]);
 
-  const applyIssueAction = (issue) => {
+  const applyIssueAction = useCallback((issue) => {
     if (!issue) return;
 
     withViewportRestore((scheduleViewportRestore) => {
@@ -519,7 +519,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
 
       onNotify?.("No automatic fix available for this issue.", "warning");
     });
-  };
+  }, [value, onChange, onNotify, withViewportRestore]);
 
   useEffect(() => {
     if (!window.notesApi?.onContextMenuAction) return undefined;
