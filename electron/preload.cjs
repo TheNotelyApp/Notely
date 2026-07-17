@@ -237,5 +237,10 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("workspace-metadata:changed", listener);
     return () => ipcRenderer.removeListener("workspace-metadata:changed", listener);
   },
+  exportNotePackage: (payload) => ipcRenderer.invoke("note-package:export", payload),
+  importNotePackage: (payload) => ipcRenderer.invoke("note-package:import", payload),
+  browseExportDestination: (payload) => ipcRenderer.invoke("note-package:browse-export-destination", payload),
+  browseImportFile: () => ipcRenderer.invoke("note-package:browse-import-file"),
+  getNotePackageDefaults: () => ipcRenderer.invoke("note-package:get-defaults"),
 });
 

@@ -98,6 +98,10 @@ function buildAppMenuTemplate(win, context = {}) {
           accelerator: "CmdOrCtrl+Shift+E",
           click: () => sendMenuAction(win, "export-pdf")
         },
+        {
+          label: "Export/Import Note Package",
+          click: () => sendMenuAction(win, "open-export-import")
+        },
         { type: "separator" },
         {
           label: "Rename Note",
@@ -137,6 +141,11 @@ function buildAppMenuTemplate(win, context = {}) {
         {
           label: "Open Recent",
           submenu: openRecentSubmenu
+        },
+        { type: "separator" },
+        {
+          label: "Export/Import Note Package",
+          click: () => sendMenuAction(win, "open-export-import")
         },
         { type: "separator" },
         {

@@ -69,6 +69,7 @@ const WorkspaceExportDialog = lazy(() =>
   import("./components/WorkspaceExportDialog").then((m) => ({ default: m.WorkspaceExportDialog }))
 );
 const DictionaryModal = lazy(() => import("./components/DictionaryModal"));
+const ExportImportModal = lazy(() => import("./components/ExportImportModal"));
 import {
   onMenuAction,
   notifyBootReady,
@@ -351,6 +352,8 @@ export default function App() {
   } = useUIState();
 
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
+  const [exportImportOpen, setExportImportOpen] = useState(false);
+  const [exportImportMode, setExportImportMode] = useState("export");
   const [workspaceExportBusy, setWorkspaceExportBusy] = useState(false);
   const [workspaceExportProgress, setWorkspaceExportProgress] = useState({ phase: "", percent: 0 });
   const [workspaceExportOptions, setWorkspaceExportOptions] = useState(
@@ -1268,6 +1271,12 @@ export default function App() {
 
       if (action === "export-workspace-zip") {
         void handleOpenWorkspaceExport();
+        return;
+      }
+
+      if (action === "open-export-import") {
+        setExportImportMode("export");
+        setExportImportOpen(true);
         return;
       }
 
@@ -3318,6 +3327,18 @@ export default function App() {
           />
         </Suspense>
       ) : null}
+
+      {exportImportOpen && (
+        <Suspense fallback={null}>
+          <ExportImportModal
+            isOpen={exportImportOpen}
+            mode={exportImportMode}
+            onClose={() => setExportImportOpen(false)}
+            notify={notify}
+            reloadDocuments={loadDocumentsData}
+          />
+        </Suspense>
+      )}
 
       {!onboardingComplete && (
         <OnboardingFlow

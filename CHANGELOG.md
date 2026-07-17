@@ -8,7 +8,23 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ### Added
 
-- Added `Ctrl+Tab` (next tab) and `Ctrl+Shift+Tab` (previous tab) shortcuts to navigate between open notes.
+- Added **Export / Import Note Package** feature (`File → Export / Import Note Package`).
+  - Exports a selection of notes — including all linked images, Excalidraw diagrams, Draw.io files, screenshots, and thumbnails — into a single encrypted `.note` bundle.
+  - Bundles are AES-256 encrypted and SHA-256 integrity-hashed; tampered files are detected on import.
+  - Import unpacks the bundle into the current workspace, restoring all assets and resolving filename collisions via embedded metadata.
+  - Default export path and filename (`{rootFolder}.note`) are pre-filled from the last-used export location.
+  - Dedicated **Export/Import modal** with a scrollable, compact note-selection list supporting Select All/Deselect All; fixed-height dialog that does not shift when switching between the Export and Import tabs.
+- Added `src/tests/utils/notePackage.test.js` — unit tests covering dependency scanning, path sanitization (leading-slash screenshot paths), crypto, and regex parsing.
+
+### Fixed
+
+- Fixed split-view scroll sync sluggishness and lock-fighting between the raw editor and the preview panel.
+  - Replaced the `activeScrollSource` string-based lock with a generation counter (`lockGen`) and an 80 ms timeout, preventing programmatic `scrollTop` changes from bouncing back into the opposite panel's sync handler.
+- Fixed `.note` export failing with `EPERM: operation not permitted, copyfile` when notes contained screenshots stored as `/media/images/…` paths; leading slashes are now stripped before OS path resolution.
+- Fixed `.note` export `mkdir` crash caused by absolute note file paths being passed to `path.join(stagingDir, absPath)`; paths are now normalised to workspace-relative via `path.relative(notesRoot, absolutePath)`.
+- Fixed destination directory not being created automatically when the user accepts the default export path without browsing.
+
+
 - Added a **Copy Link Path** context menu option to open tabs and landing items to easily copy workspace-relative paths.
 - Added support for custom action buttons (e.g. "Undo") inside notification toasts.
 - Added a **Copy | Navigate** hover popover for links in Markdown Previews, while preventing accidental direct click navigation.

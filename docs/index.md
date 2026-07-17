@@ -40,4 +40,7 @@ features:
   - icon: 🔄
     title: P2P Sync
     details: Sync notes across devices over your local network using encrypted peer-to-peer pairing — no cloud required.
+  - icon: 📦
+    title: Export / Import Note Packages
+    details: Bundle notes with all linked assets into an encrypted, integrity-checked `.note` file. Share with others and import directly into any Notely workspace.
 ---

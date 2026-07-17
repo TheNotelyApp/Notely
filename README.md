@@ -67,6 +67,10 @@ Notely is built with Electron + React and is designed for project notes, meeting
 - Copy note link paths relative to the current workspace root from right-click context menus on tabs and dashboard document list items.
 - Dismiss notification toasts immediately with a close button, and undo/redo applied markdown quick fixes or validation suggestions.
 - Hover over links in Markdown Previews to display a transient popover containing Copy Link and Navigate options, while direct clicks on links are prevented to avoid accidental navigation.
+- **Export/Import Note Packages** (`.note` files) via **File → Export / Import Note Package** to share self-contained, encrypted bundles of notes with all linked media, Excalidraw diagrams, Draw.io files, and screenshots.
+  - Bundles are AES-256 encrypted and SHA-256 integrity-checked so recipients can trust authenticity.
+  - A dedicated **Export/Import modal** lets you select which notes to include, pre-fills the save path and filename from your last export location, and handles naming collisions on import automatically.
+  - Importing unpacks directly into the current workspace with full dependency restoration.
 
 ## Getting Started
 

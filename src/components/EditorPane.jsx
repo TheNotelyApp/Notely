@@ -102,14 +102,27 @@ export function EditorPane({
     const editorElement = textareaRef?.current;
     const previewElement = previewRef.current;
     if (!editorElement || !previewElement) return undefined;
-    
-    let activeScrollSource = null;
+
+    // Use a generation counter instead of a named source string.
+    // Any sync triggered in generation N ignores scroll events that arrive in the same N.
+    let lockGen = 0;
     let editorRaf = 0;
     let previewRaf = 0;
     let resizeRaf = 0;
+    let unlockTimer = 0;
     let resizeObserver = null;
     let mutationObserver = null;
     let cachedAnchors = null;
+
+    const lock = () => {
+      lockGen++;
+      clearTimeout(unlockTimer);
+      // Give the browser two frames to settle programmatic scrollTop changes
+      // before allowing the opposite panel's scroll event to re-trigger a sync
+      unlockTimer = setTimeout(() => { lockGen = 0; }, 80);
+    };
+
+    const isLocked = (gen) => gen !== 0 && gen === lockGen;
 
     const getScrollRatio = (element) => {
       const scrollable = Math.max(0, element.scrollHeight - element.clientHeight);
@@ -137,7 +150,7 @@ export function EditorPane({
       const map = new Map();
       const containerTop = previewElement.getBoundingClientRect().top;
       const currentScroll = previewElement.scrollTop;
-      
+
       for (const element of elements) {
         const line = Number(element.getAttribute("data-source-line")) || 0;
         if (line > 0 && !map.has(line)) {
@@ -161,7 +174,7 @@ export function EditorPane({
       }
 
       const editorScroll = editorElement.scrollTop;
-      
+
       let prevAnchor = null;
       let nextAnchor = null;
       for (const anchor of anchors) {
@@ -239,26 +252,20 @@ export function EditorPane({
     };
 
     const handleEditorScroll = () => {
-      if (activeScrollSource === "preview") return;
-      activeScrollSource = "editor";
+      if (lockGen !== 0) return;          // still in a sync cycle — ignore
       cancelAnimationFrame(editorRaf);
       editorRaf = requestAnimationFrame(() => {
+        lock();
         syncPreviewFromEditor();
-        requestAnimationFrame(() => {
-          activeScrollSource = null;
-        });
       });
     };
 
     const handlePreviewScroll = () => {
-      if (activeScrollSource === "editor") return;
-      activeScrollSource = "preview";
+      if (lockGen !== 0) return;          // still in a sync cycle — ignore
       cancelAnimationFrame(previewRaf);
       previewRaf = requestAnimationFrame(() => {
+        lock();
         syncEditorFromPreview();
-        requestAnimationFrame(() => {
-          activeScrollSource = null;
-        });
       });
     };
 
@@ -266,11 +273,7 @@ export function EditorPane({
       cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(() => {
         cachedAnchors = null;
-        if (activeScrollSource === "preview") {
-          syncEditorFromPreview();
-        } else {
-          syncPreviewFromEditor();
-        }
+        if (lockGen === 0) syncPreviewFromEditor();
       });
     };
 
@@ -305,10 +308,10 @@ export function EditorPane({
       cancelAnimationFrame(editorRaf);
       cancelAnimationFrame(previewRaf);
       cancelAnimationFrame(resizeRaf);
+      clearTimeout(unlockTimer);
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
       previewElement.removeEventListener("load", syncAfterPreviewResize, true);
-      
       editorElement.removeEventListener("scroll", handleEditorScroll);
       previewElement.removeEventListener("scroll", handlePreviewScroll);
     };
