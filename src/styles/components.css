@@ -4355,3 +4355,45 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Custom Colored Item Contrast Utilities */
+.custom-colored-item {
+  background-color: var(--custom-bg-color) !important;
+  color: var(--custom-text-color) !important;
+  --text-strong: var(--custom-text-color);
+  --text-muted: var(--custom-text-color);
+  --text-secondary: var(--custom-text-color);
+  --text-tertiary: var(--custom-text-color);
+  --tab-text: var(--custom-text-color);
+}
+
+.custom-colored-item .document-kind-icon,
+.custom-colored-item .document-calendar-icon,
+.custom-colored-item svg {
+  color: var(--custom-text-color) !important;
+  fill: var(--custom-text-color) !important;
+}
+
+.custom-colored-item .favorite-toggle,
+.custom-colored-item .remove-toggle {
+  background: color-mix(in srgb, var(--custom-text-color) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--custom-text-color) 25%, transparent) !important;
+  color: var(--custom-text-color) !important;
+}
+
+.custom-colored-item .favorite-toggle:hover,
+.custom-colored-item .remove-toggle:hover {
+  background: color-mix(in srgb, var(--custom-text-color) 22%, transparent) !important;
+  border-color: color-mix(in srgb, var(--custom-text-color) 45%, transparent) !important;
+}
+
+.custom-colored-item .favorite-toggle.active {
+  background: var(--custom-text-color) !important;
+  color: var(--custom-bg-color) !important;
+  border-color: var(--custom-text-color) !important;
+}
+
+.custom-colored-item .favorite-toggle.active svg {
+  color: var(--custom-bg-color) !important;
+  fill: var(--custom-bg-color) !important;
+}
+

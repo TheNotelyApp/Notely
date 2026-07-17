@@ -19,8 +19,12 @@ All notable documentation and user-facing behavior changes are tracked in this f
 - Added contextual row/column action chips and column alignment controls for table editing.
 - Added regression tests for markdown table parsing/serialization behavior in `src/utils/tableUtils.test.js`.
 
-### Changed
-
+- Keep workspace dashboard sidebar always visible and accessible when navigating subfolders, preventing layout shifts.
+- Normalized spacing and grid gaps across dashboard panels to use design system space tokens.
+- Extracted inline custom contrast colors into semantic class `.custom-colored-item`, fixing contrast readability issues on custom note/folder cards.
+- Standardized custom modal corner radius to use `--radius-lg` consistently.
+- Centralized common CSS animations (e.g., `spin`, `modal-pop`) to `base.css` to prevent redundant keyframe declarations.
+- Updated Draw.io diagram saves to use a solid white background in exported PNG files to prevent poor contrast issues on dark backgrounds.
 - Updated table view mode row behavior in document list to support double-clicking to open immediately.
 - Hidden the markdown validation banner when there are no issues.
 - Refined note detail topbar visual consistency by normalizing control height and shared corner-radius usage.

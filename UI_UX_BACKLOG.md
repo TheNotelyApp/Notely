@@ -18,21 +18,21 @@ This backlog outlines targeted, actionable, and testable improvements to make No
 
 ## Navigation
 
-- [ ] Add horizontal scroll capability or tab-overflow chevron buttons to [NoteTabBar.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/NoteTabBar.jsx) when many tabs are open.
-- [ ] Introduce a breadcrumb navigation trail at the top of [DocumentDetail.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DocumentDetail.jsx) to match the Landing View folder depth indicator.
-- [ ] Standardize keyboard-driven tab switching (`Ctrl+Tab` and `Ctrl+Shift+Tab`) across opened notes.
+- [x] Add horizontal scroll capability or tab-overflow chevron buttons to [NoteTabBar.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/NoteTabBar.jsx) when many tabs are open.
+- [x] Introduce a breadcrumb navigation trail at the top of [DocumentDetail.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DocumentDetail.jsx) to match the Landing View folder depth indicator.
+- [x] Standardize keyboard-driven tab switching (`Ctrl+Tab` and `Ctrl+Shift+Tab`) across opened notes.
 
 ## Layout
 
-- [ ] Add split-resizer boundary limits in [LandingView.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/layout/LandingView.jsx) to prevent dragging the workspace rail to 0 width.
-- [ ] Prevent grid content in [LandingView.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/layout/LandingView.jsx) from layout-shifting when toggling the sidebar.
-- [ ] Normalize grid spacings in [DashboardPanels.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DashboardPanels.jsx) to use spacing variables like `--space-5`.
+- [x] Add split-resizer boundary limits in [LandingView.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/layout/LandingView.jsx) to prevent dragging the workspace rail to 0 width.
+- [x] Prevent grid content in [LandingView.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/layout/LandingView.jsx) from layout-shifting when toggling the sidebar.
+- [x] Normalize grid spacings in [DashboardPanels.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DashboardPanels.jsx) to use spacing variables like `--space-5`.
 
 ## Design System
 
-- [ ] Extract inline colors used for contrast backgrounds in [DocumentList.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DocumentList.jsx) into semantic CSS utility classes in [variables.css](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/styles/variables.css).
-- [ ] Standardize the border-radius property on custom modals like `IconColorPickerModal` to use `--radius-lg` consistently.
-- [ ] Centralize CSS animation keyframes across all CSS files into [base.css](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/styles/base.css).
+- [x] Extract inline colors used for contrast backgrounds in [DocumentList.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/DocumentList.jsx) into semantic CSS utility classes in [variables.css](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/styles/variables.css).
+- [x] Standardize the border-radius property on custom modals like `IconColorPickerModal` to use `--radius-lg` consistently.
+- [x] Centralize CSS animation keyframes across all CSS files into [base.css](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/styles/base.css).
 
 ## Shared Components
 

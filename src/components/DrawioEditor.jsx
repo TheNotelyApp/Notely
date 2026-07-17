@@ -52,6 +52,7 @@ export function DrawioEditor({
       JSON.stringify({
         action: "export",
         format: "png",
+        background: "#ffffff",
         spin: "Exporting PNG...",
       }),
       "*"

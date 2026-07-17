@@ -232,11 +232,10 @@ export function DocumentList({
               return (
               <tr
                 key={doc.filePath}
+                className={meta.color ? "custom-colored-item" : ""}
                 style={meta.color ? {
-                  backgroundColor: meta.color,
-                  color: getContrastColor(meta.color),
-                  "--text-strong": getContrastColor(meta.color),
-                  "--text-muted": getContrastColor(meta.color)
+                  "--custom-bg-color": meta.color,
+                  "--custom-text-color": getContrastColor(meta.color)
                 } : {}}
                 onClick={() => onOpen(doc)}
                 onDoubleClick={() => onOpen(doc)}
@@ -362,13 +361,11 @@ export function DocumentList({
 
         return (
           <button 
-            className="document-card" 
+            className={`document-card${meta.color ? " custom-colored-item" : ""}`} 
             key={doc.filePath} 
             style={meta.color ? {
-              backgroundColor: meta.color,
-              color: getContrastColor(meta.color),
-              "--text-strong": getContrastColor(meta.color),
-              "--text-muted": getContrastColor(meta.color)
+              "--custom-bg-color": meta.color,
+              "--custom-text-color": getContrastColor(meta.color)
             } : {}}
             onClick={() => onOpen(doc)} 
             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, entry: doc }); }}>

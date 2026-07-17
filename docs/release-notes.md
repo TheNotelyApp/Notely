@@ -9,10 +9,14 @@
 - **Preview Link Hover overlay** — hover over any link in note previews to open a popover with **Copy** and **Navigate** options (with icons). Direct link clicks are disabled to prevent accidental navigation jumps.
 - **Dismissible Toasts & Undo actions** — notification toasts now include an `X` dismiss button, and applying markdown quick fixes prompts an **Undo** toast to quickly revert changes.
 
-### Refinements
-
+- **Always-Visible Workspace Sidebar** — the dashboard rail containing recent notes, favorites, and open tasks remains visible when navigating workspace subfolders, preventing layout shifts and keeping dashboard information at hand.
+- **Improved Contrast on Colored Items** — extracted dynamic inline styling into a semantic `.custom-colored-item` CSS class, ensuring document text, icons, and action chips dynamically scale contrast and remain highly readable when custom card/tab colors are applied.
+- **Draw.io Solid Background Exports** — saves of Draw.io diagrams now export with a solid white background in PNG files, preventing poorly contrasted layouts under dark theme previews.
+- **Modal Corner Radius Standardization** — custom modal borders consistently use `--radius-lg` (`6px`) to match standard dialog overlays.
+- **Centralized CSS Keyframes** — common animations like `spin` and `modal-pop` are centralized in `base.css` to reduce code repetition.
 - **Double-click to open row** — table list items in document dashboard now open immediately on double-click.
 - **Validation Banner Auto-Hide** — the validation banner at the top of the editor is completely hidden when there are no issues.
+- **Spacing Token Normalization** — dashboard panels and bars now use design system space tokens (`var(--space-4)` and `var(--space-5)`) for consistent alignments.
 
 ---
 

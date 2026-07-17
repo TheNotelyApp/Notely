@@ -232,10 +232,10 @@
   border: 2px solid #e5e7eb;
   border-top-color: #2f5d62;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: ai-palette-spin 0.6s linear infinite;
 }
 
-@keyframes spin {
+@keyframes ai-palette-spin {
   to {
     transform: translateY(-50%) rotate(360deg);
   }

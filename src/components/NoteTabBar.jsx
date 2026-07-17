@@ -154,15 +154,14 @@ export function NoteTabBar({
           return (
             <div
               key={filePath}
-              className={`note-tab${isActive ? " active" : ""}${isDirty ? " dirty" : ""}`}
+              className={`note-tab${isActive ? " active" : ""}${isDirty ? " dirty" : ""}${meta.color ? " custom-colored-item" : ""}`}
               role="tab"
               aria-selected={isActive}
               title={filePath}
               onContextMenu={(e) => handleContextMenu(e, filePath)}
               style={meta.color ? {
-                backgroundColor: meta.color,
-                color: getContrastColor(meta.color),
-                '--tab-text': getContrastColor(meta.color)
+                "--custom-bg-color": meta.color,
+                "--custom-text-color": getContrastColor(meta.color)
               } : {}}
             >
               <button
@@ -223,7 +222,7 @@ export function NoteTabBar({
                   return (
                     <button
                       key={filePath}
-                      className={`note-tab-overflow-item${isActive ? " active" : ""}${isDirty ? " dirty" : ""}`}
+                      className={`note-tab-overflow-item${isActive ? " active" : ""}${isDirty ? " dirty" : ""}${meta.color ? " custom-colored-item" : ""}`}
                       type="button"
                       role="menuitem"
                       onClick={() => {
@@ -233,8 +232,8 @@ export function NoteTabBar({
                       onContextMenu={(e) => handleContextMenu(e, filePath)}
                       title={filePath}
                       style={meta.color ? {
-                        backgroundColor: meta.color,
-                        color: getContrastColor(meta.color)
+                        "--custom-bg-color": meta.color,
+                        "--custom-text-color": getContrastColor(meta.color)
                       } : {}}
                     >
                       {TabIcon && <TabIcon size={14} style={{ marginRight: 6 }} />}
