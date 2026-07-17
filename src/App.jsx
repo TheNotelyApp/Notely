@@ -1,9 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NotebookPen, Terminal, X, Eye, CheckCircle2, AlertCircle, Info, AlertTriangle } from "lucide-react";
-import { DocumentList } from "./components/DocumentList";
+import { NotebookPen, Terminal, X, CheckCircle2, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { DashboardPanels } from "./components/DashboardPanels";
-import { LandingListControls } from "./components/LandingListControls";
 import { OverlayDialog } from "./components/OverlayDialog";
 import GlobalTooltip from "./components/GlobalTooltip";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
@@ -630,7 +627,7 @@ export default function App() {
       const appliedTheme = themeResult?.effectiveTheme === "dark" ? "dark" : "light";
       setThemePreferenceState(appliedPreference);
       setEffectiveTheme(appliedTheme);
-    } catch (err) {
+    } catch {
       notify("Failed to set theme preference.", "error");
     }
   };
@@ -642,7 +639,7 @@ export default function App() {
         ? Number(result.zoomFactor)
         : zoom;
       setZoomFactorState(appliedZoom);
-    } catch (err) {
+    } catch {
       notify("Failed to change zoom scale.", "error");
     }
   };
@@ -974,6 +971,7 @@ export default function App() {
 
     window.addEventListener("keydown", onGlobalKeyDown);
     return () => window.removeEventListener("keydown", onGlobalKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1089,6 +1087,7 @@ export default function App() {
       setThemePreferenceState(nextPreference);
       setEffectiveTheme(nextEffective);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1104,6 +1103,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1113,6 +1113,7 @@ export default function App() {
     }
     window.addEventListener("open-global-search-query", handleCustomSearch);
     return () => window.removeEventListener("open-global-search-query", handleCustomSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     void getOnboardingComplete()
@@ -1130,6 +1131,7 @@ export default function App() {
         }
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

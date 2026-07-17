@@ -101,7 +101,7 @@ function normalizeProviderModels(models) {
   }).filter((model) => model.id);
 }
 
-export const AISettingsContent = ({ onClose }) => {
+export const AISettingsContent = ({ _onClose }) => {
   const [apiKey, setApiKey] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('gemini');
   const [preferences, setPreferences] = useState(defaultPreferences);
@@ -113,8 +113,6 @@ export const AISettingsContent = ({ onClose }) => {
   const [hfTestResult, setHfTestResult] = useState(null);
   const [selectedModel, setSelectedModel] = useState('');
   const [embeddingStaleness, setEmbeddingStaleness] = useState(null);
-  const [showAdvancedGeneration, setShowAdvancedGeneration] = useState(true);
-  const [showDataControls, setShowDataControls] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState("providers");
 
   useEffect(() => {

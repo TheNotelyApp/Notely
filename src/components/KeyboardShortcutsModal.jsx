@@ -8,8 +8,6 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KE
   const [searchQuery, setSearchQuery] = useState("");
   const [activeGroup, setActiveGroup] = useState("All");
 
-  if (!isOpen) return null;
-
   const groups = useMemo(() => {
     const list = new Set();
     shortcuts.forEach((item) => {
@@ -47,6 +45,8 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KE
       </div>
     );
   };
+
+  if (!isOpen) return null;
 
   return (
     <OverlayDialog open={isOpen} onClose={onClose} ariaLabel="Keyboard shortcuts" cardClassName="keyboard-shortcuts-card">
@@ -124,7 +124,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KE
           </table>
         ) : (
           <div className="shortcuts-empty-state">
-            <p>No shortcuts match your search: <strong>"{searchQuery}"</strong></p>
+            <p>No shortcuts match your search: <strong>&ldquo;{searchQuery}&rdquo;</strong></p>
             <button type="button" className="small-button" onClick={() => { setSearchQuery(""); setActiveGroup("All"); }}>
               Reset Filters
             </button>
