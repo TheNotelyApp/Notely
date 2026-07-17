@@ -100,10 +100,25 @@ export default function GlobalTooltip() {
       }
 
       // Check bottom edge
-      if (newY + tooltipRect.height > windowHeight - 10) {
-        // Place above the element
-        newY = targetRect.top - tooltipRect.height - 8;
-        newPlacement = "top";
+      if (newPlacement === "bottom" && newY + tooltipRect.height > windowHeight - 10) {
+        const topY = targetRect.top - tooltipRect.height - 8;
+        if (topY > 10) {
+          newY = topY;
+          newPlacement = "top";
+        } else {
+          newY = windowHeight - tooltipRect.height - 10;
+        }
+      }
+
+      // Check top edge
+      if (newPlacement === "top" && newY < 10) {
+        const bottomY = targetRect.bottom + 8;
+        if (bottomY + tooltipRect.height < windowHeight - 10) {
+          newY = bottomY;
+          newPlacement = "bottom";
+        } else {
+          newY = 10;
+        }
       }
 
       // Only update if changed significantly

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { X, Search } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
+import AppInput from "./AppInput";
 import { DEFAULT_KEYBOARD_SHORTCUTS } from "../utils/keyboardShortcuts";
 
 export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KEYBOARD_SHORTCUTS }) {
@@ -60,7 +61,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts = DEFAULT_KE
       <div className="shortcuts-controls">
         <div className="shortcuts-search-wrap">
           <Search size={16} className="shortcuts-search-icon" />
-          <input
+          <AppInput
             type="text"
             className="shortcuts-search-input"
             placeholder="Search shortcuts..."

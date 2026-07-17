@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { GitCommit, X, FilePlus2, FileEdit, FileMinus2, FileQuestion } from "lucide-react";
 import OverlayDialog from "./OverlayDialog";
 import AppButton from "./AppButton";
+import AppTextarea from "./AppTextarea";
 
 const MAX_MESSAGE_LENGTH = 72;
 
@@ -151,7 +152,7 @@ export function GitCommitDialog({
                   {isOverLimit ? `${Math.abs(charLeft)} over limit` : `${charLeft} remaining`}
                 </span>
               </label>
-              <textarea
+              <AppTextarea
                 id="git-commit-message"
                 ref={messageRef}
                 className={`git-commit-dialog__message-input${isOverLimit ? " error" : ""}`}

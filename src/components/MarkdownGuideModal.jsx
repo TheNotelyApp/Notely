@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { X, Search } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
+import AppInput from "./AppInput";
 import "../styles/MarkdownGuideModal.css";
 
 const MARKDOWN_SYNTAX = [
@@ -51,7 +52,7 @@ export function MarkdownGuideModal({ open, onClose }) {
 
       <div className="markdown-guide-search">
         <Search size={16} className="markdown-guide-search-icon" />
-        <input
+        <AppInput
           type="text"
           placeholder="Search syntax..."
           value={search}

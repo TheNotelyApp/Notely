@@ -8,6 +8,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { editorTheme } from "../utils/editorTheme";
 import { langs } from "@uiw/codemirror-extensions-langs";
 import { formatCode } from "../utils/codeFormatter";
+import AppInput from "./AppInput";
 import "../styles/CodeBlockModal.css";
 
 const LANGUAGES = [
@@ -79,7 +80,7 @@ function SearchableLanguageSelect({ value, onChange }) {
         <div className="app-select-panel" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, marginTop: "4px" }}>
           <div style={{ padding: "8px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: "6px", background: "var(--surface-bg)" }}>
              <Search size={14} color="var(--text-muted)" />
-             <input 
+             <AppInput 
                autoFocus
                placeholder="Search..."
                value={search}

@@ -1,6 +1,7 @@
 import { Download, X } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppSelect from "./AppSelect";
+import AppInput from "./AppInput";
 
 export function WorkspaceExportDialog({
   isOpen,
@@ -86,7 +87,7 @@ export function WorkspaceExportDialog({
       <label className="overlay-dialog-field" htmlFor="workspace-export-destination">
         <span>Destination folder</span>
         <div className="workspace-export-destination-row">
-          <input
+          <AppInput
             id="workspace-export-destination"
             type="text"
             value={values.destinationPath}
@@ -107,7 +108,7 @@ export function WorkspaceExportDialog({
 
       <label className="overlay-dialog-field" htmlFor="workspace-export-filename">
         <span>Zip file name</span>
-        <input
+        <AppInput
           id="workspace-export-filename"
           type="text"
           value={values.fileName}

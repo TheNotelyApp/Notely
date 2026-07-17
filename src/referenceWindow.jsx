@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Eye, FileText, Save } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { MarkdownPreview } from "./components/MarkdownPreview.jsx";
+import { AppTextarea } from "./components/AppTextarea.jsx";
 import { readDocument, saveDocument } from "./services/electronService";
 import "./styles.css";
 
@@ -228,7 +229,7 @@ function ReferenceWindowApp() {
               }}
             />
           ) : (
-            <textarea
+            <AppTextarea
               className="reference-window-source-editor"
               value={sourceText}
               onChange={(event) => {

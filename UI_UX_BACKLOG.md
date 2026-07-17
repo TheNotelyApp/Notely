@@ -36,9 +36,9 @@ This backlog outlines targeted, actionable, and testable improvements to make No
 
 ## Shared Components
 
-- [ ] Replace custom inputs in modals with [AppInput.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/AppInput.jsx) to unify styles.
-- [ ] Replace native textareas in editors with [AppTextarea.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/AppTextarea.jsx).
-- [ ] Standardize tooltip display positioning logic inside [GlobalTooltip.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/GlobalTooltip.jsx).
+- [x] Replace custom inputs in modals with [AppInput.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/AppInput.jsx) to unify styles.
+- [x] Replace native textareas in editors with [AppTextarea.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/AppTextarea.jsx).
+- [x] Standardize tooltip display positioning logic inside [GlobalTooltip.jsx](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/src/components/GlobalTooltip.jsx).
 
 ## Forms
 

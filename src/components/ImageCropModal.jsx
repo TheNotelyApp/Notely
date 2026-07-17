@@ -3,6 +3,7 @@ import { Check, X } from "lucide-react";
 import { rotateImage } from "../utils/imageProcessingUtils";
 import AppButton from "./AppButton";
 import AppSelect from "./AppSelect";
+import AppInput from "./AppInput";
 import OverlayDialog from "./OverlayDialog";
 import "../styles/ImageCropModal.css";
 
@@ -498,7 +499,7 @@ export function ImageCropModal({
 
         {annotationOnly ? (
           <div className="image-annotation-only-body">
-            <input
+            <AppInput
               className="image-annotation-input annotation-only"
               type="text"
               maxLength="80"
@@ -577,7 +578,7 @@ export function ImageCropModal({
                   onChange={handleRotationAngleChange}
                   disabled={saving || rotating}
                 />
-                <input
+                 <AppInput
                   className="image-crop-rotation-number"
                   type="number"
                   min="0"
@@ -592,7 +593,7 @@ export function ImageCropModal({
             ) : null}
             {!annotationOnly ? (
               <>
-                <input
+                <AppInput
                   className="image-annotation-input"
                   type="text"
                   maxLength="80"
