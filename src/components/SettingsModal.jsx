@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Settings, Cpu, ShieldAlert, Sliders, Type } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
@@ -42,6 +42,12 @@ export function SettingsModal({
   onRotateP2PWorkspaceKeys,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (activeTab === "p2p") {
+      onRefreshP2P?.();
+    }
+  }, [activeTab, onRefreshP2P]);
 
   if (!isOpen) return null;
 

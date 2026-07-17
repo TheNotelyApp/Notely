@@ -2660,8 +2660,8 @@
 }
 
 .find-input-error {
-  border-color: #b95555;
-  background: #fff6f6;
+  border-color: var(--status-danger-border);
+  background: var(--status-danger-bg);
 }
 
 .find-toggle-group {
@@ -2694,13 +2694,13 @@
 }
 
 .find-toggle-button.error {
-  border-color: #b95555;
-  background: #fff1f1;
-  color: #8a2f2f;
+  border-color: var(--status-danger-border);
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .find-error {
-  color: #8a2f2f;
+  color: var(--status-danger-text);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2881,13 +2881,15 @@
 }
 
 .validation-banner.warning {
-  background: #fff7e8;
-  color: #73561d;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+  border-color: var(--status-warning-border);
 }
 
 .validation-banner.error {
-  background: #fff3f3;
-  color: #8e1b1b;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-border);
 }
 
 .pane-toolbar-spacer {
@@ -2979,7 +2981,7 @@
 }
 
 .toolbar-validation-summary.error {
-  color: #8e1b1b;
+  color: var(--status-danger-text);
 }
 
 .editor-toolbar button.toolbar-btn-capture {

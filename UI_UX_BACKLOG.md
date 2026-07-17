@@ -42,8 +42,8 @@ This backlog outlines targeted, actionable, and testable improvements to make No
 
 ## Forms
 
-- [ ] Standardize error validation layouts inside settings menus to use red alert states based on `--status-danger-border`.
-- [ ] Disable submit buttons automatically when required input fields are blank in the onboarding flow.
+- [x] Standardize error validation layouts inside settings menus to use red alert states based on `--status-danger-border`.
+- [x] Disable submit buttons automatically when required input fields are blank in the onboarding flow.
 
 ## Dialogs
 

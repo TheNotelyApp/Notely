@@ -47,8 +47,9 @@
 }
 
 .ai-settings-status.error {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--status-danger-bg);
+  border-bottom: 1px solid var(--status-danger-border);
+  color: var(--status-danger-text);
 }
 
 .ai-settings-status.info {
@@ -170,9 +171,6 @@
   color: #7a6040;
 }
 
-.ai-settings-embeddings-card {
-  /* inherits ai-settings-section base */
-}
 
 .ai-settings-embeddings-info {
   font-size: 11px;

@@ -1694,7 +1694,7 @@
 }
 
 .p2p-test-fail {
-  color: #9b1c1c;
+  color: var(--status-danger-text);
   font-weight: 700;
 }
 
