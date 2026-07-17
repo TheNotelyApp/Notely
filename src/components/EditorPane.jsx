@@ -122,7 +122,6 @@ export function EditorPane({
       unlockTimer = setTimeout(() => { lockGen = 0; }, 80);
     };
 
-    const isLocked = (gen) => gen !== 0 && gen === lockGen;
 
     const getScrollRatio = (element) => {
       const scrollable = Math.max(0, element.scrollHeight - element.clientHeight);

@@ -125,7 +125,7 @@ function registerNotePackageIpc(ipcMain, deps) {
   }
 
   // --- Get Defaults ---
-  handleTrusted("note-package:get-defaults", async (event) => {
+  handleTrusted("note-package:get-defaults", async (_event) => {
     const notesRoot = getNotesRoot();
     if (!notesRoot) throw new Error("No notes root configured.");
 
@@ -378,7 +378,7 @@ function registerNotePackageIpc(ipcMain, deps) {
           await fs.unlink(finalDest);
         }
         await fs.rename(finalDestTmp, finalDest);
-      } catch (renameErr) {
+      } catch {
         // Fallback: direct write if rename fails (e.g. cross-device)
         await fs.writeFile(finalDest, encryptedBuffer);
         try { await fs.unlink(finalDestTmp); } catch { /* ignore */ }
@@ -582,7 +582,7 @@ function registerNotePackageIpc(ipcMain, deps) {
         for (const [oldRel, newRel] of Object.entries(renameMap.media)) {
           if (oldRel === newRel) continue;
           // Escape regex special chars in old path
-          const escapedOld = oldRel.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+          const escapedOld = oldRel.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
           const regex = new RegExp(`(!\\[.*?\\]\\()${escapedOld}(\\))`, "g");
           content = content.replace(regex, `$1${newRel}$2`);
         }
@@ -602,7 +602,7 @@ function registerNotePackageIpc(ipcMain, deps) {
         // C. Rewrite relative cross-note links if target notes got renamed
         for (const [oldRel, newRel] of Object.entries(renameMap.notes)) {
           if (oldRel === newRel) continue;
-          const escapedOld = oldRel.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+          const escapedOld = oldRel.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
           const regex = new RegExp(`(\\[.*?\\]\\()${escapedOld}(\\))`, "g");
           content = content.replace(regex, `$1${newRel}$2`);
         }
