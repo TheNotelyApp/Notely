@@ -98,6 +98,10 @@ function buildAppMenuTemplate(win, context = {}) {
           accelerator: "CmdOrCtrl+Shift+E",
           click: () => sendMenuAction(win, "export-pdf")
         },
+        {
+          label: "Export/Import Note Package",
+          click: () => sendMenuAction(win, "open-export-import")
+        },
         { type: "separator" },
         {
           label: "Rename Note",
@@ -137,6 +141,11 @@ function buildAppMenuTemplate(win, context = {}) {
         {
           label: "Open Recent",
           submenu: openRecentSubmenu
+        },
+        { type: "separator" },
+        {
+          label: "Export/Import Note Package",
+          click: () => sendMenuAction(win, "open-export-import")
         },
         { type: "separator" },
         {
@@ -640,6 +649,11 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Keyboard Shortcuts",
           accelerator: "CmdOrCtrl+/",
           click: () => sendMenuAction(win, "open-shortcuts")
+        },
+        { type: "separator" },
+        {
+          label: "Report Bug / Feedback",
+          click: () => sendMenuAction(win, "open-feedback")
         },
         { type: "separator" },
         {

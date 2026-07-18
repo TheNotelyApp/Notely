@@ -67,6 +67,10 @@ Notely is built with Electron + React and is designed for project notes, meeting
 - Copy note link paths relative to the current workspace root from right-click context menus on tabs and dashboard document list items.
 - Dismiss notification toasts immediately with a close button, and undo/redo applied markdown quick fixes or validation suggestions.
 - Hover over links in Markdown Previews to display a transient popover containing Copy Link and Navigate options, while direct clicks on links are prevented to avoid accidental navigation.
+- **Export/Import Note Packages** (`.note` files) via **File → Export / Import Note Package** to share self-contained, encrypted bundles of notes with all linked media, Excalidraw diagrams, Draw.io files, and screenshots.
+  - Bundles are AES-256 encrypted and SHA-256 integrity-checked so recipients can trust authenticity.
+  - A dedicated **Export/Import modal** lets you select which notes to include, pre-fills the save path and filename from your last export location, and handles naming collisions on import automatically.
+  - Importing unpacks directly into the current workspace with full dependency restoration.
 
 ## Getting Started
 
@@ -200,6 +204,14 @@ Planned additions and improvements for upcoming iterations:
 - Expanded P2P sync dashboard with per-peer media/diagram health.
 - OCR-assisted alt text suggestions for inserted images.
 - Command palette automation macros for repeated authoring tasks.
+
+## Contributing and Reporting Issues
+
+We welcome feedback, bug reports, and feature requests!
+
+- **In-App Reporting:** Open **Help -> Report Bug / Feedback** (or search in the Command Palette) to access the built-in issue reporting form, which automatically collects system details and opens a pre-populated issue draft on GitHub.
+- **Manual Reports:** Go directly to our [GitHub Issues](https://github.com/TheNotelyApp/Notely/issues) page to open a new issue.
+- **Templates:** Use the pre-configured issue templates (Bug report or Feature request) when submitting reports. When opening a Pull Request, please follow the PR template checklist.
 
 ## License and ownership
 

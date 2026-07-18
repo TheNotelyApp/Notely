@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getP2PStatus,
   startP2PDiscovery,
@@ -57,7 +57,7 @@ export function useP2PSync({ notify, setError, loadDocumentsData, syncStateRef }
   notifyRef.current = notify;
   loadDocumentsDataRef.current = loadDocumentsData;
 
-  async function handleOpenP2PStatus() {
+  const handleOpenP2PStatus = useCallback(async () => {
     setP2PStatusOpen(true);
     setP2PStatusLoading(true);
     try {
@@ -66,11 +66,11 @@ export function useP2PSync({ notify, setError, loadDocumentsData, syncStateRef }
       setError("");
     } catch (err) {
       setError(err?.message || "Unable to load P2P status.");
-      notify(err?.message || "Unable to load P2P status.", "error");
+      notifyRef.current?.(err?.message || "Unable to load P2P status.", "error");
     } finally {
       setP2PStatusLoading(false);
     }
-  }
+  }, []);
 
   async function handleOpenWorkspaceActivity() {
     setWorkspaceActivityOpen(true);

@@ -62,6 +62,9 @@ const MarkdownGuideModal = lazy(() =>
 const AboutModal = lazy(() =>
   import("./components/AboutModal").then((m) => ({ default: m.AboutModal }))
 );
+const FeedbackModal = lazy(() =>
+  import("./components/FeedbackModal").then((m) => ({ default: m.FeedbackModal }))
+);
 const HelpConfirmationModal = lazy(() =>
   import("./components/HelpConfirmationModal").then((m) => ({ default: m.HelpConfirmationModal }))
 );
@@ -69,6 +72,7 @@ const WorkspaceExportDialog = lazy(() =>
   import("./components/WorkspaceExportDialog").then((m) => ({ default: m.WorkspaceExportDialog }))
 );
 const DictionaryModal = lazy(() => import("./components/DictionaryModal"));
+const ExportImportModal = lazy(() => import("./components/ExportImportModal"));
 import {
   onMenuAction,
   notifyBootReady,
@@ -351,6 +355,9 @@ export default function App() {
   } = useUIState();
 
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [exportImportOpen, setExportImportOpen] = useState(false);
+  const [exportImportMode, setExportImportMode] = useState("export");
   const [workspaceExportBusy, setWorkspaceExportBusy] = useState(false);
   const [workspaceExportProgress, setWorkspaceExportProgress] = useState({ phase: "", percent: 0 });
   const [workspaceExportOptions, setWorkspaceExportOptions] = useState(
@@ -1271,6 +1278,12 @@ export default function App() {
         return;
       }
 
+      if (action === "open-export-import") {
+        setExportImportMode("export");
+        setExportImportOpen(true);
+        return;
+      }
+
       if (action === "open-recent-workspaces") {
         setRecentWorkspacesDialogOpen(true);
         return;
@@ -1287,6 +1300,11 @@ export default function App() {
         setGlobalSearchOpen(false);
         setShortcutsModalOpen(false);
         setCommandPaletteOpen(true);
+        return;
+      }
+
+      if (action === "open-feedback") {
+        setFeedbackOpen(true);
         return;
       }
 
@@ -1813,6 +1831,7 @@ export default function App() {
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document write jot capture" },
     { id: "open-ai-palette", label: "Open AI Palette", group: "AI", shortcut: "Ctrl/Cmd+Shift+I", aliases: "assistant ask ai prompt summarize rewrite" },
     { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
+    { id: "open-feedback", label: "Report Bug / Feedback", group: "Help", aliases: "feedback bug report issue feature request" },
     { id: "open-about", label: "Open About Notely", group: "Help", aliases: "about version build" },
     { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory organize" },
     { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes quick open jump" },
@@ -2111,6 +2130,11 @@ export default function App() {
 
     if (resolvedCommandId === "open-help-center") {
       setHelpConfirmationOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-feedback") {
+      setFeedbackOpen(true);
       return;
     }
 
@@ -3301,6 +3325,16 @@ export default function App() {
         </Suspense>
       ) : null}
 
+      {feedbackOpen ? (
+        <Suspense fallback={null}>
+          <FeedbackModal
+            open={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            themePreference={themePreference}
+          />
+        </Suspense>
+      ) : null}
+
       {showUpdateModal ? (
         <UpdateModal
           isOpen={showUpdateModal}
@@ -3318,6 +3352,18 @@ export default function App() {
           />
         </Suspense>
       ) : null}
+
+      {exportImportOpen && (
+        <Suspense fallback={null}>
+          <ExportImportModal
+            isOpen={exportImportOpen}
+            mode={exportImportMode}
+            onClose={() => setExportImportOpen(false)}
+            notify={notify}
+            reloadDocuments={loadDocumentsData}
+          />
+        </Suspense>
+      )}
 
       {!onboardingComplete && (
         <OnboardingFlow

@@ -1,0 +1,165 @@
+.export-import-dialog-card {
+  max-width: 650px;
+  width: 90vw;
+  /* Fixed height so both tabs never cause the card to resize */
+  height: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  color: var(--app-text);
+  overflow: hidden;
+}
+
+.dialog-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.dialog-tab {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.dialog-tab:hover {
+  color: var(--text-strong);
+}
+
+.dialog-tab.active {
+  color: var(--accent-solid);
+  border-bottom-color: var(--accent-solid);
+}
+
+.tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  /* Push actions to the bottom */
+  min-height: 0;
+}
+
+/* Import tab spacer: occupies the same vertical space as the notes list on export tab */
+.import-tab-spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+.tab-description {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.note-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--accent-solid);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.notes-list-container {
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  /* Grow to fill available space, scroll when content overflows */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--surface-elevated);
+}
+
+.empty-list-message {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.note-selector-row {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: background 0.1s ease;
+  user-select: none;
+}
+
+.note-selector-row:last-child {
+  border-bottom: none;
+}
+
+.note-selector-row:hover {
+  background: var(--surface-accent);
+}
+
+.note-selector-row.selected {
+  background: var(--surface-accent-strong);
+}
+
+.checkbox-icon {
+  margin-right: 8px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.checkbox-icon.checked {
+  color: var(--accent-solid);
+}
+
+.note-title-cell {
+  font-weight: 500;
+  font-size: 12px;
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  color: var(--text-strong);
+}
+
+.note-path-cell {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.browse-row {
+  display: flex;
+  gap: 8px;
+}
+
+.browse-row input {
+  flex: 1;
+}

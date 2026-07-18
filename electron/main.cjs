@@ -44,6 +44,7 @@ const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
 const { initializeAIHandlers } = require("./ai/aiHandlers.cjs");
 const { registerGitIpcHandlers } = require("./lib/git/gitIpc.cjs");
 const gitService = require("./lib/git/gitService.cjs");
+const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
 
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -1184,6 +1185,15 @@ registerWorkspaceExportIpcHandlers(ipcMain, {
   parseDocument,
   buildPdfExportMarkdown,
   buildPdfExportHtml,
+});
+
+registerNotePackageIpc(ipcMain, {
+  BrowserWindow,
+  dialog,
+  getNotesRoot: () => notesRoot,
+  filePathWithin,
+  readUserSettings,
+  getActiveProject,
 });
 
 imageMedia.registerIpcHandlers(ipcMain);
