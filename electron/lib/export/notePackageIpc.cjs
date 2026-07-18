@@ -189,7 +189,7 @@ function registerNotePackageIpc(ipcMain, deps) {
   });
 
   // --- Export Note Package ---
-  handleTrusted("note-package:export", async (event, { noteFilePaths, destinationPath, fileName }) => {
+  handleTrusted("note-package:export", async (_event, { noteFilePaths, destinationPath, fileName, password }) => {
     const notesRoot = getNotesRoot();
     if (!notesRoot) throw new Error("No notes root configured.");
 
@@ -211,13 +211,22 @@ function registerNotePackageIpc(ipcMain, deps) {
     fsSync.mkdirSync(stagingExcaliDir);
     fsSync.mkdirSync(stagingDrawioDir);
 
+    let passwordSalt = "";
+    let passwordHash = "";
+    if (password) {
+      passwordSalt = crypto.randomBytes(16).toString("hex");
+      passwordHash = crypto.createHash("sha256").update(password + passwordSalt).digest("hex");
+    }
+
     const manifest = {
       version: 1,
       notes: [],
       media: [],
       excalidraw: [],
       drawio: [],
-      files: {} // relative path in zip -> SHA-256 hash
+      files: {}, // relative path in zip -> SHA-256 hash
+      passwordSalt,
+      passwordHash
     };
 
     const allMediaPaths = new Set();
@@ -396,7 +405,7 @@ function registerNotePackageIpc(ipcMain, deps) {
   });
 
   // --- Import Note Package ---
-  handleTrusted("note-package:import", async (event, { packageFilePath }) => {
+  handleTrusted("note-package:import", async (_event, { packageFilePath, password }) => {
     const notesRoot = getNotesRoot();
     if (!notesRoot) throw new Error("No notes root configured.");
 
@@ -427,7 +436,7 @@ function registerNotePackageIpc(ipcMain, deps) {
                 const writeStream = fsSync.createWriteStream(path.join(tempDir, entry.fileName));
                 readStream.pipe(writeStream);
                 writeStream.on("close", () => {
-                  zipfile.readEntry();
+                   zipfile.readEntry();
                 });
               });
             }
@@ -437,13 +446,25 @@ function registerNotePackageIpc(ipcMain, deps) {
         });
       });
 
-      // 3. Read manifest and verify SHA-256 hashes (tamper check)
+      // 3. Read manifest and verify password / SHA-256 hashes
       const manifestPath = path.join(tempDir, "metadata.json");
       if (!fsSync.existsSync(manifestPath)) {
         throw new Error("Metadata file missing from note package.");
       }
 
       const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+
+      // Password Check
+      if (manifest.passwordHash) {
+        if (!password) {
+          return { success: false, error: "PASSWORD_REQUIRED" };
+        }
+        const checkHash = crypto.createHash("sha256").update(password + (manifest.passwordSalt || "")).digest("hex");
+        if (checkHash !== manifest.passwordHash) {
+          return { success: false, error: "INCORRECT_PASSWORD" };
+        }
+      }
+
       for (const [relZipPath, expectedHash] of Object.entries(manifest.files || {})) {
         const filePath = path.join(tempDir, relZipPath);
         if (!fsSync.existsSync(filePath)) {

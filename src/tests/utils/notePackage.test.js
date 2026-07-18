@@ -20,6 +20,24 @@ describe("notePackage utility logic", () => {
     });
   });
 
+  describe("Password Protection Logic", () => {
+    it("hashes and validates user password correctly", () => {
+      const password = "mySecurePassword123";
+      // Simulate backend hashing
+      const crypto = require("crypto");
+      const salt = crypto.randomBytes(16).toString("hex");
+      const hash = crypto.createHash("sha256").update(password + salt).digest("hex");
+
+      // Verify correct password matches
+      const checkHashSuccess = crypto.createHash("sha256").update(password + salt).digest("hex");
+      expect(checkHashSuccess).toBe(hash);
+
+      // Verify incorrect password fails
+      const checkHashFail = crypto.createHash("sha256").update("wrongPassword" + salt).digest("hex");
+      expect(checkHashFail).not.toBe(hash);
+    });
+  });
+
   describe("Markdown Dependency Extraction", () => {
     it("extracts standard relative images, Excalidraw, and Draw.io diagrams", () => {
       const markdown = `

@@ -13,10 +13,23 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
   const [importFilePath, setImportFilePath] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [exportPassword, setExportPassword] = useState("");
+  const [importPassword, setImportPassword] = useState("");
+  const [requireImportPassword, setRequireImportPassword] = useState(false);
+
   // Sync tab with mode prop when dialog opens/mode changes
   useEffect(() => {
     setTab(mode);
+    setExportPassword("");
+    setImportPassword("");
+    setRequireImportPassword(false);
   }, [mode, isOpen]);
+
+  // Reset password fields if import file changes
+  useEffect(() => {
+    setImportPassword("");
+    setRequireImportPassword(false);
+  }, [importFilePath]);
 
   // Load default export path once when dialog opens
   useEffect(() => {
@@ -142,7 +155,8 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       const result = await window.notesApi.exportNotePackage({
         noteFilePaths: Array.from(selectedNotes),
         destinationPath,
-        fileName
+        fileName,
+        password: exportPassword
       });
       if (result.success) {
         notify("Notes successfully exported!", "success");
@@ -166,7 +180,8 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     setLoading(true);
     try {
       const result = await window.notesApi.importNotePackage({
-        packageFilePath: importFilePath
+        packageFilePath: importFilePath,
+        password: importPassword
       });
       if (result.success) {
         notify(`Successfully imported ${result.importedNotes.length} notes!`, "success");
@@ -175,7 +190,14 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
         }
         onClose();
       } else {
-        notify("Import failed: " + result.error, "error");
+        if (result.error === "PASSWORD_REQUIRED") {
+          setRequireImportPassword(true);
+          notify("This package is password-protected. Please enter password.", "warning");
+        } else if (result.error === "INCORRECT_PASSWORD") {
+          notify("Incorrect password. Please try again.", "error");
+        } else {
+          notify("Import failed: " + result.error, "error");
+        }
       }
     } catch (err) {
       notify("Import failed: " + err.message, "error");
@@ -285,6 +307,17 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
             </div>
           </div>
 
+          <div className="overlay-dialog-field">
+            <span>Password (Optional)</span>
+            <AppInput
+              type="password"
+              placeholder="Set a password to protect this package..."
+              value={exportPassword}
+              onChange={(e) => setExportPassword(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
           <div className="overlay-dialog-actions">
             <button className="small-button" type="button" onClick={onClose} disabled={loading}>
               <span>Cancel</span>
@@ -326,6 +359,19 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
               </button>
             </div>
           </div>
+
+          {requireImportPassword && (
+            <div className="overlay-dialog-field">
+              <span>Password Required</span>
+              <AppInput
+                type="password"
+                placeholder="Enter package password..."
+                value={importPassword}
+                onChange={(e) => setImportPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          )}
 
           {/* Spacer: keeps import tab the same height as export tab */}
           <div className="import-tab-spacer" />
