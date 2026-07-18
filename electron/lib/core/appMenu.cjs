@@ -99,7 +99,7 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "export-pdf")
         },
         {
-          label: "Export/Import Note Package",
+          label: "Export/Import note package",
           click: () => sendMenuAction(win, "open-export-import")
         },
         { type: "separator" },
@@ -144,7 +144,7 @@ function buildAppMenuTemplate(win, context = {}) {
         },
         { type: "separator" },
         {
-          label: "Export/Import Note Package",
+          label: "Export/Import note package",
           click: () => sendMenuAction(win, "open-export-import")
         },
         { type: "separator" },
