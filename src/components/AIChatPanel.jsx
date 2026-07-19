@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import AppButton from "./AppButton";
 import AppTextarea from "./AppTextarea";
 import { renderMarkdown } from "../utils/renderUtils";
+import { aiListPersonas } from "../services/electronService";
 
 const SCOPE_OPTIONS = [
   { id: "auto", label: "Auto" },
@@ -73,11 +74,14 @@ export default function AIChatPanel({
   contextSummary = null,
   intent = null,
   messages = [],
-  noteTitle = "Current Note",
-  activeProvider = "",
+  _noteTitle = "Current Note",
+  _activeProvider = "",
+  activePersona = null,
+  setActivePersona,
 }) {
   const [draft, setDraft] = useState("");
   const [scope, setScope] = useState("auto");
+  const [personas, setPersonas] = useState([]);
   const inputRef = useRef(null);
   const lastAutoRunRequestIdRef = useRef("");
 
@@ -89,6 +93,21 @@ export default function AIChatPanel({
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [intent]);
 
+  // Load available personas for the dropdown selector
+  useEffect(() => {
+    async function load() {
+      const res = await aiListPersonas();
+      if (res?.success && res.data) {
+        setPersonas(res.data);
+        if (!activePersona && res.data.length > 0) {
+          const def = res.data.find(p => p.id === "default") || res.data[0];
+          setActivePersona(def);
+        }
+      }
+    }
+    load();
+  }, [activePersona, setActivePersona]);
+
   useEffect(() => {
     if (!intent?.autoRun || !intent?.query) return;
     if (lastAutoRunRequestIdRef.current === intent.requestId) return;
@@ -99,16 +118,49 @@ export default function AIChatPanel({
 
   return (
     <aside className="ai-chat-panel" aria-label="AI chat" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div className="ai-chat-header">
-        <div>
-          <div className="ai-chat-title">AI Assistant</div>
-          <div className="ai-chat-subtitle">
-            Grounded in {noteTitle} {activeProvider ? `(using ${activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1)})` : ""}
+      <div className="ai-chat-header" style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "12px 16px", borderBottom: "1px solid var(--border-soft)", background: "var(--surface-subtle)" }}>
+        <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div className="ai-chat-title" style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>{activePersona?.avatar || "??"}</span>
+              {activePersona?.name || "AI Assistant"}
+            </div>
+            <div className="ai-chat-subtitle" style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+              {activePersona?.description || "Grounded assistant instructions."}
+            </div>
+          </div>
+          <div className="ai-chat-header-actions" style={{ display: "flex", gap: "4px" }}>
+            <AppButton variant="small" onClick={onClear}>Clear</AppButton>
+            <AppButton variant="small" onClick={onHide}>Hide</AppButton>
           </div>
         </div>
-        <div className="ai-chat-header-actions">
-          <AppButton variant="small" onClick={onClear}>Clear</AppButton>
-          <AppButton variant="small" onClick={onHide}>Hide</AppButton>
+
+        {/* Persona Dropdown Selector Row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", borderTop: "1px solid var(--border-soft)", paddingTop: "8px" }}>
+          <label style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.03em" }}>Persona:</label>
+          <select
+            value={activePersona?.id || ""}
+            onChange={(e) => {
+              const matched = personas.find(p => p.id === e.target.value);
+              if (matched) setActivePersona(matched);
+            }}
+            style={{
+              flex: 1,
+              fontSize: "12px",
+              padding: "4px 8px",
+              borderRadius: "4px",
+              border: "1px solid var(--border-soft)",
+              background: "var(--surface-bg)",
+              color: "var(--text-strong)",
+              outline: "none"
+            }}
+          >
+            {personas.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.avatar || "??"} {p.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -132,9 +184,12 @@ export default function AIChatPanel({
       <div className="ai-chat-messages">
         {messages.length ? messages.map((message) => (
           <div key={message.id} className={`ai-chat-message ${message.role}`}>
-            <div className="ai-chat-message-head">
-              <strong>{message.role === "user" ? "You" : "AI"}</strong>
-              <span>{message.scopeLabel || message.scope || "auto"}</span>
+            <div className="ai-chat-message-head" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "14px" }}>
+                {message.role === "user" ? "??" : (message.avatar || activePersona?.avatar || "??")}
+              </span>
+              <strong>{message.role === "user" ? "You" : (activePersona?.name || "AI")}</strong>
+              <span style={{ marginLeft: "auto" }}>{message.scopeLabel || message.scope || "auto"}</span>
             </div>
             <div
               className="ai-chat-message-body markdown-body"
@@ -190,7 +245,7 @@ export default function AIChatPanel({
             if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
               event.preventDefault();
               if (!draft.trim() || isLoading) return;
-              onSend?.({ message: draft, target: scope });
+              onSend?.({ message: draft, target: scope, personaPrompt: activePersona?.prompt });
               setDraft("");
             }
           }}
@@ -202,7 +257,7 @@ export default function AIChatPanel({
             disabled={isLoading || !draft.trim()}
             onClick={() => {
               if (!draft.trim()) return;
-              onSend?.({ message: draft, target: scope });
+              onSend?.({ message: draft, target: scope, personaPrompt: activePersona?.prompt });
               setDraft("");
             }}
           >

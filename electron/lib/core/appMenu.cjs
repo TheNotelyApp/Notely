@@ -618,6 +618,10 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "open-embeddings-page")
         },
         {
+          label: "Personas",
+          click: () => sendMenuAction(win, "open-personas-page")
+        },
+        {
           label: "Build Relationship Graph",
           click: () => sendMenuAction(win, "ai-build-graph")
         },

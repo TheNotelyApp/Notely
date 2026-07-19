@@ -75,6 +75,36 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
 
     const result = await aiAgent.initialize(workspaceRoot, llmProvider);
 
+    // Phase 5 — Context Engine subsystem
+    try {
+      const path = require('path');
+      const { MemoryDB } = require('./memory/MemoryDB');
+      const { PersonaDB } = require('./memory/PersonaDB');
+      const { ConversationStore } = require('./memory/ConversationStore');
+      const { SemanticRetriever } = require('./context/SemanticRetriever');
+      const { GraphRetriever } = require('./context/GraphRetriever');
+      const { ContextEngine } = require('./context/ContextEngine');
+
+      const memoryDB = new MemoryDB(workspaceRoot);
+      memoryDB.initialize();
+
+      const personaDB = new PersonaDB(path.join(appDataDir, 'notely'));
+      personaDB.initialize();
+
+      const store = new ConversationStore(memoryDB, personaDB);
+      aiAgent.conversationStore = store;
+
+      if (aiAgent.embeddingDb && aiAgent.embeddingService) {
+        const semanticRetriever = new SemanticRetriever(aiAgent.embeddingDb, aiAgent.embeddingService);
+        const graphRetriever = new GraphRetriever(aiAgent.graphDB ?? aiAgent.databaseManager);
+        aiAgent.contextEngine = new ContextEngine(store, semanticRetriever, graphRetriever);
+      }
+
+      console.log('[AI System] Phase 5 Context Engine ready');
+    } catch (p5Err) {
+      console.warn('[AI System] Phase 5 Context Engine skipped:', p5Err.message);
+    }
+
     console.log('[AI System] Initialized successfully');
     return { success: true, agent: aiAgent, ...result };
   } catch (error) {

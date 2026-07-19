@@ -20,13 +20,13 @@ class QueryExecutor {
       const { generateText } = await import('ai');
       const tools = await getTools(this.agent);
 
-      const systemPrompt = `You are a helpful AI assistant for Notely, a modern markdown notes application.
+      let systemPrompt = context.systemPrompt || `You are a helpful AI assistant for Notely, a modern markdown notes application.
 You have access to the workspace note files via tools. Always use these tools to search, find, and read notes when asked.
 Workspace context:
 - Workspace folder: ${this.agent.workspaceRoot || 'none'}
-- Current open note path: ${context.currentFile || 'none'}
+- Current open note path: ${context.currentFile || 'none'}`;
 
-CRITICAL TOOL CALLING RULES:
+      systemPrompt += `\n\nCRITICAL TOOL CALLING RULES:
 1. When calling search_notes, you MUST provide a non-empty string for the "query" parameter.
 2. When calling read_note, you MUST provide the absolute file path string for the "file_path" parameter.
 3. Never call tools with empty or null arguments. If you do not have the required parameter values, ask the user to clarify first.`;

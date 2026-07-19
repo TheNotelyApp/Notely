@@ -21,6 +21,7 @@ const ConflictResolutionPanel = lazy(() =>
 const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
 const KnowledgeGraph = lazy(() => import("./components/KnowledgeGraph"));
 const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
+const AIPersonasManager = lazy(() => import("./components/AIPersonasManager"));
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
@@ -343,6 +344,7 @@ export default function App() {
     gitVCInitialTab, setGitVCInitialTab,
     graphPanelOpen, setGraphPanelOpen,
     embeddingsPageOpen, setEmbeddingsPageOpen,
+    personasPageOpen, setPersonasPageOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
     tasksPanelOpen, setTasksPanelOpen,
     allTasksPanelOpen, setAllTasksPanelOpen,
@@ -780,6 +782,8 @@ export default function App() {
     handleRejectInlineGhost,
     handleAcceptInlineGhost,
     activeProvider,
+    activePersona,
+    setActivePersona,
   } = useAIAssistant({
     current,
     activeTab,
@@ -1357,6 +1361,11 @@ export default function App() {
 
       if (action === "open-embeddings-page") {
         setEmbeddingsPageOpen(true);
+        return;
+      }
+
+      if (action === "open-personas-page") {
+        setPersonasPageOpen(true);
         return;
       }
 
@@ -2208,6 +2217,11 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-personas-page") {
+      setPersonasPageOpen(true);
+      return;
+    }
+
     if (resolvedCommandId === "open-tasks-panel") {
       setTasksPanelOpen(true);
       return;
@@ -2826,6 +2840,8 @@ export default function App() {
                     messages={aiChatMessages}
                     noteTitle={current?.title || "Current Note"}
                     activeProvider={activeProvider}
+                    activePersona={activePersona}
+                    setActivePersona={setActivePersona}
                   />
                 </Suspense>
               </ErrorBoundary>
@@ -3486,6 +3502,16 @@ export default function App() {
           <Suspense fallback={<div className="lazy-loading">Loading Embeddings Engine…</div>}>
             <EmbeddingsPage
               onBack={() => setEmbeddingsPageOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {personasPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Personas…</div>}>
+            <AIPersonasManager
+              onBack={() => setPersonasPageOpen(false)}
             />
           </Suspense>
         </div>

@@ -240,7 +240,9 @@ export function useAIAssistant({
     }
   }
 
-  async function handleAIQuery({ query, target }) {
+  const [activePersona, setActivePersona] = useState(null);
+
+  async function handleAIQuery({ query, target, systemPrompt }) {
     if (!current?.filePath) {
       throw new Error("Open a note to use AI.");
     }
@@ -274,6 +276,7 @@ export function useAIAssistant({
         resolvedTarget: resolvedTarget.effectiveTarget,
         workspaceContext: resolvedTarget.requestedTarget === "workspace",
         targetText: resolvedTarget.targetText || null,
+        systemPrompt: systemPrompt || activePersona?.prompt || null,
       });
 
       if (!response?.success) {
@@ -322,7 +325,7 @@ export function useAIAssistant({
     return outcome;
   }
 
-  async function handleAIChatSend({ message, target }) {
+  async function handleAIChatSend({ message, target, personaPrompt }) {
     const scope = target || "auto";
     const userEntry = {
       id: `user-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -338,6 +341,7 @@ export function useAIAssistant({
       const result = await handleAIQuery({
         query: message,
         target: scope,
+        systemPrompt: personaPrompt || activePersona?.prompt || null,
       });
       setAiChatMessages((currentMessages) => [
         ...currentMessages,
@@ -347,6 +351,7 @@ export function useAIAssistant({
           text: result?.text || "",
           scope,
           scopeLabel: result?.scopeLabel || scope,
+          avatar: activePersona?.avatar || "🤖",
         },
       ]);
       return result;
@@ -448,5 +453,7 @@ export function useAIAssistant({
     handleRejectInlineGhost,
     handleAcceptInlineGhost,
     activeProvider,
+    activePersona,
+    setActivePersona,
   };
 }

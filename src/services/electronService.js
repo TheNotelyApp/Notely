@@ -1118,3 +1118,110 @@ export async function openExternal(url) {
   return api.openExternal(url);
 }
 
+// ─── Phase 5: Conversations ───────────────────────────────────────────────
+
+export async function aiListConversations() {
+  const api = getNotesApi();
+  if (typeof api.aiListConversations !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiListConversations();
+}
+
+export async function aiGetConversation(id) {
+  const api = getNotesApi();
+  if (typeof api.aiGetConversation !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiGetConversation({ id });
+}
+
+export async function aiCreateConversation(title, persona) {
+  const api = getNotesApi();
+  if (typeof api.aiCreateConversation !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiCreateConversation({ title, persona });
+}
+
+export async function aiDeleteConversation(id) {
+  const api = getNotesApi();
+  if (typeof api.aiDeleteConversation !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiDeleteConversation({ id });
+}
+
+export async function aiClearConversations() {
+  const api = getNotesApi();
+  if (typeof api.aiClearConversations !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiClearConversations();
+}
+
+export async function aiSetConversationPersona(conversationId, personaId) {
+  const api = getNotesApi();
+  if (typeof api.aiSetConversationPersona !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiSetConversationPersona({ conversationId, personaId });
+}
+
+export async function aiGetMessages(conversationId) {
+  const api = getNotesApi();
+  if (typeof api.aiGetMessages !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiGetMessages({ conversationId });
+}
+
+export async function aiAddMessage(conversationId, role, content) {
+  const api = getNotesApi();
+  if (typeof api.aiAddMessage !== 'function') throw new Error('Conversation API unavailable.');
+  return api.aiAddMessage({ conversationId, role, content });
+}
+
+// ─── Phase 5: Personas ────────────────────────────────────────────────────
+
+export async function aiListPersonas() {
+  const api = getNotesApi();
+  if (typeof api.aiListPersonas !== 'function') throw new Error('Persona API unavailable.');
+  return api.aiListPersonas();
+}
+
+export async function aiGetPersona(id) {
+  const api = getNotesApi();
+  if (typeof api.aiGetPersona !== 'function') throw new Error('Persona API unavailable.');
+  return api.aiGetPersona({ id });
+}
+
+export async function aiSavePersona(persona) {
+  const api = getNotesApi();
+  if (typeof api.aiSavePersona !== 'function') throw new Error('Persona API unavailable.');
+  return api.aiSavePersona(persona);
+}
+
+export async function aiDeletePersona(id) {
+  const api = getNotesApi();
+  if (typeof api.aiDeletePersona !== 'function') throw new Error('Persona API unavailable.');
+  return api.aiDeletePersona({ id });
+}
+
+export async function aiImportPersona(filePath) {
+  const api = getNotesApi();
+  if (typeof api.aiImportPersona !== 'function') throw new Error('Persona API unavailable.');
+  return api.aiImportPersona({ filePath });
+}
+
+export async function aiExportPersona(id, destPath) {
+  const api = getNotesApi();
+  if (typeof api.aiExportPersona !== 'function') throw new Error('Persona API unavailable.');
+  return api.aiExportPersona({ id, destPath });
+}
+
+// ─── Phase 5: Candidate Knowledge ────────────────────────────────────────
+
+export async function aiListPendingKnowledge() {
+  const api = getNotesApi();
+  if (typeof api.aiListPendingKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
+  return api.aiListPendingKnowledge();
+}
+
+export async function aiApproveKnowledge(id) {
+  const api = getNotesApi();
+  if (typeof api.aiApproveKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
+  return api.aiApproveKnowledge({ id });
+}
+
+export async function aiRejectKnowledge(id) {
+  const api = getNotesApi();
+  if (typeof api.aiRejectKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
+  return api.aiRejectKnowledge({ id });
+}

@@ -222,6 +222,29 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler('ai:disable', handleDisableAI);
   registerHandler('ai:health:get', handleGetAIHealth);
 
+  // Phase 5 — Conversations
+  registerHandler('ai:conversation:list', handleConversationList);
+  registerHandler('ai:conversation:get', handleConversationGet);
+  registerHandler('ai:conversation:create', handleConversationCreate);
+  registerHandler('ai:conversation:delete', handleConversationDelete);
+  registerHandler('ai:conversation:clear', handleConversationClear);
+  registerHandler('ai:conversation:set-persona', handleConversationSetPersona);
+  registerHandler('ai:conversation:get-messages', handleConversationGetMessages);
+  registerHandler('ai:conversation:add-message', handleConversationAddMessage);
+
+  // Phase 5 — Personas
+  registerHandler('ai:persona:list', handlePersonaList);
+  registerHandler('ai:persona:get', handlePersonaGet);
+  registerHandler('ai:persona:save', handlePersonaSave);
+  registerHandler('ai:persona:delete', handlePersonaDelete);
+  registerHandler('ai:persona:import', handlePersonaImport);
+  registerHandler('ai:persona:export', handlePersonaExport);
+
+  // Phase 5 — Candidate Knowledge
+  registerHandler('ai:knowledge:list-pending', handleKnowledgeListPending);
+  registerHandler('ai:knowledge:approve', handleKnowledgeApprove);
+  registerHandler('ai:knowledge:reject', handleKnowledgeReject);
+
   // Shutdown
   registerHandler(IPC_EVENTS.AI_SHUTDOWN, handleShutdown);
 
@@ -911,6 +934,171 @@ async function handleGetAIHealth(_event, _payload) {
   } catch (error) {
     console.error('[AI IPC] Get AI Health failed:', error);
     return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+// ─── Phase 5: Context Engine Helpers ─────────────────────────────────────────
+
+function _getStore() {
+  const agent = aiService.agent;
+  if (!agent?.conversationStore) throw new Error('ConversationStore not initialized.');
+  return agent.conversationStore;
+}
+
+// ─── Conversations ─────────────────────────────────────────────────────────
+
+async function handleConversationList(_event, _payload) {
+  try {
+    return new AIQueryResponse(true, _getStore().listConversations());
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationGet(_event, payload) {
+  try {
+    const conv = _getStore().getConversation(payload?.id);
+    if (!conv) return new AIQueryResponse(false, null, 'Conversation not found.');
+    return new AIQueryResponse(true, conv);
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationCreate(_event, payload) {
+  try {
+    const conv = _getStore().createConversation(payload?.title, payload?.persona);
+    return new AIQueryResponse(true, conv);
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationDelete(_event, payload) {
+  try {
+    _getStore().deleteConversation(payload?.id);
+    return new AIQueryResponse(true, { deleted: payload?.id });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationClear(_event, _payload) {
+  try {
+    _getStore().clearAll();
+    return new AIQueryResponse(true, { cleared: true });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationSetPersona(_event, payload) {
+  try {
+    _getStore().setPersona(payload?.conversationId, payload?.personaId);
+    return new AIQueryResponse(true, { ok: true });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationGetMessages(_event, payload) {
+  try {
+    return new AIQueryResponse(true, _getStore().getMessages(payload?.conversationId));
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleConversationAddMessage(_event, payload) {
+  try {
+    const msg = _getStore().addMessage(payload?.conversationId, payload?.role, payload?.content);
+    return new AIQueryResponse(true, msg);
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+// ─── Personas ─────────────────────────────────────────────────────────────
+
+async function handlePersonaList(_event, _payload) {
+  try {
+    return new AIQueryResponse(true, _getStore().listPersonas());
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handlePersonaGet(_event, payload) {
+  try {
+    const p = _getStore().getPersona(payload?.id);
+    if (!p) return new AIQueryResponse(false, null, 'Persona not found.');
+    return new AIQueryResponse(true, p);
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handlePersonaSave(_event, payload) {
+  try {
+    _getStore().savePersona(payload);
+    return new AIQueryResponse(true, { ok: true });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handlePersonaDelete(_event, payload) {
+  try {
+    _getStore().deletePersona(payload?.id);
+    return new AIQueryResponse(true, { deleted: payload?.id });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handlePersonaImport(_event, payload) {
+  try {
+    const result = _getStore().importPersonaFromFile(payload?.filePath);
+    return new AIQueryResponse(true, result);
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handlePersonaExport(_event, payload) {
+  try {
+    const dest = _getStore().exportPersonaToFile(payload?.id, payload?.destPath);
+    return new AIQueryResponse(true, { path: dest });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+// ─── Candidate Knowledge ──────────────────────────────────────────────────
+
+async function handleKnowledgeListPending(_event, _payload) {
+  try {
+    return new AIQueryResponse(true, _getStore().listPendingKnowledge());
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleKnowledgeApprove(_event, payload) {
+  try {
+    _getStore().approveKnowledge(payload?.id);
+    return new AIQueryResponse(true, { ok: true });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleKnowledgeReject(_event, payload) {
+  try {
+    _getStore().rejectKnowledge(payload?.id);
+    return new AIQueryResponse(true, { ok: true });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
   }
 }
 
