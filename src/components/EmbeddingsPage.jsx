@@ -185,7 +185,7 @@ export default function EmbeddingsPage({ onBack }) {
               status.queueSize > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span className="kg-category-badge" style={{ background: 'var(--kg-task-bg)', border: '1px solid var(--kg-task-border)', color: 'var(--kg-task-border)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <RefreshCw size={10} className="spin" />
+                    <RefreshCw size={12} className="spin" />
                     Queue: {status.queueSize} remaining
                   </span>
                   <div style={{ width: '80px', height: '6px', background: 'var(--border-soft)', borderRadius: '3px', overflow: 'hidden' }}>
