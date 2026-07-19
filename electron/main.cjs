@@ -151,18 +151,31 @@ async function initializeAIForWorkspace() {
 
     shutdownAISystemRef = shutdownAISystem;
 
-    // Pick the first text provider that has a configured API key.
+    const prefs = config.loadPreferences();
+    const activeProviderName = prefs.aiProvider || 'gemini';
+
     let llmProvider = null;
-    for (const entry of Object.values(PROVIDER_REGISTRY)) {
-      if (!entry.available) continue;
-      const apiKey = config.getAPIKey(entry.id);
-      if (apiKey) {
-        const savedModel = config.getProviderModel(entry.id);
-        llmProvider = {
-          name: entry.id,
-          config: { apiKey, model: savedModel || entry.defaultModel },
-        };
-        break;
+    const activeApiKey = config.getAPIKey(activeProviderName);
+
+    if (activeApiKey) {
+      const savedModel = config.getProviderModel(activeProviderName);
+      const entry = PROVIDER_REGISTRY[activeProviderName];
+      llmProvider = {
+        name: activeProviderName,
+        config: { apiKey: activeApiKey, model: savedModel || entry?.defaultModel },
+      };
+    } else {
+      for (const entry of Object.values(PROVIDER_REGISTRY)) {
+        if (!entry.available) continue;
+        const apiKey = config.getAPIKey(entry.id);
+        if (apiKey) {
+          const savedModel = config.getProviderModel(entry.id);
+          llmProvider = {
+            name: entry.id,
+            config: { apiKey, model: savedModel || entry.defaultModel },
+          };
+          break;
+        }
       }
     }
 

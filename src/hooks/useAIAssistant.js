@@ -6,6 +6,7 @@ import {
   aiClearData,
   aiDetectPatterns,
   aiGenerateEmbeddings,
+  aiGetHealth,
 } from "../services/electronService";
 import {
   buildAIContextSummary,
@@ -41,6 +42,7 @@ export function useAIAssistant({
   const [aiPaletteIntent, setAiPaletteIntent] = useState(() => normalizePaletteIntent());
   const [aiChatMessages, setAiChatMessages] = useState([]);
   const [isAIConfigured, setIsAIConfigured] = useState(false);
+  const [activeProvider, setActiveProvider] = useState("");
   const [aiPanelVisible, setAiPanelVisible] = useState(() => {
     try {
       const stored = window.localStorage.getItem("notely:ai-panel-visible");
@@ -54,7 +56,8 @@ export function useAIAssistant({
 
   async function refreshAIConfiguration() {
     try {
-      const providers = ["gemini", "openai", "local"];
+      // 1. Check if any key is configured on disk (independent of backend initialization state)
+      const providers = ["gemini", "groq", "openai", "local"];
       const checks = await Promise.all(
         providers.map(async (provider) => {
           try {
@@ -65,7 +68,14 @@ export function useAIAssistant({
           }
         })
       );
-      setIsAIConfigured(checks.some(Boolean));
+      const hasKeys = checks.some(Boolean);
+      setIsAIConfigured(hasKeys);
+
+      // 2. Fetch backend status to display active provider name if available
+      const healthRes = await aiGetHealth();
+      if (healthRes?.success && healthRes?.data) {
+        setActiveProvider(healthRes.data.activeProvider || "");
+      }
     } catch {
       setIsAIConfigured(false);
     }
@@ -401,7 +411,7 @@ export function useAIAssistant({
       if (!current?.filePath) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       if (event.shiftKey || event.altKey) return;
-      if (event.key.toLowerCase() !== "k") return;
+      if (event.key.toLowerCase() !== "j") return;
 
       event.preventDefault();
       handleOpenAIPalette({ forceOpen: true });
@@ -437,5 +447,6 @@ export function useAIAssistant({
     handleClearAIChat,
     handleRejectInlineGhost,
     handleAcceptInlineGhost,
+    activeProvider,
   };
 }

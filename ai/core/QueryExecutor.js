@@ -1,219 +1,184 @@
 /**
- * QueryExecutor - Routes queries to appropriate tools and services
+ * QueryExecutor - Routes queries to AI models with multi-step tool execution
  */
 
+const { getTools } = require('../tools/ToolRegistry');
+
 class QueryExecutor {
-  constructor(agent, tools = {}) {
+  constructor(agent) {
     this.agent = agent;
-    this.tools = {
-      search: tools.search || null,
-      format: tools.format || null,
-      refactor: tools.refactor || null,
-      file: tools.file || null,
-      ...tools
-    };
   }
 
   /**
-   * Execute a query
+   * Execute a query using Vercel AI SDK and the tool registry
    */
   async execute(query, context = {}) {
     try {
-      // Determine query type
-      const type = this._determineQueryType(query);
+      const llm = this.agent.llmRegistry.getActiveProvider();
+      const model = await llm.getModelInstance();
 
-      // Route to appropriate handler
-      switch (type) {
-        case 'search':
-          return await this._handleSearch(query, context);
-        case 'format':
-          return await this._handleFormat(query, context);
-        case 'refactor':
-          return await this._handleRefactor(query, context);
-        case 'summarize':
-          return await this._handleSummarize(query, context);
-        case 'generate':
-          return await this._handleGenerate(query, context);
-        case 'analyze':
-          return await this._handleAnalyze(query, context);
-        default:
-          return await this._handleGeneral(query, context);
+      const { generateText } = await import('ai');
+      const tools = await getTools(this.agent);
+
+      const systemPrompt = `You are a helpful AI assistant for Notely, a modern markdown notes application.
+You have access to the workspace note files via tools. Always use these tools to search, find, and read notes when asked.
+Workspace context:
+- Workspace folder: ${this.agent.workspaceRoot || 'none'}
+- Current open note path: ${context.currentFile || 'none'}
+
+CRITICAL TOOL CALLING RULES:
+1. When calling search_notes, you MUST provide a non-empty string for the "query" parameter.
+2. When calling read_note, you MUST provide the absolute file path string for the "file_path" parameter.
+3. Never call tools with empty or null arguments. If you do not have the required parameter values, ask the user to clarify first.`;
+
+      if (llm.baseUrl && llm.baseUrl.includes('api.groq.com')) {
+        const { Groq } = require('groq-sdk');
+        const groq = new Groq({ apiKey: llm.apiKey, dangerouslyAllowBrowser: true });
+
+        const officialTools = [
+          {
+            type: 'function',
+            function: {
+              name: 'read_note',
+              description: 'Read the contents of a specific note file in the workspace.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  file_path: {
+                    type: 'string',
+                    description: 'The absolute path to the note file to read.'
+                  }
+                },
+                required: ['file_path']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'search_notes',
+              description: 'Search for note files containing a query string in the workspace.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  query: {
+                    type: 'string',
+                    description: 'The search term or phrase.'
+                  }
+                },
+                required: ['query']
+              }
+            }
+          }
+        ];
+
+        const runTool = async (name, args) => {
+          if (name === 'read_note') {
+            const filePath = args.file_path || args.filePath;
+            try {
+              const fs = require('fs');
+              if (!filePath || !fs.existsSync(filePath)) {
+                return `Error: Note file at path "${filePath}" does not exist.`;
+              }
+              return fs.readFileSync(filePath, 'utf8');
+            } catch (err) {
+              return `Error reading file: ${err.message}`;
+            }
+          }
+          if (name === 'search_notes') {
+            const queryStr = args.query;
+            try {
+              const fs = require('fs');
+              const files = this.agent.db.getWorkspaceFiles ? this.agent.db.getWorkspaceFiles() : [];
+              const results = [];
+              for (const f of files) {
+                try {
+                  const text = fs.readFileSync(f.file_path, 'utf8');
+                  if (f.file_path.toLowerCase().includes(queryStr.toLowerCase()) || text.toLowerCase().includes(queryStr.toLowerCase())) {
+                    results.push({ path: f.file_path, preview: text.slice(0, 150) + '...' });
+                  }
+                } catch {
+                  // ignore unreadable files
+                }
+              }
+              return JSON.stringify(results.slice(0, 10), null, 2);
+            } catch (err) {
+              return `Error searching: ${err.message}`;
+            }
+          }
+          return `Error: Tool ${name} not found`;
+        };
+
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: query }
+        ];
+
+        let steps = 0;
+        let finalResponseText = '';
+        let totalTokens = 0;
+
+        while (steps < 5) {
+          const chatCompletion = await groq.chat.completions.create({
+            messages,
+            model: llm.model || 'llama-3.3-70b-versatile',
+            tools: officialTools,
+            tool_choice: 'auto',
+            temperature: 0.7,
+          });
+
+          const choice = chatCompletion.choices[0];
+          const responseMessage = choice.message;
+          totalTokens += chatCompletion.usage?.total_tokens || 0;
+
+          // Push the assistant's reply (which may contain tool calls) to messages
+          messages.push(responseMessage);
+
+          if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+            for (const toolCall of responseMessage.tool_calls) {
+              const name = toolCall.function.name;
+              const args = JSON.parse(toolCall.function.arguments);
+              console.log(`[Groq Native] Executing tool ${name} with args:`, toolCall.function.arguments);
+              
+              const output = await runTool(name, args);
+              
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                name: name,
+                content: output
+              });
+            }
+            steps++;
+          } else {
+            finalResponseText = responseMessage.content || '';
+            break;
+          }
+        }
+
+        return {
+          type: 'query',
+          result: finalResponseText,
+          tokensUsed: totalTokens
+        };
       }
+      const result = await generateText({
+        model,
+        system: systemPrompt,
+        prompt: query,
+        tools,
+        maxSteps: 5 // Allow multi-step tool calls
+      });
+
+      return {
+        type: 'query',
+        result: result.text,
+        tokensUsed: result.usage?.totalTokens || 0
+      };
     } catch (error) {
       console.error('[QueryExecutor] Execution failed:', error.message);
       throw error;
     }
-  }
-
-  /**
-   * Determine query type
-   * @private
-   */
-  _determineQueryType(query) {
-    const q = query.toLowerCase();
-
-    if (q.match(/search|find|look|query/)) return 'search';
-    if (q.match(/format|fix|clean/)) return 'format';
-    if (q.match(/refactor|reorganize|reorder/)) return 'refactor';
-    if (q.match(/summary|summarize|overview/)) return 'summarize';
-    if (q.match(/generate|create|write|add/)) return 'generate';
-    if (q.match(/analyze|check|analyze|review/)) return 'analyze';
-
-    return 'general';
-  }
-
-  /**
-   * Handle search queries
-   * @private
-   */
-  async _handleSearch(query, context) {
-    if (!this.tools.search) {
-      throw new Error('Search tool not available');
-    }
-
-    return await this.tools.search.execute(query, context);
-  }
-
-  /**
-   * Handle formatting queries
-   * @private
-   */
-  async _handleFormat(query, context) {
-    if (!this.tools.format) {
-      throw new Error('Format tool not available');
-    }
-
-    return await this.tools.format.execute(query, context);
-  }
-
-  /**
-   * Handle refactoring queries
-   * @private
-   */
-  async _handleRefactor(query, context) {
-    if (!this.tools.refactor) {
-      throw new Error('Refactor tool not available');
-    }
-
-    return await this.tools.refactor.execute(query, context);
-  }
-
-  /**
-   * Handle summarization
-   * @private
-   */
-  async _handleSummarize(query, context) {
-    const llm = this.agent.llmRegistry.getActiveProvider();
-    const filePath = context.filePath || context.currentFile;
-
-    if (!filePath) {
-      throw new Error('No file context for summarization');
-    }
-
-    const content = this.agent.documentService.getDocumentContent(filePath);
-    if (!content) {
-      throw new Error('Could not read file');
-    }
-
-    const response = await llm.generateText(
-      `Summarize the following markdown document concisely:\n\n${content}`,
-      {
-        maxTokens: 500,
-        systemPrompt: 'You are a technical documentation expert. Provide a concise, clear summary.'
-      }
-    );
-
-    return {
-      type: 'summarize',
-      result: response.text,
-      filePath,
-      tokensUsed: response.tokensUsed
-    };
-  }
-
-  /**
-   * Handle content generation
-   * @private
-   */
-  async _handleGenerate(query, _context) {
-    const llm = this.agent.llmRegistry.getActiveProvider();
-
-    const response = await llm.generateText(query, {
-      maxTokens: 2048,
-      systemPrompt: 'You are a helpful markdown documentation assistant. Generate well-formatted markdown content.'
-    });
-
-    return {
-      type: 'generate',
-      result: response.text,
-      tokensUsed: response.tokensUsed
-    };
-  }
-
-  /**
-   * Handle analysis
-   * @private
-   */
-  async _handleAnalyze(query, context) {
-    const llm = this.agent.llmRegistry.getActiveProvider();
-    const filePath = context.filePath || context.currentFile;
-
-    if (!filePath) {
-      throw new Error('No file context for analysis');
-    }
-
-    const content = this.agent.documentService.getDocumentContent(filePath);
-    if (!content) {
-      throw new Error('Could not read file');
-    }
-
-    const response = await llm.generateText(
-      `Analyze this markdown document and provide insights:\n\n${content}\n\nAnalysis: ${query}`,
-      {
-        maxTokens: 1500,
-        systemPrompt: 'You are a technical analyst. Provide detailed, actionable insights.'
-      }
-    );
-
-    return {
-      type: 'analyze',
-      result: response.text,
-      filePath,
-      tokensUsed: response.tokensUsed
-    };
-  }
-
-  /**
-   * Handle general queries (pass to LLM)
-   * @private
-   */
-  async _handleGeneral(query, _context) {
-    const llm = this.agent.llmRegistry.getActiveProvider();
-
-    const response = await llm.generateText(query, {
-      maxTokens: 1024,
-      systemPrompt: 'You are a helpful AI assistant for a markdown notes application.'
-    });
-
-    return {
-      type: 'general',
-      result: response.text,
-      tokensUsed: response.tokensUsed
-    };
-  }
-
-  /**
-   * Register a tool
-   */
-  registerTool(name, tool) {
-    this.tools[name] = tool;
-  }
-
-  /**
-   * Get tool
-   */
-  getTool(name) {
-    return this.tools[name] || null;
   }
 }
 

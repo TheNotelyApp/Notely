@@ -122,6 +122,24 @@ export async function aiGetProviderList() {
   return api.aiGetProviderList();
 }
 
+export async function aiEnable() {
+  const api = getNotesApi();
+  if (typeof api.aiEnable !== "function") return { success: false };
+  return api.aiEnable();
+}
+
+export async function aiDisable() {
+  const api = getNotesApi();
+  if (typeof api.aiDisable !== "function") return { success: false };
+  return api.aiDisable();
+}
+
+export async function aiGetHealth() {
+  const api = getNotesApi();
+  if (typeof api.aiGetHealth !== "function") return { success: false };
+  return api.aiGetHealth();
+}
+
 export async function aiSetApiKey(provider, apiKey) {
   const api = getNotesApi();
   if (typeof api.aiSetApiKey !== "function") {

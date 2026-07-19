@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AppButton from "./AppButton";
 import AppTextarea from "./AppTextarea";
+import { renderMarkdown } from "../utils/renderUtils";
 
 const SCOPE_OPTIONS = [
   { id: "auto", label: "Auto" },
@@ -73,6 +74,7 @@ export default function AIChatPanel({
   intent = null,
   messages = [],
   noteTitle = "Current Note",
+  activeProvider = "",
 }) {
   const [draft, setDraft] = useState("");
   const [scope, setScope] = useState("auto");
@@ -100,7 +102,9 @@ export default function AIChatPanel({
       <div className="ai-chat-header">
         <div>
           <div className="ai-chat-title">AI Chat</div>
-          <div className="ai-chat-subtitle">Grounded in {noteTitle}</div>
+          <div className="ai-chat-subtitle">
+            Grounded in {noteTitle} {activeProvider ? `(using ${activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1)})` : ""}
+          </div>
         </div>
         <div className="ai-chat-header-actions">
           <AppButton variant="small" onClick={onClear}>Clear</AppButton>
@@ -132,7 +136,10 @@ export default function AIChatPanel({
               <strong>{message.role === "user" ? "You" : "AI"}</strong>
               <span>{message.scopeLabel || message.scope || "auto"}</span>
             </div>
-            <div className="ai-chat-message-body">{message.text}</div>
+            <div 
+              className="ai-chat-message-body markdown-body"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.text) }}
+            />
             {message.role === "assistant" && message.text ? (
               <div className="ai-chat-apply-row">
                 <AppButton variant="small" onClick={() => onApply?.({ text: message.text, mode: "insert" })}>Insert</AppButton>

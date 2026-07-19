@@ -1,9 +1,8 @@
 /**
- * GeminiProvider - Google Gemini API integration
+ * GeminiProvider - Google Gemini API integration using Vercel AI SDK
  */
 
 const LLMProvider = require('./ProviderBase');
-const HttpClient  = require('../HttpClient');
 const { createLogger } = require('../core/logger');
 
 const log = createLogger('GeminiProvider');
@@ -13,9 +12,12 @@ class GeminiProvider extends LLMProvider {
     super(config);
     this.name = 'Gemini';
     this.apiKey = apiKey;
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+    let modelName = config.model || 'gemini-2.0-flash';
+    if (modelName.startsWith('models/')) {
+      modelName = modelName.substring('models/'.length);
+    }
     this.models = {
-      text: config.model || 'gemini-2.0-flash',
+      text: modelName,
       embedding: 'text-embedding-004'
     };
     this.usageStats = {
@@ -23,26 +25,11 @@ class GeminiProvider extends LLMProvider {
       requestsTotal: 0,
       cacheHits: 0
     };
-    this.http = new HttpClient(config);
   }
 
-  /**
-   * Fetch with an abort-based timeout and exponential backoff retries.
-   * Retries network errors, timeouts, HTTP 429 and 5xx responses. Honors a
-   * Retry-After header when present. Non-retryable responses are returned as-is
-   * so callers can inspect response.ok.
-   * @private
-   */
-  /**
-   * Initialize Gemini provider
-   */
   async initialize() {
     try {
       this.validate();
-      
-      // Test API connectivity
-      await this._testConnection();
-      
       this.isInitialized = true;
       log.info('Initialized successfully');
       return true;
@@ -52,9 +39,12 @@ class GeminiProvider extends LLMProvider {
     }
   }
 
-  /**
-   * Validate configuration
-   */
+  async getModelInstance() {
+    const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+    const google = createGoogleGenerativeAI({ apiKey: this.apiKey });
+    return google(this.models.text);
+  }
+
   validate() {
     if (!this.apiKey) {
       throw new Error('Gemini API key is required');
@@ -65,39 +55,25 @@ class GeminiProvider extends LLMProvider {
     return true;
   }
 
-  /**
-   * Test API connection
-   * @private
-   */
-  async _testConnection() {
+  async isAvailable() {
     try {
-      const response = await this.http.fetchWithRetry(
-        `${this.baseUrl}/${this.models.text}:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.apiKey
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'test' }] }]
-          })
-        },
-        { timeoutMs: 15000, retries: 1 }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`API Error: ${error.error?.message || 'Unknown error'}`);
-      }
-    } catch (error) {
-      throw new Error(`Connection test failed: ${error.message}`);
+      this.validate();
+      const { generateText } = await import('ai');
+      const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+      const google = createGoogleGenerativeAI({ apiKey: this.apiKey });
+      const model = google(this.models.text);
+      await generateText({
+        model,
+        prompt: 'test',
+        maxTokens: 5,
+      });
+      return { available: true };
+    } catch (err) {
+      log.error('isAvailable test failed:', err);
+      return { available: false, error: err.message };
     }
   }
 
-  /**
-   * Generate text completion
-   */
   async generateText(prompt, options = {}) {
     if (!this.isInitialized) throw new Error('Provider not initialized');
 
@@ -109,68 +85,29 @@ class GeminiProvider extends LLMProvider {
     } = options;
 
     try {
-      const contents = [];
+      const { generateText } = await import('ai');
+      const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+      const google = createGoogleGenerativeAI({ apiKey: this.apiKey });
+      const model = google(this.models.text);
 
-      // Add system prompt if provided
-      if (systemPrompt) {
-        contents.push({
-          role: 'user',
-          parts: [{ text: systemPrompt }]
-        });
-        contents.push({
-          role: 'model',
-          parts: [{ text: 'Understood. I will follow these instructions.' }]
-        });
-      }
-
-      // Add user prompt
-      contents.push({
-        role: 'user',
-        parts: [{ text: prompt }]
+      const result = await generateText({
+        model,
+        prompt,
+        temperature,
+        maxTokens,
+        topP,
+        system: systemPrompt || undefined,
       });
 
-      const response = await this.http.fetchWithRetry(
-        `${this.baseUrl}/${this.models.text}:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.apiKey
-          },
-          body: JSON.stringify({
-            contents,
-            generationConfig: {
-              temperature,
-              maxOutputTokens: maxTokens,
-              topP,
-              candidateCount: 1
-            }
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Gemini API Error: ${error.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.candidates || data.candidates.length === 0) {
-        throw new Error('No response from Gemini');
-      }
-
-      const text = data.candidates[0].content.parts[0].text;
-      const tokensUsed = data.usageMetadata?.totalTokenCount || 0;
-
+      const tokensUsed = result.usage?.totalTokens || 0;
       this.usageStats.tokensUsedTotal += tokensUsed;
       this.usageStats.requestsTotal += 1;
 
       return {
-        text,
+        text: result.text,
         tokensUsed,
         model: this.models.text,
-        finishReason: data.candidates[0].finishReason
+        finishReason: result.finishReason
       };
     } catch (error) {
       log.error('generateText error', error);
@@ -178,57 +115,38 @@ class GeminiProvider extends LLMProvider {
     }
   }
 
-  /**
-   * Generate embeddings
-   */
   async generateEmbeddings(texts) {
     if (!this.isInitialized) throw new Error('Provider not initialized');
 
     const textArray = Array.isArray(texts) ? texts : [texts];
 
     try {
-      const response = await this.http.fetchWithRetry(
-        `${this.baseUrl}/${this.models.embedding}:batchEmbedContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.apiKey
-          },
-          body: JSON.stringify({
-            requests: textArray.map(text => ({
-              model: `models/${this.models.embedding}`,
-              content: { parts: [{ text }] }
-            }))
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Gemini Embeddings Error: ${error.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.embeddings || data.embeddings.length === 0) {
-        throw new Error('No embeddings returned');
-      }
-
-      const embeddings = data.embeddings.map(e => e.values);
+      const { embed, embedMany } = await import('ai');
+      const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+      const google = createGoogleGenerativeAI({ apiKey: this.apiKey });
+      const model = google.textEmbeddingModel(this.models.embedding);
 
       this.usageStats.requestsTotal += 1;
 
-      return Array.isArray(texts) ? embeddings : embeddings[0];
+      if (textArray.length === 1) {
+        const { embedding } = await embed({
+          model,
+          value: textArray[0],
+        });
+        return Array.isArray(texts) ? [embedding] : embedding;
+      } else {
+        const { embeddings } = await embedMany({
+          model,
+          values: textArray,
+        });
+        return embeddings;
+      }
     } catch (error) {
       log.error('generateEmbeddings error', error);
       throw error;
     }
   }
 
-  /**
-   * Generate chat completion
-   */
   async generateChatCompletion(messages, options = {}) {
     if (!this.isInitialized) throw new Error('Provider not initialized');
 
@@ -239,68 +157,34 @@ class GeminiProvider extends LLMProvider {
     } = options;
 
     try {
-      // Convert to Gemini format
-      const contents = [];
+      const { generateText } = await import('ai');
+      const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+      const google = createGoogleGenerativeAI({ apiKey: this.apiKey });
+      const model = google(this.models.text);
 
-      if (systemPrompt) {
-        contents.push({
-          role: 'user',
-          parts: [{ text: systemPrompt }]
-        });
-        contents.push({
-          role: 'model',
-          parts: [{ text: 'Understood.' }]
-        });
-      }
+      // Convert messages to Vercel AI SDK core message format
+      const coreMessages = messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content,
+      }));
 
-      messages.forEach((msg) => {
-        contents.push({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        });
+      const result = await generateText({
+        model,
+        messages: coreMessages,
+        temperature,
+        maxTokens,
+        system: systemPrompt || undefined,
       });
 
-      const response = await this.http.fetchWithRetry(
-        `${this.baseUrl}/${this.models.text}:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.apiKey
-          },
-          body: JSON.stringify({
-            contents,
-            generationConfig: {
-              temperature,
-              maxOutputTokens: maxTokens,
-              candidateCount: 1
-            }
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Gemini API Error: ${error.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.candidates || data.candidates.length === 0) {
-        throw new Error('No response from Gemini');
-      }
-
-      const text = data.candidates[0].content.parts[0].text;
-      const tokensUsed = data.usageMetadata?.totalTokenCount || 0;
-
+      const tokensUsed = result.usage?.totalTokens || 0;
       this.usageStats.tokensUsedTotal += tokensUsed;
       this.usageStats.requestsTotal += 1;
 
       return {
-        text,
+        text: result.text,
         tokensUsed,
         model: this.models.text,
-        finishReason: data.candidates[0].finishReason
+        finishReason: result.finishReason
       };
     } catch (error) {
       log.error('generateChatCompletion error', error);
@@ -308,23 +192,17 @@ class GeminiProvider extends LLMProvider {
     }
   }
 
-  /**
-   * Get capabilities
-   */
   getCapabilities() {
     return {
       supportsEmbeddings: true,
       supportsChatCompletion: true,
       supportsCaching: true,
-      supportsStreaming: false,
+      supportsStreaming: true,
       maxTokens: 32768,
       embeddingDimensions: 768
     };
   }
 
-  /**
-   * Get usage stats
-   */
   getUsageStats() {
     return { ...this.usageStats };
   }

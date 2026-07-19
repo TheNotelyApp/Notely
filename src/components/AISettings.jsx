@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Key, Save, Trash2, X, Zap, AlertCircle } from 'lucide-react';
+import { Key, Save, Trash2, X, Zap, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import AppInput from './AppInput';
 import AppIconButton from './AppIconButton';
 import AppSelect from './AppSelect';
@@ -15,6 +15,7 @@ import {
   aiSetProviderModel,
   aiTestConnection,
   aiGetProviderList,
+  aiGetHealth,
 } from '../services/electronService';
 
 
@@ -43,67 +44,100 @@ function normalizeProviderModels(models) {
 export const AISettingsContent = ({ _onClose }) => {
   const [providers, setProviders] = useState([]);
   const [apiKey, setApiKey] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState('gemini');
+  const [selectedProvider, setSelectedProvider] = useState('');
   const [preferences, setPreferences] = useState(defaultPreferences);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [hfToken, setHfToken] = useState('');
   const [hfConfigured, setHfConfigured] = useState(false);
-  const [hfTestResult, setHfTestResult] = useState(null);
   const [selectedModel, setSelectedModel] = useState('');
   const [embeddingStaleness, setEmbeddingStaleness] = useState(null);
+  const [plaintextKey, setPlaintextKey] = useState('');
+  const [showPlaintext, setShowPlaintext] = useState(false);
+  const [hfPlaintextToken, setHfPlaintextToken] = useState('');
+  const [showHfPlaintext, setShowHfPlaintext] = useState(false);
+
   const [activeSubTab, setActiveSubTab] = useState("providers");
 
   useEffect(() => {
     loadSettings();
     loadEmbeddingStaleness();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProvider]);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvider || !providers.length) return;
+
+    const loadProviderDetails = async () => {
+      try {
+        setLoading(true);
+        const keyResponse = await aiGetApiKey(selectedProvider);
+        if (keyResponse.success && keyResponse.data?.configured) {
+          setApiKey(String(keyResponse.data?.maskedKey || 'configured'));
+          setPlaintextKey(String(keyResponse.data?.apiKey || ''));
+        } else {
+          setApiKey('');
+          setPlaintextKey('');
+        }
+
+        const modelResponse = await aiGetProviderModel(selectedProvider);
+        const providerEntry = providers.find((p) => p.id === selectedProvider);
+        const providerModels = normalizeProviderModels(providerEntry?.models);
+        setSelectedModel(
+          (modelResponse?.success && modelResponse?.data?.model) ||
+          providerEntry?.defaultModel ||
+          providerModels[0]?.id ||
+          ''
+        );
+      } catch (error) {
+        console.error('[AISettings] Failed to load provider details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProviderDetails();
+  }, [selectedProvider, providers]);
 
   const loadSettings = async () => {
     try {
       setLoading(true);
       setTestResult(null);
-      setHfTestResult(null);
 
       // Fetch dynamic providers list
       const providerListRes = await aiGetProviderList();
-      let currentProviders = [];
       if (providerListRes.success && providerListRes.data) {
         setProviders(providerListRes.data);
-        currentProviders = providerListRes.data;
       }
 
-      const keyResponse = await aiGetApiKey(selectedProvider);
-      if (keyResponse.success && keyResponse.data?.configured) {
-        setApiKey(String(keyResponse.data?.maskedKey || 'configured'));
-      } else {
-        setApiKey('');
+      // Load preferences first
+      const prefsResponse = await aiGetPreferences();
+      if (prefsResponse.success && prefsResponse.data) {
+        setPreferences({ ...defaultPreferences, ...prefsResponse.data });
       }
 
-      const modelResponse = await aiGetProviderModel(selectedProvider);
-      const providerEntry = currentProviders.find((p) => p.id === selectedProvider);
-      const providerModels = normalizeProviderModels(providerEntry?.models);
-      setSelectedModel(
-        (modelResponse?.success && modelResponse?.data?.model) ||
-        providerEntry?.defaultModel ||
-        providerModels[0]?.id ||
-        ''
-      );
+      let activeProvider = prefsResponse.success && prefsResponse.data?.aiProvider;
+      if (!activeProvider) {
+        const healthRes = await aiGetHealth();
+        if (healthRes?.success && healthRes?.data?.activeProvider && healthRes.data.activeProvider !== 'none') {
+          activeProvider = healthRes.data.activeProvider;
+        } else {
+          activeProvider = 'gemini';
+        }
+      }
+
+      setSelectedProvider(activeProvider);
+      setPreferences((prev) => ({ ...prev, aiProvider: activeProvider }));
 
       const hfResponse = await aiGetApiKey('huggingface');
       if (hfResponse.success && hfResponse.data?.configured) {
         setHfToken(String(hfResponse.data?.maskedKey || 'configured'));
+        setHfPlaintextToken(String(hfResponse.data?.apiKey || ''));
         setHfConfigured(true);
       } else {
         setHfToken('');
+        setHfPlaintextToken('');
         setHfConfigured(false);
-      }
-
-      const prefsResponse = await aiGetPreferences();
-      if (prefsResponse.success && prefsResponse.data) {
-        setPreferences({ ...defaultPreferences, ...prefsResponse.data });
       }
 
       setStatus('');
@@ -119,23 +153,33 @@ export const AISettingsContent = ({ _onClose }) => {
   };
 
   const handleSaveAPIKey = async () => {
-    if (!apiKey || apiKey.includes('...')) {
-      setStatus('Please enter a complete API key.');
+    const keyToSave = showPlaintext ? plaintextKey : apiKey;
+    if (!keyToSave || keyToSave.includes('...')) {
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: 'Please enter a complete API key.', type: 'warning' }
+      }));
       return;
     }
 
     try {
       setLoading(true);
-      const response = await aiSetApiKey(selectedProvider, apiKey);
+      const response = await aiSetApiKey(selectedProvider, keyToSave);
 
       if (response.success) {
-        setStatus(`${selectedProvider} API key saved.`);
-        setApiKey(apiKey.substring(0, 5) + '...' + apiKey.substring(apiKey.length - 5));
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `${selectedProvider} API key saved successfully.`, type: 'success' }
+        }));
+        setApiKey(keyToSave.substring(0, 5) + '...' + keyToSave.substring(keyToSave.length - 5));
+        setPlaintextKey(keyToSave);
       } else {
-        setStatus(`Failed to save key: ${response.error}`);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `Failed to save key: ${response.error}`, type: 'error' }
+        }));
       }
     } catch (error) {
-      setStatus(`Error: ${error.message}`);
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `Error saving key: ${error.message}`, type: 'error' }
+      }));
     } finally {
       setLoading(false);
     }
@@ -147,34 +191,50 @@ export const AISettingsContent = ({ _onClose }) => {
       const response = await aiSetPreferences(preferences);
 
       if (response.success) {
-        setStatus('Preferences saved.');
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'Preferences saved.', type: 'success' }
+        }));
       } else {
-        setStatus(`Failed to save preferences: ${response.error}`);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `Failed to save preferences: ${response.error}`, type: 'error' }
+        }));
       }
     } catch (error) {
-      setStatus(`Error: ${error.message}`);
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `Error: ${error.message}`, type: 'error' }
+      }));
     } finally {
       setLoading(false);
     }
   };
 
   const handleSaveHfToken = async () => {
-    if (!hfToken || hfToken.includes('...')) {
-      setStatus('Please enter a complete HuggingFace token.');
+    const tokenToSave = showHfPlaintext ? hfPlaintextToken : hfToken;
+    if (!tokenToSave || tokenToSave.includes('...')) {
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: 'Please enter a complete HuggingFace token.', type: 'warning' }
+      }));
       return;
     }
     try {
       setLoading(true);
-      const response = await aiSetApiKey('huggingface', hfToken);
+      const response = await aiSetApiKey('huggingface', tokenToSave);
       if (response.success) {
         setHfConfigured(true);
-        setHfToken(hfToken.substring(0, 5) + '...' + hfToken.substring(hfToken.length - 4));
-        setStatus('HuggingFace token saved.');
+        setHfToken(tokenToSave.substring(0, 5) + '...' + tokenToSave.substring(tokenToSave.length - 4));
+        setHfPlaintextToken(tokenToSave);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'HuggingFace token saved successfully.', type: 'success' }
+        }));
       } else {
-        setStatus(`Failed to save token: ${response.error}`);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `Failed to save token: ${response.error}`, type: 'error' }
+        }));
       }
     } catch (error) {
-      setStatus(`Error: ${error.message}`);
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `Error: ${error.message}`, type: 'error' }
+      }));
     } finally {
       setLoading(false);
     }
@@ -183,14 +243,20 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleTestHfConnection = async () => {
     try {
       setLoading(true);
-      setHfTestResult(null);
-      const response = await aiTestConnection('huggingface');
-      setHfTestResult({
-        success: response.success,
-        message: response.success ? 'Embeddings connected successfully.' : `Failed: ${response.error}`,
-      });
+      const response = await aiTestConnection('huggingface', showHfPlaintext ? hfPlaintextToken : hfToken);
+      if (response.success) {
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'Embeddings connected successfully.', type: 'success' }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `Embeddings connection failed: ${response.error || 'Unknown error'}`, type: 'error' }
+        }));
+      }
     } catch (error) {
-      setHfTestResult({ success: false, message: `Error: ${error.message}` });
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `Embeddings connection error: ${error.message}`, type: 'error' }
+      }));
     } finally {
       setLoading(false);
     }
@@ -199,20 +265,22 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleTestConnection = async () => {
     try {
       setLoading(true);
-      setTestResult(null);
-
-      const response = await aiTestConnection(selectedProvider);
+      const testKey = showPlaintext ? plaintextKey : apiKey;
+      console.log(`[AISettings] Testing connection with key prefix: ${testKey ? testKey.slice(0, 7) : 'empty'}, length: ${testKey ? testKey.length : 0}`);
+      const response = await aiTestConnection(selectedProvider, testKey);
       if (response.success) {
-        setTestResult({
-          success: true,
-          message: `Connected successfully to ${selectedProvider}.`
-        });
-        setStatus('Connection test passed.');
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `Connected successfully to ${selectedProvider}.`, type: 'success' }
+        }));
       } else {
-        setTestResult({ success: false, message: response.error || 'Connection failed.' });
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `${selectedProvider} connection failed: ${response.error || 'Unknown error'}`, type: 'error' }
+        }));
       }
     } catch (err) {
-      setTestResult({ success: false, message: err?.message || 'Connection failed.' });
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `${selectedProvider} connection error: ${err.message}`, type: 'error' }
+      }));
     } finally {
       setLoading(false);
     }
@@ -325,20 +393,52 @@ export const AISettingsContent = ({ _onClose }) => {
                 </p>
                 <div className="api-key-group compact">
                   <label htmlFor="hf-token">HuggingFace Token (hf_…)</label>
-                  <div className="api-key-input-group">
-                    <AppInput
-                      id="hf-token"
-                      type="password"
-                      className="api-key-input"
-                      placeholder="hf_xxxxxxxxxxxxxxxxxx"
-                      value={hfToken}
-                      onChange={(e) => setHfToken(e.target.value)}
-                      disabled={loading}
-                    />
+                  <div className="api-key-input-group" style={{ display: "flex", gap: "5px", width: "100%" }}>
+                    <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+                      <AppInput
+                        id="hf-token"
+                        type={showHfPlaintext ? "text" : "password"}
+                        className="api-key-input"
+                        placeholder="hf_xxxxxxxxxxxxxxxxxx"
+                        value={showHfPlaintext ? hfPlaintextToken : hfToken}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (showHfPlaintext) {
+                            setHfPlaintextToken(val);
+                          } else {
+                            setHfToken(val);
+                            setHfPlaintextToken(val);
+                          }
+                        }}
+                        disabled={loading}
+                        style={{ paddingRight: "26px", width: "100%" }}
+                      />
+                      <button
+                        className="api-key-toggle-eye"
+                        onClick={() => setShowHfPlaintext(!showHfPlaintext)}
+                        type="button"
+                        title={showHfPlaintext ? "Hide Token" : "Show Token"}
+                        style={{
+                          position: "absolute",
+                          right: "6px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--text-muted)",
+                          padding: "4px",
+                          outline: "none"
+                        }}
+                      >
+                        {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                     <button
                       className="btn btn-primary"
                       onClick={handleSaveHfToken}
-                      disabled={loading || !hfToken}
+                      disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
                       type="button"
                     >
                       <Save size={12} /> Save
@@ -353,11 +453,6 @@ export const AISettingsContent = ({ _onClose }) => {
                     </button>
                   </div>
                 </div>
-                {hfTestResult ? (
-                  <div className={`test-result ${hfTestResult.success ? 'success' : 'error'}`}>
-                    {hfTestResult.message}
-                  </div>
-                ) : null}
               </section>
 
               <section className="ai-settings-section ai-settings-setup-card">
@@ -365,38 +460,102 @@ export const AISettingsContent = ({ _onClose }) => {
                   <h3>Text Provider</h3>
                   <span className="ai-settings-badge">On device</span>
                 </div>
-                <div className="provider-grid">
-                  {providers.map((provider) => (
-                    <button
-                      key={provider.id}
-                      className={`provider-card ${selectedProvider === provider.id ? 'selected' : ''} ${!provider.available ? 'planned' : ''}`}
-                      onClick={() => provider.available && setSelectedProvider(provider.id)}
-                      disabled={loading || !provider.available}
-                      type="button"
-                      data-tooltip={!provider.available ? 'Coming soon' : undefined}
+                <div className="preference-group compact" style={{ marginBottom: "16px" }}>
+                  <label htmlFor="active-provider-select">Active Text Provider</label>
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    <AppSelect
+                      id="active-provider-select"
+                      value={selectedProvider || 'gemini'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedProvider(val);
+                        setPreferences((prev) => ({ ...prev, aiProvider: val }));
+                      }}
+                      disabled={loading}
+                      style={{ flex: 1 }}
                     >
-                      <div className="provider-name">
-                        {provider.name}
-                        {!provider.available && <span className="provider-planned-badge">Soon</span>}
-                      </div>
-                      <div className="provider-description">{provider.description}</div>
+                      {providers.filter(p => p.available).map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </AppSelect>
+                    <button
+                      className="btn btn-primary"
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          const updatedPrefs = { ...preferences, aiProvider: selectedProvider };
+                          setPreferences(updatedPrefs);
+                          const response = await aiSetPreferences(updatedPrefs);
+                          if (response.success) {
+                            window.dispatchEvent(new CustomEvent('app:toast', {
+                              detail: { message: `Active provider set to ${selectedProvider} and saved.`, type: 'success' }
+                            }));
+                          } else {
+                            window.dispatchEvent(new CustomEvent('app:toast', {
+                              detail: { message: `Failed to save active provider: ${response.error}`, type: 'error' }
+                            }));
+                          }
+                        } catch (err) {
+                          window.dispatchEvent(new CustomEvent('app:toast', {
+                            detail: { message: `Error: ${err.message}`, type: 'error' }
+                          }));
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading || !selectedProvider}
+                      type="button"
+                    >
+                      <Save size={12} /> Save
                     </button>
-                  ))}
+                  </div>
                 </div>
                 <div className="api-key-group compact">
                   <label htmlFor="api-key">
                     {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
                   </label>
                   <div className="api-key-combined-row">
-                    <AppInput
-                      id="api-key"
-                      type="password"
-                      className="api-key-input"
-                      placeholder="Enter your API key"
-                      value={apiKey}
-                      onChange={(event) => setApiKey(event.target.value)}
-                      disabled={loading}
-                    />
+                    <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+                      <AppInput
+                        id="api-key"
+                        type={showPlaintext ? "text" : "password"}
+                        className="api-key-input"
+                        placeholder="Enter your API key"
+                        value={showPlaintext ? plaintextKey : apiKey}
+                        onChange={(event) => {
+                          const val = event.target.value;
+                          if (showPlaintext) {
+                            setPlaintextKey(val);
+                          } else {
+                            setApiKey(val);
+                            setPlaintextKey(val);
+                          }
+                        }}
+                        disabled={loading}
+                        style={{ paddingRight: "26px", width: "100%" }}
+                      />
+                      <button
+                        className="api-key-toggle-eye"
+                        onClick={() => setShowPlaintext(!showPlaintext)}
+                        type="button"
+                        title={showPlaintext ? "Hide Key" : "Show Key"}
+                        style={{
+                          position: "absolute",
+                          right: "6px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--text-muted)",
+                          padding: "4px",
+                          outline: "none"
+                        }}
+                      >
+                        {showPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                     {(() => {
                       const providerEntry = providers.find((p) => p.id === selectedProvider);
                       const providerModels = normalizeProviderModels(providerEntry?.models);
@@ -424,7 +583,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <button
                       className="btn btn-primary"
                       onClick={handleSaveAPIKey}
-                      disabled={loading || !apiKey}
+                      disabled={loading || !(showPlaintext ? plaintextKey : apiKey)}
                       type="button"
                     >
                       <Key size={12} /> Save
@@ -432,18 +591,13 @@ export const AISettingsContent = ({ _onClose }) => {
                     <button
                       className="btn btn-secondary"
                       onClick={handleTestConnection}
-                      disabled={loading || !apiKey}
+                      disabled={loading || !(showPlaintext ? plaintextKey : apiKey)}
                       type="button"
                     >
                       <Zap size={12} /> Test
                     </button>
                   </div>
                 </div>
-                {testResult ? (
-                  <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
-                    {testResult.message}
-                  </div>
-                ) : null}
 
                 {getCapabilityWarnings().length > 0 && (
                   <div className="ai-settings-capability-warnings">

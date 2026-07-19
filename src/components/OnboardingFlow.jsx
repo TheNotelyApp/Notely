@@ -35,7 +35,11 @@ export function OnboardingFlow({
   const [setupDemo, setSetupDemo] = useState(false);
   const [workspaceConfirmed, setWorkspaceConfirmed] = useState(false);
 
-  const totalSteps = 4;
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [selectedAIProvider, setSelectedAIProvider] = useState("gemini");
+  const [enableEmbeddings, setEnableEmbeddings] = useState(true);
+
+  const totalSteps = 5;
   const repositoryUrl = "https://github.com/wglabz/notely";
 
   const handleBrowseFolder = async () => {
@@ -75,7 +79,10 @@ export function OnboardingFlow({
     onComplete({
       workspacePath: selectedWorkspacePath,
       theme: localTheme,
-      setupDemo
+      setupDemo,
+      aiEnabled,
+      aiProvider: selectedAIProvider,
+      enableEmbeddings
     });
   };
 
@@ -322,6 +329,61 @@ export function OnboardingFlow({
           )}
 
           {step === 4 && (
+            <div className="onboarding-slide">
+              <h2>Workspace AI Assistant</h2>
+              <p>
+                Optionally enable AI features. All indexing, memory, and similarity analysis run locally or through your secure API keys.
+              </p>
+
+              <div style={{ margin: "16px 0", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px", border: "1px solid var(--border-soft)", borderRadius: "8px", background: "var(--background-soft)" }}>
+                  <input
+                    type="checkbox"
+                    id="onboarding-ai-enabled"
+                    checked={aiEnabled}
+                    onChange={(e) => setAiEnabled(e.target.checked)}
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                  />
+                  <label htmlFor="onboarding-ai-enabled" style={{ fontWeight: "700", color: "var(--text-strong)", cursor: "pointer" }}>
+                    Enable AI Subsystem
+                  </label>
+                </div>
+
+                {aiEnabled && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", paddingLeft: "8px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                        Default Text Provider
+                      </label>
+                      <select
+                        value={selectedAIProvider}
+                        onChange={(e) => setSelectedAIProvider(e.target.value)}
+                        style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
+                      >
+                        <option value="gemini">Google Gemini (Default)</option>
+                        <option value="groq">Groq (Ultra Fast Open Models)</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
+                      <input
+                        type="checkbox"
+                        id="onboarding-ai-embeddings"
+                        checked={enableEmbeddings}
+                        onChange={(e) => setEnableEmbeddings(e.target.checked)}
+                        style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                      />
+                      <label htmlFor="onboarding-ai-embeddings" style={{ fontSize: "13px", color: "var(--text-muted)", cursor: "pointer" }}>
+                        Enable background embeddings (enables Semantic Search)
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
             <div className="onboarding-slide" style={{ textAlign: "center" }}>
               <div className="onboarding-completion-checkmark">
                 <CheckCircle size={20} />

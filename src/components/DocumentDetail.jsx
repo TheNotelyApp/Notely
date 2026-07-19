@@ -25,6 +25,7 @@ import {
   Type,
   Maximize,
   Minimize,
+  Sparkles,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppIconButton from "./AppIconButton";
@@ -1846,6 +1847,16 @@ export function DocumentDetail({
           >
             {showMetadataPanel ? <EyeOff size={14} /> : <ListTree size={14} />}
             {showMetadataPanel ? "Hide details" : "Show details"}
+          </AppButton>
+          <AppButton
+            variant="small"
+            className={aiPanelVisible ? "active" : ""}
+            data-tooltip={aiEnabled ? "Toggle AI Assistant Chat" : "Configure AI to toggle Assistant"}
+            onClick={onShowAI}
+            style={{ marginLeft: "6px" }}
+          >
+            <Sparkles size={14} />
+            {aiPanelVisible ? "Hide Assistant" : "AI Assistant"}
           </AppButton>
         </div>
       </header>

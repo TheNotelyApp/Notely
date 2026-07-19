@@ -40,6 +40,7 @@
 
 const GeminiProvider   = require('./GeminiProvider');
 const { GroqProvider } = require('./GroqProvider');
+const OpenAICompatibleProvider = require('./OpenAICompatibleProvider');
 
 /**
  * @type {Record<string, {
@@ -97,6 +98,30 @@ const PROVIDER_REGISTRY = {
     defaultModel: 'llama-3.3-70b-versatile',
     factory: (config) => new GroqProvider(config.apiKey, config),
   },
+  openai: {
+    id: 'openai',
+    name: 'OpenAI',
+    description: 'OpenAI official endpoints (GPT-4o, GPT-4o Mini)',
+    available: true,
+    supportsEmbeddings: true,
+    capabilities: {
+      textGeneration: true,
+      embeddings: true,
+      semanticSearch: true,
+      relationshipDiscovery: true,
+      patternDetection: true,
+    },
+    models: [
+      { id: 'gpt-4o',      label: 'GPT-4o',      note: 'Standard' },
+      { id: 'gpt-4o-mini', label: 'GPT-4o Mini', note: 'Fast · default' }
+    ],
+    defaultModel: 'gpt-4o-mini',
+    factory: (config) => new OpenAICompatibleProvider(config.apiKey, {
+      ...config,
+      baseUrl: 'https://api.openai.com/v1',
+      model: config.model || 'gpt-4o-mini'
+    })
+  }
 };
 
 /**

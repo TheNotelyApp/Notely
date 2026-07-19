@@ -97,6 +97,8 @@ import {
   gitGetStatus,
   gitCommit,
   checkForUpdates,
+  aiSetPreferences,
+  aiSetProviderModel,
 } from "./services/electronService";
 import UpdateModal from "./components/UpdateModal";
 import { useToast } from "./hooks/useToast";
@@ -773,6 +775,7 @@ export default function App() {
     handleClearAIChat,
     handleRejectInlineGhost,
     handleAcceptInlineGhost,
+    activeProvider,
   } = useAIAssistant({
     current,
     activeTab,
@@ -2430,7 +2433,7 @@ export default function App() {
     [favoriteNotes, recentDashboardNotes, continueDashboardNotes]
   );
 
-  const handleOnboardingComplete = async ({ workspacePath, theme, setupDemo }) => {
+  const handleOnboardingComplete = async ({ workspacePath, theme, setupDemo, aiEnabled, aiProvider, enableEmbeddings }) => {
     try {
       const themeResult = await persistThemePreference(theme);
       const appliedPreference = ["auto", "light", "dark"].includes(themeResult?.themePreference)
@@ -2439,6 +2442,23 @@ export default function App() {
       const appliedTheme = themeResult?.effectiveTheme === "dark" ? "dark" : "light";
       setThemePreferenceState(appliedPreference);
       setEffectiveTheme(appliedTheme);
+
+      // Save AI onboarding preferences
+      try {
+        await aiSetPreferences({
+          aiEnabled: aiEnabled !== false,
+          enableEmbeddings: enableEmbeddings !== false,
+          enablePatternLearning: true,
+          enableRelationshipDiscovery: true,
+          maxTokensPerQuery: 2048,
+          temperature: 0.7
+        });
+        if (aiEnabled && aiProvider) {
+          await aiSetProviderModel(aiProvider, '');
+        }
+      } catch (aiErr) {
+        console.error("Failed to save AI onboarding preferences:", aiErr);
+      }
 
       if (workspacePath) {
         await setNotesRootSetting(workspacePath);
@@ -2741,7 +2761,7 @@ export default function App() {
                 setAiSettingsOpen(true);
                 return;
               }
-              setAiPanelVisible(true);
+              setAiPanelVisible((visible) => !visible);
             }}
             onOpenAISettings={() => setAiSettingsOpen(true)}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
@@ -2769,6 +2789,7 @@ export default function App() {
                     intent={aiPaletteIntent}
                     messages={aiChatMessages}
                     noteTitle={current?.title || "Current Note"}
+                    activeProvider={activeProvider}
                   />
                 </Suspense>
               </ErrorBoundary>

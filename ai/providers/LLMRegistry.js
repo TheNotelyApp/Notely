@@ -7,7 +7,7 @@
  * no longer requires touching this file.
  */
 
-const { PROVIDER_REGISTRY } = require('./providerRegistry');
+const { PROVIDER_REGISTRY } = require('./ProviderRegistry');
 
 class LLMRegistry {
   constructor() {
