@@ -2,12 +2,12 @@
  * Agent - Main orchestrator for AI agent functionality
  */
 
-const DocumentService = require('../services/DocumentService');
-const EmbeddingService = require('../services/EmbeddingService');
-const RelationshipService = require('../services/RelationshipService');
-const QueryExecutor = require('../services/QueryExecutor');
-const ContextManager = require('./ContextManager');
-const MemoryManager = require('./MemoryManager');
+const DocumentService = require('../tools/DocumentReader');
+const EmbeddingService = require('../embeddings/EmbeddingService');
+const RelationshipService = require('../graph/RelationshipService');
+const QueryExecutor = require('./QueryExecutor');
+const ContextManager = require('../context/ContextManager');
+const MemoryManager = require('../memory/InteractionLog');
 
 class Agent {
   constructor(databaseManager, llmRegistry) {

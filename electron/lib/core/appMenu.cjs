@@ -475,11 +475,6 @@ function buildAppMenuTemplate(win, context = {}) {
       label: "Workspace",
       submenu: [
         {
-          label: "Workspace Graph",
-          accelerator: "CmdOrCtrl+Shift+G",
-          click: () => sendMenuAction(win, "open-workspace-graph")
-        },
-        {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")

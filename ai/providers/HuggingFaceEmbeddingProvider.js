@@ -29,7 +29,7 @@
  */
 
 const HttpClient = require('../HttpClient');
-const { createLogger } = require('../../utils/logger');
+const { createLogger } = require('../core/logger');
 
 const log = createLogger('HuggingFaceEmbeddingProvider');
 

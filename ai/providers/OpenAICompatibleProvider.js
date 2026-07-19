@@ -14,9 +14,9 @@
  * override generateEmbeddings().
  */
 
-const LLMProvider = require('../LLMProvider');
+const LLMProvider = require('./ProviderBase');
 const HttpClient = require('../HttpClient');
-const { createLogger } = require('../../utils/logger');
+const { createLogger } = require('../core/logger');
 
 class OpenAICompatibleProvider extends LLMProvider {
   /**

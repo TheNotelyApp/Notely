@@ -114,6 +114,14 @@ export async function aiGetApiKey(provider) {
   return api.aiGetApiKey({ provider });
 }
 
+export async function aiGetProviderList() {
+  const api = getNotesApi();
+  if (typeof api.aiGetProviderList !== "function") {
+    throw new Error("AI configuration is unavailable. Please restart the app.");
+  }
+  return api.aiGetProviderList();
+}
+
 export async function aiSetApiKey(provider, apiKey) {
   const api = getNotesApi();
   if (typeof api.aiSetApiKey !== "function") {
@@ -488,21 +496,6 @@ export async function getWorkspaceActivity(limit = 200) {
   return api.getWorkspaceActivity({ limit });
 }
 
-export async function getWorkspaceGraph() {
-  const api = getNotesApi();
-  if (typeof api.getWorkspaceGraph !== "function") {
-    throw new Error("Workspace graph unavailable. Please restart the app.");
-  }
-  return api.getWorkspaceGraph();
-}
-
-export async function getSemanticGraph() {
-  const api = getNotesApi();
-  if (typeof api.getSemanticGraph !== "function") {
-    throw new Error("Semantic graph unavailable. Please restart the app.");
-  }
-  return api.getSemanticGraph();
-}
 
 export async function readDocument(filePath) {
   const api = getNotesApi();

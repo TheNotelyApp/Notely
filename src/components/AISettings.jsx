@@ -14,71 +14,10 @@ import {
   aiSetPreferences,
   aiSetProviderModel,
   aiTestConnection,
-  getSemanticGraph,
+  aiGetProviderList,
 } from '../services/electronService';
 
-const providers = [
-  {
-    id: 'gemini',
-    name: 'Google Gemini',
-    description: 'Fast, free tier available',
-    available: true,
-    models: ['gemini-1.5-pro', 'gemini-1.5-flash'],
-    defaultModel: 'gemini-1.5-pro',
-    capabilities: {
-      textGeneration: true,
-      embeddings: true,
-      semanticSearch: true,
-      relationshipDiscovery: true,
-      patternDetection: true,
-    }
-  },
-  {
-    id: 'groq',
-    name: 'Groq',
-    description: 'Very fast open-source models',
-    available: true,
-    models: ['mixtral-8x7b-32768', 'llama-3-70b-8192'],
-    defaultModel: 'mixtral-8x7b-32768',
-    capabilities: {
-      textGeneration: true,
-      embeddings: false,
-      semanticSearch: false,
-      relationshipDiscovery: false,
-      patternDetection: true,
-    }
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    description: 'Most capable models',
-    available: false,
-    models: [],
-    defaultModel: '',
-    capabilities: {
-      textGeneration: true,
-      embeddings: true,
-      semanticSearch: true,
-      relationshipDiscovery: true,
-      patternDetection: true,
-    }
-  },
-  {
-    id: 'local',
-    name: 'Local LLM',
-    description: 'Planned provider',
-    available: false,
-    models: [],
-    defaultModel: '',
-    capabilities: {
-      textGeneration: true,
-      embeddings: false,
-      semanticSearch: false,
-      relationshipDiscovery: false,
-      patternDetection: false,
-    }
-  },
-];
+
 
 const defaultPreferences = {
   enablePatternLearning: true,
@@ -102,6 +41,7 @@ function normalizeProviderModels(models) {
 }
 
 export const AISettingsContent = ({ _onClose }) => {
+  const [providers, setProviders] = useState([]);
   const [apiKey, setApiKey] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('gemini');
   const [preferences, setPreferences] = useState(defaultPreferences);
@@ -127,6 +67,14 @@ export const AISettingsContent = ({ _onClose }) => {
       setTestResult(null);
       setHfTestResult(null);
 
+      // Fetch dynamic providers list
+      const providerListRes = await aiGetProviderList();
+      let currentProviders = [];
+      if (providerListRes.success && providerListRes.data) {
+        setProviders(providerListRes.data);
+        currentProviders = providerListRes.data;
+      }
+
       const keyResponse = await aiGetApiKey(selectedProvider);
       if (keyResponse.success && keyResponse.data?.configured) {
         setApiKey(String(keyResponse.data?.maskedKey || 'configured'));
@@ -135,7 +83,7 @@ export const AISettingsContent = ({ _onClose }) => {
       }
 
       const modelResponse = await aiGetProviderModel(selectedProvider);
-      const providerEntry = providers.find((p) => p.id === selectedProvider);
+      const providerEntry = currentProviders.find((p) => p.id === selectedProvider);
       const providerModels = normalizeProviderModels(providerEntry?.models);
       setSelectedModel(
         (modelResponse?.success && modelResponse?.data?.model) ||
@@ -167,13 +115,7 @@ export const AISettingsContent = ({ _onClose }) => {
   };
 
   const loadEmbeddingStaleness = async () => {
-    try {
-      const data = await getSemanticGraph();
-      setEmbeddingStaleness(data?.staleness || null);
-    } catch {
-      // Semantic graph can be unavailable when embeddings are not configured.
-      setEmbeddingStaleness(null);
-    }
+    setEmbeddingStaleness(null);
   };
 
   const handleSaveAPIKey = async () => {

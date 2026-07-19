@@ -1,6 +1,5 @@
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 const { buildWorkspaceGraph } = require("./workspaceGraph.cjs");
-const SemanticGraphCache = require("./SemanticGraphCache.cjs");
 
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
@@ -491,84 +490,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return buildWorkspaceGraph(fs, path, workspaceRoot);
   });
 
-  registerTrustedHandler("workspace:semantic-graph", async () => {
-    try {
-      const activeProject = getActiveProject();
-      const notesRoot = getNotesRoot();
-      const workspaceRoot = path.resolve(activeProject?.rootPath || notesRoot);
-      
-      // Get base graph first
-      const baseGraph = buildWorkspaceGraph(fs, path, workspaceRoot);
-      
-      // Get embedding staleness info from AIConfig
-      let staleness = null;
-      try {
-        const AIConfig = require('../../../src/ai/utils/AIConfig');
-        const config = new AIConfig();
-        staleness = config.getEmbeddingStaleness();
-      } catch (err) {
-        console.warn('[Semantic Graph] Failed to get staleness:', err.message);
-      }
-      
-      // Try to get semantic clustering
-      const aiAgent = deps.getAIAgent?.();
-      if (!aiAgent?.embeddingService?.isAvailable()) {
-        console.log('[Semantic Graph] Embeddings unavailable, returning base graph only');
-        return { ...baseGraph, clusters: [], similarities: {}, staleness };
-      }
-
-      // Check cache
-      const appDataDir = path.join(require('os').homedir(), 'AppData', 'Roaming', 'Notely');
-      const cache = new SemanticGraphCache(appDataDir);
-      
-      if (cache.isFresh(workspaceRoot)) {
-        const cached = cache.load();
-        if (cached?.clusters) {
-          console.log('[Semantic Graph] Using cached clustering');
-          return { ...baseGraph, clusters: cached.clusters, staleness };
-        }
-      }
-
-      // Load document contents for semantic analysis
-      console.log('[Semantic Graph] Computing semantic clusters...');
-      const documents = baseGraph.nodes.map((node) => ({
-        id: node.id,
-        label: node.label,
-        filePath: node.filePath,
-        content: (() => {
-          try {
-            return fs.readFileSync(node.filePath, 'utf8');
-          } catch {
-            return '';
-          }
-        })(),
-      }));
-
-      const SemanticClusteringService = require('../../../src/ai/services/SemanticClusteringService.js');
-      const clusteringService = new SemanticClusteringService(aiAgent.embeddingService, 0.65);
-      const { clusters } = await clusteringService.analyzeDocuments(documents);
-
-      // Cache results
-      cache.save({ workspaceRoot, clusters });
-
-      return { ...baseGraph, clusters, staleness };
-    } catch (error) {
-      console.error('[Semantic Graph] Error:', error.message);
-      // Fallback to base graph on error
-      const activeProject = getActiveProject();
-      const notesRoot = getNotesRoot();
-      const workspaceRoot = path.resolve(activeProject?.rootPath || notesRoot);
-      let staleness = null;
-      try {
-        const AIConfig = require('../../../src/ai/utils/AIConfig');
-        const config = new AIConfig();
-        staleness = config.getEmbeddingStaleness();
-      } catch {
-        // Ignore staleness fetch error in error handler
-      }
-      return { ...buildWorkspaceGraph(fs, path, workspaceRoot), clusters: [], staleness };
-    }
-  });
 
   registerTrustedHandler("trash:list", (_event) => {
     const removedDir = path.join(getAppDataDir(), "removed");

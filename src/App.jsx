@@ -19,9 +19,6 @@ const ConflictResolutionPanel = lazy(() =>
   import("./components/ConflictResolutionPanel").then((m) => ({ default: m.ConflictResolutionPanel }))
 );
 const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
-const WorkspaceGraphPanel = lazy(() =>
-  import("./components/WorkspaceGraphPanel").then((m) => ({ default: m.WorkspaceGraphPanel }))
-);
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
@@ -335,7 +332,6 @@ export default function App() {
     globalSearchOpen, setGlobalSearchOpen,
     globalSearchQuery, setGlobalSearchQuery,
     shortcutsModalOpen, setShortcutsModalOpen,
-    workspaceGraphOpen, setWorkspaceGraphOpen,
     markdownGuideOpen, setMarkdownGuideOpen,
     aboutOpen, setAboutOpen,
     helpConfirmationOpen, setHelpConfirmationOpen,
@@ -1346,10 +1342,6 @@ export default function App() {
         return;
       }
 
-      if (action === "open-workspace-graph") {
-        setWorkspaceGraphOpen(true);
-        return;
-      }
 
       if (action === "open-git-version-control") {
         setGitVCInitialTab("status");
@@ -2181,10 +2173,6 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-workspace-graph") {
-      setWorkspaceGraphOpen(true);
-      return;
-    }
 
     if (resolvedCommandId === "open-tasks-panel") {
       setTasksPanelOpen(true);
@@ -3221,18 +3209,6 @@ export default function App() {
         </Suspense>
       ) : null}
 
-      {workspaceGraphOpen && (
-        <Suspense fallback={null}>
-          <WorkspaceGraphPanel
-            onClose={() => setWorkspaceGraphOpen(false)}
-            onOpenDocument={async (filePath) => {
-              setWorkspaceGraphOpen(false);
-              const target = documents.find((d) => d.filePath === filePath && d.entryType === "file");
-              if (target) await handleOpenListItem(target);
-            }}
-          />
-        </Suspense>
-      )}
 
       {tasksPanelOpen ? (
         <Suspense fallback={null}>

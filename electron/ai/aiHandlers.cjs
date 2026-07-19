@@ -60,7 +60,7 @@ const MAX_API_KEY_LENGTH = 512;
 const MIN_API_KEY_LENGTH = 8;
 
 // Derived from providerRegistry — the single source of truth for valid provider ids.
-const { ALLOWED_PROVIDER_IDS: ALLOWED_PROVIDERS } = require('../../src/ai/llm/providerRegistry');
+const { ALLOWED_PROVIDER_IDS: ALLOWED_PROVIDERS } = require('../../ai/providers/ProviderRegistry');
 
 /**
  * Only accept IPC originating from a top-level application BrowserWindow frame.
@@ -184,6 +184,7 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler('ai:config:set-provider-model', handleSetProviderModel);
   registerHandler('ai:config:test-connection', handleTestConnection);
   registerHandler('ai:config:clear-data', handleClearData);
+  registerHandler('ai:config:get-provider-list', handleGetProviderList);
 
   // Shutdown
   registerHandler(IPC_EVENTS.AI_SHUTDOWN, handleShutdown);
@@ -344,7 +345,7 @@ async function handleSetAPIKey(event, payload) {
       try {
         if (provider === 'huggingface') {
           // HuggingFace is an embedding-only provider — wire it directly.
-          const { HuggingFaceEmbeddingProvider } = require('../../src/ai/llm/providers/HuggingFaceEmbeddingProvider');
+          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers/HuggingFaceEmbeddingProvider');
           const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
           await hfProvider.initialize();
           aiAgent.setEmbeddingProvider(hfProvider);
@@ -374,7 +375,7 @@ async function handleGetAPIKey(event, payload) {
     }
     const provider = requestedProvider;
 
-    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     const apiKey = config.getAPIKey(provider);
 
@@ -389,11 +390,28 @@ async function handleGetAPIKey(event, payload) {
 }
 
 /**
+ * Handle get provider list
+ */
+async function handleGetProviderList(_event, _payload) {
+  try {
+    const { PROVIDER_REGISTRY } = require('../../ai/providers/ProviderRegistry');
+    const serializableProviders = Object.values(PROVIDER_REGISTRY).map(p => {
+      const { factory: _factory, ...rest } = p;
+      return rest;
+    });
+    return new AIQueryResponse(true, serializableProviders);
+  } catch (error) {
+    console.error('[AI IPC] Get provider list failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
  * Handle get preferences
  */
 async function handleGetPreferences(_event, _payload) {
   try {
-    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     const prefs = config.loadPreferences();
     return new AIQueryResponse(true, prefs);
@@ -412,7 +430,7 @@ async function handleSetPreferences(event, payload) {
     if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
       throw new Error('Invalid preferences payload.');
     }
-    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     config.savePreferences(preferences);
     return new AIQueryResponse(true, { message: 'Preferences saved' });
@@ -428,7 +446,7 @@ async function handleSetPreferences(event, payload) {
 async function handleGetProviderModel(_event, payload) {
   try {
     const provider = assertProvider(payload?.provider);
-    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     const model = config.getProviderModel(provider);
     return new AIQueryResponse(true, { model });
@@ -446,7 +464,7 @@ async function handleSetProviderModel(_event, payload) {
     const modelId = typeof payload?.model === 'string' ? payload.model.trim() : '';
     if (!modelId) throw new Error('Model id is required.');
 
-    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     config.saveProviderModel(provider, modelId);
 
@@ -479,7 +497,7 @@ async function handleTestConnection(event, payload) {
     }
 
     const providerName = assertProvider(payload?.provider || 'gemini');
-    const AIConfig = require('../../src/ai/utils/AIConfig');
+    const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     const apiKey = config.getAPIKey(providerName);
 
@@ -489,7 +507,7 @@ async function handleTestConnection(event, payload) {
 
     // HuggingFace is an embedding-only provider tested separately.
     if (providerName === 'huggingface') {
-      const { HuggingFaceEmbeddingProvider } = require('../../src/ai/llm/providers/HuggingFaceEmbeddingProvider');
+      const { HuggingFaceEmbeddingProvider } = require('../../ai/providers/HuggingFaceEmbeddingProvider');
       const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
       await hfProvider.initialize(); // throws on failure
       return new AIQueryResponse(true, { message: 'HuggingFace embeddings connected successfully' });

@@ -9,7 +9,6 @@ export function UIStateProvider({ children }) {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
-  const [workspaceGraphOpen, setWorkspaceGraphOpen] = useState(false);
   const [markdownGuideOpen, setMarkdownGuideOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [helpConfirmationOpen, setHelpConfirmationOpen] = useState(false);
@@ -40,7 +39,6 @@ export function UIStateProvider({ children }) {
     globalSearchOpen, setGlobalSearchOpen,
     globalSearchQuery, setGlobalSearchQuery,
     shortcutsModalOpen, setShortcutsModalOpen,
-    workspaceGraphOpen, setWorkspaceGraphOpen,
     markdownGuideOpen, setMarkdownGuideOpen,
     aboutOpen, setAboutOpen,
     helpConfirmationOpen, setHelpConfirmationOpen,

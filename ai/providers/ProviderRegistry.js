@@ -38,8 +38,8 @@
  *   const provider = entry.factory({ apiKey: '...' });
  */
 
-const GeminiProvider   = require('./providers/GeminiProvider');
-const { GroqProvider } = require('./providers/GroqProvider');
+const GeminiProvider   = require('./GeminiProvider');
+const { GroqProvider } = require('./GroqProvider');
 
 /**
  * @type {Record<string, {

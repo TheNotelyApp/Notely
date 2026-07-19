@@ -144,9 +144,9 @@ function readGeneratedVersionInfo() {
 
 async function initializeAIForWorkspace() {
   try {
-    const { initializeAISystem, shutdownAISystem } = require("../src/ai/index.js");
-    const AIConfig = require("../src/ai/utils/AIConfig");
-    const { PROVIDER_REGISTRY } = require("../src/ai/llm/providerRegistry");
+    const { initializeAISystem, shutdownAISystem } = require("../ai/index.js");
+    const AIConfig = require("../ai/core/AIConfig");
+    const { PROVIDER_REGISTRY } = require("../ai/providers/ProviderRegistry");
     const config = new AIConfig();
 
     shutdownAISystemRef = shutdownAISystem;
