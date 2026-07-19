@@ -13,11 +13,9 @@ import {
   aiRebuildEmbeddings,
   aiPauseWorker,
   aiResumeWorker,
-  aiDownloadModel,
   aiGetModelStatus,
   onModelDownloadProgress,
-  aiGetPreferences,
-  aiSetPreferences
+  aiGetPreferences
 } from '../services/electronService';
 import { OverlayDialog } from './OverlayDialog';
 
