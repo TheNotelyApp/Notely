@@ -19,6 +19,7 @@ const ConflictResolutionPanel = lazy(() =>
   import("./components/ConflictResolutionPanel").then((m) => ({ default: m.ConflictResolutionPanel }))
 );
 const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
+const KnowledgeGraph = lazy(() => import("./components/KnowledgeGraph"));
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
@@ -339,6 +340,7 @@ export default function App() {
     helpConfirmationOpen, setHelpConfirmationOpen,
     gitVCOpen, setGitVCOpen,
     gitVCInitialTab, setGitVCInitialTab,
+    graphPanelOpen, setGraphPanelOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
     tasksPanelOpen, setTasksPanelOpen,
     allTasksPanelOpen, setAllTasksPanelOpen,
@@ -1648,6 +1650,11 @@ export default function App() {
         return;
       }
 
+      if (action === "open-knowledge-graph") {
+        setGraphPanelOpen(true);
+        return;
+      }
+
       if (action === "open-ai-palette") {
         handleOpenAIPalette({ forceOpen: true });
         return;
@@ -1846,6 +1853,7 @@ export default function App() {
     { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
+    { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
     { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
     { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
     {
@@ -2210,6 +2218,11 @@ export default function App() {
 
     if (resolvedCommandId === "open-p2p-status") {
       await handleOpenP2PStatus();
+      return;
+    }
+
+    if (resolvedCommandId === "open-knowledge-graph") {
+      setGraphPanelOpen(true);
       return;
     }
 
@@ -3402,7 +3415,7 @@ export default function App() {
       )}
 
       {gitVCOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: 0, left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
           <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
             <GitVersionControlPage
               workspacePath={notesFolderPath}
@@ -3433,6 +3446,16 @@ export default function App() {
             currentFilePath={current?.filePath}
           />
         </Suspense>
+      )}
+
+      {graphPanelOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Knowledge Graph…</div>}>
+            <KnowledgeGraph
+              onBack={() => setGraphPanelOpen(false)}
+            />
+          </Suspense>
+        </div>
       )}
 
       </div>

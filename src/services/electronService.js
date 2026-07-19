@@ -208,6 +208,22 @@ export async function aiBuildGraph() {
   return api.aiBuildGraph({});
 }
 
+export async function aiGetGraph() {
+  const api = getNotesApi();
+  if (typeof api.aiGetGraph !== "function") {
+    throw new Error("AI graph operations are unavailable. Please restart the app.");
+  }
+  return api.aiGetGraph({});
+}
+
+export async function aiGetGraphStatus() {
+  const api = getNotesApi();
+  if (typeof api.aiGetGraphStatus !== "function") {
+    throw new Error("AI graph operations are unavailable. Please restart the app.");
+  }
+  return api.aiGetGraphStatus({});
+}
+
 export async function aiDetectPatterns() {
   const api = getNotesApi();
   if (typeof api.aiDetectPatterns !== "function") {

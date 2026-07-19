@@ -8,6 +8,9 @@ const RelationshipService = require('../graph/RelationshipService');
 const QueryExecutor = require('./QueryExecutor');
 const ContextManager = require('../context/ContextManager');
 const MemoryManager = require('../memory/InteractionLog');
+const GraphDB = require('../graph/GraphDB');
+const GraphService = require('../graph/GraphService');
+const GraphBuilder = require('../graph/GraphBuilder');
 
 class Agent {
   constructor(databaseManager, llmRegistry) {
@@ -27,6 +30,10 @@ class Agent {
     this.queryExecutor = new QueryExecutor(this);
     this.contextManager = new ContextManager(this.db, this.documentService);
     this.memoryManager = new MemoryManager(this.db);
+
+    this.graphDb = null;
+    this.graphService = null;
+    this.graphBuilder = null;
 
     this.isInitialized = false;
     this.workspaceRoot = null;
@@ -55,6 +62,12 @@ class Agent {
       // Store workspace root
       this.workspaceRoot = workspaceRoot;
       this.documentService.workspaceRoot = workspaceRoot;
+
+      // Initialize GraphDB
+      this.graphDb = new GraphDB(workspaceRoot);
+      this.graphDb.initialize();
+      this.graphService = new GraphService(this, this.graphDb);
+      this.graphBuilder = new GraphBuilder(this, this.graphDb, this.graphService);
 
       // Initialize database
       if (!this.db.isInitialized) {
@@ -156,22 +169,10 @@ class Agent {
    * Build relationship graph
    */
   async buildRelationshipGraph() {
-    try {
-      const docs = this.documentService.getAllDocuments();
-      const graph = await this.relationshipService.buildRelationshipGraph(docs);
-
-      return {
-        success: true,
-        relationshipsDiscovered: graph.length,
-        graph
-      };
-    } catch (error) {
-      console.error('[Agent] Relationship building failed:', error.message);
-      return {
-        success: false,
-        error: error.message
-      };
+    if (!this.graphBuilder) {
+      return { success: false, error: 'Graph builder not initialized' };
     }
+    return this.graphBuilder.rebuild();
   }
 
   /**
@@ -229,7 +230,10 @@ class Agent {
   shutdown() {
     try {
       this.reset();
-      if (this.db.isInitialized) {
+      if (this.graphDb) {
+        this.graphDb.close();
+      }
+      if (this.db && this.db.isInitialized) {
         this.db.close();
       }
       this.isInitialized = false;

@@ -98,10 +98,10 @@ export default function AIChatPanel({
   }, [intent, onSend, scope]);
 
   return (
-    <aside className="ai-chat-panel" aria-label="AI chat">
+    <aside className="ai-chat-panel" aria-label="AI chat" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="ai-chat-header">
         <div>
-          <div className="ai-chat-title">AI Chat</div>
+          <div className="ai-chat-title">AI Assistant</div>
           <div className="ai-chat-subtitle">
             Grounded in {noteTitle} {activeProvider ? `(using ${activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1)})` : ""}
           </div>
@@ -136,7 +136,7 @@ export default function AIChatPanel({
               <strong>{message.role === "user" ? "You" : "AI"}</strong>
               <span>{message.scopeLabel || message.scope || "auto"}</span>
             </div>
-            <div 
+            <div
               className="ai-chat-message-body markdown-body"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(message.text) }}
             />

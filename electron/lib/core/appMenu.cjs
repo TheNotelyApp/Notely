@@ -613,6 +613,10 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "ai-generate-embeddings")
         },
         {
+          label: "Show Knowledge Graph",
+          click: () => sendMenuAction(win, "open-knowledge-graph")
+        },
+        {
           label: "Build Relationship Graph",
           click: () => sendMenuAction(win, "ai-build-graph")
         },

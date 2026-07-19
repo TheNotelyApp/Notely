@@ -172,6 +172,8 @@ function initializeAIHandlers(electronApp, agent) {
 
   // Relationship graph
   registerHandler(IPC_EVENTS.AI_BUILD_GRAPH, handleBuildGraph);
+  registerHandler('ai:graph:get', handleGetGraph);
+  registerHandler('ai:graph:status', handleGetGraphStatus);
 
   // Pattern detection
   registerHandler(IPC_EVENTS.AI_DETECT_PATTERNS, handleDetectPatterns);
@@ -322,6 +324,38 @@ async function handleBuildGraph(_event, _payload) {
     return new AIQueryResponse(true, result);
   } catch (error) {
     console.error('[AI IPC] Graph building failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle fetching graph entities and relationships
+ */
+async function handleGetGraph(_event, _payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
+      throw new Error('AI agent or GraphDB is not initialized');
+    }
+    const result = aiService.agent.graphDb.getAll();
+    return new AIQueryResponse(true, result);
+  } catch (error) {
+    console.error('[AI IPC] Get graph failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle fetching graph status metrics
+ */
+async function handleGetGraphStatus(_event, _payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
+      throw new Error('AI agent or GraphDB is not initialized');
+    }
+    const result = aiService.agent.graphDb.getStatus();
+    return new AIQueryResponse(true, result);
+  } catch (error) {
+    console.error('[AI IPC] Get graph status failed:', error);
     return new AIQueryResponse(false, null, error.message);
   }
 }

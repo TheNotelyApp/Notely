@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiGetHealth: () => ipcRenderer.invoke("ai:health:get"),
   aiGenerateEmbeddings: (payload) => ipcRenderer.invoke("ai:embeddings:generate", payload),
   aiBuildGraph: (payload) => ipcRenderer.invoke("ai:graph:build", payload),
+  aiGetGraph: (payload) => ipcRenderer.invoke("ai:graph:get", payload),
+  aiGetGraphStatus: (payload) => ipcRenderer.invoke("ai:graph:status", payload),
   aiDetectPatterns: (payload) => ipcRenderer.invoke("ai:patterns:detect", payload),
   getNotesRootSetting: () => ipcRenderer.invoke("settings:get-notes-root"),
   getAppInfo: () => ipcRenderer.invoke("settings:get-app-info"),
