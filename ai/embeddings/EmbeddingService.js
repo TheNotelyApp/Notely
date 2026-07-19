@@ -34,6 +34,26 @@ class EmbeddingService {
   }
 
   /**
+   * Get active model name from provider
+   */
+  getActiveModelName() {
+    if (this.embeddingProvider && typeof this.embeddingProvider.getActiveModelName === 'function') {
+      return this.embeddingProvider.getActiveModelName();
+    }
+    return this.embeddingProvider?.model || 'unknown';
+  }
+
+  /**
+   * Generate raw embedding vector for text
+   */
+  async generateVector(text) {
+    if (!this.isAvailable()) {
+      throw new Error('Embedding provider not configured.');
+    }
+    return this.embeddingProvider.generateEmbeddings(text);
+  }
+
+  /**
    * Generate and store embedding for document
    */
   async generateEmbedding(filePath, content, forceRefresh = false) {

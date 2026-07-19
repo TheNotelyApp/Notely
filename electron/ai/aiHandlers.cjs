@@ -151,6 +151,28 @@ function registerHandler(channel, handler) {
 function initializeAIHandlers(electronApp, agent) {
   if (agent) {
     aiService.agent = agent;
+    
+    // Dynamically initialize embeddingDb and indexWorker if not present
+    if (!agent.embeddingDb && agent.workspaceRoot) {
+      try {
+        const EmbeddingDB = require('../../ai/embeddings/EmbeddingDB');
+        agent.embeddingDb = new EmbeddingDB(agent.workspaceRoot);
+        agent.embeddingDb.initialize();
+      } catch (err) {
+        console.error('[AI IPC] Failed to dynamically initialize EmbeddingDB:', err);
+      }
+    }
+    if (!agent.indexWorker && agent.embeddingDb && agent.workspaceRoot) {
+      try {
+        const IndexQueue = require('../../ai/queue/IndexQueue');
+        const IndexWorker = require('../../ai/queue/IndexWorker');
+        const queue = new IndexQueue(agent.embeddingDb);
+        agent.indexWorker = new IndexWorker(agent.embeddingDb, queue, agent.embeddingService);
+        agent.indexWorker.start();
+      } catch (err) {
+        console.error('[AI IPC] Failed to dynamically initialize IndexWorker:', err);
+      }
+    }
   }
 
   if (handlersRegistered) {
@@ -174,6 +196,14 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_BUILD_GRAPH, handleBuildGraph);
   registerHandler('ai:graph:get', handleGetGraph);
   registerHandler('ai:graph:status', handleGetGraphStatus);
+
+  // Embeddings Engine Subsystem
+  registerHandler('ai:embeddings:rebuild', handleRebuildEmbeddings);
+  registerHandler('ai:embeddings:status', handleGetEmbeddingsStatus);
+  registerHandler('ai:worker:pause', handlePauseWorker);
+  registerHandler('ai:worker:resume', handleResumeWorker);
+  registerHandler('ai:model:download', handleDownloadModel);
+  registerHandler('ai:model:status', handleGetModelStatus);
 
   // Pattern detection
   registerHandler(IPC_EVENTS.AI_DETECT_PATTERNS, handleDetectPatterns);
@@ -252,6 +282,23 @@ async function handleInitialize(event, payload) {
 
     const result = await aiService.initialize(appDataDir, workspaceRoot, llmProvider, embeddingConfig);
 
+    // Boot local BGE embeddings SQLite database & worker queue
+    if (aiService.agent) {
+      const agent = aiService.agent;
+      if (!agent.embeddingDb) {
+        const EmbeddingDB = require('../../ai/embeddings/EmbeddingDB');
+        agent.embeddingDb = new EmbeddingDB(workspaceRoot);
+        agent.embeddingDb.initialize();
+      }
+      if (!agent.indexWorker && agent.embeddingDb) {
+        const IndexQueue = require('../../ai/queue/IndexQueue');
+        const IndexWorker = require('../../ai/queue/IndexWorker');
+        const queue = new IndexQueue(agent.embeddingDb);
+        agent.indexWorker = new IndexWorker(agent.embeddingDb, queue, agent.embeddingService);
+        agent.indexWorker.start();
+      }
+    }
+
     return new AIQueryResponse(true, result);
   } catch (error) {
     console.error('[AI IPC] Initialization failed:', error);
@@ -307,6 +354,155 @@ async function handleGenerateEmbeddings(event, payload) {
     return new AIQueryResponse(true, result);
   } catch (error) {
     console.error('[AI IPC] Embeddings generation failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleRebuildEmbeddings(_event, _payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.embeddingDb) {
+      throw new Error('AI agent or EmbeddingDB is not initialized');
+    }
+    aiService.agent.embeddingDb.clearAllData();
+
+    // Populate queue with all markdown files in workspace
+    const docs = aiService.agent.documentService.getAllDocuments();
+    if (docs && docs.length > 0) {
+      for (const doc of docs) {
+        const filePath = doc?.path || doc?.filePath;
+        if (filePath) {
+          aiService.agent.embeddingDb.enqueue(filePath, 0);
+        }
+      }
+    }
+
+    if (aiService.agent.indexWorker) {
+      aiService.agent.indexWorker.triggerNext();
+    }
+    return new AIQueryResponse(true, { message: 'Embeddings db cleared and rebuild triggered' });
+  } catch (error) {
+    console.error('[AI IPC] Embeddings rebuild failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleGetEmbeddingsStatus(_event, payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.embeddingDb) {
+      return new AIQueryResponse(true, {
+        totalChunks: 0,
+        indexedNotes: 0,
+        queueSize: 0,
+        isPaused: true,
+        isWorking: false,
+        chunks: [],
+        logs: [],
+        uninitialized: true
+      });
+    }
+    const db = aiService.agent.embeddingDb;
+    const worker = aiService.agent.indexWorker;
+    const search = payload?.search || '';
+    const limit = payload?.limit || 50;
+    const offset = payload?.offset || 0;
+
+    const chunks = db.getAllChunks(search, limit, offset);
+    const totalChunks = db.getChunkCount();
+    const indexedNotes = db.getIndexedNotesCount();
+    const queueStats = db.getQueueSize();
+    const logs = db.getLogs(30);
+
+    let dbSize = '0 KB';
+    try {
+      if (db.dbPath && fs.existsSync(db.dbPath)) {
+        const stats = fs.statSync(db.dbPath);
+        const bytes = stats.size;
+        if (bytes < 1024 * 1024) {
+          dbSize = `${(bytes / 1024).toFixed(1)} KB`;
+        } else {
+          dbSize = `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+      }
+    } catch (err) {
+      console.error('[AI IPC] Failed to check db size:', err);
+    }
+
+    return new AIQueryResponse(true, {
+      totalChunks,
+      indexedNotes,
+      queueSize: queueStats.pending,
+      queueTotal: queueStats.total,
+      isPaused: worker ? worker.isPaused : false,
+      isWorking: worker ? worker.isWorking : false,
+      chunks,
+      logs,
+      dbSize
+    });
+  } catch (error) {
+    console.error('[AI IPC] Get embeddings status failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handlePauseWorker(_event, _payload) {
+  try {
+    if (aiService.agent && aiService.agent.indexWorker) {
+      aiService.agent.indexWorker.pause();
+      return new AIQueryResponse(true, { paused: true });
+    }
+    throw new Error('Worker not running');
+  } catch (error) {
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleResumeWorker(_event, _payload) {
+  try {
+    if (aiService.agent && aiService.agent.indexWorker) {
+      aiService.agent.indexWorker.resume();
+      return new AIQueryResponse(true, { paused: false });
+    }
+    throw new Error('Worker not running');
+  } catch (error) {
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleDownloadModel(_event, _payload) {
+  try {
+    const { app } = require('electron');
+    const appDataDir = path.join(app.getPath('appData'), 'Notely');
+    const ModelDownloader = require('../../ai/embeddings/ModelDownloader');
+    const downloader = new ModelDownloader(appDataDir);
+
+    const win = BrowserWindow.getFocusedWindow();
+    downloader.download((progress) => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('ai:model:progress', { progress });
+      }
+    }).catch(err => {
+      console.error('[AI IPC] Async downloader error:', err);
+    });
+
+    return new AIQueryResponse(true, { started: true });
+  } catch (error) {
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleGetModelStatus(_event, _payload) {
+  try {
+    const { app } = require('electron');
+    const appDataDir = path.join(app.getPath('appData'), 'Notely');
+    const ModelDownloader = require('../../ai/embeddings/ModelDownloader');
+    const downloader = new ModelDownloader(appDataDir);
+    
+    return new AIQueryResponse(true, {
+      downloaded: downloader.isModelDownloaded(),
+      isDownloading: downloader.isDownloading,
+      progress: downloader.progress
+    });
+  } catch (error) {
     return new AIQueryResponse(false, null, error.message);
   }
 }
@@ -505,6 +701,44 @@ async function handleSetPreferences(event, payload) {
     const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     config.savePreferences(preferences);
+
+    // Apply the chosen embedding provider to the running agent immediately
+    if (aiService.agent) {
+      const activeEmbProvider = preferences.embeddingProvider || 'internal';
+      if (activeEmbProvider === 'huggingface') {
+        const hfToken = config.getAPIKey("huggingface");
+        if (hfToken) {
+          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers/HuggingFaceEmbeddingProvider');
+          const hfProvider = new HuggingFaceEmbeddingProvider(hfToken);
+          await hfProvider.initialize();
+          aiService.agent.setEmbeddingProvider(hfProvider);
+        } else {
+          aiService.agent.setEmbeddingProvider(null);
+        }
+      } else if (activeEmbProvider === 'internal') {
+        try {
+          const { app } = require('electron');
+          const appDataDir = path.join(app.getPath('appData'), 'Notely');
+          const ONNXEmbedder = require('../../ai/embeddings/ONNXEmbedder');
+          const onnxProvider = new ONNXEmbedder(appDataDir);
+          const fs = require('fs');
+          const modelPath = path.join(appDataDir, 'notely', 'ai-model', 'model.onnx');
+          if (fs.existsSync(modelPath)) {
+            await onnxProvider.load();
+            aiService.agent.setEmbeddingProvider(onnxProvider);
+          } else {
+            aiService.agent.setEmbeddingProvider(null);
+          }
+        } catch (onnxErr) {
+          console.warn('[AI IPC] Local ONNX embedding provider failed to load:', onnxErr.message);
+          aiService.agent.setEmbeddingProvider(null);
+        }
+      } else {
+        // Active LLM provider fallback (or null fallback)
+        aiService.agent.setEmbeddingProvider(null);
+      }
+    }
+
     return new AIQueryResponse(true, { message: 'Preferences saved' });
   } catch (error) {
     console.error('[AI IPC] Set preferences failed:', error);

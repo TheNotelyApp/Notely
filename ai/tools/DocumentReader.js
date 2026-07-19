@@ -52,15 +52,6 @@ class DocumentService {
       const content = fs.readFileSync(filePath, 'utf8');
       const hash = this._hashContent(content);
 
-      // Get cached embedding
-      const cached = this.db.getEmbedding(filePath);
-      
-      // Skip if content hasn't changed
-      if (cached && cached.contentHash === hash) {
-        this.indexedFiles.add(filePath);
-        return true;
-      }
-
       // Cache document metadata
       this.documentCache.set(filePath, {
         path: filePath,
@@ -73,6 +64,15 @@ class DocumentService {
       });
 
       this.indexedFiles.add(filePath);
+
+      // Get cached embedding
+      const cached = this.db.getEmbedding(filePath);
+      
+      // Skip if content hasn't changed
+      if (cached && cached.contentHash === hash) {
+        return true;
+      }
+
       return true;
     } catch (error) {
       console.error(`[DocumentService] Failed to index ${filePath}:`, error.message);

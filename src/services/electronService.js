@@ -200,6 +200,49 @@ export async function aiGenerateEmbeddings(forceRefresh = true) {
   return api.aiGenerateEmbeddings({ forceRefresh });
 }
 
+export async function aiRebuildEmbeddings() {
+  const api = getNotesApi();
+  if (typeof api.aiRebuildEmbeddings !== 'function') throw new Error('AI embeddings are unavailable.');
+  return api.aiRebuildEmbeddings();
+}
+
+export async function aiGetEmbeddingsStatus(payload = {}) {
+  const api = getNotesApi();
+  if (typeof api.aiGetEmbeddingsStatus !== 'function') throw new Error('AI embeddings are unavailable.');
+  return api.aiGetEmbeddingsStatus(payload);
+}
+
+export async function aiPauseWorker() {
+  const api = getNotesApi();
+  if (typeof api.aiPauseWorker !== 'function') throw new Error('AI worker is unavailable.');
+  return api.aiPauseWorker();
+}
+
+export async function aiResumeWorker() {
+  const api = getNotesApi();
+  if (typeof api.aiResumeWorker !== 'function') throw new Error('AI worker is unavailable.');
+  return api.aiResumeWorker();
+}
+
+export async function aiDownloadModel() {
+  const api = getNotesApi();
+  if (typeof api.aiDownloadModel !== 'function') throw new Error('ONNX downloader is unavailable.');
+  return api.aiDownloadModel();
+}
+
+export async function aiGetModelStatus() {
+  const api = getNotesApi();
+  if (typeof api.aiGetModelStatus !== 'function') throw new Error('ONNX downloader is unavailable.');
+  return api.aiGetModelStatus();
+}
+
+export function onModelDownloadProgress(callback) {
+  const api = getNotesApi();
+  if (typeof api.onModelDownloadProgress !== 'function') return () => {};
+  return api.onModelDownloadProgress(callback);
+}
+
+
 export async function aiBuildGraph() {
   const api = getNotesApi();
   if (typeof api.aiBuildGraph !== "function") {

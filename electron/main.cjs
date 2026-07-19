@@ -183,12 +183,31 @@ async function initializeAIForWorkspace() {
     const hfToken = config.getAPIKey("huggingface");
     const embeddingConfig = hfToken ? { token: hfToken } : null;
 
-    const result = await initializeAISystem(appDataDir, notesRoot, llmProvider, embeddingConfig);
+    const resolvedAppDataDir = path.join(app.getPath('appData'), 'Notely');
+    const result = await initializeAISystem(resolvedAppDataDir, notesRoot, llmProvider, embeddingConfig);
     aiAgent = result.agent;
+
+    // Boot local BGE embeddings SQLite database & worker queue
+    if (aiAgent) {
+      const EmbeddingDB = require("../ai/embeddings/EmbeddingDB");
+      const IndexQueue = require("../ai/queue/IndexQueue");
+      const IndexWorker = require("../ai/queue/IndexWorker");
+      
+      aiAgent.embeddingDb = new EmbeddingDB(notesRoot);
+      aiAgent.embeddingDb.initialize();
+      
+      const queue = new IndexQueue(aiAgent.embeddingDb);
+      aiAgent.indexWorker = new IndexWorker(aiAgent.embeddingDb, queue, aiAgent.embeddingService);
+      aiAgent.indexWorker.start();
+    }
+
+    const activeEmb = aiAgent?.embeddingService?.isAvailable()
+      ? (prefs.embeddingProvider === 'internal' ? 'Local BGE Model' : 'HuggingFace')
+      : 'unavailable';
     console.log(
       "[AI] System initialized",
       llmProvider ? `text: ${llmProvider.name}` : "(no text provider)",
-      embeddingConfig ? "| embeddings: HuggingFace" : "| embeddings: unavailable"
+      `| embeddings: ${activeEmb}`
     );
   } catch (error) {
     aiAgent = null;

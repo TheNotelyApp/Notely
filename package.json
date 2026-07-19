@@ -59,6 +59,8 @@
     "mermaid": "^11.6.0",
     "node-pty": "^1.1.0",
     "nspell": "^2.1.5",
+    "onnxruntime-node": "^1.27.0",
+    "onnxruntime-web": "^1.27.0",
     "pdfjs-dist": "^4.3.136",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

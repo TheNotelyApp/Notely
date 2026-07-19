@@ -608,18 +608,20 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "open-ai-settings")
         },
         { type: "separator" },
-        {
-          label: "Generate Embeddings",
-          click: () => sendMenuAction(win, "ai-generate-embeddings")
-        },
+
         {
           label: "Show Knowledge Graph",
           click: () => sendMenuAction(win, "open-knowledge-graph")
         },
         {
+          label: "Embeddings",
+          click: () => sendMenuAction(win, "open-embeddings-page")
+        },
+        {
           label: "Build Relationship Graph",
           click: () => sendMenuAction(win, "ai-build-graph")
         },
+
         {
           label: "Detect Patterns",
           click: () => sendMenuAction(win, "ai-detect-patterns")

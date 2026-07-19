@@ -32,7 +32,10 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
     aiAgent = new Agent(databaseManager, llmRegistry);
 
     // Initialize embedding provider independently of the text provider.
-    if (embeddingConfig?.token) {
+    const prefs = aiConfig.loadPreferences();
+    const activeEmbProvider = prefs.embeddingProvider || 'internal';
+
+    if (activeEmbProvider === 'huggingface' && embeddingConfig?.token) {
       try {
         const hfProvider = new HuggingFaceEmbeddingProvider(embeddingConfig.token, {
           model: embeddingConfig.model,
@@ -49,6 +52,24 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       } catch (embErr) {
         // Non-fatal — text generation and other features still work.
         console.warn('[AI System] HuggingFace embedding provider skipped:', embErr.message);
+      }
+    } else if (activeEmbProvider === 'internal') {
+      try {
+        const ONNXEmbedder = require('./embeddings/ONNXEmbedder');
+        const onnxProvider = new ONNXEmbedder(appDataDir);
+        // ONNXEmbedder initializes session lazily on first generateEmbedding(), but check if model is downloaded
+        const fs = require('fs');
+        const path = require('path');
+        const modelPath = path.join(appDataDir, 'notely', 'ai-model', 'model.onnx');
+        if (fs.existsSync(modelPath)) {
+          await onnxProvider.load();
+          aiAgent.setEmbeddingProvider(onnxProvider);
+          console.log('[AI System] Local ONNX BGE embedding provider ready');
+        } else {
+          console.log('[AI System] Local ONNX BGE model weights missing; downloader required.');
+        }
+      } catch (embErr) {
+        console.warn('[AI System] Local ONNX embedding provider skipped:', embErr.message);
       }
     }
 

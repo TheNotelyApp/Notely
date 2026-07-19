@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Key, Save, Trash2, X, Zap, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Key, Save, Trash2, X, Zap, AlertCircle, Eye, EyeOff, Download, Database } from 'lucide-react';
 import AppInput from './AppInput';
 import AppIconButton from './AppIconButton';
 import AppSelect from './AppSelect';
@@ -16,6 +16,9 @@ import {
   aiTestConnection,
   aiGetProviderList,
   aiGetHealth,
+  aiGetModelStatus,
+  aiDownloadModel,
+  onModelDownloadProgress
 } from '../services/electronService';
 
 
@@ -59,6 +62,35 @@ export const AISettingsContent = ({ _onClose }) => {
   const [showHfPlaintext, setShowHfPlaintext] = useState(false);
 
   const [activeSubTab, setActiveSubTab] = useState("providers");
+  const [modelStatus, setModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
+
+  useEffect(() => {
+    const loadModelStatus = async () => {
+      try {
+        const res = await aiGetModelStatus();
+        if (res.success && res.data) {
+          setModelStatus(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadModelStatus();
+
+    const unsubscribe = onModelDownloadProgress((payload) => {
+      setModelStatus(prev => ({
+        ...prev,
+        isDownloading: true,
+        progress: payload.progress,
+        downloaded: payload.progress === 100
+      }));
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
 
   useEffect(() => {
     loadSettings();
@@ -380,89 +412,14 @@ export const AISettingsContent = ({ _onClose }) => {
         <div className="ai-settings-content">
           {activeSubTab === "providers" ? (
             <>
-              <section className="ai-settings-section ai-settings-embeddings-card">
-                <div className="ai-settings-setup-head">
-                  <h3>Embeddings</h3>
-                  <span className={`ai-settings-badge ${hfConfigured ? 'badge-ok' : 'badge-off'}`}>
-                    {hfConfigured ? 'Active' : 'Not configured'}
-                  </span>
-                </div>
-                <p className="ai-settings-embeddings-info">
-                  Powers semantic search and the workspace graph — works with any text provider (Groq or Gemini).
-                  Uses <strong>HuggingFace Inference API</strong> free tier. Get a token at <strong>huggingface.co</strong>.
-                </p>
-                <div className="api-key-group compact">
-                  <label htmlFor="hf-token">HuggingFace Token (hf_…)</label>
-                  <div className="api-key-input-group" style={{ display: "flex", gap: "5px", width: "100%" }}>
-                    <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
-                      <AppInput
-                        id="hf-token"
-                        type={showHfPlaintext ? "text" : "password"}
-                        className="api-key-input"
-                        placeholder="hf_xxxxxxxxxxxxxxxxxx"
-                        value={showHfPlaintext ? hfPlaintextToken : hfToken}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (showHfPlaintext) {
-                            setHfPlaintextToken(val);
-                          } else {
-                            setHfToken(val);
-                            setHfPlaintextToken(val);
-                          }
-                        }}
-                        disabled={loading}
-                        style={{ paddingRight: "26px", width: "100%" }}
-                      />
-                      <button
-                        className="api-key-toggle-eye"
-                        onClick={() => setShowHfPlaintext(!showHfPlaintext)}
-                        type="button"
-                        title={showHfPlaintext ? "Hide Token" : "Show Token"}
-                        style={{
-                          position: "absolute",
-                          right: "6px",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "var(--text-muted)",
-                          padding: "4px",
-                          outline: "none"
-                        }}
-                      >
-                        {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                    <button
-                      className="btn btn-primary"
-                      onClick={handleSaveHfToken}
-                      disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
-                      type="button"
-                    >
-                      <Save size={12} /> Save
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={handleTestHfConnection}
-                      disabled={loading || !hfConfigured}
-                      type="button"
-                    >
-                      <Zap size={12} /> Test
-                    </button>
-                  </div>
-                </div>
-              </section>
-
               <section className="ai-settings-section ai-settings-setup-card">
-                <div className="ai-settings-setup-head">
-                  <h3>Text Provider</h3>
-                  <span className="ai-settings-badge">On device</span>
+                <div className="ai-settings-setup-head" style={{ marginBottom: "6px" }}>
+                  <h3>Providers Setup</h3>
                 </div>
-                <div className="preference-group compact" style={{ marginBottom: "16px" }}>
-                  <label htmlFor="active-provider-select">Active Text Provider</label>
-                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+
+                <div className="preference-group compact" style={{ marginBottom: "8px" }}>
+                  <label htmlFor="active-provider-select" style={{ fontSize: "11px" }}>Active Text Provider</label>
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center", marginTop: "2px" }}>
                     <AppSelect
                       id="active-provider-select"
                       value={selectedProvider || 'gemini'}
@@ -510,11 +467,12 @@ export const AISettingsContent = ({ _onClose }) => {
                     </button>
                   </div>
                 </div>
-                <div className="api-key-group compact">
-                  <label htmlFor="api-key">
+
+                <div className="api-key-group compact" style={{ marginBottom: "8px" }}>
+                  <label htmlFor="api-key" style={{ fontSize: "11px" }}>
                     {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
                   </label>
-                  <div className="api-key-combined-row">
+                  <div className="api-key-combined-row" style={{ marginTop: "2px" }}>
                     <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
                       <AppInput
                         id="api-key"
@@ -600,21 +558,182 @@ export const AISettingsContent = ({ _onClose }) => {
                 </div>
 
                 {getCapabilityWarnings().length > 0 && (
-                  <div className="ai-settings-capability-warnings">
+                  <div className="ai-settings-capability-warnings" style={{ marginTop: "4px", marginBottom: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
                     {getCapabilityWarnings().map((warning, idx) => (
-                      <div key={idx} className="capability-warning">
-                        <AlertCircle size={14} />
-                        <div>
-                          <strong>{warning.title}</strong>
-                          <p>{warning.message}</p>
-                        </div>
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--status-danger-text)" }}>
+                        <AlertCircle size={12} style={{ flexShrink: 0 }} />
+                        <span><strong>{warning.title}:</strong> {warning.message}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
+                <div className="preference-group compact" style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "6px", marginTop: "6px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <label htmlFor="active-embedding-provider-select" style={{ fontSize: "11px" }}>Select Embedding Provider</label>
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    <AppSelect
+                      id="active-embedding-provider-select"
+                      value={preferences.embeddingProvider || 'internal'}
+                      onChange={(e) => {
+                        handlePreferenceChange('embeddingProvider', e.target.value);
+                      }}
+                      disabled={loading}
+                      style={{ flex: 1 }}
+                    >
+                      {(() => {
+                        const selectedProv = providers.find((p) => p.id === selectedProvider);
+                        const supportsEmbeddings = selectedProv?.capabilities?.embeddings;
+                        return supportsEmbeddings ? (
+                          <option value="provider">Active LLM Provider ({selectedProv?.name})</option>
+                        ) : null;
+                      })()}
+                      <option value="huggingface">HuggingFace API</option>
+                      <option value="internal">Local BGE Model (ONNX)</option>
+                    </AppSelect>
+                    <button
+                      className="btn btn-primary"
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          const response = await aiSetPreferences(preferences);
+                          if (response.success) {
+                            window.dispatchEvent(new CustomEvent('app:toast', {
+                              detail: { message: `Embedding provider set to ${preferences.embeddingProvider || 'internal'} and saved.`, type: 'success' }
+                            }));
+                          } else {
+                            window.dispatchEvent(new CustomEvent('app:toast', {
+                              detail: { message: `Failed to save embedding provider: ${response.error}`, type: 'error' }
+                            }));
+                          }
+                        } catch (err) {
+                          window.dispatchEvent(new CustomEvent('app:toast', {
+                            detail: { message: `Error: ${err.message}`, type: 'error' }
+                          }));
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      type="button"
+                    >
+                      <Save size={12} /> Save
+                    </button>
+                  </div>
+                </div>
+
+
+
+                {preferences.embeddingProvider === 'huggingface' && (
+                  <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                    <p className="ai-settings-embeddings-info" style={{ margin: "0 0 6px 0", fontSize: "10px", color: "var(--text-secondary)" }}>
+                      Uses HuggingFace Inference API free tier. Get a token at huggingface.co.
+                    </p>
+                    <label htmlFor="hf-token" style={{ fontSize: "10px" }}>HuggingFace Token (hf_…)</label>
+                    <div className="api-key-input-group" style={{ display: "flex", gap: "5px", width: "100%", marginTop: "2px" }}>
+
+                      <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+                        <AppInput
+                          id="hf-token"
+                          type={showHfPlaintext ? "text" : "password"}
+                          className="api-key-input"
+                          placeholder="hf_xxxxxxxxxxxxxxxxxx"
+                          value={showHfPlaintext ? hfPlaintextToken : hfToken}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (showHfPlaintext) {
+                              setHfPlaintextToken(val);
+                            } else {
+                              setHfToken(val);
+                              setHfPlaintextToken(val);
+                            }
+                          }}
+                          disabled={loading}
+                          style={{ paddingRight: "26px", width: "100%" }}
+                        />
+                        <button
+                          className="api-key-toggle-eye"
+                          onClick={() => setShowHfPlaintext(!showHfPlaintext)}
+                          type="button"
+                          title={showHfPlaintext ? "Hide Token" : "Show Token"}
+                          style={{
+                            position: "absolute",
+                            right: "6px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "var(--text-muted)",
+                            padding: "4px",
+                            outline: "none"
+                          }}
+                        >
+                          {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSaveHfToken}
+                        disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
+                        type="button"
+                      >
+                        <Save size={12} /> Save
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleTestHfConnection}
+                        disabled={loading || !hfConfigured}
+                        type="button"
+                      >
+                        <Zap size={12} /> Test
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {preferences.embeddingProvider === 'internal' && (
+                  <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                    <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
+                    {modelStatus.downloaded ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
+                        <Database size={12} />
+                        <span>bge-small-en-v1.5 model is downloaded and ready offline.</span>
+                      </div>
+                    ) : modelStatus.isDownloading ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                          <span>Downloading local weights...</span>
+                          <span>{modelStatus.progress}%</span>
+                        </div>
+                        <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                          <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }}></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          try {
+                            const res = await aiDownloadModel();
+                            if (res.success) {
+                              setModelStatus(prev => ({ ...prev, isDownloading: true, progress: 0 }));
+                            }
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px" }}
+                      >
+                        <Download size={12} />
+                        <span>Download local model (130MB)</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {embeddingStaleness && (
-                  <div className="ai-settings-embedding-staleness">
+                  <div className="ai-settings-embedding-staleness" style={{ marginTop: "12px" }}>
                     <span>Embeddings: {embeddingStaleness.message}</span>
                   </div>
                 )}
@@ -654,6 +773,7 @@ export const AISettingsContent = ({ _onClose }) => {
                   </label>
                 </div>
               </section>
+
 
               <section className="ai-settings-section ai-settings-generation-card" style={{ gridColumn: "1 / -1" }}>
                 <h3>Generation</h3>

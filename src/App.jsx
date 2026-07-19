@@ -20,6 +20,7 @@ const ConflictResolutionPanel = lazy(() =>
 );
 const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
 const KnowledgeGraph = lazy(() => import("./components/KnowledgeGraph"));
+const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
@@ -341,6 +342,7 @@ export default function App() {
     gitVCOpen, setGitVCOpen,
     gitVCInitialTab, setGitVCInitialTab,
     graphPanelOpen, setGraphPanelOpen,
+    embeddingsPageOpen, setEmbeddingsPageOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
     tasksPanelOpen, setTasksPanelOpen,
     allTasksPanelOpen, setAllTasksPanelOpen,
@@ -1348,6 +1350,16 @@ export default function App() {
       }
 
 
+      if (action === "open-workspace-graph") {
+        setGraphPanelOpen(true);
+        return;
+      }
+
+      if (action === "open-embeddings-page") {
+        setEmbeddingsPageOpen(true);
+        return;
+      }
+
       if (action === "open-git-version-control") {
         setGitVCInitialTab("status");
         setGitVCOpen(true);
@@ -1854,6 +1866,7 @@ export default function App() {
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
+    { id: "open-embeddings-page", label: "Open Embeddings Dashboard", group: "AI", aliases: "vector database indexing onnx local bge segments" },
     { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
     { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
     {
@@ -2184,6 +2197,16 @@ export default function App() {
       return;
     }
 
+
+    if (resolvedCommandId === "open-workspace-graph") {
+      setGraphPanelOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-embeddings-page") {
+      setEmbeddingsPageOpen(true);
+      return;
+    }
 
     if (resolvedCommandId === "open-tasks-panel") {
       setTasksPanelOpen(true);
@@ -3457,6 +3480,17 @@ export default function App() {
           </Suspense>
         </div>
       )}
+
+      {embeddingsPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Embeddings Engine…</div>}>
+            <EmbeddingsPage
+              onBack={() => setEmbeddingsPageOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
 
       </div>
       <GlobalTooltip />
