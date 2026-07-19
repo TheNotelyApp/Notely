@@ -50,21 +50,26 @@ class ConversationStore {
   // --- Messages ------------------------------------------------
 
   getMessages(conversationId) {
-    return this.db.prepare(
+    const rows = this.db.prepare(
       'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC'
     ).all(conversationId);
+    return rows.map(r => ({
+      ...r,
+      metadata: r.metadata ? JSON.parse(r.metadata) : null
+    }));
   }
 
-  addMessage(conversationId, role, content) {
+  addMessage(conversationId, role, content, metadata = null) {
     const id = randomUUID();
     const now = new Date().toISOString();
+    const metadataStr = metadata ? JSON.stringify(metadata) : null;
     this.db.prepare(
-      'INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).run(id, conversationId, role, content, now);
+      'INSERT INTO messages (id, conversation_id, role, content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(id, conversationId, role, content, metadataStr, now);
     // Touch parent conversation timestamp
     this.db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?')
       .run(now, conversationId);
-    return { id, conversation_id: conversationId, role, content, created_at: now };
+    return { id, conversation_id: conversationId, role, content, metadata, created_at: now };
   }
 
   // --- Candidate Knowledge -------------------------------------

@@ -22,6 +22,7 @@ const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
 const KnowledgeGraph = lazy(() => import("./components/KnowledgeGraph"));
 const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
 const AIPersonasManager = lazy(() => import("./components/AIPersonasManager"));
+const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
@@ -345,6 +346,7 @@ export default function App() {
     graphPanelOpen, setGraphPanelOpen,
     embeddingsPageOpen, setEmbeddingsPageOpen,
     personasPageOpen, setPersonasPageOpen,
+    healthPageOpen, setHealthPageOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
     tasksPanelOpen, setTasksPanelOpen,
     allTasksPanelOpen, setAllTasksPanelOpen,
@@ -1693,6 +1695,16 @@ export default function App() {
 
       if (action === "ai-detect-patterns") {
         handleAIPatterns();
+        return;
+      }
+
+      if (action === "open-personas-page") {
+        setPersonasPageOpen(true);
+        return;
+      }
+
+      if (action === "open-health-page") {
+        setHealthPageOpen(true);
         return;
       }
 
@@ -3512,6 +3524,16 @@ export default function App() {
           <Suspense fallback={<div className="lazy-loading">Loading Personas…</div>}>
             <AIPersonasManager
               onBack={() => setPersonasPageOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {healthPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
+            <AIHealthPage
+              onBack={() => setHealthPageOpen(false)}
             />
           </Suspense>
         </div>

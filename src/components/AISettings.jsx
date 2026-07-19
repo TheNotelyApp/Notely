@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Key, Save, Trash2, X, Zap, AlertCircle, Eye, EyeOff, Download, Database } from 'lucide-react';
+import { Key, Save, Trash2, Zap, AlertCircle, Eye, EyeOff, Download, Database } from 'lucide-react';
 import AppInput from './AppInput';
-import AppIconButton from './AppIconButton';
 import AppSelect from './AppSelect';
 import "../styles/AISettings.css";
 import OverlayDialog from './OverlayDialog';
@@ -20,8 +19,6 @@ import {
   aiDownloadModel,
   onModelDownloadProgress
 } from '../services/electronService';
-
-
 
 const defaultPreferences = {
   enablePatternLearning: true,
@@ -55,7 +52,6 @@ export const AISettingsContent = ({ _onClose }) => {
   const [hfToken, setHfToken] = useState('');
   const [hfConfigured, setHfConfigured] = useState(false);
   const [selectedModel, setSelectedModel] = useState('');
-  const [embeddingStaleness, setEmbeddingStaleness] = useState(null);
   const [plaintextKey, setPlaintextKey] = useState('');
   const [showPlaintext, setShowPlaintext] = useState(false);
   const [hfPlaintextToken, setHfPlaintextToken] = useState('');
@@ -91,61 +87,30 @@ export const AISettingsContent = ({ _onClose }) => {
     };
   }, []);
 
-
   useEffect(() => {
     loadSettings();
-    loadEmbeddingStaleness();
   }, []);
 
   useEffect(() => {
-    if (!selectedProvider || !providers.length) return;
-
-    const loadProviderDetails = async () => {
-      try {
-        setLoading(true);
-        const keyResponse = await aiGetApiKey(selectedProvider);
-        if (keyResponse.success && keyResponse.data?.configured) {
-          setApiKey(String(keyResponse.data?.maskedKey || 'configured'));
-          setPlaintextKey(String(keyResponse.data?.apiKey || ''));
-        } else {
-          setApiKey('');
-          setPlaintextKey('');
-        }
-
-        const modelResponse = await aiGetProviderModel(selectedProvider);
-        const providerEntry = providers.find((p) => p.id === selectedProvider);
-        const providerModels = normalizeProviderModels(providerEntry?.models);
-        setSelectedModel(
-          (modelResponse?.success && modelResponse?.data?.model) ||
-          providerEntry?.defaultModel ||
-          providerModels[0]?.id ||
-          ''
-        );
-      } catch (error) {
-        console.error('[AISettings] Failed to load provider details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProviderDetails();
-  }, [selectedProvider, providers]);
+    if (selectedProvider) {
+      loadProviderKeyAndModel();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProvider]);
 
   const loadSettings = async () => {
     try {
       setLoading(true);
-      setTestResult(null);
+      setStatus('Loading configurations...');
 
-      // Fetch dynamic providers list
-      const providerListRes = await aiGetProviderList();
-      if (providerListRes.success && providerListRes.data) {
-        setProviders(providerListRes.data);
+      const listResponse = await aiGetProviderList();
+      if (listResponse.success && listResponse.data) {
+        setProviders(listResponse.data);
       }
 
-      // Load preferences first
       const prefsResponse = await aiGetPreferences();
       if (prefsResponse.success && prefsResponse.data) {
-        setPreferences({ ...defaultPreferences, ...prefsResponse.data });
+        setPreferences((prev) => ({ ...prev, ...prefsResponse.data }));
       }
 
       let activeProvider = prefsResponse.success && prefsResponse.data?.aiProvider;
@@ -159,19 +124,6 @@ export const AISettingsContent = ({ _onClose }) => {
       }
 
       setSelectedProvider(activeProvider);
-      setPreferences((prev) => ({ ...prev, aiProvider: activeProvider }));
-
-      const hfResponse = await aiGetApiKey('huggingface');
-      if (hfResponse.success && hfResponse.data?.configured) {
-        setHfToken(String(hfResponse.data?.maskedKey || 'configured'));
-        setHfPlaintextToken(String(hfResponse.data?.apiKey || ''));
-        setHfConfigured(true);
-      } else {
-        setHfToken('');
-        setHfPlaintextToken('');
-        setHfConfigured(false);
-      }
-
       setStatus('');
     } catch (error) {
       setStatus(`Error loading settings: ${error.message}`);
@@ -180,8 +132,28 @@ export const AISettingsContent = ({ _onClose }) => {
     }
   };
 
-  const loadEmbeddingStaleness = async () => {
-    setEmbeddingStaleness(null);
+  const loadProviderKeyAndModel = async () => {
+    if (!selectedProvider) return;
+    try {
+      const keyResponse = await aiGetApiKey(selectedProvider);
+      if (keyResponse.success && keyResponse.data?.configured) {
+        setApiKey(String(keyResponse.data?.maskedKey || ''));
+        setPlaintextKey(String(keyResponse.data?.apiKey || ''));
+      } else {
+        setApiKey('');
+        setPlaintextKey('');
+      }
+
+      const modelResponse = await aiGetProviderModel(selectedProvider);
+      if (modelResponse.success && modelResponse.data?.model) {
+        setSelectedModel(modelResponse.data.model);
+      } else {
+        const providerEntry = providers.find((p) => p.id === selectedProvider);
+        setSelectedModel(providerEntry?.defaultModel || '');
+      }
+    } catch (err) {
+      console.warn('[AI Settings] Failed to load provider details:', err.message);
+    }
   };
 
   const handleSaveAPIKey = async () => {
@@ -217,29 +189,6 @@ export const AISettingsContent = ({ _onClose }) => {
     }
   };
 
-  const handleSavePreferences = async () => {
-    try {
-      setLoading(true);
-      const response = await aiSetPreferences(preferences);
-
-      if (response.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'Preferences saved.', type: 'success' }
-        }));
-      } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to save preferences: ${response.error}`, type: 'error' }
-        }));
-      }
-    } catch (error) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error: ${error.message}`, type: 'error' }
-      }));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSaveHfToken = async () => {
     const tokenToSave = showHfPlaintext ? hfPlaintextToken : hfToken;
     if (!tokenToSave || tokenToSave.includes('...')) {
@@ -248,46 +197,25 @@ export const AISettingsContent = ({ _onClose }) => {
       }));
       return;
     }
+
     try {
       setLoading(true);
       const response = await aiSetApiKey('huggingface', tokenToSave);
       if (response.success) {
-        setHfConfigured(true);
-        setHfToken(tokenToSave.substring(0, 5) + '...' + tokenToSave.substring(tokenToSave.length - 4));
-        setHfPlaintextToken(tokenToSave);
         window.dispatchEvent(new CustomEvent('app:toast', {
           detail: { message: 'HuggingFace token saved successfully.', type: 'success' }
         }));
+        setHfToken(tokenToSave.substring(0, 5) + '...' + tokenToSave.substring(tokenToSave.length - 5));
+        setHfPlaintextToken(tokenToSave);
+        setHfConfigured(true);
       } else {
         window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to save token: ${response.error}`, type: 'error' }
+          detail: { message: `Failed to save HuggingFace token: ${response.error}`, type: 'error' }
         }));
       }
     } catch (error) {
       window.dispatchEvent(new CustomEvent('app:toast', {
         detail: { message: `Error: ${error.message}`, type: 'error' }
-      }));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTestHfConnection = async () => {
-    try {
-      setLoading(true);
-      const response = await aiTestConnection('huggingface', showHfPlaintext ? hfPlaintextToken : hfToken);
-      if (response.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'Embeddings connected successfully.', type: 'success' }
-        }));
-      } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Embeddings connection failed: ${response.error || 'Unknown error'}`, type: 'error' }
-        }));
-      }
-    } catch (error) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Embeddings connection error: ${error.message}`, type: 'error' }
       }));
     } finally {
       setLoading(false);
@@ -297,55 +225,93 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleTestConnection = async () => {
     try {
       setLoading(true);
-      const testKey = showPlaintext ? plaintextKey : apiKey;
-      console.log(`[AISettings] Testing connection with key prefix: ${testKey ? testKey.slice(0, 7) : 'empty'}, length: ${testKey ? testKey.length : 0}`);
-      const response = await aiTestConnection(selectedProvider, testKey);
-      if (response.success) {
+      setStatus('Testing connection...');
+      setTestResult(null);
+
+      const payloadKey = showPlaintext ? plaintextKey : apiKey;
+      const res = await aiTestConnection({ provider: selectedProvider, apiKey: payloadKey });
+
+      setTestResult(res);
+      if (res.success) {
+        setStatus(`Connection to ${selectedProvider} successful!`);
         window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Connected successfully to ${selectedProvider}.`, type: 'success' }
+          detail: { message: `Connected to ${selectedProvider} successfully!`, type: 'success' }
         }));
       } else {
+        setStatus(`Connection failed: ${res.error}`);
         window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `${selectedProvider} connection failed: ${response.error || 'Unknown error'}`, type: 'error' }
+          detail: { message: `Connection failed: ${res.error}`, type: 'error' }
         }));
       }
     } catch (err) {
+      setStatus(`Test failed: ${err.message}`);
       window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `${selectedProvider} connection error: ${err.message}`, type: 'error' }
+        detail: { message: `Error: ${err.message}`, type: 'error' }
       }));
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePreferenceChange = (key, value) => {
-    setPreferences((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleClearData = async () => {
+  const handleTestHfConnection = async () => {
     try {
       setLoading(true);
-      const response = await aiClearData();
-      if (response.success) {
-        setStatus('AI cached data cleared.');
-        loadEmbeddingStaleness();
-        setTimeout(() => setStatus(''), 3000);
+      setStatus('Testing HuggingFace connection...');
+      const res = await aiTestConnection({ provider: 'huggingface' });
+      if (res.success) {
+        setStatus('HuggingFace connection successful!');
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'HuggingFace embeddings connected successfully!', type: 'success' }
+        }));
       } else {
-        setStatus(response.error || 'Failed to clear AI data.');
+        setStatus(`HuggingFace connection failed: ${res.error}`);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `HuggingFace connection failed: ${res.error}`, type: 'error' }
+        }));
       }
     } catch (err) {
-      setStatus(err?.message || 'Failed to clear AI data.');
+      setStatus(`HuggingFace test failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const getCapabilityWarnings = () => {
-    const selectedProv = providers.find((p) => p.id === selectedProvider);
-    if (!selectedProv || !selectedProv.capabilities) return [];
+  const handleClearData = async () => {
+    if (!window.confirm('Are you sure you want to clear all learned patterns, cache, and interaction histories?')) {
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await aiClearData();
+      if (res.success) {
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'AI local data cleared successfully.', type: 'success' }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: `Failed to clear data: ${res.error}`, type: 'error' }
+        }));
+      }
+    } catch (err) {
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `Error clearing data: ${err.message}`, type: 'error' }
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handlePreferenceChange = (key, val) => {
+    setPreferences((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const getCapabilityWarnings = () => {
     const warnings = [];
-    if (!selectedProv.capabilities.embeddings && preferences.enableEmbeddings) {
+    if (!selectedProvider) return warnings;
+    const selectedProv = providers.find((p) => p.id === selectedProvider);
+    if (!selectedProv) return warnings;
+
+    if (!selectedProv.capabilities.embeddings) {
       warnings.push({
         title: 'Semantic search unavailable',
         message: `${selectedProv.name} doesn't support embeddings. Use Gemini or configure HuggingFace separately.`
@@ -391,26 +357,45 @@ export const AISettingsContent = ({ _onClose }) => {
           <button
             type="button"
             role="tab"
-            aria-selected={activeSubTab === "tuning"}
-            className={`ai-subtab-btn ${activeSubTab === "tuning" ? "active" : ""}`}
+            aria-selected={activeSubTab === "embeddings"}
+            className={`ai-subtab-btn ${activeSubTab === "embeddings" ? "active" : ""}`}
             style={{
               background: "transparent",
               border: "none",
-              borderBottom: activeSubTab === "tuning" ? "2px solid var(--accent-solid)" : "2px solid transparent",
-              color: activeSubTab === "tuning" ? "var(--text-strong)" : "var(--text-muted)",
+              borderBottom: activeSubTab === "embeddings" ? "2px solid var(--accent-solid)" : "2px solid transparent",
+              color: activeSubTab === "embeddings" ? "var(--text-strong)" : "var(--text-muted)",
               padding: "4px 8px",
               cursor: "pointer",
               fontWeight: "600",
               fontSize: "0.85rem"
             }}
-            onClick={() => setActiveSubTab("tuning")}
+            onClick={() => setActiveSubTab("embeddings")}
           >
-            Tuning & Behavior
+            Embeddings Engine
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubTab === "behavior"}
+            className={`ai-subtab-btn ${activeSubTab === "behavior" ? "active" : ""}`}
+            style={{
+              background: "transparent",
+              border: "none",
+              borderBottom: activeSubTab === "behavior" ? "2px solid var(--accent-solid)" : "2px solid transparent",
+              color: activeSubTab === "behavior" ? "var(--text-strong)" : "var(--text-muted)",
+              padding: "4px 8px",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.85rem"
+            }}
+            onClick={() => setActiveSubTab("behavior")}
+          >
+            Behavior & Tuning
           </button>
         </div>
 
         <div className="ai-settings-content">
-          {activeSubTab === "providers" ? (
+          {activeSubTab === "providers" && (
             <>
               <section className="ai-settings-section ai-settings-setup-card">
                 <div className="ai-settings-setup-head" style={{ marginBottom: "6px" }}>
@@ -470,7 +455,7 @@ export const AISettingsContent = ({ _onClose }) => {
 
                 <div className="api-key-group compact" style={{ marginBottom: "8px" }}>
                   <label htmlFor="api-key" style={{ fontSize: "11px" }}>
-                    {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key
+                    {selectedProvider ? (selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)) : 'API'} Key
                   </label>
                   <div className="api-key-combined-row" style={{ marginTop: "2px" }}>
                     <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
@@ -478,10 +463,10 @@ export const AISettingsContent = ({ _onClose }) => {
                         id="api-key"
                         type={showPlaintext ? "text" : "password"}
                         className="api-key-input"
-                        placeholder="Enter your API key"
+                        placeholder="Enter API Key"
                         value={showPlaintext ? plaintextKey : apiKey}
-                        onChange={(event) => {
-                          const val = event.target.value;
+                        onChange={(e) => {
+                          const val = e.target.value;
                           if (showPlaintext) {
                             setPlaintextKey(val);
                           } else {
@@ -567,179 +552,180 @@ export const AISettingsContent = ({ _onClose }) => {
                     ))}
                   </div>
                 )}
+              </section>
+            </>
+          )}
 
-                <div className="preference-group compact" style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "6px", marginTop: "6px", display: "flex", flexDirection: "column", gap: "2px" }}>
-                  <label htmlFor="active-embedding-provider-select" style={{ fontSize: "11px" }}>Select Embedding Provider</label>
-                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-                    <AppSelect
-                      id="active-embedding-provider-select"
-                      value={preferences.embeddingProvider || 'internal'}
-                      onChange={(e) => {
-                        handlePreferenceChange('embeddingProvider', e.target.value);
-                      }}
-                      disabled={loading}
-                      style={{ flex: 1 }}
-                    >
-                      {(() => {
-                        const selectedProv = providers.find((p) => p.id === selectedProvider);
-                        const supportsEmbeddings = selectedProv?.capabilities?.embeddings;
-                        return supportsEmbeddings ? (
-                          <option value="provider">Active LLM Provider ({selectedProv?.name})</option>
-                        ) : null;
-                      })()}
-                      <option value="huggingface">HuggingFace API</option>
-                      <option value="internal">Local BGE Model (ONNX)</option>
-                    </AppSelect>
+          {activeSubTab === "embeddings" && (
+            <section className="ai-settings-section ai-settings-setup-card">
+              <div className="ai-settings-setup-head" style={{ marginBottom: "6px" }}>
+                <h3>Embeddings Configuration</h3>
+              </div>
+
+              <div className="preference-group compact" style={{ marginBottom: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                <label htmlFor="active-embedding-provider-select" style={{ fontSize: "11px" }}>Select Embedding Provider</label>
+                <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                  <AppSelect
+                    id="active-embedding-provider-select"
+                    value={preferences.embeddingProvider || 'internal'}
+                    onChange={(e) => {
+                      handlePreferenceChange('embeddingProvider', e.target.value);
+                    }}
+                    disabled={loading}
+                    style={{ flex: 1 }}
+                  >
+                    {(() => {
+                      const selectedProv = providers.find((p) => p.id === selectedProvider);
+                      const supportsEmbeddings = selectedProv?.capabilities?.embeddings;
+                      return supportsEmbeddings ? (
+                        <option value="provider">Active LLM Provider ({selectedProv?.name})</option>
+                      ) : null;
+                    })()}
+                    <option value="huggingface">HuggingFace API</option>
+                    <option value="internal">Local BGE Model (ONNX)</option>
+                  </AppSelect>
+                  <button
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        const response = await aiSetPreferences(preferences);
+                        if (response.success) {
+                          window.dispatchEvent(new CustomEvent('app:toast', {
+                            detail: { message: `Embedding provider set to ${preferences.embeddingProvider || 'internal'} and saved.`, type: 'success' }
+                          }));
+                        } else {
+                          window.dispatchEvent(new CustomEvent('app:toast', {
+                            detail: { message: `Failed to save embedding provider: ${response.error}`, type: 'error' }
+                          }));
+                        }
+                      } catch (err) {
+                        window.dispatchEvent(new CustomEvent('app:toast', {
+                          detail: { message: `Error: ${err.message}`, type: 'error' }
+                        }));
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    type="button"
+                  >
+                    <Save size={12} /> Save
+                  </button>
+                </div>
+              </div>
+
+              {preferences.embeddingProvider === 'huggingface' && (
+                <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                  <p className="ai-settings-embeddings-info" style={{ margin: "0 0 6px 0", fontSize: "10px", color: "var(--text-secondary)" }}>
+                    Uses HuggingFace Inference API free tier. Get a token at huggingface.co.
+                  </p>
+                  <label htmlFor="hf-token" style={{ fontSize: "10px" }}>HuggingFace Token (hf_…)</label>
+                  <div className="api-key-input-group" style={{ display: "flex", gap: "5px", width: "100%", marginTop: "2px" }}>
+                    <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+                      <AppInput
+                        id="hf-token"
+                        type={showHfPlaintext ? "text" : "password"}
+                        className="api-key-input"
+                        placeholder="hf_xxxxxxxxxxxxxxxxxx"
+                        value={showHfPlaintext ? hfPlaintextToken : hfToken}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (showHfPlaintext) {
+                            setHfPlaintextToken(val);
+                          } else {
+                            setHfToken(val);
+                            setHfPlaintextToken(val);
+                          }
+                        }}
+                        disabled={loading}
+                        style={{ paddingRight: "26px", width: "100%" }}
+                      />
+                      <button
+                        className="api-key-toggle-eye"
+                        onClick={() => setShowHfPlaintext(!showHfPlaintext)}
+                        type="button"
+                        title={showHfPlaintext ? "Hide Token" : "Show Token"}
+                        style={{
+                          position: "absolute",
+                          right: "6px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--text-muted)",
+                          padding: "4px",
+                          outline: "none"
+                        }}
+                      >
+                        {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                     <button
                       className="btn btn-primary"
-                      onClick={async () => {
-                        try {
-                          setLoading(true);
-                          const response = await aiSetPreferences(preferences);
-                          if (response.success) {
-                            window.dispatchEvent(new CustomEvent('app:toast', {
-                              detail: { message: `Embedding provider set to ${preferences.embeddingProvider || 'internal'} and saved.`, type: 'success' }
-                            }));
-                          } else {
-                            window.dispatchEvent(new CustomEvent('app:toast', {
-                              detail: { message: `Failed to save embedding provider: ${response.error}`, type: 'error' }
-                            }));
-                          }
-                        } catch (err) {
-                          window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Error: ${err.message}`, type: 'error' }
-                          }));
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading}
+                      onClick={handleSaveHfToken}
+                      disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
                       type="button"
                     >
                       <Save size={12} /> Save
                     </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={handleTestHfConnection}
+                      disabled={loading || !hfConfigured}
+                      type="button"
+                    >
+                      <Zap size={12} /> Test
+                    </button>
                   </div>
                 </div>
+              )}
 
-
-
-                {preferences.embeddingProvider === 'huggingface' && (
-                  <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
-                    <p className="ai-settings-embeddings-info" style={{ margin: "0 0 6px 0", fontSize: "10px", color: "var(--text-secondary)" }}>
-                      Uses HuggingFace Inference API free tier. Get a token at huggingface.co.
-                    </p>
-                    <label htmlFor="hf-token" style={{ fontSize: "10px" }}>HuggingFace Token (hf_…)</label>
-                    <div className="api-key-input-group" style={{ display: "flex", gap: "5px", width: "100%", marginTop: "2px" }}>
-
-                      <div className="api-key-input-wrapper" style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
-                        <AppInput
-                          id="hf-token"
-                          type={showHfPlaintext ? "text" : "password"}
-                          className="api-key-input"
-                          placeholder="hf_xxxxxxxxxxxxxxxxxx"
-                          value={showHfPlaintext ? hfPlaintextToken : hfToken}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (showHfPlaintext) {
-                              setHfPlaintextToken(val);
-                            } else {
-                              setHfToken(val);
-                              setHfPlaintextToken(val);
-                            }
-                          }}
-                          disabled={loading}
-                          style={{ paddingRight: "26px", width: "100%" }}
-                        />
-                        <button
-                          className="api-key-toggle-eye"
-                          onClick={() => setShowHfPlaintext(!showHfPlaintext)}
-                          type="button"
-                          title={showHfPlaintext ? "Hide Token" : "Show Token"}
-                          style={{
-                            position: "absolute",
-                            right: "6px",
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "var(--text-muted)",
-                            padding: "4px",
-                            outline: "none"
-                          }}
-                        >
-                          {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                      </div>
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleSaveHfToken}
-                        disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
-                        type="button"
-                      >
-                        <Save size={12} /> Save
-                      </button>
-                      <button
-                        className="btn btn-secondary"
-                        onClick={handleTestHfConnection}
-                        disabled={loading || !hfConfigured}
-                        type="button"
-                      >
-                        <Zap size={12} /> Test
-                      </button>
+              {preferences.embeddingProvider === 'internal' && (
+                <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                  <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
+                  {modelStatus.downloaded ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
+                      <Database size={12} />
+                      <span>bge-small-en-v1.5 model is downloaded and ready offline.</span>
                     </div>
-                  </div>
-                )}
-
-                {preferences.embeddingProvider === 'internal' && (
-                  <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
-                    <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
-                    {modelStatus.downloaded ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
-                        <Database size={12} />
-                        <span>bge-small-en-v1.5 model is downloaded and ready offline.</span>
+                  ) : modelStatus.isDownloading ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                        <span>Downloading local weights...</span>
+                        <span>{modelStatus.progress}%</span>
                       </div>
-                    ) : modelStatus.isDownloading ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
-                          <span>Downloading local weights...</span>
-                          <span>{modelStatus.progress}%</span>
-                        </div>
-                        <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
-                          <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }}></div>
-                        </div>
+                      <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                        <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }}></div>
                       </div>
-                    ) : (
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          try {
-                            const res = await aiDownloadModel();
-                            if (res.success) {
-                              setModelStatus(prev => ({ ...prev, isDownloading: true, progress: 0 }));
-                            }
-                          } catch (err) {
-                            console.error(err);
+                    </div>
+                  ) : (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={async () => {
+                        try {
+                          const res = await aiDownloadModel();
+                          if (res.success) {
+                            setModelStatus(prev => ({ ...prev, isDownloading: true, progress: 0 }));
                           }
-                        }}
-                        style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px" }}
-                      >
-                        <Download size={12} />
-                        <span>Download local model (130MB)</span>
-                      </button>
-                    )}
-                  </div>
-                )}
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px" }}
+                    >
+                      <Download size={12} />
+                      <span>Download local model (130MB)</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
 
-                {embeddingStaleness && (
-                  <div className="ai-settings-embedding-staleness" style={{ marginTop: "12px" }}>
-                    <span>Embeddings: {embeddingStaleness.message}</span>
-                  </div>
-                )}
-              </section>
-            </>
-          ) : (
+          {activeSubTab === "behavior" && (
             <>
               <section className="ai-settings-section ai-settings-features-card" style={{ gridColumn: "1 / -1" }}>
                 <h3>Features</h3>
@@ -748,7 +734,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <input
                       type="checkbox"
                       checked={preferences.enablePatternLearning}
-                      onChange={(event) => handlePreferenceChange('enablePatternLearning', event.target.checked)}
+                      onChange={(e) => handlePreferenceChange('enablePatternLearning', e.target.checked)}
                       disabled={loading}
                     />
                     <span>Learn user patterns</span>
@@ -757,7 +743,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <input
                       type="checkbox"
                       checked={preferences.enableEmbeddings}
-                      onChange={(event) => handlePreferenceChange('enableEmbeddings', event.target.checked)}
+                      onChange={(e) => handlePreferenceChange('enableEmbeddings', e.target.checked)}
                       disabled={loading}
                     />
                     <span>Generate embeddings</span>
@@ -766,7 +752,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <input
                       type="checkbox"
                       checked={preferences.enableRelationshipDiscovery}
-                      onChange={(event) => handlePreferenceChange('enableRelationshipDiscovery', event.target.checked)}
+                      onChange={(e) => handlePreferenceChange('enableRelationshipDiscovery', e.target.checked)}
                       disabled={loading}
                     />
                     <span>Discover relationships</span>
@@ -774,12 +760,11 @@ export const AISettingsContent = ({ _onClose }) => {
                 </div>
               </section>
 
-
               <section className="ai-settings-section ai-settings-generation-card" style={{ gridColumn: "1 / -1" }}>
                 <h3>Generation</h3>
                 <div className="ai-settings-range-row">
                   <div className="ai-settings-range-label">
-                    <span>Max tokens</span>
+                    <span>Context Token Budget (max tokens)</span>
                     <strong>{preferences.maxTokensPerQuery}</strong>
                   </div>
                   <AppInput
@@ -788,7 +773,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     max="8192"
                     step="256"
                     value={preferences.maxTokensPerQuery}
-                    onChange={(event) => handlePreferenceChange('maxTokensPerQuery', parseInt(event.target.value, 10))}
+                    onChange={(e) => handlePreferenceChange('maxTokensPerQuery', parseInt(e.target.value, 10))}
                     disabled={loading}
                     className="slider"
                   />
@@ -804,7 +789,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     max="1"
                     step="0.1"
                     value={preferences.temperature}
-                    onChange={(event) => handlePreferenceChange('temperature', parseFloat(event.target.value))}
+                    onChange={(e) => handlePreferenceChange('temperature', parseFloat(e.target.value))}
                     disabled={loading}
                     className="slider"
                   />
@@ -812,7 +797,12 @@ export const AISettingsContent = ({ _onClose }) => {
                 <div className="ai-settings-inline-actions compact">
                   <button
                     className="btn btn-primary"
-                    onClick={handleSavePreferences}
+                    onClick={async () => {
+                      setLoading(true);
+                      await aiSetPreferences(preferences);
+                      setLoading(false);
+                      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Preferences saved.', type: 'success' } }));
+                    }}
                     disabled={loading}
                     type="button"
                   >
@@ -825,12 +815,11 @@ export const AISettingsContent = ({ _onClose }) => {
                 <div className="ai-settings-storage-meta">
                   <div className="ai-settings-meta-pill">Local only</div>
                   <div className="ai-settings-meta-pill">SQLite memory</div>
-                  <div className="ai-settings-meta-pill">Private persona</div>
                 </div>
                 <div className="data-management compact">
                   <div className="ai-settings-storage-copy">
                     <strong>Data paths</strong>
-                    <span><code>.notes-app/app.sqlite</code></span>
+                    <span><code>.notes-app/ai-memory.db</code></span>
                     <span><code>%APPDATA%/Notely/ai-config.json</code></span>
                   </div>
                   <button
@@ -850,34 +839,10 @@ export const AISettingsContent = ({ _onClose }) => {
   );
 };
 
-export const AISettings = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
+export default function AISettings({ open, onClose }) {
   return (
-    <OverlayDialog
-      open={isOpen}
-      onClose={onClose}
-      ariaLabel="AI settings"
-      cardClassName="ai-settings-dialog-card"
-    >
-      <div className="overlay-dialog-header ai-settings-dialog-header">
-        <div className="ai-settings-title-group">
-          <h2>AI Settings</h2>
-          <p>Connect providers, tune behavior, and manage local AI data.</p>
-        </div>
-        <AppIconButton onClick={onClose} aria-label="Close AI settings">
-          <X size={16} />
-        </AppIconButton>
-      </div>
-
-      <AISettingsContent onClose={onClose} />
-
-      <div className="ai-settings-footer">
-        <button className="btn btn-secondary" onClick={onClose} type="button">
-          <X size={12} /> Close
-        </button>
-      </div>
+    <OverlayDialog open={open} onClose={onClose} title="AI Settings">
+      <AISettingsContent _onClose={onClose} />
     </OverlayDialog>
   );
-};
-
-export default AISettings;
+}

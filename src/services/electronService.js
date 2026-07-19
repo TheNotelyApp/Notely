@@ -1162,10 +1162,10 @@ export async function aiGetMessages(conversationId) {
   return api.aiGetMessages({ conversationId });
 }
 
-export async function aiAddMessage(conversationId, role, content) {
+export async function aiAddMessage(conversationId, role, content, metadata = null) {
   const api = getNotesApi();
   if (typeof api.aiAddMessage !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiAddMessage({ conversationId, role, content });
+  return api.aiAddMessage({ conversationId, role, content, metadata });
 }
 
 // ─── Phase 5: Personas ────────────────────────────────────────────────────

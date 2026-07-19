@@ -7,6 +7,8 @@ import {
   aiDetectPatterns,
   aiGenerateEmbeddings,
   aiGetHealth,
+  aiCreateConversation,
+  aiAddMessage,
 } from "../services/electronService";
 import {
   buildAIContextSummary,
@@ -41,6 +43,7 @@ export function useAIAssistant({
   });
   const [aiPaletteIntent, setAiPaletteIntent] = useState(() => normalizePaletteIntent());
   const [aiChatMessages, setAiChatMessages] = useState([]);
+  const currentConversationIdRef = useRef(null);
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [activeProvider, setActiveProvider] = useState("");
   const [aiPanelVisible, setAiPanelVisible] = useState(() => {
@@ -293,6 +296,7 @@ export function useAIAssistant({
       return {
         response,
         text: resultText,
+        trace: response?.data?.trace || [],
         scopeLabel: resolvedTarget.scopeLabel,
       };
     } catch (err) {
@@ -337,23 +341,54 @@ export function useAIAssistant({
 
     setAiChatMessages((currentMessages) => [...currentMessages, userEntry]);
 
+    // Lazily create a conversation session on first message
+    if (!currentConversationIdRef.current) {
+      try {
+        const convResp = await aiCreateConversation(
+          current?.title ? `Chat: ${current.title}` : "New Chat",
+          activePersona?.id || "default"
+        );
+        if (convResp?.success) {
+          currentConversationIdRef.current = convResp.data?.id;
+        }
+      } catch {
+        // Non-fatal — chat still works, just not persisted
+      }
+    }
+
+    // Persist user message
+    if (currentConversationIdRef.current) {
+      aiAddMessage(currentConversationIdRef.current, "user", message).catch(() => {});
+    }
+
     try {
       const result = await handleAIQuery({
         query: message,
         target: scope,
         systemPrompt: personaPrompt || activePersona?.prompt || null,
       });
+      const assistantText = result?.text || "";
       setAiChatMessages((currentMessages) => [
         ...currentMessages,
         {
           id: `assistant-${Date.now()}-${Math.random().toString(16).slice(2)}`,
           role: "assistant",
-          text: result?.text || "",
+          text: assistantText,
           scope,
           scopeLabel: result?.scopeLabel || scope,
           avatar: activePersona?.avatar || "🤖",
         },
       ]);
+      // Persist assistant message with trace metadata
+      if (currentConversationIdRef.current) {
+        const trace = result?.trace || [];
+        aiAddMessage(
+          currentConversationIdRef.current,
+          "assistant",
+          assistantText,
+          trace.length > 0 ? { trace } : null
+        ).catch(() => {});
+      }
       return result;
     } catch {
       return null;
@@ -363,6 +398,7 @@ export function useAIAssistant({
   function handleClearAIChat() {
     setAiChatMessages([]);
     setAiQueryError("");
+    currentConversationIdRef.current = null;
   }
 
   function handleRejectInlineGhost() {

@@ -125,6 +125,7 @@ class Agent {
         result: result.result,
         type: result.type,
         tokensUsed: result.tokensUsed,
+        trace: result.trace || [],
         context: queryContext
       };
     } catch (error) {

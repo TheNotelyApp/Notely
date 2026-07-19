@@ -1011,7 +1011,7 @@ async function handleConversationGetMessages(_event, payload) {
 
 async function handleConversationAddMessage(_event, payload) {
   try {
-    const msg = _getStore().addMessage(payload?.conversationId, payload?.role, payload?.content);
+    const msg = _getStore().addMessage(payload?.conversationId, payload?.role, payload?.content, payload?.metadata || null);
     return new AIQueryResponse(true, msg);
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);

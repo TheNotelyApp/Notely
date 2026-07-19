@@ -93,6 +93,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
 
       const store = new ConversationStore(memoryDB, personaDB);
       aiAgent.conversationStore = store;
+      aiAgent.personaDB = personaDB;
 
       if (aiAgent.embeddingDb && aiAgent.embeddingService) {
         const semanticRetriever = new SemanticRetriever(aiAgent.embeddingDb, aiAgent.embeddingService);

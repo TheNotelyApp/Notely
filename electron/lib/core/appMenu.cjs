@@ -622,6 +622,10 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "open-personas-page")
         },
         {
+          label: "Diagnostics",
+          click: () => sendMenuAction(win, "open-health-page")
+        },
+        {
           label: "Build Relationship Graph",
           click: () => sendMenuAction(win, "ai-build-graph")
         },

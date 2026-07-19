@@ -49,6 +49,7 @@ class MemoryDB {
         conversation_id TEXT NOT NULL,
         role TEXT NOT NULL,
         content TEXT NOT NULL,
+        metadata TEXT DEFAULT NULL,
         created_at TEXT NOT NULL,
         FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
       );
@@ -66,6 +67,13 @@ class MemoryDB {
       CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
       CREATE INDEX IF NOT EXISTS idx_ck_status ON candidate_knowledge(status);
     `);
+
+    // Migration: add metadata column if it doesn't exist yet (existing DBs)
+    try {
+      this.db.exec('ALTER TABLE messages ADD COLUMN metadata TEXT DEFAULT NULL');
+    } catch {
+      // Column already exists — safe to ignore
+    }
   }
 
   close() {

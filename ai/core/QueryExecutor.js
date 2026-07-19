@@ -20,13 +20,16 @@ class QueryExecutor {
       const { generateText } = await import('ai');
       const tools = await getTools(this.agent);
 
-      let systemPrompt = context.systemPrompt || `You are a helpful AI assistant for Notely, a modern markdown notes application.
-You have access to the workspace note files via tools. Always use these tools to search, find, and read notes when asked.
-Workspace context:
-- Workspace folder: ${this.agent.workspaceRoot || 'none'}
-- Current open note path: ${context.currentFile || 'none'}`;
+      // 1. Build core persona instructions
+      let systemPrompt = context.systemPrompt || 'You are a helpful AI assistant for Notely, a modern markdown notes application.';
 
-      systemPrompt += `\n\nCRITICAL TOOL CALLING RULES:
+      // 2. ALWAYS append workspace context and tools access rules so llama knows they are available
+      systemPrompt += `\n\nWorkspace context:
+- Workspace folder: ${this.agent.workspaceRoot || 'none'}
+- Current open note path: ${context.currentFile || 'none'}
+- You have access to the workspace note files via tools. Always use these tools to search, find, and read notes when asked.
+
+CRITICAL TOOL CALLING RULES:
 1. When calling search_notes, you MUST provide a non-empty string for the "query" parameter.
 2. When calling read_note, you MUST provide the absolute file path string for the "file_path" parameter.
 3. Never call tools with empty or null arguments. If you do not have the required parameter values, ask the user to clarify first.`;
@@ -117,6 +120,7 @@ Workspace context:
         let steps = 0;
         let finalResponseText = '';
         let totalTokens = 0;
+        const trace = [];
 
         while (steps < 5) {
           const chatCompletion = await groq.chat.completions.create({
@@ -141,6 +145,8 @@ Workspace context:
               console.log(`[Groq Native] Executing tool ${name} with args:`, toolCall.function.arguments);
               
               const output = await runTool(name, args);
+
+              trace.push({ name, args, output: output.slice(0, 500) });
               
               messages.push({
                 role: 'tool',
@@ -155,11 +161,17 @@ Workspace context:
             break;
           }
         }
+        // Write back to provider so health diagnostics see real stats
+        if (llm.usageStats) {
+          llm.usageStats.tokensUsedTotal += totalTokens;
+          llm.usageStats.requestsTotal += 1;
+        }
 
         return {
           type: 'query',
           result: finalResponseText,
-          tokensUsed: totalTokens
+          tokensUsed: totalTokens,
+          trace
         };
       }
       const result = await generateText({
