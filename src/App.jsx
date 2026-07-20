@@ -2579,7 +2579,9 @@ export default function App() {
           activeProvider={activeProvider}
           activePersona={activePersona}
           setActivePersona={setActivePersona}
+          workspaceStorageScope={workspaceStorageScope}
         />
+
       </Suspense>
     </ErrorBoundary>
   ) : null;

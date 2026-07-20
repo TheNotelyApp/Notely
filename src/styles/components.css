@@ -1682,7 +1682,7 @@
 }
 
 .workspace.with-ai-chat {
-  grid-template-columns: minmax(0, 1fr) 190px 340px;
+  grid-template-columns: minmax(0, 1fr) 190px 380px;
 }
 
 .workspace.outline-panel-disabled {
@@ -1690,7 +1690,7 @@
 }
 
 .workspace.with-ai-chat.outline-panel-disabled {
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 380px;
 }
 
 .workspace.outline-panel-collapsed {
@@ -1698,7 +1698,7 @@
 }
 
 .workspace.with-ai-chat.outline-panel-collapsed {
-  grid-template-columns: minmax(0, 1fr) 28px 340px;
+  grid-template-columns: minmax(0, 1fr) 28px 380px;
 }
 
 .workspace.focus-mode {
@@ -1706,7 +1706,7 @@
 }
 
 .workspace.with-ai-chat.focus-mode {
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 380px;
 }
 
 .workspace.focus-mode .outline-panel {
@@ -1897,13 +1897,13 @@
 
 .ai-chat-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 8px;
-  padding: 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid #dbe6e1;
   background: linear-gradient(135deg, #17343a 0%, #2f5d62 100%);
   color: var(--text-on-accent);
+  flex-shrink: 0;
 }
 
 .ai-chat-title {
@@ -1984,8 +1984,8 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: 5px;
+  padding: 8px;
 }
 
 .ai-chat-empty {
@@ -2036,8 +2036,8 @@
 .ai-chat-message {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  gap: 3px;
+  padding: 6px 10px;
   border-radius: var(--radius-xl);
   border: none;
   max-width: 85%;
@@ -2064,11 +2064,19 @@
 
 .ai-chat-message-body {
   color: inherit;
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11.5px;
+  line-height: 1.4;
   white-space: pre-wrap;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   word-break: break-word;
+}
+
+.ai-chat-message-body p {
+  margin: 0 !important;
+}
+
+.ai-chat-message-body p + p {
+  margin-top: 6px !important;
 }
 
 .ai-chat-apply-row {

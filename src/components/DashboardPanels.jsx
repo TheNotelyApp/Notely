@@ -83,6 +83,15 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
     );
   }
 
+  function renderBarSectionToggle(onOpenPanel) {
+    return (
+      <button type="button" className="dashboard-inline-action" onClick={onOpenPanel}>
+        View all
+        <ArrowRight size={12} aria-hidden="true" />
+      </button>
+    );
+  }
+
   if (loading) return null;
 
   if (layout === "rail") {
@@ -297,7 +306,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
         <article className="dashboard-bar-section recent">
           <div className="dashboard-panel-head">
             <h3>Recent Notes</h3>
-            {renderSectionToggle(recentNotes, onOpenRecentNotes)}
+            {renderBarSectionToggle(onOpenRecentNotes)}
           </div>
           {recentSlice.length ? (
             <ul className="dashboard-recent-list compact">
@@ -318,7 +327,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
         <article className="dashboard-bar-section favorites">
           <div className="dashboard-panel-head">
             <h3>Favorites</h3>
-            {renderSectionToggle(favoriteSlice, onOpenFavorites)}
+            {renderBarSectionToggle(onOpenFavorites)}
           </div>
           {visibleFavorites.length ? (
             <ul className="dashboard-recent-list compact">
@@ -340,6 +349,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
           <div className="dashboard-panel-head">
             <h3>Open Tasks</h3>
             <div className="dashboard-task-head-actions">
+              {taskCounts.total > 0 && (
                 <button
                   type="button"
                   className="dashboard-task-badge dashboard-task-summary"
@@ -352,7 +362,8 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
                   <span className="dashboard-task-separator" aria-hidden="true">|</span>
                   <span className="task-closed">{taskCounts.closed}</span>
                 </button>
-              {renderSectionToggle(allOpenTasks, onOpenAllTasks)}
+              )}
+              {renderBarSectionToggle(onOpenAllTasks)}
             </div>
           </div>
           {openTasks.length ? (

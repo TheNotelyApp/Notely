@@ -2434,7 +2434,7 @@
     linear-gradient(180deg, #f8fcfa 0%, #eef5f2 100%);
   box-shadow: 0 14px 28px rgba(16, 34, 36, 0.1);
   padding: var(--space-4);
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .landing-notes-pane {

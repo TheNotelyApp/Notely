@@ -295,7 +295,6 @@ export function useAIAssistant({
         "AI query completed."
       );
 
-      notify(resultText.length > 180 ? `${resultText.slice(0, 177)}...` : resultText, "success");
       return {
         response,
         text: resultText,

@@ -751,10 +751,10 @@ export function DocumentDetail({
   const [aiSidebarWidth, setAiSidebarWidth] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
     key: "notes:ai-sidebar-width",
-    defaultValue: 340,
+    defaultValue: 380,
     normalize: (value) => {
       const parsed = parseInt(value, 10);
-      return Number.isNaN(parsed) ? 340 : parsed;
+      return Number.isNaN(parsed) ? 380 : parsed;
     },
   });
   const workspaceLayoutRef = useRef(null);
@@ -2134,7 +2134,11 @@ export function DocumentDetail({
             onKeyDown={handleAiResizerKeyDown}
           />
         )}
-        {aiSidebar}
+        {aiSidebar && (
+          <div style={{ width: `${aiSidebarWidth}px`, flexShrink: 0, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {aiSidebar}
+          </div>
+        )}
         {!aiPanelVisible && aiEnabled ? (
           <button
             type="button"

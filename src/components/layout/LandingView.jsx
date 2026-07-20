@@ -49,7 +49,7 @@ export function LandingView({
   isAIConfigured = false,
   onShowAI = null,
 }) {
-  const [aiSidebarWidth, setAiSidebarWidth] = React.useState(300);
+  const [aiSidebarWidth, setAiSidebarWidth] = React.useState(380);
 
   const startAiResize = (pointerDownEvent) => {
     pointerDownEvent.preventDefault();
@@ -82,7 +82,8 @@ export function LandingView({
             justifyContent: "space-between",
             background: "var(--surface-accent)",
             border: "1px solid var(--border-soft)",
-            borderRadius: "var(--radius-md)",
+            borderBottomLeftRadius: "var(--radius-md)",
+            borderBottomRightRadius: "var(--radius-md)",
             padding: "var(--space-3) var(--space-5)",
             fontSize: "var(--font-size-body-sm)",
             color: "var(--accent-strong)",
@@ -252,22 +253,11 @@ export function LandingView({
               tabIndex={0}
               onPointerDown={startAiResize}
             />
-            <div style={{ width: `${aiSidebarWidth}px`, flexShrink: 0, height: "100%", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border-soft)", background: "var(--surface-bg)" }}>
+            <div style={{ width: `${aiSidebarWidth}px`, flexShrink: 0, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid var(--border-soft)", background: "var(--surface-bg)" }}>
               {aiSidebar}
             </div>
           </>
         )}
-        {!aiPanelVisible && isAIConfigured ? (
-          <button
-            type="button"
-            className="ai-panel-reveal"
-            onClick={onShowAI}
-            data-tooltip="Show AI panel"
-            aria-label="Show AI panel"
-          >
-            AI
-          </button>
-        ) : null}
       </div>
     </div>
   );
