@@ -56,7 +56,7 @@ let handlersRegistered = false;
 
 const MAX_QUERY_LENGTH = 8000;
 const MAX_CONTEXT_BYTES = 200000;
-const MAX_API_KEY_LENGTH = 512;
+const MAX_API_KEY_LENGTH = 2048;
 const MIN_API_KEY_LENGTH = 8;
 
 // Derived from providerRegistry — the single source of truth for valid provider ids.

@@ -449,7 +449,10 @@ export function useAIAssistant({
 
   useEffect(() => {
     setInlineGhostSuggestion(null);
+    // Clearing the chat messages array on document or tab switch guarantees
+    // the main workspace chat remains separate from note-specific chats.
     setAiChatMessages([]);
+    currentConversationIdRef.current = null;
     const editorContext = aiEditorRef.current?.getContext?.() || null;
     const summary = buildAIContextSummary(editorContext, current);
     setAiContextSummary(summary);

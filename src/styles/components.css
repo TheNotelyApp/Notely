@@ -1785,7 +1785,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  padding-bottom: 16px;
+  height: 100%;
 }
 
 .ai-panel-reveal {

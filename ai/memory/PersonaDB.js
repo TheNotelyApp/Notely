@@ -12,7 +12,7 @@ const BUILTIN_PERSONAS = [
     description: 'Balanced general-purpose assistant.',
     type: 'builtin',
     version: '1.0',
-    avatar: '??',
+    avatar: '💬',
     prompt: 'You are a helpful assistant integrated into Notely, a markdown note-taking app. Answer clearly and concisely, referencing workspace content when relevant.'
   },
   {
@@ -21,7 +21,7 @@ const BUILTIN_PERSONAS = [
     description: 'Narrative-focused, metaphor-rich brainstorming assistant.',
     type: 'builtin',
     version: '1.0',
-    avatar: '??',
+    avatar: '🎨',
     prompt: 'You are a creative writing assistant in Notely. Help the user explore ideas with vivid language, compelling metaphors, narrative flow, and imaginative brainstorming. Embrace unconventional angles.'
   },
   {
@@ -30,7 +30,7 @@ const BUILTIN_PERSONAS = [
     description: 'Strict, logic-driven assistant for code and structured analysis.',
     type: 'builtin',
     version: '1.0',
-    avatar: '??',
+    avatar: '🔬',
     prompt: 'You are a technical analyst assistant in Notely. Respond with precision and structure. Use code blocks, markdown tables, and strict logical reasoning. Avoid informal language. Validate assumptions explicitly.'
   },
   {
@@ -39,7 +39,7 @@ const BUILTIN_PERSONAS = [
     description: 'Cites workspace sources and provides factual, structured analysis.',
     type: 'builtin',
     version: '1.0',
-    avatar: '??',
+    avatar: '🎓',
     prompt: 'You are an academic research assistant in Notely. Cite workspace notes when answering. Prioritize factual accuracy, logical outlines, and structured responses. Flag uncertainty explicitly.'
   }
 ];
@@ -133,7 +133,7 @@ class PersonaDB {
          type=excluded.type, version=excluded.version, avatar=excluded.avatar, prompt=excluded.prompt, updated_at=excluded.updated_at`
     ).run(
       persona.id, persona.name, persona.description ?? '', persona.file_path ?? null,
-      persona.type ?? 'custom', persona.version ?? '1.0', persona.avatar ?? '??', persona.prompt, now, now
+      persona.type ?? 'custom', persona.version ?? '1.0', persona.avatar ?? '👤', persona.prompt, now, now
     );
   }
 
@@ -183,24 +183,32 @@ class PersonaDB {
   }
 
   importFromFile(srcPath) {
-    const { meta, prompt } = PersonaDB.parsePersonaFile(srcPath);
+    try {
+      const { meta, prompt } = PersonaDB.parsePersonaFile(srcPath);
 
-    const id = meta.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const destPath = path.join(this.personasDir, `${id}.md`);
-    fs.copyFileSync(srcPath, destPath);
+      const id = meta.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const destPath = path.join(this.personasDir, `${id}.md`);
+      if (srcPath !== destPath) {
+        fs.copyFileSync(srcPath, destPath);
+      }
 
-    this.save({
-      id,
-      name: meta.name,
-      description: meta.description,
-      file_path: destPath,
-      type: 'custom',
-      version: meta.version,
-      avatar: meta.avatar || '??',
-      prompt
-    });
+      this.save({
+        id,
+        name: meta.name,
+        description: meta.description,
+        file_path: destPath,
+        type: 'custom',
+        version: meta.version,
+        avatar: meta.avatar || '👤',
+        prompt
+      });
 
-    return { id, name: meta.name };
+      return { id, name: meta.name };
+    } catch (err) {
+      log.error(`Failed to import persona from file: ${srcPath}`, err);
+      // Return a placeholder representation
+      return { id: 'invalid', name: 'Invalid Persona File' };
+    }
   }
 
   exportToFile(id, destPath) {
@@ -213,7 +221,7 @@ class PersonaDB {
       `description: "${row.description}"`,
       `type: "${row.type}"`,
       `version: "${row.version}"`,
-      `avatar: "${row.avatar || '??'}"`,
+      `avatar: "${row.avatar || '👤'}"`,
       '---',
       '',
       row.prompt

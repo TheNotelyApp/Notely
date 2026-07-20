@@ -3,7 +3,7 @@ const { createLogger } = require('../core/logger');
 const log = createLogger('SemanticRetriever');
 
 /**
- * SemanticRetriever — cosine similarity vector search over ai-embeddings.db
+ * SemanticRetriever - cosine similarity vector search over ai-embeddings.db
  * Exposed as an LLM tool via ContextEngine.
  */
 class SemanticRetriever {
@@ -24,7 +24,7 @@ class SemanticRetriever {
    */
   async search(query, topK = 5) {
     if (!this.embeddingService.isAvailable()) {
-      log.warn('Embedding service not available — semantic search skipped.');
+      log.warn('Embedding service not available - semantic search skipped.');
       return [];
     }
 
@@ -36,9 +36,9 @@ class SemanticRetriever {
       return [];
     }
 
-    // Load all indexed chunks that have an embedding
+    // Load only IDs, paths, and vectors first to minimize memory allocation overhead
     const rows = this.embeddingDB.db.prepare(
-      'SELECT id, note_path, content, embedding FROM chunks WHERE embedding IS NOT NULL'
+      'SELECT id, note_path, embedding FROM chunks WHERE embedding IS NOT NULL'
     ).all();
 
     if (!rows.length) return [];
@@ -46,14 +46,28 @@ class SemanticRetriever {
     const scored = rows.map(row => {
       const chunkVec = this._deserialize(row.embedding);
       return {
+        id: row.id,
         note_path: row.note_path,
-        content: row.content,
         score: this._cosine(queryVec, chunkVec)
       };
     });
 
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, topK);
+    const topScored = scored.slice(0, topK);
+
+    // Retrieve note content only for the top scored chunks
+    const results = [];
+    const stmt = this.embeddingDB.db.prepare('SELECT content FROM chunks WHERE id = ?');
+    for (const item of topScored) {
+      const row = stmt.get(item.id);
+      results.push({
+        note_path: item.note_path,
+        content: row ? row.content : '',
+        score: item.score
+      });
+    }
+
+    return results;
   }
 
   /**
