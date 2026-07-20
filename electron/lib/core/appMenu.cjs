@@ -610,7 +610,7 @@ function buildAppMenuTemplate(win, context = {}) {
         { type: "separator" },
 
         {
-          label: "Show Knowledge Graph",
+          label: "Knowledge Graph",
           click: () => sendMenuAction(win, "open-knowledge-graph")
         },
         {
@@ -621,18 +621,10 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Personas",
           click: () => sendMenuAction(win, "open-personas-page")
         },
+        { type: "separator" },
         {
           label: "Diagnostics",
           click: () => sendMenuAction(win, "open-health-page")
-        },
-        {
-          label: "Build Relationship Graph",
-          click: () => sendMenuAction(win, "ai-build-graph")
-        },
-
-        {
-          label: "Detect Patterns",
-          click: () => sendMenuAction(win, "ai-detect-patterns")
         },
         { type: "separator" },
         {

@@ -777,7 +777,6 @@ export default function App() {
     refreshAIConfiguration,
     handleAIEmbeddings,
     handleAIGraph,
-    handleAIPatterns,
     handleAIClearCache,
     handleOpenAIPalette,
     handleInlineAIRequest,
@@ -1702,10 +1701,6 @@ export default function App() {
         return;
       }
 
-      if (action === "ai-detect-patterns") {
-        handleAIPatterns();
-        return;
-      }
 
       if (action === "open-personas-page") {
         setPersonasPageOpen(true);

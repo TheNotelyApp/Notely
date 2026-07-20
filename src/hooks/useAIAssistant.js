@@ -7,7 +7,6 @@ import {
   onChatStreamChunk,
   aiBuildGraph,
   aiClearData,
-  aiDetectPatterns,
   aiGenerateEmbeddings,
   aiGetHealth,
   aiCreateConversation,
@@ -207,22 +206,6 @@ export function useAIAssistant({
     }
   }
 
-  async function handleAIPatterns() {
-    setAiLoading(true);
-    notify("Detecting patterns...", "info");
-    try {
-      const result = await aiDetectPatterns();
-      if (result?.success) {
-        notify("Patterns detected successfully!", "success");
-      } else {
-        notify(result?.error || "Failed to detect patterns", "error");
-      }
-    } catch (err) {
-      notify(err?.message || "Failed to detect patterns", "error");
-    } finally {
-      setAiLoading(false);
-    }
-  }
 
   async function handleAIClearCache() {
     setAiLoading(true);
@@ -605,7 +588,6 @@ export function useAIAssistant({
     refreshAIConfiguration,
     handleAIEmbeddings,
     handleAIGraph,
-    handleAIPatterns,
     handleAIClearCache,
     handleOpenAIPalette,
     handleInlineAIRequest,
