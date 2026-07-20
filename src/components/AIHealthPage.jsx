@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { aiGetHealth, aiListConversations, aiGetMessages } from '../services/electronService';
+import { renderMarkdown } from '../utils/renderUtils';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
 import '../styles/AIHealthPage.css';
@@ -56,13 +57,13 @@ function ToolCallBlock({ step }) {
       <button className="ahp-tool-call-header" onClick={() => setOpen(o => !o)} type="button">
         <Wrench size={12} className="ahp-tool-icon" />
         <span className="ahp-tool-name">{step.name}</span>
-        <span className="ahp-tool-args-preview">{JSON.stringify(step.args).slice(0, 60)}</span>
+        <span className="ahp-tool-args-preview">{JSON.stringify(step.args || {}).slice(0, 60)}</span>
         <ChevronRight size={12} className={`ahp-tool-chevron${open ? ' open' : ''}`} />
       </button>
       {open && (
         <div className="ahp-tool-body">
           <div className="ahp-tool-section-label">Args</div>
-          <pre className="ahp-tool-pre">{JSON.stringify(step.args, null, 2)}</pre>
+          <pre className="ahp-tool-pre">{JSON.stringify(step.args || {}, null, 2)}</pre>
           <div className="ahp-tool-section-label">Output</div>
           <pre className="ahp-tool-pre">{step.output || '(empty)'}</pre>
         </div>
@@ -78,7 +79,7 @@ function MessageBubble({ msg }) {
     <div className={`ahp-bubble-wrap${isUser ? ' user' : ' assistant'}`}>
       <div className={`ahp-bubble${isUser ? ' user' : ' assistant'}`}>
         <div className="ahp-bubble-role">{isUser ? '👤 User' : '🤖 Assistant'}</div>
-        <div className="ahp-bubble-content">{msg.content}</div>
+        <div className="ahp-bubble-content markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
         {trace.length > 0 && (
           <div className="ahp-tool-calls">
             <div className="ahp-tool-calls-label">
@@ -183,10 +184,16 @@ export default function AIHealthPage({ onBack }) {
           </span>
           <span className="detail-breadcrumb-current">AI Health &amp; Diagnostics</span>
         </nav>
-        <button onClick={load} disabled={loading} className="btn btn-secondary ahp-refresh-btn" type="button">
-          <RefreshCw size={12} className={loading ? 'spin' : ''} />
-          Refresh
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button onClick={load} disabled={loading} className="btn btn-secondary ahp-refresh-btn" type="button">
+            <RefreshCw size={12} className={loading ? 'spin' : ''} />
+            Refresh
+          </button>
+          <button onClick={onBack} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', height: '28px', padding: '0 10px', fontSize: '12px' }} type="button">
+            <X size={12} />
+            Close
+          </button>
+        </div>
       </div>
 
       <div className="ahp-body">
@@ -216,6 +223,15 @@ export default function AIHealthPage({ onBack }) {
               <div className="ahp-row">
                 <span>Active Provider</span>
                 <strong className="ahp-provider">{health?.activeProvider || '—'}</strong>
+              </div>
+              <div className="ahp-row">
+                <span>Indexer Status</span>
+                <span style={{
+                  color: health?.isIndexing ? 'var(--accent-warning)' : health?.isPaused ? 'var(--text-muted)' : 'var(--accent-solid)',
+                  fontWeight: 600
+                }}>
+                  {health?.isIndexing ? 'Indexing...' : health?.isPaused ? 'Paused' : 'Ready'}
+                </span>
               </div>
             </div>
           </div>

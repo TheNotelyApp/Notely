@@ -53,10 +53,22 @@ function getSubsystemHealth() {
 
   const activeProvider = isInitialized ? (agent.llmRegistry?.getActiveProvider()?.name || 'none') : 'none';
 
+  let isPaused = true;
+  let isIndexing = false;
+  try {
+    const workerManager = require('../../electron/ai/workerManager.cjs');
+    isPaused = workerManager.isPaused === true;
+    isIndexing = workerManager.isWorking === true;
+  } catch (err) {
+    console.error('[AI Health] Failed to load workerManager:', err.message);
+  }
+
   return {
     enabled: isEnabled,
     initialized: isInitialized,
     activeProvider,
+    isPaused,
+    isIndexing,
     database: {
       status: dbStatus,
       memoryDBPath,

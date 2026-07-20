@@ -55,6 +55,14 @@ contextBridge.exposeInMainWorld("notesApi", {
     return () => ipcRenderer.removeListener("window:menu-updated", listener);
   },
   aiQuery: (payload) => ipcRenderer.invoke("ai:query", payload),
+  aiQueryStream: (payload) => ipcRenderer.invoke("ai:query:stream", payload),
+  aiQueryAbort: (payload) => ipcRenderer.invoke("ai:query:abort", payload),
+  onChatStreamChunk: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('ai:chat:chunk', listener);
+    return () => ipcRenderer.removeListener('ai:chat:chunk', listener);
+  },
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
   aiSetApiKey: (payload) => ipcRenderer.invoke("ai:config:set-api-key", payload),
   aiGetPreferences: (payload) => ipcRenderer.invoke("ai:config:get-preferences", payload),

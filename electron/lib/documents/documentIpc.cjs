@@ -354,8 +354,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return parsed;
   });
 
-
-
   registerTrustedHandler("documents:open-in-editor", async (_event, filePath) => {
     const notesRoot = getNotesRoot();
     const resolved = path.resolve(filePath || "");

@@ -16,7 +16,15 @@ import {
   Table,
   Palette
 } from "lucide-react";
-import { pickFolder } from "../services/electronService";
+import { 
+  pickFolder,
+  aiSetApiKey,
+  aiTestConnection,
+  aiGetModelStatus,
+  aiDownloadModel,
+  onModelDownloadProgress,
+  aiSetPreferences
+} from "../services/electronService";
 import notelyMark from "../assets/branding/notely-mark.png";
 import "../styles/OnboardingFlow.css";
 
@@ -38,9 +46,42 @@ export function OnboardingFlow({
   const [aiEnabled, setAiEnabled] = useState(true);
   const [selectedAIProvider, setSelectedAIProvider] = useState("gemini");
   const [enableEmbeddings, setEnableEmbeddings] = useState(true);
+  const [apiKey, setApiKey] = useState("");
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testSuccess, setTestSuccess] = useState(null);
+  const [modelStatus, setModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
 
   const totalSteps = 5;
   const repositoryUrl = "https://github.com/wglabz/notely";
+
+  React.useEffect(() => {
+    if (step !== 4) return;
+    
+    const checkModel = async () => {
+      try {
+        const res = await aiGetModelStatus();
+        if (res.success && res.data) {
+          setModelStatus(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkModel();
+
+    const unsubscribe = onModelDownloadProgress((payload) => {
+      setModelStatus(prev => ({
+        ...prev,
+        isDownloading: true,
+        progress: payload.progress,
+        downloaded: payload.progress === 100
+      }));
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [step]);
 
   const handleBrowseFolder = async () => {
     try {
@@ -357,12 +398,63 @@ export function OnboardingFlow({
                       </label>
                       <select
                         value={selectedAIProvider}
-                        onChange={(e) => setSelectedAIProvider(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedAIProvider(e.target.value);
+                          setApiKey("");
+                          setTestSuccess(null);
+                        }}
                         style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
                       >
                         <option value="gemini">Google Gemini (Default)</option>
                         <option value="groq">Groq (Ultra Fast Open Models)</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                        API Key
+                      </label>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <input
+                          type="password"
+                          placeholder={`Enter ${selectedAIProvider} API Key...`}
+                          value={apiKey}
+                          onChange={(e) => {
+                            setApiKey(e.target.value);
+                            setTestSuccess(null);
+                          }}
+                          style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
+                        />
+                        <button
+                          type="button"
+                          className="btn"
+                          disabled={!apiKey || testingConnection}
+                          onClick={async () => {
+                            setTestingConnection(true);
+                            setTestSuccess(null);
+                            try {
+                              await aiSetApiKey(selectedAIProvider, apiKey);
+                              const res = await aiTestConnection({ provider: selectedAIProvider });
+                              if (res.success) {
+                                setTestSuccess(true);
+                              } else {
+                                setTestSuccess(false);
+                                alert(res.error || "Connection failed.");
+                              }
+                            } catch (err) {
+                              setTestSuccess(false);
+                              alert(err.message);
+                            } finally {
+                              setTestingConnection(false);
+                            }
+                          }}
+                          style={{ padding: "0 12px", height: "35px", boxSizing: "border-box", cursor: "pointer", background: "var(--surface-header)", border: "1px solid var(--border-soft)", color: "var(--text-strong)", borderRadius: "6px" }}
+                        >
+                          {testingConnection ? "Testing..." : "Test Connection"}
+                        </button>
+                      </div>
+                      {testSuccess === true && <div style={{ color: "var(--accent-solid)", fontSize: "12px", marginTop: "4px" }}>✓ Connection successful!</div>}
+                      {testSuccess === false && <div style={{ color: "var(--accent-danger)", fontSize: "12px", marginTop: "4px" }}>✗ Connection failed.</div>}
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
@@ -377,6 +469,53 @@ export function OnboardingFlow({
                         Enable background embeddings (enables Semantic Search)
                       </label>
                     </div>
+
+                    {enableEmbeddings && (
+                      <div style={{ marginTop: "8px", borderTop: "1px solid var(--border-soft)", paddingTop: "8px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <strong style={{ fontSize: "13px" }}>BGE Local Embedding Model</strong>
+                            <p style={{ margin: "2px 0 0 0", fontSize: "11px", color: "var(--text-muted)" }}>
+                              Runs locally on your CPU for secure offline semantic search.
+                            </p>
+                          </div>
+                          {!modelStatus.downloaded && !modelStatus.isDownloading && (
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={async () => {
+                                try {
+                                  await aiDownloadModel();
+                                } catch (err) {
+                                  alert("Download trigger failed: " + err.message);
+                                }
+                              }}
+                              style={{ padding: "6px 12px", fontSize: "12px", cursor: "pointer", background: "var(--accent-solid)", color: "#fff", border: "none", borderRadius: "6px" }}
+                            >
+                              Download Model (~90MB)
+                            </button>
+                          )}
+                        </div>
+
+                        {modelStatus.isDownloading && (
+                          <div style={{ marginTop: "6px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginBottom: "3px" }}>
+                              <span>Downloading...</span>
+                              <span>{modelStatus.progress}%</span>
+                            </div>
+                            <div style={{ width: "100%", height: "4px", background: "var(--background-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }} />
+                            </div>
+                          </div>
+                        )}
+
+                        {modelStatus.downloaded && (
+                          <div style={{ color: "var(--accent-solid)", fontSize: "12px", marginTop: "6px" }}>
+                            ✓ Model downloaded and ready!
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

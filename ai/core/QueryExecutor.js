@@ -9,137 +9,275 @@ class QueryExecutor {
     this.agent = agent;
   }
 
+  async _prepareConfig(query, context) {
+    const llm = this.agent.llmRegistry.getActiveProvider();
+    const model = await llm.getModelInstance();
+    const tools = await getTools(this.agent);
+
+    // 1. Build core persona instructions — prefer ContextEngine persona if available
+    let systemPrompt;
+    let contextEngineTools = {};
+    let ceMessages = [];
+    if (this.agent.contextEngine) {
+      try {
+        const conversationId = context.conversationId || 'default';
+        const ceCtx = this.agent.contextEngine.buildContext({
+          conversationId,
+          activeNotePath: context.currentFile || null,
+          activeNoteContent: context.activeNoteContent || null
+        });
+        systemPrompt = ceCtx.system;
+        contextEngineTools = ceCtx.tools || {};
+        ceMessages = ceCtx.messages || [];
+      } catch (ceErr) {
+        console.warn('[QueryExecutor] ContextEngine.buildContext failed, falling back:', ceErr.message);
+      }
+    }
+    if (!systemPrompt) {
+      systemPrompt = context.systemPrompt || 'You are a helpful AI assistant for Notely, a modern markdown notes application.';
+    }
+
+    // 2. ALWAYS append workspace context metadata and guidelines
+    systemPrompt += `\n\nWorkspace context:
+- Workspace folder: ${this.agent.workspaceRoot || 'none'}
+- Current open note path: ${context.currentFile || 'none'}
+
+Guidelines:
+- Review the conversation history carefully. If the information needed to answer the user's request (like previously retrieved tasks or note contents) is already present in the chat history, do NOT call the same tool again. Reuse the existing information.
+- Keep the conversation fluid, natural, and friendly. Avoid repeating lists of items or recapping the same information multiple times unless explicitly requested.`;
+
+    const mergedTools = {
+      ...tools,
+      ...contextEngineTools
+    };
+
+    // Build messages array
+    let messages = [];
+    if (ceMessages.length > 0) {
+      messages = [...ceMessages];
+      if (messages[messages.length - 1]?.content !== query || messages[messages.length - 1]?.role !== 'user') {
+        messages.push({ role: 'user', content: query });
+      }
+    } else {
+      messages = [{ role: 'user', content: query }];
+    }
+
+    return { model, systemPrompt, messages, mergedTools, llm };
+  }
+
   /**
    * Execute a query using Vercel AI SDK and the tool registry
    */
   async execute(query, context = {}) {
     try {
-      const llm = this.agent.llmRegistry.getActiveProvider();
-      const model = await llm.getModelInstance();
-
       const { generateText } = await import('ai');
-      const tools = await getTools(this.agent);
-
-      // 1. Build core persona instructions — prefer ContextEngine persona if available
-      let systemPrompt;
-      let contextEngineTools = {};
-      if (this.agent.contextEngine) {
-        try {
-          const conversationId = context.conversationId || 'default';
-          const ceCtx = this.agent.contextEngine.buildContext({
-            conversationId,
-            activeNotePath: context.currentFile || null,
-            activeNoteContent: context.activeNoteContent || null
-          });
-          systemPrompt = ceCtx.system;
-          contextEngineTools = ceCtx.tools || {}; // { searchNotes, exploreGraph }
-        } catch (ceErr) {
-          console.warn('[QueryExecutor] ContextEngine.buildContext failed, falling back:', ceErr.message);
-        }
-      }
-      if (!systemPrompt) {
-        systemPrompt = context.systemPrompt || 'You are a helpful AI assistant for Notely, a modern markdown notes application.';
-      }
-
-      // 2. ALWAYS append workspace context metadata
-      systemPrompt += `\n\nWorkspace context:
-- Workspace folder: ${this.agent.workspaceRoot || 'none'}
-- Current open note path: ${context.currentFile || 'none'}`;
-
-      const { getOfficialTools, runTool } = require('./QueryTools');
-
-      if (llm.baseUrl && llm.baseUrl.includes('api.groq.com')) {
-        const { Groq } = require('groq-sdk');
-        const groq = new Groq({ apiKey: llm.apiKey, dangerouslyAllowBrowser: true });
-
-        const officialTools = getOfficialTools(this.agent);
-
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: query }
-        ];
-
-        let steps = 0;
-        let finalResponseText = '';
-        let totalTokens = 0;
-        const trace = [];
-
-        while (steps < 5) {
-          const chatCompletion = await groq.chat.completions.create({
-            messages,
-            model: llm.model || 'llama-3.3-70b-versatile',
-            tools: officialTools,
-            tool_choice: 'auto',
-            temperature: 0.7,
-          });
-
-          const choice = chatCompletion.choices[0];
-          const responseMessage = choice.message;
-          totalTokens += chatCompletion.usage?.total_tokens || 0;
-
-          // Push the assistant's reply (which may contain tool calls) to messages
-          messages.push(responseMessage);
-
-          if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-            for (const toolCall of responseMessage.tool_calls) {
-              const name = toolCall.function.name;
-              const args = JSON.parse(toolCall.function.arguments);
-              console.log(`[Groq Native] Executing tool ${name} with args:`, toolCall.function.arguments);
-              
-              const output = await runTool(this.agent, name, args);
-
-              trace.push({ name, args, output: output.slice(0, 500) });
-              
-              messages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
-                name: name,
-                content: output
-              });
-            }
-            steps++;
-          } else {
-            finalResponseText = responseMessage.content || '';
-            break;
-          }
-        }
-        // Write back to provider so health diagnostics see real stats
-        if (llm.usageStats) {
-          llm.usageStats.tokensUsedTotal += totalTokens;
-          llm.usageStats.requestsTotal += 1;
-        }
-
-        return {
-          type: 'query',
-          result: finalResponseText,
-          tokensUsed: totalTokens,
-          trace
-        };
-      }
-      const mergedTools = {
-        ...tools,
-        ...contextEngineTools
-      };
+      const { model, systemPrompt, messages, mergedTools, llm } = await this._prepareConfig(query, context);
 
       const result = await generateText({
         model,
         system: systemPrompt,
-        prompt: query,
+        messages,
         tools: mergedTools,
         maxSteps: 5 // Allow multi-step tool calls
       });
 
+      let tokensUsed = result.usage?.totalTokens || 0;
+      if (llm.usageStats) {
+        llm.usageStats.tokensUsedTotal += tokensUsed;
+        llm.usageStats.requestsTotal += 1;
+      }
+
+      let textResult = result.text;
+
+      // Extract all tool calls and their results from all steps
+      const allToolCalls = [];
+      const toolResultsContent = [];
+      if (result.steps) {
+        for (const step of result.steps) {
+          if (step.toolCalls && step.toolCalls.length > 0) {
+            allToolCalls.push(...step.toolCalls);
+          }
+          if (step.toolResults && step.toolResults.length > 0) {
+            toolResultsContent.push(...step.toolResults);
+          }
+        }
+      }
+
+      // Manual fallback summary generation if tool calls were made but no final text was output
+      if (!textResult && allToolCalls.length > 0) {
+        try {
+          const nextMessages = [...messages];
+          if (nextMessages.length > 0 && nextMessages[nextMessages.length - 1].role === 'user') {
+            let toolContext = `I executed the following tools to help answer the request:`;
+            for (const tr of toolResultsContent) {
+              const val = tr.output !== undefined ? tr.output : tr.result;
+              toolContext += `\n\n- Tool: ${tr.toolName}\nOutput: ${typeof val === 'object' ? JSON.stringify(val) : val}`;
+            }
+            toolContext += `\n\nBased on these tool outputs, please provide a friendly, structured, and concise natural language response to my query: "${query}".`;
+            
+            nextMessages[nextMessages.length - 1] = {
+              role: 'user',
+              content: toolContext
+            };
+
+            const summaryResult = await generateText({
+              model,
+              system: systemPrompt,
+              messages: nextMessages
+            });
+
+            if (summaryResult.text) {
+              textResult = summaryResult.text;
+              const extraTokens = summaryResult.usage?.totalTokens || 0;
+              tokensUsed += extraTokens;
+              if (llm.usageStats) {
+                llm.usageStats.tokensUsedTotal += extraTokens;
+              }
+            }
+          }
+        } catch (summaryErr) {
+          console.error('[QueryExecutor] Manual summary fallback failed:', summaryErr.message);
+        }
+      }
+
+      // Raw formatting fallback if manual summary did not succeed
+      if (!textResult && result.steps && result.steps.length > 0) {
+        let formattedOutput = '';
+        for (const step of result.steps) {
+          if (step.toolCalls && step.toolCalls.length > 0) {
+            for (const call of step.toolCalls) {
+              const stepResult = result.steps.find(s => s.toolResults && s.toolResults.some(r => r.toolCallId === call.toolCallId));
+              const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
+              if (toolResult) {
+                const val = toolResult.output !== undefined ? toolResult.output : toolResult.result;
+                formattedOutput += `\n\n#### Tool Output: ${call.toolName}\n`;
+                if (typeof val === 'string') {
+                  try {
+                    const parsed = JSON.parse(val);
+                    formattedOutput += `\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``;
+                  } catch {
+                    formattedOutput += val;
+                  }
+                } else if (typeof val === 'object' && val !== null) {
+                  formattedOutput += `\`\`\`json\n${JSON.stringify(val, null, 2)}\n\`\`\``;
+                } else {
+                  formattedOutput += `${val}`;
+                }
+              }
+            }
+          }
+        }
+        if (formattedOutput) {
+          textResult = `I executed tools to fetch this information for you:${formattedOutput}`;
+        }
+      }
+
+      // Construct the trace array of executed tools and outputs
+      const trace = [];
+      if (result.steps) {
+        for (const step of result.steps) {
+          if (step.toolCalls) {
+            for (const call of step.toolCalls) {
+              const stepResult = result.steps.find(s => s.toolResults && s.toolResults.some(r => r.toolCallId === call.toolCallId));
+              const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
+              trace.push({
+                name: call.toolName,
+                args: call.args,
+                output: toolResult ? (toolResult.output !== undefined ? toolResult.output : toolResult.result) : null
+              });
+            }
+          }
+        }
+      }
+
       return {
         type: 'query',
-        result: result.text,
-        tokensUsed: result.usage?.totalTokens || 0
+        result: textResult || "AI query completed with no text output.",
+        tokensUsed,
+        trace
       };
     } catch (error) {
       console.error('[QueryExecutor] Execution failed:', error.message);
       throw error;
     }
   }
+
+  /**
+   * Stream a query using Vercel AI SDK streamText
+   */
+  async stream(query, context = {}, onChunk, abortSignal) {
+    try {
+      const { streamText } = await import('ai');
+      const { model, systemPrompt, messages, mergedTools, llm } = await this._prepareConfig(query, context);
+
+      const result = await streamText({
+        model,
+        system: systemPrompt,
+        messages,
+        tools: mergedTools,
+        maxSteps: 5,
+        abortSignal
+      });
+
+      let fullText = '';
+      try {
+        for await (const part of result.fullStream) {
+          if (part.type === 'text-delta') {
+            fullText += part.textDelta;
+            if (onChunk) {
+              onChunk({ type: 'text', content: part.textDelta });
+            }
+          }
+        }
+      } catch (streamIterErr) {
+        console.warn('[QueryExecutor] Error iterating fullStream:', streamIterErr.message);
+      }
+
+      if (!fullText) {
+        console.log('[QueryExecutor] Stream returned empty text. Falling back to non-streaming execution...');
+        return this.execute(query, context);
+      }
+
+      const usage = await result.usage;
+      const tokensUsed = usage?.totalTokens || 0;
+      if (llm.usageStats) {
+        llm.usageStats.tokensUsedTotal += tokensUsed;
+        llm.usageStats.requestsTotal += 1;
+      }
+
+      const steps = await result.steps;
+      const trace = [];
+      if (steps) {
+        for (const step of steps) {
+          if (step.toolCalls) {
+            for (const call of step.toolCalls) {
+              const stepResult = steps.find(s => s.toolResults && s.toolResults.some(r => r.toolCallId === call.toolCallId));
+              const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
+              trace.push({
+                name: call.toolName,
+                args: call.args,
+                output: toolResult ? (toolResult.output !== undefined ? toolResult.output : toolResult.result) : null
+              });
+            }
+          }
+        }
+      }
+
+      return {
+        type: 'query',
+        result: fullText,
+        tokensUsed,
+        trace
+      };
+    } catch (error) {
+      if (error.name === 'AbortError' || abortSignal?.aborted) {
+        console.log('[QueryExecutor] Stream execution aborted by user.');
+        return { type: 'aborted', result: 'Generation stopped.' };
+      }
+      console.error('[QueryExecutor] Stream execution failed:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = QueryExecutor;
-

@@ -106,6 +106,30 @@ export async function aiQuery(query, context = {}) {
   return api.aiQuery({ query, context });
 }
 
+export async function aiQueryStream(query, context = {}, queryId) {
+  const api = getNotesApi();
+  if (typeof api.aiQueryStream !== "function") {
+    throw new Error("AI streaming queries are unavailable. Please restart the app.");
+  }
+  return api.aiQueryStream({ query, context, queryId });
+}
+
+export async function aiQueryAbort(queryId) {
+  const api = getNotesApi();
+  if (typeof api.aiQueryAbort !== "function") {
+    throw new Error("AI query cancellation is unavailable. Please restart the app.");
+  }
+  return api.aiQueryAbort({ queryId });
+}
+
+export function onChatStreamChunk(callback) {
+  const api = getNotesApi();
+  if (typeof api.onChatStreamChunk !== "function") {
+    return () => {};
+  }
+  return api.onChatStreamChunk(callback);
+}
+
 export async function aiGetApiKey(provider) {
   const api = getNotesApi();
   if (typeof api.aiGetApiKey !== "function") {

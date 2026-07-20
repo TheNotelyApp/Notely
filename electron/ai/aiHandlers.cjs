@@ -145,6 +145,8 @@ function registerHandler(channel, handler) {
   });
 }
 
+const activeQueryControllers = new Map();
+
 /**
  * Initialize IPC handlers
  */
@@ -185,6 +187,8 @@ function initializeAIHandlers(electronApp, agent) {
 
   // AI Query
   registerHandler(IPC_EVENTS.AI_QUERY, handleQuery);
+  registerHandler('ai:query:stream', handleQueryStream);
+  registerHandler('ai:query:abort', handleQueryAbort);
 
   // Status
   registerHandler(IPC_EVENTS.AI_STATUS, handleStatus);
@@ -332,6 +336,60 @@ async function handleQuery(event, payload) {
 }
 
 /**
+ * Handle AI query streaming
+ */
+async function handleQueryStream(event, payload) {
+  const queryId = payload?.queryId || require('crypto').randomUUID();
+  try {
+    if (!aiService.isEnabled() || !aiService.agent) {
+      throw new Error('AI agent is disabled or not initialized');
+    }
+
+    const { query, context } = sanitizeQueryPayload(payload);
+    
+    const controller = new AbortController();
+    activeQueryControllers.set(queryId, controller);
+
+    const result = await aiService.stream(
+      query,
+      context,
+      (chunk) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('ai:chat:chunk', { queryId, chunk });
+        }
+      },
+      controller.signal
+    );
+
+    activeQueryControllers.delete(queryId);
+    return new AIQueryResponse(true, result);
+  } catch (error) {
+    activeQueryControllers.delete(queryId);
+    console.error('[AI IPC] Streaming query handling failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+/**
+ * Handle AI query abort
+ */
+async function handleQueryAbort(_event, payload) {
+  const queryId = payload?.queryId;
+  if (!queryId) {
+    return new AIQueryResponse(false, null, 'queryId is required');
+  }
+
+  const controller = activeQueryControllers.get(queryId);
+  if (controller) {
+    controller.abort();
+    activeQueryControllers.delete(queryId);
+    return new AIQueryResponse(true, { message: 'Query generation aborted.' });
+  }
+
+  return new AIQueryResponse(false, null, 'No active query found for this ID.');
+}
+
+/**
  * Handle status request
  */
 async function handleStatus(_event, _payload) {
@@ -371,20 +429,19 @@ async function handleRebuildEmbeddings(_event, _payload) {
     }
     aiService.agent.embeddingDb.clearAllData();
 
+    const workerManager = require('./workerManager.cjs');
+    
     // Populate queue with all markdown files in workspace
     const docs = aiService.agent.documentService.getAllDocuments();
     if (docs && docs.length > 0) {
       for (const doc of docs) {
         const filePath = doc?.path || doc?.filePath;
         if (filePath) {
-          aiService.agent.embeddingDb.enqueue(filePath, 0);
+          workerManager.enqueueNote(filePath, 0);
         }
       }
     }
 
-    if (aiService.agent.indexWorker) {
-      aiService.agent.indexWorker.triggerNext();
-    }
     return new AIQueryResponse(true, { message: 'Embeddings db cleared and rebuild triggered' });
   } catch (error) {
     console.error('[AI IPC] Embeddings rebuild failed:', error);
@@ -407,7 +464,7 @@ async function handleGetEmbeddingsStatus(_event, payload) {
       });
     }
     const db = aiService.agent.embeddingDb;
-    const worker = aiService.agent.indexWorker;
+    const workerManager = require('./workerManager.cjs');
     const search = payload?.search || '';
     const limit = payload?.limit || 50;
     const offset = payload?.offset || 0;
@@ -438,8 +495,8 @@ async function handleGetEmbeddingsStatus(_event, payload) {
       indexedNotes,
       queueSize: queueStats.pending,
       queueTotal: queueStats.total,
-      isPaused: worker ? worker.isPaused : false,
-      isWorking: worker ? worker.isWorking : false,
+      isPaused: workerManager.isPaused === true,
+      isWorking: workerManager.isWorking === true,
       chunks,
       logs,
       dbSize
@@ -452,11 +509,9 @@ async function handleGetEmbeddingsStatus(_event, payload) {
 
 async function handlePauseWorker(_event, _payload) {
   try {
-    if (aiService.agent && aiService.agent.indexWorker) {
-      aiService.agent.indexWorker.pause();
-      return new AIQueryResponse(true, { paused: true });
-    }
-    throw new Error('Worker not running');
+    const workerManager = require('./workerManager.cjs');
+    workerManager.pauseWorker();
+    return new AIQueryResponse(true, { paused: true });
   } catch (error) {
     return new AIQueryResponse(false, null, error.message);
   }
@@ -464,11 +519,9 @@ async function handlePauseWorker(_event, _payload) {
 
 async function handleResumeWorker(_event, _payload) {
   try {
-    if (aiService.agent && aiService.agent.indexWorker) {
-      aiService.agent.indexWorker.resume();
-      return new AIQueryResponse(true, { paused: false });
-    }
-    throw new Error('Worker not running');
+    const workerManager = require('./workerManager.cjs');
+    workerManager.resumeWorker();
+    return new AIQueryResponse(true, { paused: false });
   } catch (error) {
     return new AIQueryResponse(false, null, error.message);
   }

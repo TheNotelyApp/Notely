@@ -47,6 +47,7 @@ const GitCommitDialog = lazy(() =>
   import("./components/GitCommitDialog").then((m) => ({ default: m.GitCommitDialog }))
 );
 import { GitStatusBar } from "./components/GitStatusBar";
+import { AIStatusBar } from "./components/AIStatusBar";
 
 const TasksPanel = lazy(() =>
   import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
@@ -780,12 +781,18 @@ export default function App() {
     handleInlineAIRequest,
     handleApplyAIResult,
     handleAIChatSend,
+    handleAIChatAbort,
     handleClearAIChat,
     handleRejectInlineGhost,
     handleAcceptInlineGhost,
     activeProvider,
     activePersona,
     setActivePersona,
+    activeQueryId,
+    conversations,
+    loadConversations,
+    loadConversation,
+    deleteConversation,
   } = useAIAssistant({
     current,
     activeTab,
@@ -2528,6 +2535,7 @@ export default function App() {
         if (aiEnabled && aiProvider) {
           await aiSetProviderModel(aiProvider, '');
         }
+        await refreshAIConfiguration();
       } catch (aiErr) {
         console.error("Failed to save AI onboarding preferences:", aiErr);
       }
@@ -2569,7 +2577,10 @@ export default function App() {
           onHide={() => setAiPanelVisible(false)}
           onClear={handleClearAIChat}
           onSend={handleAIChatSend}
+          onAbort={handleAIChatAbort}
+          activeQueryId={activeQueryId}
           onApply={handleApplyAIResult}
+          onOpenDocument={handleOpenReferencedDocumentFromUI}
           isLoading={aiQueryLoading}
           error={aiQueryError || null}
           contextSummary={aiContextSummary}
@@ -2580,6 +2591,10 @@ export default function App() {
           activePersona={activePersona}
           setActivePersona={setActivePersona}
           workspaceStorageScope={workspaceStorageScope}
+          conversations={conversations}
+          onLoadConversations={loadConversations}
+          onLoadConversation={loadConversation}
+          onDeleteConversation={deleteConversation}
         />
 
       </Suspense>
@@ -2679,6 +2694,7 @@ export default function App() {
               }}
               onClick={() => setGitVCOpen(true)}
             />
+            <AIStatusBar onClick={() => setAiSettingsOpen(true)} />
             {current ? (
               <>
                 <span className="terminal-meta-pill" data-tooltip="Editor mode and active tab">

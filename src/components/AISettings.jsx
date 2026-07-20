@@ -887,8 +887,8 @@ export const AISettingsContent = ({ _onClose }) => {
               </section>
             </>
           )}
-        </div>
-        </div>
+      </div>
+      </div>
     </div>
   );
 };

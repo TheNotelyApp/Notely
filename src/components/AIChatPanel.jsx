@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Send, X, Trash2, Pencil, Check } from "lucide-react";
+import { Send, X, Trash2, Pencil, Check, History } from "lucide-react";
 import AppButton from "./AppButton";
 import AppTextarea from "./AppTextarea";
 import { renderMarkdown } from "../utils/renderUtils";
@@ -71,23 +71,31 @@ export default function AIChatPanel({
   onHide,
   onClear,
   onSend,
+  onAbort,
+  activeQueryId,
   onApply,
+  onOpenDocument,
   isLoading = false,
   error = null,
   contextSummary = null,
   intent = null,
   messages = [],
-  _noteTitle = "Current Note",
-  _activeProvider = "",
+  noteTitle = "Current Note",
+  activeProvider = "",
   activePersona = null,
   setActivePersona,
   workspaceStorageScope = "default",
+  conversations = [],
+  onLoadConversations,
+  onLoadConversation,
+  onDeleteConversation,
 }) {
   const [draft, setDraft] = useState("");
   const [scope, setScope] = useState("auto");
   const [personas, setPersonas] = useState([]);
   const [isEditingPersona, setIsEditingPersona] = useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = useState("default");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const inputRef = useRef(null);
   const lastAutoRunRequestIdRef = useRef("");
   const messagesEndRef = useRef(null);
@@ -137,6 +145,16 @@ export default function AIChatPanel({
     setDraft("");
   }, [intent, onSend, scope]);
 
+  useEffect(() => {
+    if (isDrawerOpen) {
+      onLoadConversations?.();
+    }
+  }, [isDrawerOpen, onLoadConversations]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const handleClearWithConfirm = async () => {
     const confirmed = await confirm({
       title: "Clear Chat History",
@@ -151,7 +169,66 @@ export default function AIChatPanel({
   };
 
   return (
-    <aside className="ai-chat-panel" aria-label="AI chat" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <aside className="ai-chat-panel" aria-label="AI chat" style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+
+      {/* Slide-out History Drawer overlay */}
+      {isDrawerOpen && (
+        <div className="ai-chat-drawer" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "var(--surface-bg)", zIndex: 100, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border-soft)" }}>
+          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface-subtle)" }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>Chat History</span>
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(false)}
+              style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", padding: "4px" }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+            {conversations.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: "11px" }}>No past chats</div>
+            ) : (
+              conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "6px 4px",
+                    borderBottom: "1px solid var(--border-soft)",
+                    cursor: "pointer",
+                    fontSize: "11px"
+                  }}
+                  onClick={() => {
+                    onLoadConversation?.(conv.id);
+                    setIsDrawerOpen(false);
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, gap: "2px" }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: "var(--text-strong)" }}>
+                      💬 {conv.title || "Untitled Chat"}
+                    </span>
+                    <span style={{ fontSize: "9px", color: "var(--text-muted)" }}>
+                      {new Date(conv.updated_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteConversation?.(conv.id);
+                    }}
+                    style={{ background: "transparent", border: "none", color: "var(--text-subtle)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Header — CSS class provides dark gradient background */}
       <div className="ai-chat-header" style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "10px 12px" }}>
@@ -213,15 +290,26 @@ export default function AIChatPanel({
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onHide}
-            title="Close panel"
-            aria-label="Close AI panel"
-            style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.55)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", borderRadius: "4px", flexShrink: 0 }}
-          >
-            <X size={14} />
-          </button>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+              title="Chat History"
+              style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.55)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", borderRadius: "4px", flexShrink: 0 }}
+            >
+              <History size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={onHide}
+              title="Close panel"
+              aria-label="Close AI panel"
+              style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.55)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", borderRadius: "4px", flexShrink: 0 }}
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         {/* Row 2: Description */}
@@ -282,13 +370,15 @@ export default function AIChatPanel({
                         {message.references.map((ref, idx) => {
                           const name = ref.path.split(/[\\/]/).pop();
                           return (
-                            <span
+                            <button
                               key={idx}
+                              type="button"
+                              onClick={() => onOpenDocument?.(ref.path)}
                               title={`${ref.path} (${(ref.relevance * 100).toFixed(0)}% relevance)`}
-                              style={{ background: "var(--surface-accent)", color: "var(--accent-solid)", padding: "1px 5px", borderRadius: "3px", border: "1px solid var(--border-soft)", fontFamily: "monospace", fontSize: "10px" }}
+                              style={{ background: "var(--surface-accent)", color: "var(--accent-solid)", padding: "1px 5px", borderRadius: "3px", border: "1px solid var(--border-soft)", fontFamily: "monospace", fontSize: "10px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "2px" }}
                             >
                               📄 {name}
-                            </span>
+                            </button>
                           );
                         })}
                       </div>
@@ -372,30 +462,41 @@ export default function AIChatPanel({
             <AppButton
               variant="small"
               onClick={handleClearWithConfirm}
-              disabled={messages.length === 0}
+              disabled={messages.length === 0 || activeQueryId}
               style={{ display: "flex", alignItems: "center", gap: "4px", padding: "0 8px", minHeight: "24px", height: "24px", fontSize: "10.5px" }}
             >
               <Trash2 size={12} />
               <span>Clear</span>
             </AppButton>
 
-            <AppButton
-              variant="primary"
-              disabled={isLoading || !draft.trim()}
-              onClick={() => {
-                if (!draft.trim()) return;
-                onSend?.({ message: draft, target: scope, personaPrompt: activePersona?.prompt });
-                setDraft("");
-              }}
-              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0 10px", minHeight: "24px", height: "24px", fontSize: "10.5px" }}
-            >
-              {isLoading ? "Thinking…" : (
-                <>
-                  <Send size={12} />
-                  <span>Send</span>
-                </>
-              )}
-            </AppButton>
+            {activeQueryId ? (
+              <AppButton
+                variant="danger"
+                onClick={onAbort}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0 10px", minHeight: "24px", height: "24px", fontSize: "10.5px", background: "var(--accent-danger)", color: "#fff" }}
+              >
+                <X size={12} />
+                <span>Stop</span>
+              </AppButton>
+            ) : (
+              <AppButton
+                variant="primary"
+                disabled={isLoading || !draft.trim()}
+                onClick={() => {
+                  if (!draft.trim()) return;
+                  onSend?.({ message: draft, target: scope, personaPrompt: activePersona?.prompt });
+                  setDraft("");
+                }}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0 10px", minHeight: "24px", height: "24px", fontSize: "10.5px" }}
+              >
+                {isLoading ? "Thinking…" : (
+                  <>
+                    <Send size={12} />
+                    <span>Send</span>
+                  </>
+                )}
+              </AppButton>
+            )}
           </div>
         </div>
       </div>

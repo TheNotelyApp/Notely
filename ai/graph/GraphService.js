@@ -52,14 +52,68 @@ Note Contents:
 ${content}
 ---`;
 
-      const llm = this.agent.llmRegistry.getActiveProvider();
-      
-      // Call LLM
-      const { text: resultText } = await llm.generateText(prompt, { systemPrompt, temperature: 0.1 });
-      
-      // Clean and parse JSON
-      const cleanedJson = this._cleanJsonResponse(resultText);
-      const parsedData = JSON.parse(cleanedJson);
+      let parsedData = { entities: [], relationships: [] };
+      try {
+        const llm = this.agent.llmRegistry.getActiveProvider();
+        // Call LLM
+        const { text: resultText } = await llm.generateText(prompt, { systemPrompt, temperature: 0.1 });
+        // Clean and parse JSON
+        const cleanedJson = this._cleanJsonResponse(resultText);
+        parsedData = JSON.parse(cleanedJson);
+      } catch (llmErr) {
+        log.warn(`LLM graph extraction failed for ${filePath}, falling back to local regex:`, llmErr.message);
+      }
+
+      // Local tag and wikilink regex extraction
+      const extractedEntities = [];
+      const extractedRels = [];
+
+      // 1. Extract Wikilinks: [[Target Note]]
+      const wikilinkRegex = /\[\[(.*?)\]\]/g;
+      let match;
+      while ((match = wikilinkRegex.exec(content)) !== null) {
+        const targetName = match[1].trim();
+        if (targetName) {
+          const targetId = targetName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          extractedEntities.push({
+            id: targetId,
+            type: 'Note',
+            name: targetName
+          });
+          extractedRels.push({
+            source_id: noteId,
+            target_id: targetId,
+            type: 'links_to',
+            weight: 1.0
+          });
+        }
+      }
+
+      // 2. Extract Tags: #tag
+      const tagRegex = /(?:^|\s)#([a-zA-Z0-9_-]+)/g;
+      while ((match = tagRegex.exec(content)) !== null) {
+        const tagName = match[1].trim();
+        if (tagName) {
+          const tagId = `tag-${tagName.toLowerCase()}`;
+          extractedEntities.push({
+            id: tagId,
+            type: 'Tag',
+            name: `#${tagName}`
+          });
+          extractedRels.push({
+            source_id: noteId,
+            target_id: tagId,
+            type: 'tagged',
+            weight: 1.0
+          });
+        }
+      }
+
+      if (!parsedData.entities) parsedData.entities = [];
+      parsedData.entities.push(...extractedEntities);
+
+      if (!parsedData.relationships) parsedData.relationships = [];
+      parsedData.relationships.push(...extractedRels);
 
       // Clear existing outgoing relationships for this note to prevent stale accumulation
       this.graphDb.db.prepare('DELETE FROM relationships WHERE source_id = ?').run(noteId);
