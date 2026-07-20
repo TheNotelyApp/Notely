@@ -43,45 +43,37 @@ export function AIStatusBar({ onClick }) {
 
   let Icon = Sparkles;
   let label = "AI Disabled";
-  let className = "terminal-meta-pill";
-  let color = "var(--text-muted)";
+  let statusClass = "ai-status-bar--disabled";
 
   if (status === "idle") {
     Icon = CheckCircle;
     label = `AI: Ready (${provider})`;
-    color = "var(--accent-solid)";
+    statusClass = "ai-status-bar--ready";
   } else if (status === "indexing") {
     Icon = Activity;
     label = "AI: Indexing...";
-    color = "var(--accent-warning)";
+    statusClass = "ai-status-bar--indexing";
   } else if (status === "paused") {
     Icon = Pause;
     label = "AI: Paused";
-    color = "var(--text-muted)";
+    statusClass = "ai-status-bar--paused";
   } else if (status === "error") {
     Icon = AlertTriangle;
     label = "AI Error";
-    color = "var(--accent-danger)";
+    statusClass = "ai-status-bar--error";
   }
 
   return (
-    <span
-      className={className}
+    <button
+      type="button"
+      className={`terminal-meta-pill ai-status-bar ${statusClass}`}
       onClick={onClick}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        cursor: "pointer",
-        color,
-        fontWeight: 600,
-        transition: "color var(--motion-standard)",
-      }}
       data-tooltip="Click to open AI Settings & Diagnostics"
+      aria-label={label}
     >
       <Icon size={12} className={status === "indexing" ? "animate-pulse" : ""} />
       <span>{label}</span>
-    </span>
+    </button>
   );
 }
 

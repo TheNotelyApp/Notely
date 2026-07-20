@@ -456,20 +456,68 @@
 .terminal-meta-pill {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-1, 2px);
   min-height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
+  padding: var(--space-1, 2px) var(--space-2, 6px);
+  border-radius: var(--radius-sm, 4px);
   border: 1px solid rgba(159, 214, 188, 0.35);
   background: rgba(9, 23, 25, 0.28);
   color: #d5ece2;
   font-size: 10px;
   line-height: 1;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .terminal-meta-pill.warn {
   border-color: rgba(255, 210, 134, 0.6);
   color: #ffe3b5;
+}
+
+/* AI Status Bar (Bottom Toolbar) */
+.ai-status-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 4px);
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+  transition: opacity var(--motion-fast, 120ms ease), background var(--motion-fast, 120ms ease);
+}
+
+.ai-status-bar:hover {
+  opacity: 0.9;
+}
+
+.ai-status-bar--ready {
+  background: var(--status-success-bg) !important;
+  color: var(--status-success-text) !important;
+  border: 1px solid var(--status-success-border) !important;
+}
+
+.ai-status-bar--indexing {
+  background: var(--status-warning-bg) !important;
+  color: var(--status-warning-text) !important;
+  border: 1px solid var(--status-warning-border) !important;
+}
+
+.ai-status-bar--paused {
+  background: rgba(9, 23, 25, 0.28) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid rgba(159, 214, 188, 0.25) !important;
+}
+
+.ai-status-bar--error {
+  background: var(--status-danger-bg) !important;
+  color: var(--status-danger-text) !important;
+  border: 1px solid var(--status-danger-border) !important;
+}
+
+.ai-status-bar--disabled {
+  background: rgba(9, 23, 25, 0.15) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid rgba(159, 214, 188, 0.15) !important;
+  opacity: 0.6;
 }
 
 .terminal-meta-toggle {
