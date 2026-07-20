@@ -46,9 +46,9 @@ export function LandingView({
   onDismissUpdate,
   onCopyLinkPath,
   aiSidebar = null,
-  aiPanelVisible = false,
-  isAIConfigured = false,
-  onShowAI = null,
+  _aiPanelVisible = false,
+  _isAIConfigured = false,
+  _onShowAI = null,
 }) {
   const [aiSidebarWidth, setAiSidebarWidth] = useWorkspaceScopedStorage({
     workspaceScope: "global",

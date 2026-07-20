@@ -179,7 +179,7 @@ export default function AIChatPanel({
                   className="icon-button-hover-accent"
                   title="Change persona"
                 >
-                  <Pencil size={11} />
+                  <Pencil size={12} />
                 </button>
               </div>
             ) : (
@@ -375,7 +375,7 @@ export default function AIChatPanel({
               disabled={messages.length === 0}
               style={{ display: "flex", alignItems: "center", gap: "4px", padding: "0 8px", minHeight: "24px", height: "24px", fontSize: "10.5px" }}
             >
-              <Trash2 size={11} />
+              <Trash2 size={12} />
               <span>Clear</span>
             </AppButton>
 
@@ -391,7 +391,7 @@ export default function AIChatPanel({
             >
               {isLoading ? "Thinking…" : (
                 <>
-                  <Send size={11} />
+                  <Send size={12} />
                   <span>Send</span>
                 </>
               )}

@@ -455,6 +455,7 @@ export function useAIAssistant({
     const editorContext = aiEditorRef.current?.getContext?.() || null;
     const summary = buildAIContextSummary(editorContext, current);
     setAiContextSummary(summary);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.filePath, activeTab]);
 
   useEffect(() => {

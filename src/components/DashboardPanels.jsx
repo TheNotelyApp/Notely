@@ -70,18 +70,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
 
   const visibleFavorites = favoriteSlice.slice(0, limit);
 
-  function renderSectionToggle(items, onOpenPanel) {
-    if (!Array.isArray(items) || items.length <= limit) {
-      return null;
-    }
 
-    return (
-      <button type="button" className="dashboard-inline-action" onClick={onOpenPanel}>
-        View all
-        <ArrowRight size={12} aria-hidden="true" />
-      </button>
-    );
-  }
 
   function renderBarSectionToggle(onOpenPanel) {
     return (

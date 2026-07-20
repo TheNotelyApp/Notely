@@ -214,7 +214,6 @@ const runTool = async (agent, name, args) => {
   if (name === 'list_notes') {
     const subfolder = args.subfolder || '';
     try {
-      const fs = require('fs');
       const path = require('path');
       const files = agent.documentService._collectMarkdownFiles(agent.workspaceRoot);
       const matchedFiles = files.filter(filePath => {
