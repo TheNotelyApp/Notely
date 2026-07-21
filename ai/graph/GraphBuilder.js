@@ -33,12 +33,18 @@ class GraphBuilder {
         this.graphDb.initialize();
       }
 
+      const LogDB = require('../logs/LogDB');
+      const logDb = new LogDB(this.agent.workspaceRoot);
+      logDb.initialize();
+      logDb.addLog('graph', 'Starting complete Knowledge Graph rebuild...', 'info');
+
       // Clear existing graph tables
       this.graphDb.clear();
 
       // Find all markdown files in the workspace
       const workspaceFiles = this._getWorkspaceMarkdownFiles();
       log.info(`Found ${workspaceFiles.length} markdown notes to index for graph`);
+      logDb.addLog('graph', `Found ${workspaceFiles.length} markdown notes to index for graph`, 'info');
 
       let processedCount = 0;
       let failedCount = 0;
@@ -55,16 +61,20 @@ class GraphBuilder {
           
           if (success) {
             processedCount++;
+            logDb.addLog('graph', `Extracted graph entities from note: ${path.basename(filePath)}`, 'info');
           } else {
             failedCount++;
           }
         } catch (fileErr) {
           log.error(`Error reading or processing note ${filePath}:`, fileErr.message);
+          logDb.addLog('graph', `Failed extracting entities from note ${path.basename(filePath)}: ${fileErr.message}`, 'error');
           failedCount++;
         }
       }
 
       log.info(`Knowledge Graph rebuild complete. Processed: ${processedCount}, Failed: ${failedCount}`);
+      logDb.addLog('graph', `Knowledge Graph rebuild complete. Processed: ${processedCount}, Failed: ${failedCount}`, 'info');
+      logDb.close();
       return {
         success: true,
         processedCount,

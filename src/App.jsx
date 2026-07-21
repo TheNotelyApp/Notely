@@ -23,6 +23,7 @@ const KnowledgeGraph = lazy(() => import("./components/KnowledgeGraph"));
 const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
 const AIPersonasManager = lazy(() => import("./components/AIPersonasManager"));
 const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
+const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
 
 import { SettingsModal } from "./components/SettingsModal";
 import { LandingView } from "./components/layout/LandingView";
@@ -348,6 +349,7 @@ export default function App() {
     embeddingsPageOpen, setEmbeddingsPageOpen,
     personasPageOpen, setPersonasPageOpen,
     healthPageOpen, setHealthPageOpen,
+    appLogsOpen, setAppLogsOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
     tasksPanelOpen, setTasksPanelOpen,
     allTasksPanelOpen, setAllTasksPanelOpen,
@@ -1364,24 +1366,49 @@ export default function App() {
       }
 
 
+      const closeAllFullscreenViews = () => {
+        setGraphPanelOpen(false);
+        setEmbeddingsPageOpen(false);
+        setPersonasPageOpen(false);
+        setHealthPageOpen(false);
+        setAppLogsOpen(false);
+        setGitVCOpen(false);
+      };
+
       if (action === "open-workspace-graph") {
+        closeAllFullscreenViews();
         setGraphPanelOpen(true);
         return;
       }
 
       if (action === "open-embeddings-page") {
+        closeAllFullscreenViews();
         setEmbeddingsPageOpen(true);
         return;
       }
 
       if (action === "open-personas-page") {
+        closeAllFullscreenViews();
         setPersonasPageOpen(true);
         return;
       }
 
+      if (action === "open-app-logs") {
+        closeAllFullscreenViews();
+        setAppLogsOpen(true);
+        return;
+      }
+
       if (action === "open-git-version-control") {
+        closeAllFullscreenViews();
         setGitVCInitialTab("status");
         setGitVCOpen(true);
+        return;
+      }
+
+      if (action === "open-ai-health") {
+        closeAllFullscreenViews();
+        setHealthPageOpen(true);
         return;
       }
 
@@ -2716,7 +2743,7 @@ export default function App() {
               onClick={() => setGitVCOpen(true)}
             />
             <AIStatusBar onClick={() => setAiSettingsOpen(true)} />
-            {current ? (
+            {current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
                 <span className="terminal-meta-pill" data-tooltip="Editor mode and active tab">
                   {mode === "split" ? "Split" : mode === "preview" ? "Preview" : "Edit"} | {activeTab === "raw" ? "Raw" : "Formal"}
@@ -2744,11 +2771,11 @@ export default function App() {
                   </>
                 ) : null}
               </>
-            ) : (
-              <span className="terminal-meta-pill" data-tooltip="Current notes in list">
-                {documents.length} notes
+            ) : !current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
+              <span className="terminal-meta-pill" data-tooltip="Total note files in current view">
+                {(documents || []).filter(d => d && d.entryType !== 'folder' && !d.isDirectory).length} notes
               </span>
-            )}
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -3604,6 +3631,16 @@ export default function App() {
           <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
             <AIHealthPage
               onBack={() => setHealthPageOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {appLogsOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading System & Application Logs…</div>}>
+            <AppLogsPage
+              onBack={() => setAppLogsOpen(false)}
             />
           </Suspense>
         </div>

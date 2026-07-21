@@ -736,7 +736,7 @@ export const AISettingsContent = ({ _onClose }) => {
                 </div>
               )}
 
-              {preferences.embeddingProvider === 'internal' && (
+              {((preferences.embeddingProvider || 'internal') === 'internal' || !modelStatus.downloaded) && (
                 <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
                   <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
                   {modelStatus.downloaded ? (

@@ -352,27 +352,19 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const valueLength = String(value || "").length;
   const decorationsSynced = docLength === valueLength;
 
-  // Auto-trigger inline AI completion on typing pause
+  // Explicit hotkey trigger for inline AI completion (Alt-\)
   useEffect(() => {
-    if (!aiEnabled || !onInlineAIContinue || ghostSuggestion || !viewRef.current) return;
-    
-    const view = viewRef.current;
-    if (!view.hasFocus) return;
-    
-    const state = view.state;
-    if (!state.selection.main.empty) return; // Don't trigger if selection active
-    
-    const cursor = state.selection.main.head;
-    const textBefore = state.doc.sliceString(0, cursor);
-    if (!textBefore.trim()) return;
-
-    // Trigger after 1200ms of inactivity
-    const timer = setTimeout(() => {
-      onInlineAIContinue();
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [value, aiEnabled, onInlineAIContinue, ghostSuggestion]);
+    const handleKeyDown = (e) => {
+      if (e.altKey && e.key === '\\') {
+        e.preventDefault();
+        if (aiEnabled && onInlineAIContinue) {
+          onInlineAIContinue();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [aiEnabled, onInlineAIContinue]);
 
   const positionSuggestionFlyout = (containerElement) => {
     if (!containerElement) return;

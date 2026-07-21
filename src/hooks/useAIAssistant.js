@@ -472,6 +472,7 @@ export function useAIAssistant({
                 ...msg,
                 text: finalResult?.result || msg.text || "AI query completed.",
                 references: extractReferences(finalResult?.trace),
+                tools: (finalResult?.trace || []).map(t => t.name).filter(Boolean),
               }
             : msg
         )

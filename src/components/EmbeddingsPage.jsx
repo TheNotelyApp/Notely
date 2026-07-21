@@ -11,9 +11,12 @@ import {
 import {
   aiGetEmbeddingsStatus,
   aiRebuildEmbeddings,
+  aiClearEmbeddingsData,
   aiPauseWorker,
   aiResumeWorker,
   aiGetModelStatus,
+  aiDownloadModel,
+  aiGetLogs,
   onModelDownloadProgress,
   aiGetPreferences
 } from '../services/electronService';
@@ -52,11 +55,17 @@ export default function EmbeddingsPage({ onBack }) {
     try {
       setError('');
       const res = await aiGetEmbeddingsStatus({ search: searchQuery });
+      const logsRes = await aiGetLogs('embeddings', 50);
+
       if (res.success && res.data) {
         if (res.data.uninitialized) {
           setError('AI agent or EmbeddingDB is not initialized. Please configure your active AI provider first under Settings > AI settings.');
         } else {
-          setStatus(res.data);
+          const fetchedLogs = (logsRes && logsRes.success && Array.isArray(logsRes.data)) ? logsRes.data : [];
+          setStatus({
+            ...res.data,
+            logs: fetchedLogs.length > 0 ? fetchedLogs : (res.data.logs || [])
+          });
           if (isRebuilding && res.data.queueSize === 0) {
             setIsRebuilding(false);
             setShowProgressModal(false);
@@ -236,6 +245,25 @@ export default function EmbeddingsPage({ onBack }) {
                     <span style={{ color: 'var(--text-muted)' }}>DB Size</span>
                     <strong style={{ color: 'var(--text-strong)' }}>{status.dbSize || '0 KB'}</strong>
                   </div>
+                  {!modelStatus.downloaded && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={async () => {
+                        try {
+                          const res = await aiDownloadModel();
+                          if (res.success) {
+                            setModelStatus(prev => ({ ...prev, isDownloading: true, progress: 0 }));
+                          }
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      disabled={modelStatus.isDownloading}
+                      style={{ marginTop: '6px', width: '100%', justifyContent: 'center', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <span>{modelStatus.isDownloading ? `Downloading (${modelStatus.progress}%)...` : 'Download Local Model (~130MB)'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -283,7 +311,7 @@ export default function EmbeddingsPage({ onBack }) {
             </div>
 
             {/* Sticky Actions */}
-            <div className="kg-sidebar-section" style={{ borderTop: '1px solid var(--border-default)', padding: '16px', background: 'var(--surface-elevated)' }}>
+            <div className="kg-sidebar-section" style={{ borderTop: '1px solid var(--border-default)', padding: '16px', background: 'var(--surface-elevated)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 className="btn btn-secondary"
                 onClick={handleRebuild}
@@ -292,6 +320,19 @@ export default function EmbeddingsPage({ onBack }) {
               >
                 <RefreshCw size={14} className={loading ? 'spin' : ''} />
                 <span>Rebuild Embeddings DB</span>
+              </button>
+
+              <button
+                className="btn btn-secondary"
+                onClick={async () => {
+                  if (window.confirm('Clear all indexed vector embeddings data from cache?')) {
+                    await aiClearEmbeddingsData();
+                    loadEmbeddingsStatus();
+                  }
+                }}
+                style={{ width: '100%', justifyContent: 'center', height: '32px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-danger)' }}
+              >
+                <span>Clear Embeddings Data</span>
               </button>
             </div>
 
@@ -383,14 +424,20 @@ export default function EmbeddingsPage({ onBack }) {
                 {status.logs.length === 0 ? (
                   <span style={{ color: 'var(--text-muted)' }}>No logs available</span>
                 ) : (
-                  status.logs.map((logItem) => (
-                    <div key={logItem.id} style={{ display: 'flex', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>[{logItem.ts.split(' ')[1] || logItem.ts}]</span>
-                      <span style={{ color: logItem.event === 'error' ? 'var(--kg-task-border)' : 'var(--kg-note-border)', fontWeight: 600 }}>{logItem.event.toUpperCase()}</span>
-                      <span style={{ color: 'var(--text-strong)' }}>{logItem.note_path.split(/[/\\]/).pop() || ''}</span>
-                      <span>— {logItem.detail}</span>
-                    </div>
-                  ))
+                  status.logs.map((logItem, idx) => {
+                    const timeStr = logItem.timestamp ? new Date(logItem.timestamp).toLocaleTimeString() : (logItem.ts || '');
+                    const eventName = String(logItem.level || logItem.event || 'INFO').toUpperCase();
+                    const noteName = logItem.note_path ? String(logItem.note_path).split(/[/\\]/).pop() : '';
+                    const detailText = logItem.message || logItem.detail || '';
+                    return (
+                      <div key={logItem.id || idx} style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>[{timeStr}]</span>
+                        <span style={{ color: eventName === 'ERROR' ? 'var(--kg-task-border)' : 'var(--kg-note-border)', fontWeight: 600 }}>{eventName}</span>
+                        {noteName && <span style={{ color: 'var(--text-strong)' }}>{noteName}</span>}
+                        <span>— {detailText}</span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

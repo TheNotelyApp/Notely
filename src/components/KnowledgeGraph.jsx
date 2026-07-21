@@ -8,7 +8,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Search, RefreshCw, Layers, ShieldAlert, Database } from 'lucide-react';
-import { aiGetGraph, aiBuildGraph, aiGetGraphStatus } from '../services/electronService';
+import { aiGetGraph, aiBuildGraph, aiGetGraphStatus, aiGetLogs, aiClearGraphData } from '../services/electronService';
 
 import dagre from 'dagre';
 import '../styles/KnowledgeGraph.css';
@@ -22,7 +22,10 @@ const TYPE_COLORS = {
   Technology: { background: 'var(--kg-tech-bg)', border: 'var(--kg-tech-border)', text: 'var(--kg-tech-border)' },
   Company: { background: 'var(--kg-company-bg)', border: 'var(--kg-company-border)', text: 'var(--kg-company-border)' },
   Concept: { background: 'var(--kg-concept-bg)', border: 'var(--kg-concept-border)', text: 'var(--kg-concept-border)' },
-  Task: { background: 'var(--kg-task-bg)', border: 'var(--kg-task-border)', text: 'var(--kg-task-border)' }
+  Task: { background: 'var(--kg-task-bg)', border: 'var(--kg-task-border)', text: 'var(--kg-task-border)' },
+  Image: { background: 'var(--kg-image-bg, #f0fdf4)', border: 'var(--kg-image-border, #16a34a)', text: '#16a34a' },
+  Document: { background: 'var(--kg-doc-bg, #fefce8)', border: 'var(--kg-doc-border, #ca8a04)', text: '#ca8a04' },
+  ExternalURL: { background: 'var(--kg-url-bg, #faf5ff)', border: 'var(--kg-url-border, #9333ea)', text: '#9333ea' }
 };
 
 const DEFAULT_COLOR = { background: 'var(--surface-muted)', border: 'var(--border-default)', text: 'var(--text-muted)' };
@@ -38,12 +41,16 @@ export default function KnowledgeGraph({ onBack }) {
     Technology: true,
     Company: true,
     Concept: true,
-    Task: true
+    Task: true,
+    Image: true,
+    Document: true,
+    ExternalURL: true
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [graphStatus, setGraphStatus] = useState({ nodeCount: 0, edgeCount: 0, sizeBytes: 0 });
   const [selectedNode, setSelectedNode] = useState(null);
+  const [graphLogs, setGraphLogs] = useState([]);
 
   // Load Graph Data
   const loadGraphData = useCallback(async () => {
@@ -53,6 +60,11 @@ export default function KnowledgeGraph({ onBack }) {
 
       const graphRes = await aiGetGraph();
       const statusRes = await aiGetGraphStatus();
+      const logsRes = await aiGetLogs('graph', 50);
+
+      if (logsRes && logsRes.success && Array.isArray(logsRes.data)) {
+        setGraphLogs(logsRes.data);
+      }
 
       if (statusRes.success && statusRes.data) {
         setGraphStatus(statusRes.data);
@@ -79,9 +91,9 @@ export default function KnowledgeGraph({ onBack }) {
           }
         });
 
-        // 2. Use dagre to layout the connected graph automatically
+        // 2. Use dagre to layout the connected graph automatically with wide node/rank separation
         const g = new dagre.graphlib.Graph();
-        g.setGraph({ rankdir: 'LR', align: 'DL', nodesep: 60, edgesep: 40, ranksep: 180 });
+        g.setGraph({ rankdir: 'TB', align: 'UL', nodesep: 140, edgesep: 100, ranksep: 220, marginx: 40, marginy: 40 });
         g.setDefaultEdgeLabel(() => ({}));
 
         // Set connected nodes inside dagre graph
@@ -323,34 +335,40 @@ export default function KnowledgeGraph({ onBack }) {
                 </div>
               </div>
 
-              {/* Relationship Lines Legend */}
+              {/* Activity Logs Panel */}
               <div className="kg-sidebar-section" style={{ borderTop: '1px solid var(--border-default)', paddingTop: '16px' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
-                  Relation Lines
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                  Extraction Logs
                 </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', width: '32px', height: '8px' }}>
-                      <div style={{ width: '100%', height: '2px', borderTop: '2px dashed var(--border-soft)' }}></div>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      Active flow (dashed)
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', width: '32px', height: '8px' }}>
-                      <div style={{ width: '100%', height: '2px', background: 'var(--border-soft)' }}></div>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      Standard relation (solid)
-                    </span>
-                  </div>
+                <div style={{
+                  maxHeight: '140px',
+                  overflowY: 'auto',
+                  background: 'var(--surface-muted)',
+                  borderRadius: '6px',
+                  padding: '8px',
+                  border: '1px solid var(--border-soft)',
+                  fontFamily: 'monospace',
+                  fontSize: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  {graphLogs.length > 0 ? (
+                    graphLogs.map((log, i) => (
+                      <div key={log.id || i} style={{ color: log.level === 'error' ? 'var(--text-danger)' : 'var(--text-secondary)', lineHeight: 1.3 }}>
+                        <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                        {log.message}
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No extraction logs yet.</span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Sticky Rebuild Actions Panel */}
-            <div className="kg-sidebar-section" style={{ borderTop: '1px solid var(--border-default)', padding: '16px', background: 'var(--surface-elevated)' }}>
+            <div className="kg-sidebar-section" style={{ borderTop: '1px solid var(--border-default)', padding: '16px', background: 'var(--surface-elevated)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 className="btn btn-secondary btn-icon-label"
                 onClick={handleRebuild}
@@ -359,6 +377,19 @@ export default function KnowledgeGraph({ onBack }) {
               >
                 <RefreshCw size={14} className={loading ? 'spin' : ''} />
                 <span>Rebuild Knowledge Graph</span>
+              </button>
+
+              <button
+                className="btn btn-secondary"
+                onClick={async () => {
+                  if (window.confirm('Clear all Knowledge Graph entities and relationships from cache?')) {
+                    await aiClearGraphData();
+                    loadGraphData();
+                  }
+                }}
+                style={{ width: '100%', justifyContent: 'center', height: '32px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-danger)' }}
+              >
+                <span>Clear Knowledge Graph Data</span>
               </button>
             </div>
 

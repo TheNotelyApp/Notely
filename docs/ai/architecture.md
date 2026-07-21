@@ -53,7 +53,13 @@ Embeddings are stored in `{workspace}/.notes-app/ai-embeddings.db` using standar
 * **`indexing_queue`**: Background pipeline jobs.
 
 ### Dimension Guard
-* **Model Validation**: The database tracks the active `embedding_model` for all cached chunks. To prevent similarity comparison errors from varying vector sizes, the system runs `verifyModelDimensions(activeModelName)` on boot and worker startup. If a model change is detected, it clears the `chunks` database to trigger a clean rebuild.
+* **Physical Dimension Validation**: The database tracks active vectors and vector byte length. The system runs `verifyModelDimensions(activeModelName)` on boot and worker startup, validating stored vector byte sizes (384 float32s = 1536 bytes) rather than comparing string model names. This prevents false model mismatch wipes while safely clearing data if vector sizes physically change.
+
+---
+
+## 2. Centralized Multitenant Logging (`LogDB.js`)
+
+All AI and system subsystem activities are logged to the central logging database at `{workspace}/.notes-app/ai-logs.db`. For complete application-wide logging architecture, see [System Architecture](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/docs/architecture.md).
 
 ### Extraction & Query Process
 1. **Model Execution**: A local ONNX session (via `onnxruntime-node` or `onnxruntime-web`) executes `BGE-small-en-v1.5` to generate 384-dimensional vectors. Alternatively, the cloud HuggingFace Inference API (`sentence-transformers/all-MiniLM-L6-v2`) is used.

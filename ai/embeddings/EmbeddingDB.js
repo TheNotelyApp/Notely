@@ -318,12 +318,19 @@ class EmbeddingDB {
   }
 
   verifyModelDimensions(activeModelName) {
-    if (!this.db || !activeModelName) return;
+    if (!this.db) return;
     try {
-      const row = this.db.prepare('SELECT embedding_model FROM chunks WHERE embedding_model IS NOT NULL LIMIT 1').get();
-      if (row && row.embedding_model !== activeModelName) {
-        log.warn(`Embedding model changed from "${row.embedding_model}" to "${activeModelName}". Clearing chunks table to prevent dimension mismatches.`);
-        this.clearAllData();
+      // Check stored vector byte length to verify 384-dim size instead of raw string name comparison
+      const row = this.db.prepare('SELECT embedding FROM chunks WHERE embedding IS NOT NULL LIMIT 1').get();
+      if (row && row.embedding) {
+        const buf = row.embedding instanceof Buffer ? row.embedding : Buffer.from(row.embedding);
+        const storedDim = buf.byteLength / 4;
+        // All local BGE models use 384 dimensions
+        const expectedDim = 384;
+        if (storedDim > 0 && storedDim !== expectedDim) {
+          log.warn(`Embedding vector dimension mismatch: stored ${storedDim}, expected ${expectedDim}. Clearing chunks table.`);
+          this.clearAllData();
+        }
       }
     } catch (err) {
       log.error('Failed to verify model dimensions in database:', err.message);

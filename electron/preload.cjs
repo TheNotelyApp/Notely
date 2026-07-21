@@ -89,8 +89,12 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiBuildGraph: (payload) => ipcRenderer.invoke("ai:graph:build", payload),
   aiGetGraph: (payload) => ipcRenderer.invoke("ai:graph:get", payload),
   aiGetGraphStatus: (payload) => ipcRenderer.invoke("ai:graph:status", payload),
+  aiClearGraphData: () => ipcRenderer.invoke("ai:graph:clear-data"),
+  aiClearEmbeddingsData: () => ipcRenderer.invoke("ai:embeddings:clear-data"),
   aiDetectPatterns: (payload) => ipcRenderer.invoke("ai:patterns:detect", payload),
   aiGetNoteStats: (notePath) => ipcRenderer.invoke("ai:note:stats", { notePath }),
+  aiGetLogs: (payload) => ipcRenderer.invoke("ai:logs:get", payload),
+  aiClearLogs: (payload) => ipcRenderer.invoke("ai:logs:clear", payload),
   // Phase 5 — Conversations
   aiListConversations: () => ipcRenderer.invoke("ai:conversation:list"),
   aiGetConversation: (p) => ipcRenderer.invoke("ai:conversation:get", p),

@@ -203,7 +203,9 @@ function initializeAIHandlers(electronApp, agent) {
 
   // Embeddings Engine Subsystem
   registerHandler('ai:embeddings:rebuild', handleRebuildEmbeddings);
+  registerHandler('ai:embeddings:clear-data', handleClearEmbeddingsData);
   registerHandler('ai:embeddings:status', handleGetEmbeddingsStatus);
+  registerHandler('ai:graph:clear-data', handleClearGraphData);
   registerHandler('ai:worker:pause', handlePauseWorker);
   registerHandler('ai:worker:resume', handleResumeWorker);
   registerHandler('ai:model:download', handleDownloadModel);
@@ -211,6 +213,10 @@ function initializeAIHandlers(electronApp, agent) {
 
   // Pattern detection
   registerHandler(IPC_EVENTS.AI_DETECT_PATTERNS, handleDetectPatterns);
+
+  // Persistent Log Store
+  registerHandler('ai:logs:get', handleGetLogs);
+  registerHandler('ai:logs:clear', handleClearLogs);
 
   // Note stats
   registerHandler('ai:note:stats', handleNoteStats);
@@ -430,24 +436,71 @@ async function handleRebuildEmbeddings(_event, _payload) {
     if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.embeddingDb) {
       throw new Error('AI agent or EmbeddingDB is not initialized');
     }
+
+    const LogDB = require('../../ai/logs/LogDB');
+    const logDb = new LogDB(aiService.agent.workspaceRoot);
+    logDb.initialize();
+    logDb.addLog('embeddings', 'Starting complete Embeddings DB rebuild...', 'info');
+
     aiService.agent.embeddingDb.clearAllData();
 
     const workerManager = require('./workerManager.cjs');
     
     // Populate queue with all markdown files in workspace
     const docs = aiService.agent.documentService.getAllDocuments();
+    let count = 0;
     if (docs && docs.length > 0) {
       for (const doc of docs) {
         const filePath = doc?.path || doc?.filePath;
         if (filePath) {
           workerManager.enqueueNote(filePath, 0);
+          count++;
         }
       }
     }
 
+    logDb.addLog('embeddings', `Cleared database and enqueued ${count} notes for embedding generation`, 'info');
+    logDb.close();
+
     return new AIQueryResponse(true, { message: 'Embeddings db cleared and rebuild triggered' });
   } catch (error) {
     console.error('[AI IPC] Embeddings rebuild failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleClearEmbeddingsData(_event, _payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.embeddingDb) {
+      throw new Error('AI agent or EmbeddingDB is not initialized');
+    }
+    aiService.agent.embeddingDb.clearAllData();
+    const LogDB = require('../../ai/logs/LogDB');
+    const logDb = new LogDB(aiService.agent.workspaceRoot);
+    logDb.initialize();
+    logDb.addLog('embeddings', 'Cleared all vector embeddings data from cache', 'info');
+    logDb.close();
+    return new AIQueryResponse(true, { message: 'Embeddings data cleared' });
+  } catch (error) {
+    console.error('[AI IPC] Clear embeddings failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleClearGraphData(_event, _payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
+      throw new Error('AI agent or GraphDB is not initialized');
+    }
+    aiService.agent.graphDb.clearAllData();
+    const LogDB = require('../../ai/logs/LogDB');
+    const logDb = new LogDB(aiService.agent.workspaceRoot);
+    logDb.initialize();
+    logDb.addLog('graph', 'Cleared all Knowledge Graph entities and relationships from cache', 'info');
+    logDb.close();
+    return new AIQueryResponse(true, { message: 'Knowledge Graph data cleared' });
+  } catch (error) {
+    console.error('[AI IPC] Clear graph failed:', error);
     return new AIQueryResponse(false, null, error.message);
   }
 }
@@ -1150,6 +1203,50 @@ async function handleKnowledgeReject(_event, payload) {
     _getStore().rejectKnowledge(payload?.id);
     return new AIQueryResponse(true, { ok: true });
   } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+let _logDbInstance = null;
+function getLogDbInstance() {
+  const workspaceRoot = aiService.workspaceRoot;
+  if (!workspaceRoot) return null;
+  if (!_logDbInstance || _logDbInstance.workspaceRoot !== workspaceRoot) {
+    if (_logDbInstance) try { _logDbInstance.close(); } catch {}
+    const LogDB = require('../../ai/logs/LogDB');
+    _logDbInstance = new LogDB(workspaceRoot);
+    _logDbInstance.initialize();
+  }
+  return _logDbInstance;
+}
+
+async function handleGetLogs(_event, payload) {
+  try {
+    const subsystem = payload?.subsystem || null;
+    const limit = payload?.limit || 100;
+    const logDb = getLogDbInstance();
+    if (!logDb) {
+      return new AIQueryResponse(true, []);
+    }
+    const logs = logDb.getLogs(subsystem, limit);
+    return new AIQueryResponse(true, logs);
+  } catch (err) {
+    console.error('[AI IPC] Failed to fetch logs:', err);
+    return new AIQueryResponse(false, null, err.message);
+  }
+}
+
+async function handleClearLogs(_event, payload) {
+  try {
+    const subsystem = payload?.subsystem || null;
+    const logDb = getLogDbInstance();
+    if (!logDb) {
+      return new AIQueryResponse(true, { ok: true });
+    }
+    logDb.clearLogs(subsystem);
+    return new AIQueryResponse(true, { ok: true });
+  } catch (err) {
+    console.error('[AI IPC] Failed to clear logs:', err);
     return new AIQueryResponse(false, null, err.message);
   }
 }

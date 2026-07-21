@@ -18,6 +18,7 @@ export function UIStateProvider({ children }) {
   const [embeddingsPageOpen, setEmbeddingsPageOpen] = useState(false);
   const [personasPageOpen, setPersonasPageOpen] = useState(false);
   const [healthPageOpen, setHealthPageOpen] = useState(false);
+  const [appLogsOpen, setAppLogsOpen] = useState(false);
   const [globalCommitDialogOpen, setGlobalCommitDialogOpen] = useState(false);
   const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
   const [allTasksPanelOpen, setAllTasksPanelOpen] = useState(false);
@@ -52,6 +53,7 @@ export function UIStateProvider({ children }) {
     embeddingsPageOpen, setEmbeddingsPageOpen,
     personasPageOpen, setPersonasPageOpen,
     healthPageOpen, setHealthPageOpen,
+    appLogsOpen, setAppLogsOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
     tasksPanelOpen, setTasksPanelOpen,
     allTasksPanelOpen, setAllTasksPanelOpen,

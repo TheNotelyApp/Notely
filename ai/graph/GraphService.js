@@ -89,8 +89,8 @@ ${content}
         }
       }
 
-      // 2. Extract Tags: #tag
-      const tagRegex = /(?:^|\s)#([a-zA-Z0-9_-]+)/g;
+      // 2. Extract Tags: #tag (must contain at least one letter to prevent false positives like #20)
+      const tagRegex = /(?:^|\s)#([a-zA-Z_-]*[a-zA-Z][a-zA-Z0-9_-]*)/g;
       while ((match = tagRegex.exec(content)) !== null) {
         const tagName = match[1].trim();
         if (tagName) {
@@ -104,6 +104,66 @@ ${content}
             source_id: noteId,
             target_id: tagId,
             type: 'tagged',
+            weight: 1.0
+          });
+        }
+      }
+
+      // 3. Extract Images: ![alt](image_path)
+      const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
+      while ((match = imageRegex.exec(content)) !== null) {
+        const altText = match[1].trim() || 'Image';
+        const imgPath = match[2].trim();
+        if (imgPath && !imgPath.startsWith('http://') && !imgPath.startsWith('https://')) {
+          const imgName = imgPath.split(/[\\/]/).pop();
+          const imgId = `media-img-${imgName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          extractedEntities.push({
+            id: imgId,
+            type: 'Image',
+            name: imgName,
+            properties: { alt: altText, path: imgPath }
+          });
+          extractedRels.push({
+            source_id: noteId,
+            target_id: imgId,
+            type: 'contains_media',
+            weight: 1.0
+          });
+        }
+      }
+
+      // 4. Extract Document Attachments & External URLs: [label](path_or_url)
+      const linkRegex = /(?<!\!)\[(.*?)\]\((.*?)\)/g;
+      while ((match = linkRegex.exec(content)) !== null) {
+        const label = match[1].trim();
+        const href = match[2].trim();
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          const urlId = `ext-url-${href.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          extractedEntities.push({
+            id: urlId,
+            type: 'ExternalURL',
+            name: label || href,
+            properties: { url: href }
+          });
+          extractedRels.push({
+            source_id: noteId,
+            target_id: urlId,
+            type: 'references_url',
+            weight: 1.0
+          });
+        } else if (href.match(/\.(pdf|docx|xlsx|pptx|txt|csv|zip|png|jpg|jpeg|svg)$/i)) {
+          const docName = href.split(/[\\/]/).pop();
+          const docId = `doc-${docName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          extractedEntities.push({
+            id: docId,
+            type: 'Document',
+            name: docName,
+            properties: { label, path: href }
+          });
+          extractedRels.push({
+            source_id: noteId,
+            target_id: docId,
+            type: 'attaches_file',
             weight: 1.0
           });
         }

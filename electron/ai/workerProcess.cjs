@@ -36,11 +36,18 @@ if (process.parentPort) {
 
         indexWorker = new IndexWorker(embeddingDb, queue, embeddingService);
         
-        // Monkey-patch processNextJob to report real-time working status
+        const LogDB = require('../../ai/logs/LogDB');
+        const logDb = new LogDB(workspaceRoot);
+        logDb.initialize();
+
+        // Monkey-patch processNextJob to report real-time working status and persistent logs
         const originalProcessNextJob = indexWorker.processNextJob.bind(indexWorker);
         indexWorker.processNextJob = async function() {
           process.parentPort.postMessage({ type: 'working', working: true });
           const res = await originalProcessNextJob();
+          if (res && res.filePath) {
+            logDb.addLog('embeddings', `Processed embeddings for note: ${path.basename(res.filePath)} (${res.chunkCount || 0} chunks)`, 'info');
+          }
           process.parentPort.postMessage({ type: 'working', working: this.isWorking });
           return res;
         };

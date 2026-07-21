@@ -291,6 +291,30 @@ export async function aiGetGraphStatus() {
   return api.aiGetGraphStatus({});
 }
 
+export async function aiGetLogs(subsystem = null, limit = 100) {
+  const api = getNotesApi();
+  if (typeof api.aiGetLogs !== "function") return { success: false, data: [] };
+  return api.aiGetLogs({ subsystem, limit });
+}
+
+export async function aiClearLogs(subsystem = null) {
+  const api = getNotesApi();
+  if (typeof api.aiClearLogs !== "function") return { success: false };
+  return api.aiClearLogs({ subsystem });
+}
+
+export async function aiClearEmbeddingsData() {
+  const api = getNotesApi();
+  if (typeof api.aiClearEmbeddingsData !== "function") return { success: false };
+  return api.aiClearEmbeddingsData();
+}
+
+export async function aiClearGraphData() {
+  const api = getNotesApi();
+  if (typeof api.aiClearGraphData !== "function") return { success: false };
+  return api.aiClearGraphData();
+}
+
 export async function aiDetectPatterns() {
   const api = getNotesApi();
   if (typeof api.aiDetectPatterns !== "function") {

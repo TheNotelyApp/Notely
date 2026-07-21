@@ -625,11 +625,6 @@ function buildAppMenuTemplate(win, context = {}) {
         {
           label: "Diagnostics",
           click: () => sendMenuAction(win, "open-health-page")
-        },
-        { type: "separator" },
-        {
-          label: "Clear Cache",
-          click: () => sendMenuAction(win, "ai-clear-cache")
         }
       ]
     },
@@ -655,6 +650,10 @@ function buildAppMenuTemplate(win, context = {}) {
         {
           label: "Report Bug / Feedback",
           click: () => sendMenuAction(win, "open-feedback")
+        },
+        {
+          label: "System & Application Logs",
+          click: () => sendMenuAction(win, "open-app-logs")
         },
         { type: "separator" },
         {

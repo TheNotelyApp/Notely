@@ -187,6 +187,19 @@ class GraphDB {
   }
 
   /**
+   * Purge all entities and relationships
+   */
+  clearAllData() {
+    if (!this.db) return;
+    try {
+      this.db.exec('BEGIN; DELETE FROM relationships; DELETE FROM entities; COMMIT;');
+    } catch (err) {
+      try { this.db.exec('ROLLBACK'); } catch {}
+      log.error('Failed to clear graph database:', err.message);
+    }
+  }
+
+  /**
    * Get all entities & relationships (entire graph)
    */
   getAll() {
