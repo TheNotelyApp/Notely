@@ -120,8 +120,8 @@ const PROVIDER_REGISTRY = {
   },
   local: {
     id: 'local',
-    name: 'Local (Qwen2.5-0.5B)',
-    description: 'On-device inference · no API key · ~400 MB download',
+    name: 'Local (Qwen2.5-0.5B ONNX)',
+    description: 'On-device inference · no API key · ~350 MB download',
     available: true,
     requiresApiKey: false,
     supportsEmbeddings: false,
@@ -129,17 +129,16 @@ const PROVIDER_REGISTRY = {
       textGeneration: true,
       embeddings: false,
       semanticSearch: false,
-      relationshipDiscovery: false,
+      relationshipDiscovery: true,
       patternDetection: true,
     },
     models: [
-      { id: 'qwen2.5-0.5b-instruct-q4_k_m', label: 'Qwen2.5 0.5B Instruct Q4', note: '~400 MB' }
+      { id: 'qwen2.5-0.5b-instruct-onnx', label: 'Qwen2.5 0.5B Instruct ONNX', note: '~350 MB' }
     ],
-    defaultModel: 'qwen2.5-0.5b-instruct-q4_k_m',
+    defaultModel: 'qwen2.5-0.5b-instruct-onnx',
     factory: (config) => {
-      // Return a placeholder or mock if loader isn't ready; index.js handles real boot
-      const LocalLlamaProvider = require('./LocalLlamaProvider');
-      return new LocalLlamaProvider(global.localModelManager, config);
+      const LocalONNXProvider = require('./LocalONNXProvider');
+      return new LocalONNXProvider(config);
     }
   }
 };

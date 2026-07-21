@@ -35,7 +35,6 @@ class Agent {
     this.graphService = null;
     this.graphBuilder = null;
     this.graphProvider = null;
-    this.localModelManager = null;
 
     this.isInitialized = false;
     this.workspaceRoot = null;
@@ -43,10 +42,6 @@ class Agent {
 
   setGraphProvider(provider) {
     this.graphProvider = provider;
-  }
-
-  setLocalModelManager(mgr) {
-    this.localModelManager = mgr;
   }
 
   /**

@@ -113,20 +113,24 @@ export default function KnowledgeGraphSettings() {
               <Save size={12} /> Save
             </button>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginTop: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--border-soft)' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Active Graph Model</span>
+            <strong style={{ color: 'var(--text-strong)' }}>{preferences.graphProvider === 'local' ? 'Qwen2.5-0.5B-Instruct (ONNX)' : 'Configured Text Provider (Cloud)'}</strong>
+          </div>
         </div>
 
         {preferences.graphProvider === 'local' && (
           <div style={{ padding: "10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
-            <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 6px 0" }}>Local Model Status (Qwen GGUF)</h4>
+            <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 6px 0" }}>Local Model Status (Qwen ONNX)</h4>
             {modelStatus.downloaded ? (
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
                 <Database size={12} />
-                <span>Qwen2.5-0.5B model is downloaded and ready offline. (Shared with local text provider)</span>
+                <span>Qwen2.5-0.5B ONNX model is downloaded and ready offline. (Shared with local text provider)</span>
               </div>
             ) : modelStatus.isDownloading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
-                  <span>Downloading local weights (~400MB)...</span>
+                  <span>Downloading local weights (~350MB)...</span>
                   <span>{modelStatus.progress}%</span>
                 </div>
                 <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>

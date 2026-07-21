@@ -16,9 +16,8 @@ import {
   aiTestConnection,
   aiGetProviderList,
   aiGetHealth,
-  aiGetModelStatus,
-  aiDownloadModel,
-  onModelDownloadProgress,
+  aiGetGraphModelStatus,
+  onGraphModelDownloadProgress,
   aiEnable,
   aiDisable
 } from '../services/electronService';
@@ -66,7 +65,7 @@ export const AISettingsContent = ({ _onClose }) => {
   useEffect(() => {
     const loadModelStatus = async () => {
       try {
-        const res = await aiGetModelStatus();
+        const res = await aiGetGraphModelStatus();
         if (res.success && res.data) {
           setModelStatus(res.data);
         }
@@ -76,7 +75,7 @@ export const AISettingsContent = ({ _onClose }) => {
     };
     loadModelStatus();
 
-    const unsubscribe = onModelDownloadProgress((payload) => {
+    const unsubscribe = onGraphModelDownloadProgress((payload) => {
       setModelStatus(prev => ({
         ...prev,
         isDownloading: true,
@@ -358,7 +357,7 @@ export const AISettingsContent = ({ _onClose }) => {
               Toggle the global switch to enable or disable all background AI services, embeddings, and chat.
             </span>
           </div>
-          <label style={{ display: "inline-flex", alignItems: "center", cursor: "pointer" }}>
+          <label style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", position: "relative", width: "40px", height: "20px" }}>
             <input
               type="checkbox"
               checked={isAIEnabled}
@@ -382,8 +381,28 @@ export const AISettingsContent = ({ _onClose }) => {
                   }));
                 }
               }}
-              style={{ width: "20px", height: "20px", cursor: "pointer" }}
+              style={{ opacity: 0, width: 0, height: 0 }}
             />
+            <span style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: isAIEnabled ? "var(--accent-solid)" : "var(--border-default)",
+              borderRadius: "20px",
+              transition: "background var(--motion-standard)",
+              cursor: "pointer"
+            }}>
+              <span style={{
+                position: "absolute",
+                height: "16px",
+                width: "16px",
+                left: isAIEnabled ? "22px" : "2px",
+                bottom: "2px",
+                background: "var(--surface-bg, #fff)",
+                borderRadius: "50%",
+                transition: "left var(--motion-standard)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.2)"
+              }} />
+            </span>
           </label>
         </div>
 
@@ -528,11 +547,11 @@ export const AISettingsContent = ({ _onClose }) => {
 
                 {selectedProvider === 'local' ? (
                   <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginBottom: "8px" }}>
-                    <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (Qwen GGUF)</h4>
+                    <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (Qwen ONNX)</h4>
                     {modelStatus.downloaded ? (
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
                         <Database size={12} />
-                        <span>Qwen2.5-0.5B model is downloaded and ready offline.</span>
+                        <span>Qwen2.5-0.5B ONNX model is downloaded and ready offline.</span>
                       </div>
                     ) : modelStatus.isDownloading ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -546,7 +565,7 @@ export const AISettingsContent = ({ _onClose }) => {
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Qwen model not found. Click the button below or go to Knowledge Graph tab to download.</span>
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Qwen ONNX model not found. Click the button below or go to Knowledge Graph tab to download.</span>
                         <button
                           className="btn btn-secondary btn-sm"
                           onClick={async () => {
@@ -563,7 +582,7 @@ export const AISettingsContent = ({ _onClose }) => {
                           style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", width: "fit-content" }}
                         >
                           <Download size={12} />
-                          <span>Download local model (400MB)</span>
+                          <span>Download Qwen2.5-0.5B ONNX (350MB)</span>
                         </button>
                       </div>
                     )}
@@ -700,13 +719,29 @@ export const AISettingsContent = ({ _onClose }) => {
                     onClick={async () => {
                       try {
                         setLoading(true);
+                        // Fetch current preference first to see if it changed
+                        const curPrefsRes = await aiGetPreferences();
+                        const curEmb = curPrefsRes.success && curPrefsRes.data ? curPrefsRes.data.embeddingProvider : 'internal';
+                        const nextEmb = preferences.embeddingProvider;
+                        
+                        let confirmRebuild = false;
+                        if (curEmb !== nextEmb) {
+                          confirmRebuild = window.confirm(`Changing your embedding provider from "${curEmb === 'internal' ? 'Local BGE' : 'HuggingFace'}" to "${nextEmb === 'internal' ? 'Local BGE' : 'HuggingFace'}" requires invalidating and rebuilding your vector search cache. Do you want to wipe and rebuild the index now?`);
+                        }
+
                         const response = await aiSetPreferences({
                           ...preferences,
-                          embeddingProvider: preferences.embeddingProvider
+                          embeddingProvider: nextEmb
                         });
+
                         if (response.success) {
+                          if (confirmRebuild) {
+                            const { aiClearEmbeddingsData, aiRebuildEmbeddings } = await import('../services/electronService');
+                            await aiClearEmbeddingsData();
+                            await aiRebuildEmbeddings();
+                          }
                           window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Active embedding provider set to ${preferences.embeddingProvider === 'internal' ? 'Local Model' : 'HuggingFace'} and saved.`, type: 'success' }
+                            detail: { message: `Active embedding provider set to ${nextEmb === 'internal' ? 'Local Model' : 'HuggingFace'} and saved.`, type: 'success' }
                           }));
                         } else {
                           window.dispatchEvent(new CustomEvent('app:toast', {
