@@ -382,20 +382,7 @@ export default function AIChatPanel({
                       }
                     }}
                   />
-                  {message.role === "assistant" && message.tools && message.tools.length > 0 && (
-                    <div className="ai-chat-message-tools" style={{ marginTop: "6px", paddingTop: "4px", fontSize: "10px" }}>
-                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                        {Array.from(new Set(message.tools)).map((toolName, idx) => (
-                          <span
-                            key={idx}
-                            style={{ background: "var(--surface-muted)", color: "var(--text-muted)", padding: "1px 6px", borderRadius: "3px", border: "1px solid var(--border-soft)", fontFamily: "monospace", fontSize: "9.5px", display: "inline-flex", alignItems: "center", gap: "3px" }}
-                          >
-                            🔧 {toolName}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+
                   {message.role === "assistant" && message.references && message.references.length > 0 && (
                     <div className="ai-chat-message-references" style={{ marginTop: "6px", paddingTop: "5px", borderTop: "1px solid var(--border-soft)", fontSize: "10px" }}>
                       <div style={{ fontWeight: 600, color: "var(--text-muted)", marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sources:</div>
