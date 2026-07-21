@@ -99,6 +99,15 @@ export default withMermaid(
           ],
         },
         {
+          text: "Export & Import",
+          collapsed: false,
+          items: [
+            { text: "Export Reference", link: "/export-reference" },
+            { text: "Website View", link: "/web-view" },
+            { text: "Note Packages", link: "/export-import" },
+          ],
+        },
+        {
           text: "Git Version Control",
           collapsed: false,
           items: [
@@ -147,6 +156,7 @@ export default withMermaid(
           collapsed: true,
           items: [
             { text: "Developer Docs", link: "/developer/" },
+            { text: "Application Architecture", link: "/architecture" },
             { text: "License", link: "/license" },
           ],
         },

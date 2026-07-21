@@ -2,7 +2,7 @@
 title: Application Architecture
 description: Comprehensive overview of Notely's offline-first desktop application architecture, subsystems, IPC messaging, storage layers, and logging infrastructure.
 keywords: architecture, Electron, React, CodeMirror, SQLite, Git, P2P sync, IPC, LogDB
-category: System
+category: Developer
 ---
 
 # Notely Application Architecture
@@ -98,8 +98,15 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 * **Status Snapshots**: Tracks live peer connection states and sync progress.
 
 ### D. Package, Import & Export Subsystem (`notePackageIpc.cjs`)
-* **Document Exporters**: Exports markdown notes to HTML and PDF formats via Headless Chromium rendering.
-* **Package Manager**: Imports and exports compressed `.zip` markdown note packages with embedded media assets.
+
+**Document Exporters**:
+* Exports individual markdown notes to **HTML** and **PDF** formats via Headless Chromium rendering (CSS theme applied, media resolved).
+
+**Note Package System** (`.note` bundle format):
+* Bundles selected `.md` files with all linked assets into a single portable `.note` file via **File → Export / Import Note Package**.
+* **Bundled assets**: markdown files, `media/images/`, Excalidraw diagrams (`.notes-app/excali-diagrams/`), Draw.io diagrams (`media/draw.io/`), and auto-generated `metadata.json`.
+* **Security**: AES-256 encrypted bundle (not readable by generic ZIP tools). Each file is SHA-256 hashed and verified on import to reject tampered packages. Optional password protection stores a salted SHA-256 signature in the manifest.
+* **Import**: Decrypts and verifies bundle integrity, resolves asset path conflicts, and places all files into the active workspace. See [Export & Import Reference](/export-reference) for full user-facing documentation.
 
 ### E. AI & Context Engine Subsystem (`aiService.cjs`)
 * **Vector Embeddings Engine (`EmbeddingDB.js`)**: Stores 384-dimensional `BGE-small` vector chunks in `{workspace}/.notes-app/ai-embeddings.db`. Features physical vector dimension validation (`verifyModelDimensions`) to prevent dimension mismatches.

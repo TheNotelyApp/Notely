@@ -59,7 +59,7 @@ Embeddings are stored in `{workspace}/.notes-app/ai-embeddings.db` using standar
 
 ## 2. Centralized Multitenant Logging (`LogDB.js`)
 
-All AI and system subsystem activities are logged to the central logging database at `{workspace}/.notes-app/ai-logs.db`. For complete application-wide logging architecture, see [System Architecture](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/docs/architecture.md).
+All AI and system subsystem activities are logged to the central logging database at `{workspace}/.notes-app/ai-logs.db`. For complete application-wide logging architecture, see [Application Architecture](/architecture).
 
 ### Extraction & Query Process
 1. **Model Execution**: A local ONNX session (via `onnxruntime-node` or `onnxruntime-web`) executes `BGE-small-en-v1.5` to generate 384-dimensional vectors. Alternatively, the cloud HuggingFace Inference API (`sentence-transformers/all-MiniLM-L6-v2`) is used.
