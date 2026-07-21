@@ -25,42 +25,33 @@ class SemanticRetriever {
   async search(query, topK = 5) {
     const startTime = performance.now();
     if (!this.embeddingService.isAvailable()) {
-      log.warn('Embedding service not available - semantic search skipped.');
-      return [];
+      log.warn('Embedding service not available - falling back to keyword search.');
+      return typeof this.embeddingDB.searchTextFallback === 'function'
+        ? this.embeddingDB.searchTextFallback(query, topK)
+        : [];
     }
 
     let queryVec;
     try {
       queryVec = await this.embeddingService.generateVector(query);
     } catch (err) {
-      log.error('Failed to generate query vector', err);
-      return [];
+      log.error('Failed to generate query vector - falling back to keyword search', err);
+      return typeof this.embeddingDB.searchTextFallback === 'function'
+        ? this.embeddingDB.searchTextFallback(query, topK)
+        : [];
     }
 
-    // Load only IDs, paths, and vectors first in batches to minimize memory allocation overhead
+    // Scan the preloaded vector cache directly to bypass SQLite SELECT and buffer deserialization overhead
     const scored = [];
-    const BATCH_SIZE = 500;
-    let offset = 0;
-    const stmtSelect = this.embeddingDB.db.prepare(
-      'SELECT id, note_path, embedding FROM chunks WHERE embedding IS NOT NULL LIMIT ? OFFSET ?'
-    );
-
-    while (true) {
-      const rows = stmtSelect.all(BATCH_SIZE, offset);
-      if (!rows.length) break;
-
-      for (const row of rows) {
-        const chunkVec = this._deserialize(row.embedding);
+    const cache = this.embeddingDB.vectorCache || [];
+    for (const item of cache) {
+      if (item.embedding) {
         scored.push({
-          id: row.id,
-          note_path: row.note_path,
-          score: this._cosine(queryVec, chunkVec)
+          id: item.id,
+          note_path: item.note_path,
+          score: this._cosine(queryVec, item.embedding)
         });
       }
-
-      if (rows.length < BATCH_SIZE) break;
-      offset += BATCH_SIZE;
-      await new Promise(resolve => setImmediate(resolve));
     }
 
     if (!scored.length) return [];

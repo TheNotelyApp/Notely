@@ -253,6 +253,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   value,
   onChange,
   textareaRef,
+  readOnly = false,
   onNotify,
   validationIssues = [],
   onIgnoreSpellingWord,
@@ -1017,6 +1018,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         className="markdown-codemirror"
         value={value}
         height="100%"
+        editable={!readOnly}
         theme={themeMode === "dark" ? "dark" : "light"}
         basicSetup={{
           foldGutter: false,

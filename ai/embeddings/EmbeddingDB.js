@@ -9,6 +9,7 @@ class EmbeddingDB {
     this.workspaceRoot = workspaceRoot;
     this.dbPath = path.join(workspaceRoot, '.notes-app', 'ai-embeddings.db');
     this.db = null;
+    this.vectorCache = [];
   }
 
   initialize() {
@@ -26,11 +27,33 @@ class EmbeddingDB {
       this.db.exec('PRAGMA synchronous = NORMAL');
 
       this.createTables();
+      this.preloadCache();
       log.info(`EmbeddingDB initialized successfully at: ${this.dbPath}`);
       return true;
     } catch (err) {
       log.error(`Failed to initialize EmbeddingDB at: ${this.dbPath}`, err);
       throw err;
+    }
+  }
+
+  preloadCache() {
+    if (!this.db) return;
+    try {
+      const stmt = this.db.prepare('SELECT id, note_path, embedding, embedding_model FROM chunks WHERE embedding IS NOT NULL');
+      const rows = stmt.all();
+      this.vectorCache = rows.map(r => {
+        const buf = r.embedding instanceof Buffer ? r.embedding : Buffer.from(r.embedding);
+        const arr = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+        return {
+          id: r.id,
+          note_path: r.note_path,
+          embedding: Array.from(arr),
+          embedding_model: r.embedding_model
+        };
+      });
+      log.info(`Preloaded vector cache with ${this.vectorCache.length} vectors`);
+    } catch (err) {
+      log.error('Failed to preload vector cache', err);
     }
   }
 
@@ -118,6 +141,7 @@ class EmbeddingDB {
       deleteChunks.run(notePath);
       deleteHash.run(notePath);
       this.db.exec('COMMIT');
+      this.vectorCache = this.vectorCache.filter(v => v.note_path !== notePath);
     } catch (e) {
       this.db.exec('ROLLBACK');
       throw e;
@@ -150,6 +174,22 @@ class EmbeddingDB {
       chunk.embedding ? Buffer.from(new Float32Array(chunk.embedding).buffer) : null,
       chunk.embedding_model || 'local',
     );
+
+    if (chunk.embedding) {
+      const floatArr = Array.isArray(chunk.embedding) ? chunk.embedding : Array.from(chunk.embedding);
+      const existingIdx = this.vectorCache.findIndex(v => v.id === chunk.id);
+      const cachedItem = {
+        id: chunk.id,
+        note_path: chunk.note_path,
+        embedding: floatArr,
+        embedding_model: chunk.embedding_model || 'local'
+      };
+      if (existingIdx !== -1) {
+        this.vectorCache[existingIdx] = cachedItem;
+      } else {
+        this.vectorCache.push(cachedItem);
+      }
+    }
   }
 
   getChunks(notePath) {
@@ -244,6 +284,39 @@ class EmbeddingDB {
     return stmt.all(limit);
   }
 
+  getNoteChunkCount(notePath) {
+    try {
+      const normPath = notePath.replace(/\\/g, '/').toLowerCase();
+      const stmt = this.db.prepare('SELECT note_path, COUNT(*) as count FROM chunks GROUP BY note_path');
+      const rows = stmt.all();
+      const match = rows.find(r => r.note_path && r.note_path.replace(/\\/g, '/').toLowerCase() === normPath);
+      return match ? match.count : 0;
+    } catch (err) {
+      log.error('Failed to get chunk count:', err.message);
+      return 0;
+    }
+  }
+
+  searchTextFallback(query, topK = 5) {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT note_path, content 
+        FROM chunks 
+        WHERE content LIKE ? 
+        LIMIT ?
+      `);
+      const results = stmt.all(`%${query}%`, topK);
+      return results.map(r => ({
+        note_path: r.note_path,
+        content: r.content,
+        score: 0.5
+      }));
+    } catch (err) {
+      log.error('Text search fallback failed:', err.message);
+      return [];
+    }
+  }
+
   clearAllData() {
     this.db.exec(`
       DELETE FROM chunks;
@@ -252,6 +325,7 @@ class EmbeddingDB {
       DELETE FROM indexing_log;
       VACUUM;
     `);
+    this.vectorCache = [];
   }
 }
 

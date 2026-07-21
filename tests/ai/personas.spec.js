@@ -58,5 +58,44 @@ describe('PersonaDB Frontmatter and Importing Tests', () => {
       PersonaDB.parsePersonaFile(mdFile);
     }, /missing required frontmatter field/);
   });
+
+  it('should sync custom persona changes to disk on save', () => {
+    const customP = {
+      id: 'my-custom-test-persona',
+      name: 'Custom Test Persona',
+      description: 'Test Desc',
+      prompt: 'This is the prompt content.',
+      type: 'custom',
+      avatar: '🕵️',
+      version: '1.0'
+    };
+
+    personaDB.save(customP);
+
+    const saved = personaDB.get(customP.id);
+    assert.strictEqual(saved.name, 'Custom Test Persona');
+    assert.ok(saved.file_path);
+    assert.ok(fs.existsSync(saved.file_path));
+
+    const fileContent = fs.readFileSync(saved.file_path, 'utf8');
+    assert.ok(fileContent.includes('name: "Custom Test Persona"'));
+    assert.ok(fileContent.includes('This is the prompt content.'));
+  });
+
+  it('should throw an error when attempting to modify a builtin persona', () => {
+    const builtinP = {
+      id: 'default',
+      name: 'Hacked Persona',
+      description: 'Hacked Desc',
+      prompt: 'Hacked prompt.',
+      type: 'builtin',
+      avatar: '👻',
+      version: '1.0'
+    };
+
+    assert.throws(() => {
+      personaDB.save(builtinP);
+    }, /Cannot modify system default personas/);
+  });
 });
 

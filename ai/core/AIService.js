@@ -160,13 +160,22 @@ class AIService {
   onNoteDelete(filePath) {
     if (!this.enabled || !this.agent) return;
 
-    // 1. Purge embedding DB chunks via workerManager
-    try {
-      const workerManager = require('../../electron/ai/workerManager.cjs');
-      workerManager.deleteNoteData(filePath);
-      log.info(`Deleted note embeddings from background index for: ${filePath}`);
-    } catch (err) {
-      log.error(`Failed to delete background note embeddings: ${filePath}`, err.message);
+    // 1. Purge embedding DB chunks synchronously
+    if (this.agent.embeddingDb) {
+      try {
+        this.agent.embeddingDb.deleteNoteData(filePath);
+        log.info(`Synchronously deleted note embeddings for: ${filePath}`);
+      } catch (err) {
+        log.error(`Failed to synchronously delete note embeddings: ${filePath}`, err.message);
+      }
+    } else {
+      try {
+        const workerManager = require('../../electron/ai/workerManager.cjs');
+        workerManager.deleteNoteData(filePath);
+        log.info(`Deleted note embeddings from background index for: ${filePath}`);
+      } catch (err) {
+        log.error(`Failed to delete background note embeddings: ${filePath}`, err.message);
+      }
     }
 
     // 2. Purge knowledge graph nodes & relationships

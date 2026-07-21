@@ -72,6 +72,9 @@ class ContextEngine {
       tools.hybridSearchNotes = this.hybridRetriever.toTool();
     }
 
+    // Unified alias for search_notes
+    tools.search_notes = this.hybridRetriever ? this.hybridRetriever.toTool() : this.semanticRetriever.toTool();
+
     log.info(`Context built for conversation=${conversationId} persona=${personaId} msgs=${messages.length}`);
 
     return { system, messages, tools };

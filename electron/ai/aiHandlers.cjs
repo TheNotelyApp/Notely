@@ -212,6 +212,9 @@ function initializeAIHandlers(electronApp, agent) {
   // Pattern detection
   registerHandler(IPC_EVENTS.AI_DETECT_PATTERNS, handleDetectPatterns);
 
+  // Note stats
+  registerHandler('ai:note:stats', handleNoteStats);
+
   // Configuration
   registerHandler(IPC_EVENTS.AI_SET_API_KEY, handleSetAPIKey);
   registerHandler(IPC_EVENTS.AI_GET_API_KEY, handleGetAPIKey);
@@ -504,6 +507,19 @@ async function handleGetEmbeddingsStatus(_event, payload) {
   } catch (error) {
     console.error('[AI IPC] Get embeddings status failed:', error);
     return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleNoteStats(_event, payload) {
+  try {
+    const notePath = payload?.notePath;
+    if (!notePath) return new AIQueryResponse(false, null, 'notePath is required.');
+    const agent = aiService.agent;
+    const chunkCount = agent && agent.embeddingDb ? agent.embeddingDb.getNoteChunkCount(notePath) : 0;
+    const edgeCount = agent && agent.graphDb ? agent.graphDb.getNoteRelationshipCount(notePath) : 0;
+    return new AIQueryResponse(true, { chunkCount, edgeCount });
+  } catch (err) {
+    return new AIQueryResponse(false, null, err.message);
   }
 }
 

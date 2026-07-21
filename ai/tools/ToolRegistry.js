@@ -16,17 +16,38 @@ async function getTools(agentInstance) {
       read_note: tool({
         description: 'Read the contents of a specific note file in the workspace.',
         parameters: z.object({
-          file_path: z.string().describe('The absolute path to the note file to read.')
+          file_path: z.string().describe('The relative or absolute path to the note file to read.'),
+          start_line: z.number().int().min(1).optional().describe('Start line number to read (optional, default 1).'),
+          end_line: z.number().int().min(1).optional().describe('End line number to read (optional, default: reads up to 10,000 chars).')
         }),
         execute: async (args) => {
           log.info(`Executing read_note tool with raw args: ${JSON.stringify(args)}`);
-          const filePath = args?.file_path || args?.filePath;
+          let filePath = args?.file_path || args?.filePath;
+          const startLine = args?.start_line || args?.startLine || 1;
+          const endLine = args?.end_line || args?.endLine || null;
           try {
-            if (!filePath || !fs.existsSync(filePath)) {
+            if (!filePath) return 'Error: file_path is required.';
+            const path = require('path');
+            if (!path.isAbsolute(filePath) && agentInstance?.workspaceRoot) {
+              filePath = path.resolve(agentInstance.workspaceRoot, filePath);
+            }
+            if (!fs.existsSync(filePath)) {
               return `Error: Note file at path "${filePath}" does not exist.`;
             }
             const content = fs.readFileSync(filePath, 'utf8');
-            return content;
+            const lines = content.split(/\r?\n/);
+            
+            if (endLine !== null) {
+              const sliced = lines.slice(startLine - 1, endLine).join('\n');
+              return sliced;
+            }
+
+            // Default: read from startLine, cap output size at 10,000 characters
+            const remainingText = lines.slice(startLine - 1).join('\n');
+            if (remainingText.length > 10000) {
+              return remainingText.slice(0, 10000) + '\n\n... [Content truncated due to size. Use start_line and end_line parameters to read further.]';
+            }
+            return remainingText;
           } catch (err) {
             return `Error reading file: ${err.message}`;
           }
@@ -340,6 +361,112 @@ async function getTools(agentInstance) {
             return JSON.stringify(personMap, null, 2);
           } catch (err) {
             return `Error getting people: ${err.message}`;
+          }
+        }
+      }),
+
+      git_diff: tool({
+        description: 'Get local git diff of modified and unstaged note changes in the active workspace.',
+        parameters: z.object({}),
+        execute: async () => {
+          log.info('Executing git_diff tool');
+          try {
+            if (!agentInstance || !agentInstance.workspaceRoot) {
+              return 'Error: No workspace active.';
+            }
+            const simpleGit = require('simple-git');
+            const git = simpleGit(agentInstance.workspaceRoot);
+            const diff = await git.diff();
+            return diff || 'No local changes detected.';
+          } catch (err) {
+            return `Error getting git diff: ${err.message}`;
+          }
+        }
+      }),
+
+      git_commit: tool({
+        description: 'Stage all files and commit note changes in the active workspace with a commit message.',
+        parameters: z.object({
+          message: z.string().describe('The commit message summarizing the changes.')
+        }),
+        execute: async (args) => {
+          log.info(`Executing git_commit tool with args: ${JSON.stringify(args)}`);
+          const { message } = args || {};
+          try {
+            if (!message) return 'Error: Commit message is required.';
+            if (!agentInstance || !agentInstance.workspaceRoot) {
+              return 'Error: No workspace active.';
+            }
+            const simpleGit = require('simple-git');
+            const git = simpleGit(agentInstance.workspaceRoot);
+            await git.add('./*');
+            const commitResult = await git.commit(message);
+            return JSON.stringify(commitResult, null, 2);
+          } catch (err) {
+            return `Error committing changes: ${err.message}`;
+          }
+        }
+      }),
+
+      read_pdf: tool({
+        description: 'Read and extract plain text from a specific PDF document attachment in the workspace.',
+        parameters: z.object({
+          file_path: z.string().describe('The absolute path to the PDF file to read.')
+        }),
+        execute: async (args) => {
+          log.info(`Executing read_pdf tool with args: ${JSON.stringify(args)}`);
+          let filePath = args?.file_path || args?.filePath;
+          try {
+            if (!filePath) return 'Error: file_path is required.';
+            const path = require('path');
+            if (!path.isAbsolute(filePath) && agentInstance?.workspaceRoot) {
+              filePath = path.resolve(agentInstance.workspaceRoot, filePath);
+            }
+            if (!fs.existsSync(filePath)) {
+              return `Error: PDF file at path "${filePath}" does not exist.`;
+            }
+            const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+            const data = new Uint8Array(fs.readFileSync(filePath));
+            const loadingTask = pdfjsLib.getDocument({ data, useSystemFonts: true });
+            const pdf = await loadingTask.promise;
+            let textContent = '';
+            for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) { // cap at 50 pages to prevent context blowup
+              const page = await pdf.getPage(i);
+              const textObj = await page.getTextContent();
+              const pageText = textObj.items.map(item => item.str).join(' ');
+              textContent += `--- Page ${i} ---\n${pageText}\n\n`;
+            }
+            return textContent || 'No text content found in PDF.';
+          } catch (err) {
+            return `Error reading PDF: ${err.message}`;
+          }
+        }
+      }),
+
+      resolve_folder_link: tool({
+        description: 'Resolves relative subfolder paths to list note files inside them.',
+        parameters: z.object({
+          folder_path: z.string().describe('The relative or absolute folder path to resolve.')
+        }),
+        execute: async (args) => {
+          log.info(`Executing resolve_folder_link tool with args: ${JSON.stringify(args)}`);
+          const folderPath = args?.folder_path || args?.folderPath;
+          try {
+            if (!agentInstance || !agentInstance.workspaceRoot) return 'Error: No workspace active.';
+            const path = require('path');
+            const targetPath = path.isAbsolute(folderPath) ? folderPath : path.resolve(agentInstance.workspaceRoot, folderPath);
+            if (!fs.existsSync(targetPath)) return `Error: Folder path "${targetPath}" does not exist.`;
+            const stats = fs.statSync(targetPath);
+            if (!stats.isDirectory()) return `Error: "${targetPath}" is a file, not a directory.`;
+            
+            const entries = fs.readdirSync(targetPath);
+            const notes = entries.filter(f => f.endsWith('.md')).map(f => ({
+              fileName: f,
+              filePath: path.join(targetPath, f)
+            }));
+            return JSON.stringify(notes, null, 2);
+          } catch (err) {
+            return `Error resolving folder: ${err.message}`;
           }
         }
       })

@@ -5,6 +5,7 @@ dist/
 build/
 .artifacts/
 release/
+.codegraph/
 notes/
 notes/.notes-app/
 electron/app-version.generated.json

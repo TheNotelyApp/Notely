@@ -116,6 +116,7 @@ export default withMermaid(
             { text: "AI Overview", link: "/ai/" },
             { text: "AI Setup", link: "/ai/setup" },
             { text: "AI Features", link: "/ai/features" },
+            { text: "AI Architecture", link: "/ai/architecture" },
           ],
         },
         {

@@ -4,46 +4,7 @@ const { createLogger } = require('../core/logger');
 
 const log = createLogger('PersonaDB');
 
-// Built-in persona definitions with custom avatar metadata (emoji/icon shorthand)
-const BUILTIN_PERSONAS = [
-  {
-    id: 'default',
-    name: 'Default Assistant',
-    description: 'Balanced general-purpose assistant.',
-    type: 'builtin',
-    version: '1.0',
-    avatar: '💬',
-    prompt: 'You are a helpful assistant integrated into Notely, a markdown note-taking app. Answer clearly and concisely, referencing workspace content when relevant.'
-  },
-  {
-    id: 'creative',
-    name: 'Creative Writer',
-    description: 'Narrative-focused, metaphor-rich brainstorming assistant.',
-    type: 'builtin',
-    version: '1.0',
-    avatar: '🎨',
-    prompt: 'You are a creative writing assistant in Notely. Help the user explore ideas with vivid language, compelling metaphors, narrative flow, and imaginative brainstorming. Embrace unconventional angles.'
-  },
-  {
-    id: 'technical',
-    name: 'Technical Analyst',
-    description: 'Strict, logic-driven assistant for code and structured analysis.',
-    type: 'builtin',
-    version: '1.0',
-    avatar: '🔬',
-    prompt: 'You are a technical analyst assistant in Notely. Respond with precision and structure. Use code blocks, markdown tables, and strict logical reasoning. Avoid informal language. Validate assumptions explicitly.'
-  },
-  {
-    id: 'researcher',
-    name: 'Academic Researcher',
-    description: 'Cites workspace sources and provides factual, structured analysis.',
-    type: 'builtin',
-    version: '1.0',
-    avatar: '🎓',
-    prompt: 'You are an academic research assistant in Notely. Cite workspace notes when answering. Prioritize factual accuracy, logical outlines, and structured responses. Flag uncertainty explicitly.'
-  }
-];
-
+// Default fields required in frontmatter for persona md files
 const REQUIRED_FIELDS = ['name', 'description', 'type', 'version'];
 
 class PersonaDB {
@@ -105,13 +66,44 @@ class PersonaDB {
 
   _seedBuiltins() {
     const now = new Date().toISOString();
-    // Use INSERT OR REPLACE for seeding built-ins so they get the avatar updates
+    const templatesDir = path.join(__dirname, '..', 'personas');
+    
+    if (!fs.existsSync(templatesDir)) {
+      log.warn(`Packaged personas templates directory not found at: ${templatesDir}`);
+      return;
+    }
+
+    const files = fs.readdirSync(templatesDir).filter(f => f.endsWith('.md'));
     const insert = this.db.prepare(
       `INSERT OR REPLACE INTO personas (id, name, description, file_path, type, version, avatar, prompt, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
-    for (const p of BUILTIN_PERSONAS) {
-      insert.run(p.id, p.name, p.description, null, p.type, p.version, p.avatar, p.prompt, now, now);
+
+    for (const file of files) {
+      const srcPath = path.join(templatesDir, file);
+      const id = file.slice(0, -3); // e.g. 'default', 'creative'
+      const destPath = path.join(this.personasDir, file);
+
+      try {
+        // ALWAYS overwrite default personas in local appDataDir/personas/ with packaged template versions
+        fs.copyFileSync(srcPath, destPath);
+
+        const { meta, prompt } = PersonaDB.parsePersonaFile(destPath);
+        insert.run(
+          id,
+          meta.name || id,
+          meta.description || '',
+          destPath,
+          'builtin',
+          meta.version || '1.0',
+          meta.avatar || '👤',
+          prompt,
+          now,
+          now
+        );
+      } catch (err) {
+        log.error(`Failed to seed builtin persona from ${file}:`, err);
+      }
     }
   }
 
@@ -125,6 +117,17 @@ class PersonaDB {
 
   save(persona) {
     const now = new Date().toISOString();
+    const existing = this.get(persona.id);
+    if (existing && existing.type === 'builtin') {
+      throw new Error('Cannot modify system default personas.');
+    }
+
+    let filePath = persona.file_path || existing?.file_path;
+    if (!filePath) {
+      filePath = path.join(this.personasDir, `${persona.id}.md`);
+    }
+
+    // Update SQLite DB
     this.db.prepare(
       `INSERT INTO personas (id, name, description, file_path, type, version, avatar, prompt, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -132,9 +135,27 @@ class PersonaDB {
          name=excluded.name, description=excluded.description, file_path=excluded.file_path,
          type=excluded.type, version=excluded.version, avatar=excluded.avatar, prompt=excluded.prompt, updated_at=excluded.updated_at`
     ).run(
-      persona.id, persona.name, persona.description ?? '', persona.file_path ?? null,
+      persona.id, persona.name, persona.description ?? '', filePath,
       persona.type ?? 'custom', persona.version ?? '1.0', persona.avatar ?? '👤', persona.prompt, now, now
     );
+
+    // Sync to disk
+    try {
+      const content = [
+        '---',
+        `name: "${persona.name}"`,
+        `description: "${persona.description ?? ''}"`,
+        `type: "${persona.type ?? 'custom'}"`,
+        `version: "${persona.version ?? '1.0'}"`,
+        `avatar: "${persona.avatar || '👤'}"`,
+        '---',
+        '',
+        persona.prompt
+      ].join('\n');
+      fs.writeFileSync(filePath, content, 'utf8');
+    } catch (err) {
+      log.error(`Failed to write persona changes to disk at ${filePath}:`, err);
+    }
   }
 
   delete(id) {

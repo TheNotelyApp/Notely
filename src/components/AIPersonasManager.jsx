@@ -120,8 +120,21 @@ export default function AIPersonasManager({ onBack }) {
       id: newId,
       name: 'New Custom Persona',
       description: 'Brief custom instructions description.',
-      prompt: 'Write system instructions here...',
-      avatar: '??',
+      prompt: [
+        '# Persona Prompt Instructions',
+        '',
+        '## 1. Identity & Tone',
+        '- Role: [Define who you are, e.g., Code Assistant]',
+        '- Tone: [e.g., Concise, technically precise]',
+        '',
+        '## 2. Capabilities & Constraints',
+        '- Instructions: [How you should formulate answers]',
+        '- Constraints: [What you should avoid doing]',
+        '',
+        '## 3. Context Integration',
+        '- Guidelines: [How you should reference note context and format file:/// links]'
+      ].join('\n'),
+      avatar: '👤',
       type: 'custom',
       version: '1.0'
     };
@@ -454,16 +467,18 @@ export default function AIPersonasManager({ onBack }) {
                 </div>
 
                 {/* Markdown Toolbar directly wired to editor state */}
-                <div className="pane-toolbar-row">
-                  <MarkdownToolbar
-                    value={editPrompt}
-                    onChange={handleChange}
-                    textareaRef={editorRef}
-                    basePath=""
-                    canUndo={false}
-                    canRedo={false}
-                  />
-                </div>
+                {selected.type !== 'builtin' && (
+                  <div className="pane-toolbar-row">
+                    <MarkdownToolbar
+                      value={editPrompt}
+                      onChange={handleChange}
+                      textareaRef={editorRef}
+                      basePath=""
+                      canUndo={false}
+                      canRedo={false}
+                    />
+                  </div>
+                )}
 
                 {/* Fully featured MarkdownEditor component */}
                 <div className="markdown-editor" style={{ flex: 1 }}>
@@ -472,6 +487,7 @@ export default function AIPersonasManager({ onBack }) {
                     onChange={handleChange}
                     textareaRef={editorRef}
                     aiEnabled={false}
+                    readOnly={selected.type === 'builtin'}
                   />
                 </div>
 

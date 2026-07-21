@@ -254,6 +254,21 @@ class GraphDB {
     if (!result) return null;
     return result.path_str.split(',');
   }
+
+  getNoteRelationshipCount(notePath) {
+    if (!this.db) return 0;
+    try {
+      const path = require('path');
+      const noteName = path.basename(notePath, '.md');
+      const entityId = noteName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      
+      const relCountRow = this.db.prepare('SELECT COUNT(*) as count FROM relationships WHERE source_id = ? OR target_id = ?').get(entityId, entityId);
+      return relCountRow?.count || 0;
+    } catch (err) {
+      log.error('Failed to get relationship count for note:', err.message);
+      return 0;
+    }
+  }
 }
 
 module.exports = GraphDB;

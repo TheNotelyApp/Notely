@@ -90,6 +90,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiGetGraph: (payload) => ipcRenderer.invoke("ai:graph:get", payload),
   aiGetGraphStatus: (payload) => ipcRenderer.invoke("ai:graph:status", payload),
   aiDetectPatterns: (payload) => ipcRenderer.invoke("ai:patterns:detect", payload),
+  aiGetNoteStats: (notePath) => ipcRenderer.invoke("ai:note:stats", { notePath }),
   // Phase 5 — Conversations
   aiListConversations: () => ipcRenderer.invoke("ai:conversation:list"),
   aiGetConversation: (p) => ipcRenderer.invoke("ai:conversation:get", p),

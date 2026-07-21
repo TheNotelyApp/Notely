@@ -1792,6 +1792,30 @@ export default function App() {
     });
   }, []);
 
+  const [noteAIStats, setNoteAIStats] = useState({ chunkCount: 0, edgeCount: 0 });
+
+  useEffect(() => {
+    if (!current?.filePath) {
+      setNoteAIStats({ chunkCount: 0, edgeCount: 0 });
+      return undefined;
+    }
+    let active = true;
+    const fetchStats = async () => {
+      try {
+        if (window.notesApi?.aiGetNoteStats) {
+          const res = await window.notesApi.aiGetNoteStats(current.filePath);
+          if (res?.success && active) {
+            setNoteAIStats(res.data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch note stats in App", err);
+      }
+    };
+    fetchStats();
+    return () => { active = false; };
+  }, [current?.filePath, current?.rawNotes, current?.cleansed]);
+
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
 
@@ -2710,6 +2734,12 @@ export default function App() {
                     </span>
                     <span className="terminal-meta-pill" data-tooltip="Estimated reading time">
                       ~{documentStats.readMinutes} min read
+                    </span>
+                    <span className="terminal-meta-pill" data-tooltip="Graph database edges for this note">
+                      {noteAIStats.edgeCount} edges
+                    </span>
+                    <span className="terminal-meta-pill" data-tooltip="Embedding database chunks for this note">
+                      {noteAIStats.chunkCount} chunks
                     </span>
                   </>
                 ) : null}
