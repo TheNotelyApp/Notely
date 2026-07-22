@@ -254,10 +254,22 @@ export async function aiDownloadModel() {
   return api.aiDownloadModel();
 }
 
+export async function aiDeleteModel() {
+  const api = getNotesApi();
+  if (typeof api.aiDeleteModel !== 'function') throw new Error('ONNX deletion is unavailable.');
+  return api.aiDeleteModel();
+}
+
 export async function aiDownloadGraphModel() {
   const api = getNotesApi();
   if (typeof api.aiDownloadGraphModel !== 'function') throw new Error('Graph model downloader is unavailable.');
   return api.aiDownloadGraphModel();
+}
+
+export async function aiDeleteGraphModel() {
+  const api = getNotesApi();
+  if (typeof api.aiDeleteGraphModel !== 'function') throw new Error('Graph model deletion is unavailable.');
+  return api.aiDeleteGraphModel();
 }
 
 export async function aiGetModelStatus() {
@@ -284,6 +296,24 @@ export function onGraphModelDownloadProgress(callback) {
   return api.onGraphModelDownloadProgress(callback);
 }
 
+
+export function onGraphProgress(callback) {
+  const api = getNotesApi();
+  if (typeof api.onGraphProgress !== 'function') return () => {};
+  return api.onGraphProgress(callback);
+}
+
+export async function aiPauseGraphWorker() {
+  const api = getNotesApi();
+  if (typeof api.aiPauseGraphWorker !== "function") return { success: false };
+  return api.aiPauseGraphWorker();
+}
+
+export async function aiResumeGraphWorker() {
+  const api = getNotesApi();
+  if (typeof api.aiResumeGraphWorker !== "function") return { success: false };
+  return api.aiResumeGraphWorker();
+}
 
 export async function aiBuildGraph() {
   const api = getNotesApi();
@@ -1291,3 +1321,22 @@ export async function aiRejectKnowledge(id) {
   if (typeof api.aiRejectKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
   return api.aiRejectKnowledge({ id });
 }
+
+// ─── Application Tool Layer ──────────────────────────────────────────────────
+
+export async function executeTool(toolName, args = {}, context = {}) {
+  const api = getNotesApi();
+  if (typeof api.executeTool !== 'function') {
+    throw new Error('Tool API unavailable.');
+  }
+  return api.executeTool({ toolName, args, context });
+}
+
+export async function listTools() {
+  const api = getNotesApi();
+  if (typeof api.listTools !== 'function') {
+    return { success: false, data: [] };
+  }
+  return api.listTools();
+}
+

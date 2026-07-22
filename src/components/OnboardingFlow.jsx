@@ -453,13 +453,13 @@ export function OnboardingFlow({
 
                     {selectedAIProvider === "local" ? (
                       <div style={{ padding: "10px", background: "var(--surface-muted)", border: "1px solid var(--border-soft)", borderRadius: "6px", marginBottom: "4px" }}>
-                        <strong style={{ fontSize: "13px", display: "block", marginBottom: "4px" }}>Local Qwen Model Status</strong>
+                        <strong style={{ fontSize: "13px", display: "block", marginBottom: "4px" }}>Local Knowledge Graph Engine (ModernBERT ONNX)</strong>
                         {graphModelStatus.downloaded ? (
-                          <div style={{ color: "var(--accent-solid)", fontSize: "12px" }}>✓ Qwen2.5 model weights downloaded & ready!</div>
+                          <div style={{ color: "var(--accent-solid)", fontSize: "12px" }}>✓ ModernBERT model weights downloaded & ready offline!</div>
                         ) : graphModelStatus.isDownloading ? (
                           <div>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginBottom: "3px" }}>
-                              <span>Downloading Qwen weights...</span>
+                              <span>Downloading ModernBERT weights...</span>
                               <span>{graphModelStatus.progress}%</span>
                             </div>
                             <div style={{ width: "100%", height: "4px", background: "var(--background-soft)", borderRadius: "2px", overflow: "hidden" }}>
@@ -468,7 +468,7 @@ export function OnboardingFlow({
                           </div>
                         ) : (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>~400 MB download required for offline mode.</span>
+                            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>~70 MB download for offline graph extraction.</span>
                             <button
                               type="button"
                               className="btn"
@@ -483,61 +483,92 @@ export function OnboardingFlow({
                               }}
                               style={{ padding: "4px 10px", fontSize: "11px", cursor: "pointer", background: "var(--accent-solid)", color: "#fff", border: "none", borderRadius: "6px" }}
                             >
-                              Download Qwen
+                              Download Model
                             </button>
                           </div>
                         )}
+                        <div style={{ color: "var(--text-muted)", fontSize: "10.5px", marginTop: "6px", borderLeft: "2px solid var(--accent-solid)", paddingLeft: "6px" }}>
+                          💡 <strong>Fast CPU Extraction:</strong> ModernBERT runs on CPU in a background worker process, consuming ~70MB-110MB RAM with ~22ms per sentence speed.
+                        </div>
                       </div>
                     ) : (
-                      <div>
-                        <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                          API Key
-                        </label>
-                        <div style={{ display: "flex", gap: "6px" }}>
-                          <input
-                            type="password"
-                            placeholder={`Enter ${selectedAIProvider} API Key...`}
-                            value={apiKey}
-                            onChange={(e) => {
-                              setApiKey(e.target.value);
-                              setTestSuccess(null);
-                            }}
-                            style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
-                          />
-                          <button
-                            type="button"
-                            className="btn"
-                            disabled={!apiKey || testingConnection}
-                            onClick={async () => {
-                              setTestingConnection(true);
-                              setTestSuccess(null);
-                              try {
-                                await aiSetApiKey(selectedAIProvider, apiKey);
-                                const res = await aiTestConnection({ provider: selectedAIProvider });
-                                if (res.success) {
-                                  setTestSuccess(true);
-                                } else {
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>
+                            API Key
+                          </label>
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <input
+                              type="password"
+                              placeholder={`Enter ${selectedAIProvider} API Key...`}
+                              value={apiKey}
+                              onChange={(e) => {
+                                setApiKey(e.target.value);
+                                setTestSuccess(null);
+                              }}
+                              style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
+                            />
+                            <button
+                              type="button"
+                              className="btn"
+                              disabled={!apiKey || testingConnection}
+                              onClick={async () => {
+                                setTestingConnection(true);
+                                setTestSuccess(null);
+                                try {
+                                  await aiSetApiKey(selectedAIProvider, apiKey);
+                                  const res = await aiTestConnection({ provider: selectedAIProvider });
+                                  if (res.success) {
+                                    setTestSuccess(true);
+                                  } else {
+                                    setTestSuccess(false);
+                                    alert(res.error || "Connection failed.");
+                                  }
+                                } catch (err) {
                                   setTestSuccess(false);
-                                  alert(res.error || "Connection failed.");
+                                  alert(err.message);
+                                } finally {
+                                  setTestingConnection(false);
                                 }
-                              } catch (err) {
-                                setTestSuccess(false);
-                                alert(err.message);
-                              } finally {
-                                setTestingConnection(false);
-                              }
-                            }}
-                            style={{ padding: "0 12px", height: "35px", boxSizing: "border-box", cursor: "pointer", background: "var(--surface-header)", border: "1px solid var(--border-soft)", color: "var(--text-strong)", borderRadius: "6px" }}
-                          >
-                            {testingConnection ? "Testing..." : "Test Connection"}
-                          </button>
+                              }}
+                              style={{ padding: "0 12px", height: "35px", boxSizing: "border-box", cursor: "pointer", background: "var(--surface-header)", border: "1px solid var(--border-soft)", color: "var(--text-strong)", borderRadius: "6px" }}
+                            >
+                              {testingConnection ? "Testing..." : "Test Connection"}
+                            </button>
+                          </div>
+                          {testSuccess === true && <div style={{ color: "var(--accent-solid)", fontSize: "12px", marginTop: "4px" }}>✓ Connection successful!</div>}
+                          {testSuccess === false && <div style={{ color: "var(--accent-danger)", fontSize: "12px", marginTop: "4px" }}>✗ Connection failed.</div>}
                         </div>
-                        {testSuccess === true && <div style={{ color: "var(--accent-solid)", fontSize: "12px", marginTop: "4px" }}>✓ Connection successful!</div>}
-                        {testSuccess === false && <div style={{ color: "var(--accent-danger)", fontSize: "12px", marginTop: "4px" }}>✗ Connection failed.</div>}
+
+                        {/* Provider-specific details and helper links */}
+                        <div style={{ padding: "10px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-soft)", fontSize: "11px", display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+                          {selectedAIProvider === "groq" && (
+                            <>
+                              <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Groq Cloud Provider Info:</div>
+                              <div>
+                                Get your API key at: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>console.groq.com/keys</a>
+                              </div>
+                              <div style={{ color: "var(--text-muted)", fontSize: "10px", borderLeft: "2px solid var(--accent-solid)", paddingLeft: "6px" }}>
+                                ⚠️ <strong>Rate Limit Warning:</strong> Groq free tier has daily token limits (TPD). If you hit a 429 rate limit error, you will need to wait for quota reset or upgrade to a developer tier.
+                              </div>
+                            </>
+                          )}
+                          {selectedAIProvider === "gemini" && (
+                            <>
+                              <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Google Gemini Provider Info:</div>
+                              <div>
+                                Get your API key at: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>aistudio.google.com/app/apikey</a>
+                              </div>
+                              <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>
+                                Gemini offers a generous free tier for developers with high limits.
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     )}
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
+ 
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
                       <input
                         type="checkbox"
                         id="onboarding-ai-embeddings"

@@ -16,9 +16,12 @@ import {
   aiTestConnection,
   aiGetProviderList,
   aiGetHealth,
+  aiGetModelStatus,
+  onModelDownloadProgress,
   aiGetGraphModelStatus,
   onGraphModelDownloadProgress,
   aiDownloadModel,
+  aiDeleteModel,
   aiEnable,
   aiDisable
 } from '../services/electronService';
@@ -66,7 +69,7 @@ export const AISettingsContent = ({ _onClose }) => {
   useEffect(() => {
     const loadModelStatus = async () => {
       try {
-        const res = await aiGetGraphModelStatus();
+        const res = await aiGetModelStatus();
         if (res.success && res.data) {
           setModelStatus(res.data);
         }
@@ -76,7 +79,7 @@ export const AISettingsContent = ({ _onClose }) => {
     };
     loadModelStatus();
 
-    const unsubscribe = onGraphModelDownloadProgress((payload) => {
+    const unsubscribe = onModelDownloadProgress((payload) => {
       setModelStatus(prev => ({
         ...prev,
         isDownloading: true,
@@ -587,6 +590,9 @@ export const AISettingsContent = ({ _onClose }) => {
                         </button>
                       </div>
                     )}
+                    <div style={{ color: "var(--text-muted)", fontSize: "10.5px", marginTop: "6px", borderLeft: "2px solid var(--accent-solid)", paddingLeft: "6px" }}>
+                      ⚠️ <strong>Hardware Warning:</strong> Running text models locally executes inference directly on your CPU. This requires a modern processor and at least 8GB-16GB RAM. Performance may cause temporary UI lag/freezes during generation.
+                    </div>
                   </div>
                 ) : (
                   <div className="api-key-group compact" style={{ marginBottom: "8px" }}>
@@ -675,6 +681,40 @@ export const AISettingsContent = ({ _onClose }) => {
                       >
                         <Zap size={12} /> Test
                       </button>
+                    </div>
+                    
+                    {/* Provider-specific details and helper links */}
+                    <div style={{ marginTop: "8px", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {selectedProvider === "groq" && (
+                        <>
+                          <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Groq Cloud Provider Info:</div>
+                          <div>
+                            Get your API key at: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>console.groq.com/keys</a>
+                          </div>
+                          <div style={{ color: "var(--text-muted)", fontSize: "10px", borderLeft: "2px solid var(--accent-solid)", paddingLeft: "6px" }}>
+                            ⚠️ <strong>Rate Limit Warning:</strong> Groq free tier has daily token limits (TPD). If you hit a 429 rate limit error, you will need to wait for quota reset or upgrade to a developer tier.
+                          </div>
+                        </>
+                      )}
+                      {selectedProvider === "gemini" && (
+                        <>
+                          <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Google Gemini Provider Info:</div>
+                          <div>
+                            Get your API key at: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>aistudio.google.com/app/apikey</a>
+                          </div>
+                          <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>
+                            Gemini offers a generous free tier for developers with high limits.
+                          </div>
+                        </>
+                      )}
+                      {selectedProvider === "openai" && (
+                        <>
+                          <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>OpenAI Provider Info:</div>
+                          <div>
+                            Get your API key at: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>platform.openai.com/api-keys</a>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -837,9 +877,35 @@ export const AISettingsContent = ({ _onClose }) => {
                 <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
                   <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
                   {modelStatus.downloaded ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
-                      <Database size={12} />
-                      <span>bge-small-en-v1.5 model is downloaded and ready offline.</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
+                        <Database size={12} />
+                        <span>bge-small-en-v1.5 model is downloaded and ready offline.</span>
+                      </div>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (!window.confirm('Delete local BGE embedding model weights from disk? You can redownload it at any time.')) return;
+                          try {
+                            setLoading(true);
+                            await aiDeleteModel();
+                            setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
+                            window.dispatchEvent(new CustomEvent('app:toast', {
+                              detail: { message: 'Local BGE embedding model weights deleted.', type: 'info' }
+                            }));
+                          } catch (err) {
+                            console.error(err);
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        disabled={loading}
+                        style={{ display: "flex", gap: "4px", alignItems: "center", padding: "4px 8px", fontSize: "10px", color: "var(--text-danger)" }}
+                        title="Remove model weights from disk to free space or redownload"
+                      >
+                        <Trash2 size={12} />
+                        <span>Delete Model</span>
+                      </button>
                     </div>
                   ) : modelStatus.isDownloading ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>

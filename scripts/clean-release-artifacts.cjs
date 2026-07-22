@@ -26,6 +26,7 @@ if (fs.existsSync(artifactsDir)) {
 
     if (
       entry.name.toLowerCase().endsWith(".exe")
+      || entry.name.toLowerCase().endsWith(".zip")
       || entry.name.toLowerCase().endsWith(".blockmap")
       || entry.name.endsWith(".yml")
       || entry.name.endsWith(".yaml")
