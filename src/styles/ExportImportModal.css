@@ -1,27 +1,27 @@
 .export-import-dialog-card {
   max-width: 650px;
-  width: 90vw;
-  /* Fixed height so both tabs never cause the card to resize */
+  width: min(650px, calc(100vw - var(--space-8)));
   height: 560px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  border-radius: var(--radius-xl);
   background: var(--surface-bg);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-overlay);
   color: var(--app-text);
   overflow: hidden;
 }
 
 .dialog-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border-default);
-  margin-bottom: 16px;
-  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
 }
 
 .dialog-tab {
-  padding: 10px 16px;
+  padding: var(--space-3) var(--space-6);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -88,7 +88,7 @@
 
 .notes-list-container {
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   /* Grow to fill available space, scroll when content overflows */
   flex: 1;
   min-height: 0;
@@ -97,10 +97,10 @@
 }
 
 .empty-list-message {
-  padding: 24px;
+  padding: var(--space-8);
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
 }
 
 .note-selector-row {

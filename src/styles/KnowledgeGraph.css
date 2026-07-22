@@ -20,8 +20,8 @@
 .kg-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid var(--border-default);
   background: var(--surface-subtle);
 }
@@ -43,30 +43,30 @@
 
 .kg-search-input {
   width: 100%;
-  padding: 8px 12px 8px 34px;
+  padding: var(--space-4) var(--space-5) var(--space-4) 34px;
   background: var(--surface-bg);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color var(--motion-standard), box-shadow var(--motion-standard);
 }
 
 .kg-search-input:focus {
   border-color: var(--accent-solid);
-  box-shadow: 0 0 0 2px rgba(47, 93, 98, 0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 15%, transparent);
 }
 
 .kg-stats-pill {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
-  font-size: 11px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-caption);
   color: var(--text-muted);
   font-weight: 500;
   margin-left: auto;
@@ -203,10 +203,10 @@
 
 .kg-path-code {
   font-family: var(--font-mono, monospace);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   background: var(--surface-muted);
-  padding: 6px 8px;
-  border-radius: 4px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
   word-break: break-all;
   border: 1px solid var(--border-default);
   color: var(--text-strong);
@@ -214,10 +214,10 @@
 
 .kg-properties-json {
   font-family: var(--font-mono, monospace);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   background: var(--surface-muted);
-  padding: 8px;
-  border-radius: 6px;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
   overflow-x: auto;
   border: 1px solid var(--border-default);
   margin: 0;
@@ -231,10 +231,10 @@
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-danger, #ef4444);
-  border-radius: 8px;
-  padding: 20px;
+  background: var(--surface-bg);
+  border: 1px solid var(--status-danger-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-7);
   max-width: 320px;
   width: 90%;
   text-align: center;
@@ -242,12 +242,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-5);
 }
 
 .kg-error-overlay p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   color: var(--text-secondary);
 }
 
@@ -276,5 +276,5 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-lg) !important;
 }

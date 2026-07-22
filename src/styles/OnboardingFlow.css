@@ -384,59 +384,59 @@
   height: 40px !important;
 }
 
-/* Dark theme overrides for premium dark contrast */
+/* Dark theme overrides powered by design tokens */
 [data-theme="dark"] .onboarding-card {
-  background: #182022;
-  border-color: #2b393c;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  background: var(--surface-bg);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-overlay);
 }
 
 [data-theme="dark"] .onboarding-header-progress {
-  background: #141a1c;
-  border-bottom-color: #2b393c;
+  background: var(--surface-subtle);
+  border-bottom-color: var(--border-subtle);
 }
 
 [data-theme="dark"] .onboarding-footer {
-  background: #141a1c;
-  border-top-color: #2b393c;
+  background: var(--surface-subtle);
+  border-top-color: var(--border-subtle);
 }
 
 [data-theme="dark"] .onboarding-feature-item {
-  background: #1f2a2d;
-  border-color: #2b393c;
+  background: var(--surface-elevated);
+  border-color: var(--border-soft);
 }
 
 [data-theme="dark"] .onboarding-folder-selector {
-  background: #1a2426;
-  border-color: #2b393c;
+  background: var(--surface-subtle);
+  border-color: var(--border-soft);
 }
 
 [data-theme="dark"] .onboarding-folder-option {
-  background: #141a1c;
+  background: var(--surface-bg);
   border-color: transparent;
 }
 
 [data-theme="dark"] .onboarding-folder-option:hover {
-  border-color: #2b393c;
+  border-color: var(--border-default);
 }
 
 [data-theme="dark"] .onboarding-folder-option.selected {
-  background: #1f3135;
-  border-color: #4f7f8a;
+  background: var(--surface-accent);
+  border-color: var(--accent-solid);
 }
 
 [data-theme="dark"] .onboarding-theme-option {
-  background: #1f2a2d;
-  border-color: #2b393c;
+  background: var(--surface-elevated);
+  border-color: var(--border-soft);
 }
 
 [data-theme="dark"] .onboarding-theme-option:hover {
-  background: #1c272a;
+  background: var(--surface-subtle);
 }
 
 [data-theme="dark"] .onboarding-theme-option.selected {
-  background: #1f3135;
-  border-color: #4f7f8a;
+  background: var(--surface-accent);
+  border-color: var(--accent-solid);
 }
 
 [data-theme="dark"] .onboarding-path-display {

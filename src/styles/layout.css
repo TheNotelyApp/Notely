@@ -54,12 +54,63 @@
 }
 
 .overlay-dialog-card {
-  width: min(440px, calc(100vw - 32px));
+  width: min(520px, calc(100vw - var(--space-8)));
   padding: var(--space-6);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--surface-bg);
   box-shadow: var(--shadow-overlay);
+}
+
+.overlay-dialog-sm { width: min(440px, calc(100vw - var(--space-8))); }
+.overlay-dialog-md { width: min(640px, calc(100vw - var(--space-8))); }
+.overlay-dialog-lg { width: min(760px, calc(100vw - var(--space-8))); }
+.overlay-dialog-xl { width: min(960px, calc(100vw - var(--space-8))); }
+
+/* ── PageContainer Layout Primitive ── */
+.notely-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: var(--space-7);
+  gap: var(--space-6);
+  overflow: hidden;
+  background: var(--app-bg);
+}
+
+.notely-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.notely-page-title-group h1.notely-page-title {
+  margin: 0;
+  font-size: var(--font-size-heading-md);
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.notely-page-description {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--text-muted);
+}
+
+.notely-page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.notely-page-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .help-center-dialog-card {

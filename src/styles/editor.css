@@ -3678,6 +3678,13 @@
   gap: var(--space-2, 0.5rem);
 }
 
+.git-vc-error {
+  color: var(--status-danger-text);
+  margin: var(--space-4) 0 0;
+  width: 100%;
+  font-size: var(--font-size-caption);
+}
+
 /* Input fields inside Git VC */
 .git-vc-page input[type="text"],
 .git-vc-page input[type="password"] {

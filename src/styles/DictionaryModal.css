@@ -1,10 +1,10 @@
 .dictionary-dialog-card {
-  max-width: 480px !important;
-  width: 90% !important;
-  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: min(480px, calc(100vw - var(--space-8)));
+  border-radius: var(--radius-xl);
   background: var(--surface-bg);
   box-shadow: var(--shadow-overlay);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-soft);
   overflow: hidden;
 }
 

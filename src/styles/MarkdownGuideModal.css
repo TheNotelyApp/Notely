@@ -62,9 +62,9 @@
 .markdown-guide-syntax {
   font-family: var(--font-mono);
   background: var(--surface-elevated);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-body-sm);
   white-space: pre-wrap;
   margin: 0;
 }

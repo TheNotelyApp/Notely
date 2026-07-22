@@ -11,6 +11,7 @@ export function OverlayDialog({
   initialFocusRef = null,
   cardRef = null,
   onCardKeyDown,
+  size = "md",
   children,
   closeOnClickOutside = true,
 }) {
@@ -34,6 +35,7 @@ export function OverlayDialog({
 
   const cardClasses = [
     useDefaultCardClass ? "overlay-dialog-card" : "",
+    size ? `overlay-dialog-${size}` : "",
     cardClassName,
   ]
     .filter(Boolean)

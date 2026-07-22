@@ -100,32 +100,32 @@
 
 .stat-card {
   background: var(--surface-bg);
-  border: 1px solid #d0dbd6;
-  border-radius: 6px;
-  padding: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
   text-align: center;
-  transition: all 0.2s ease;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .stat-card:hover {
-  border-color: #a8c2b8;
-  box-shadow: 0 2px 6px rgba(26, 58, 62, 0.1);
+  border-color: var(--accent-solid);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-card.stat-used {
-  background: #eff6f2;
-  border-color: #a8c2b8;
+  background: var(--surface-accent);
+  border-color: var(--border-soft);
 }
 
 .stat-card.stat-unused {
-  background: #fff6f1;
-  border-color: #e8b5a0;
+  background: var(--color-amber-bg);
+  border-color: var(--color-amber-border);
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: var(--font-size-heading-md);
   font-weight: 700;
-  color: #1a3a3e;
+  color: var(--text-strong);
 }
 
 .stat-label {
