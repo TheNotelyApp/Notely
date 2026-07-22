@@ -41,7 +41,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       if (workerManager && typeof workerManager.shutdownWorker === 'function') {
         workerManager.shutdownWorker();
       }
-    } catch (wmErr) {
+    } catch {
       // Ignore if workerManager not available yet
     }
 

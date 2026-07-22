@@ -314,7 +314,7 @@ export default function EmbeddingsPage({ onBack }) {
               {/* Vector Engine Stats Card */}
               <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
-                  <Cpu size={11} />
+                  <Cpu size={12} />
                   Engine Metadata
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px' }}>
@@ -351,7 +351,7 @@ export default function EmbeddingsPage({ onBack }) {
                     style={{ padding: '2px 6px', fontSize: '9px', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                     title="Open full System & Application Logs"
                   >
-                    <ExternalLink size={10} />
+                    <ExternalLink size={12} />
                     System Logs
                   </button>
                 </div>
@@ -394,7 +394,7 @@ export default function EmbeddingsPage({ onBack }) {
                 disabled={loading}
                 style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
               >
-                <RefreshCw size={11} className={loading ? 'spin' : ''} />
+                <RefreshCw size={12} className={loading ? 'spin' : ''} />
                 <span>{loading ? 'Building...' : 'Rebuild'}</span>
               </button>
 
@@ -415,7 +415,7 @@ export default function EmbeddingsPage({ onBack }) {
                 }}
                 style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', color: 'var(--text-danger)', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
               >
-                <Trash2 size={11} />
+                <Trash2 size={12} />
                 <span>Clear Data</span>
               </button>
             </div>
