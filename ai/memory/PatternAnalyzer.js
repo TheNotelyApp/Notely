@@ -3,10 +3,9 @@
  */
 
 class PatternDetector {
-  constructor(memoryManager, documentService, relationshipService) {
+  constructor(memoryManager, documentService) {
     this.memory = memoryManager;
     this.documents = documentService;
-    this.relationships = relationshipService;
   }
 
   /**

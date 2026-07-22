@@ -54,19 +54,19 @@ class GraphModelDownloader {
       const filesToDownload = [
         {
           name: 'ner_model.onnx',
-          url: 'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx'
+          url: 'https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_quantized.onnx'
         },
         {
           name: 're_model.onnx',
-          url: 'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx'
+          url: 'https://huggingface.co/Xenova/bert-base-NER/resolve/main/onnx/model_quantized.onnx'
         },
         {
           name: 'config.json',
-          url: 'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/config.json'
+          url: 'https://huggingface.co/Xenova/bert-base-NER/resolve/main/config.json'
         },
         {
           name: 'tokenizer.json',
-          url: 'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json'
+          url: 'https://huggingface.co/Xenova/bert-base-NER/resolve/main/tokenizer.json'
         }
       ];
 

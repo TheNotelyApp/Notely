@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { createLogger } = require('../core/logger');
+const GraphMaintenance = require('../graph/GraphMaintenance');
+const EntityResolver = require('../graph/EntityResolver');
 
 const log = createLogger('GraphWorker');
 
@@ -13,6 +15,7 @@ class GraphWorker {
     this.isWorking = false;
     this.workerTimeout = null;
     this.onProgressCallback = null;
+    this.maintenance = new GraphMaintenance(graphDb, new EntityResolver(graphDb));
   }
 
   start() {
@@ -58,7 +61,13 @@ class GraphWorker {
     const job = this.queue.dequeue();
     if (!job) {
       this.notifyProgress();
-      return; // Queue empty
+      // Run background maintenance when queue becomes empty
+      try {
+        await this.maintenance.runMaintenance();
+      } catch (mErr) {
+        log.warn('Background GraphMaintenance pass skipped:', mErr.message);
+      }
+      return;
     }
 
     this.isWorking = true;

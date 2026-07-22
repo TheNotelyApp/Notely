@@ -1,8 +1,12 @@
 /**
- * GraphService - Extract structured knowledge graphs from note contents using ModernBERT / local pipeline
+ * GraphService - High-level orchestrator for Knowledge Graph ingestion & processing
  */
 
+const path = require('path');
 const { createLogger } = require('../core/logger');
+const MarkdownASTParser = require('./MarkdownASTParser');
+const EvidenceStore = require('./EvidenceStore');
+const EntityResolver = require('./EntityResolver');
 const ModernBERTExtractor = require('./ModernBERTExtractor');
 
 const log = createLogger('GraphService');
@@ -11,6 +15,9 @@ class GraphService {
   constructor(agent, graphDb) {
     this.agent = agent;
     this.graphDb = graphDb;
+    this.astParser = new MarkdownASTParser();
+    this.evidenceStore = new EvidenceStore(graphDb);
+    this.entityResolver = new EntityResolver(graphDb);
     this.modernbertExtractor = null;
   }
 
@@ -22,7 +29,7 @@ class GraphService {
   }
 
   /**
-   * Extract entities and relationships from a note and save them to GraphDB
+   * Process a markdown note and save entities, relationships, and evidence to GraphDB
    */
   async processNote(filePath, content) {
     try {
@@ -30,222 +37,356 @@ class GraphService {
         this.graphDb.initialize();
       }
 
-      const path = require('path');
       const noteName = path.basename(filePath, '.md');
-      const noteId = noteName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const rootEntityId = this.entityResolver.generateEntityId(filePath, 'Note');
 
-      log.info(`Extracting entities and relationships for: ${filePath}`);
+      // 1. Structural Markdown AST Parsing
+      const ast = this.astParser.parse(filePath, content);
 
-      let parsedData = { entities: [], relationships: [] };
-
-      const extractor = this.getExtractor();
-
-      try {
-        if (extractor && extractor.isAvailable()) {
-          log.info('Running ModernBERT ONNX local graph extraction...');
-          parsedData = await extractor.extractEntitiesAndRelations(content);
-        } else if (this.agent?.graphProvider?.isReady()) {
-          log.info('Running local ONNX provider graph extraction...');
-          parsedData = await this.agent.graphProvider.extractGraph(content, filePath);
-        } else if (this.agent?.llmRegistry?.getActiveProvider()) {
-          const llm = this.agent.llmRegistry.getActiveProvider();
-          const systemPrompt = `Extract entities (Person, Project, Technology, Company, Concept, Task) and relationships (REFERENCES, USES, DEPENDS_ON, MENTIONS, RELATED_TO) from markdown.
-Return ONLY valid JSON matching {"entities":[{"id":"slug","type":"Type","name":"Name"}],"relationships":[{"source_id":"src","target_id":"tgt","type":"RELATION"}]}`;
-          const prompt = `Note Path: ${filePath}\nContents:\n${content}`;
-          const { text: resultText } = await llm.generateText(prompt, { systemPrompt, temperature: 0.1 });
-          const cleanedJson = this._cleanJsonResponse(resultText);
-          parsedData = JSON.parse(cleanedJson);
-        }
-      } catch (extractorErr) {
-        log.warn(`Model graph extraction failed for ${filePath}, falling back to structural parser:`, extractorErr.message);
-      }
-
-      // Explicit Structural Markdown Parser
-      const extractedEntities = [];
-      const extractedRels = [];
-
-      // 1. Wikilinks: [[Target Note]]
-      const wikilinkRegex = /\[\[(.*?)\]\]/g;
-      let match;
-      while ((match = wikilinkRegex.exec(content)) !== null) {
-        const targetName = match[1].trim();
-        if (targetName) {
-          const targetId = targetName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-          extractedEntities.push({
-            id: targetId,
-            type: 'Note',
-            name: targetName
-          });
-          extractedRels.push({
-            source_id: noteId,
-            target_id: targetId,
-            type: 'links_to',
-            weight: 1.0
-          });
-        }
-      }
-
-      // 2. Tags: #tag
-      const tagRegex = /(?:^|\s)#([a-zA-Z_-]*[a-zA-Z][a-zA-Z0-9_-]*)/g;
-      while ((match = tagRegex.exec(content)) !== null) {
-        const tagName = match[1].trim();
-        if (tagName) {
-          const tagId = `tag-${tagName.toLowerCase()}`;
-          extractedEntities.push({
-            id: tagId,
-            type: 'Tag',
-            name: `#${tagName}`
-          });
-          extractedRels.push({
-            source_id: noteId,
-            target_id: tagId,
-            type: 'tagged',
-            weight: 1.0
-          });
-        }
-      }
-
-      // 3. Images: ![alt](image_path)
-      const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
-      while ((match = imageRegex.exec(content)) !== null) {
-        const altText = match[1].trim() || 'Image';
-        const imgPath = match[2].trim();
-        if (imgPath && !imgPath.startsWith('http://') && !imgPath.startsWith('https://')) {
-          const imgName = imgPath.split(/[\\/]/).pop();
-          const imgId = `media-img-${imgName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-          extractedEntities.push({
-            id: imgId,
-            type: 'Image',
-            name: imgName,
-            properties: { alt: altText, path: imgPath }
-          });
-          extractedRels.push({
-            source_id: noteId,
-            target_id: imgId,
-            type: 'contains_media',
-            weight: 1.0
-          });
-        }
-      }
-
-      // 4. Attachments & External URLs: [label](path_or_url)
-      const linkRegex = /(?<![[![])\[(.*?)\]\((.*?)\)/g;
-      while ((match = linkRegex.exec(content)) !== null) {
-        const label = match[1].trim();
-        const href = match[2].trim();
-        if (href.startsWith('http://') || href.startsWith('https://')) {
-          const urlId = `ext-url-${href.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-          extractedEntities.push({
-            id: urlId,
-            type: 'ExternalURL',
-            name: label || href,
-            properties: { url: href }
-          });
-          extractedRels.push({
-            source_id: noteId,
-            target_id: urlId,
-            type: 'references_url',
-            weight: 1.0
-          });
-        } else if (href.match(/\.(pdf|docx|xlsx|pptx|txt|csv|zip|png|jpg|jpeg|svg)$/i)) {
-          const docName = href.split(/[\\/]/).pop();
-          const docId = `doc-${docName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-          extractedEntities.push({
-            id: docId,
-            type: 'Document',
-            name: docName,
-            properties: { label, path: href }
-          });
-          extractedRels.push({
-            source_id: noteId,
-            target_id: docId,
-            type: 'attaches_file',
-            weight: 1.0
-          });
-        }
-      }
-
-      // 5. Code Blocks: ```lang
-      const codeBlockRegex = /```([a-zA-Z0-9_+-]+)/g;
-      while ((match = codeBlockRegex.exec(content)) !== null) {
-        const lang = match[1].trim().toLowerCase();
-        if (lang && lang.length < 20) {
-          const langId = `tech-lang-${lang}`;
-          extractedEntities.push({
-            id: langId,
-            type: 'Technology',
-            name: lang.toUpperCase()
-          });
-          extractedRels.push({
-            source_id: noteId,
-            target_id: langId,
-            type: 'contains_code',
-            weight: 1.0
-          });
-        }
-      }
-
-      if (!parsedData.entities) parsedData.entities = [];
-      parsedData.entities.push(...extractedEntities);
-
-      if (!parsedData.relationships) parsedData.relationships = [];
-      parsedData.relationships.push(...extractedRels);
-
-      // Clear existing outgoing relationships for this note to prevent stale accumulation
-      if (this.graphDb.db) {
-        this.graphDb.db.prepare('DELETE FROM relationships WHERE source_id = ?').run(noteId);
-      }
-
-      // Save root note entity
+      // Root Note Entity
       this.graphDb.upsertEntity({
-        id: noteId,
-        type: 'Note',
+        id: rootEntityId,
         name: noteName,
+        canonical_name: noteName,
+        type: 'Note',
         note_path: filePath,
-        properties: { size: content.length }
+        properties: ast.rootEntity.properties
       });
 
-      // Upsert all extracted entities
-      if (parsedData.entities && Array.isArray(parsedData.entities)) {
-        for (const entity of parsedData.entities) {
-          if (!entity.id || !entity.type || !entity.name) continue;
-          
-          this.graphDb.upsertEntity({
-            id: entity.id,
-            type: entity.type,
-            name: entity.name,
-            properties: entity.properties || {}
-          });
+      // Clear old evidence for note re-ingestion
+      this.evidenceStore.deleteForSource(filePath);
+
+      // 1a. Wikilinks [[Target]]
+      for (const link of ast.links) {
+        const targetId = this.entityResolver.generateEntityId(link.targetName, 'Note');
+        this.graphDb.upsertEntity({
+          id: targetId,
+          name: link.targetName,
+          canonical_name: link.targetName,
+          type: 'Note',
+          properties: { name: link.targetName }
+        });
+
+        const evId = this.evidenceStore.addEvidence({
+          sourceId: filePath,
+          extractor: 'ast_parser',
+          subjectText: noteName,
+          predicateText: 'links_to',
+          objectText: link.targetName,
+          rawSentence: `[[${link.targetName}]]`,
+          confidence: 1.0
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: targetId,
+          type: 'links_to',
+          weight: 1.2,
+          confidence: 1.0,
+          evidence_id: evId
+        });
+      }
+
+      // 1b. Tags #tag
+      for (const tag of ast.tags) {
+        const tagId = this.entityResolver.generateEntityId(tag.tagName, 'Tag');
+        this.graphDb.upsertEntity({
+          id: tagId,
+          name: tag.tagName,
+          canonical_name: tag.name,
+          type: 'Tag'
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: tagId,
+          type: 'tagged',
+          weight: 1.0,
+          confidence: 1.0
+        });
+      }
+
+      // 1c. Embedded Media
+      for (const media of ast.media) {
+        const mediaId = this.entityResolver.generateEntityId(media.name, 'Image');
+        this.graphDb.upsertEntity({
+          id: mediaId,
+          name: media.name,
+          canonical_name: media.name,
+          type: 'Image',
+          properties: { path: media.path, alt: media.alt }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: mediaId,
+          type: 'contains_media',
+          weight: 0.9,
+          confidence: 1.0
+        });
+      }
+
+      // 1d. Attachments & URLs
+      for (const url of ast.urls) {
+        const urlId = this.entityResolver.generateEntityId(url.url, 'ExternalURL');
+        this.graphDb.upsertEntity({
+          id: urlId,
+          name: url.label,
+          canonical_name: url.url,
+          type: 'ExternalURL',
+          properties: { url: url.url }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: urlId,
+          type: 'references_url',
+          weight: 0.8,
+          confidence: 1.0
+        });
+      }
+
+      for (const att of ast.attachments) {
+        const attId = this.entityResolver.generateEntityId(att.name, 'Document');
+        this.graphDb.upsertEntity({
+          id: attId,
+          name: att.name,
+          canonical_name: att.name,
+          type: 'Document',
+          properties: { path: att.path, label: att.label }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: attId,
+          type: 'attaches_file',
+          weight: 0.9,
+          confidence: 1.0
+        });
+      }
+
+      // 1e. Code Blocks
+      for (const cb of ast.codeBlocks) {
+        const langId = this.entityResolver.generateEntityId(cb.language, 'CodeBlock');
+        this.graphDb.upsertEntity({
+          id: langId,
+          name: cb.language.toUpperCase(),
+          canonical_name: cb.language,
+          type: 'CodeBlock',
+          properties: { language: cb.language }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: langId,
+          type: 'contains_code',
+          weight: 0.8,
+          confidence: 1.0
+        });
+      }
+
+      // 1f. Sections (Structural Headings) - filter system design sections like # RawNotes and # Cleansed
+      const SYSTEM_SECTIONS = new Set(['rawnotes', 'raw notes', 'raw', 'cleansed', 'cleansed notes', 'cleansed note']);
+      for (const sec of ast.sections) {
+        const normTitle = String(sec.title || '').trim().toLowerCase();
+        if (SYSTEM_SECTIONS.has(normTitle)) {
+          continue; // Skip system design section headings
+        }
+
+        const secId = this.entityResolver.generateEntityId(`${filePath}:${sec.title}`, 'Section');
+        this.graphDb.upsertEntity({
+          id: secId,
+          name: sec.title,
+          canonical_name: sec.title,
+          type: 'Section',
+          properties: { level: sec.level, wordCount: sec.wordCount }
+        });
+
+        const hierarchyWeight = parseFloat(Math.max(0.5, 1.4 - ((sec.level || 1) * 0.1)).toFixed(2));
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: secId,
+          type: 'contains_section',
+          weight: hierarchyWeight,
+          confidence: 1.0
+        });
+      }
+
+      // 1g. Bold Keyterms **Term**
+      for (const kt of (ast.keyTerms || [])) {
+        const ktId = this.entityResolver.generateEntityId(kt.term, 'KeyTerm');
+        this.graphDb.upsertEntity({
+          id: ktId,
+          name: kt.term,
+          canonical_name: kt.term,
+          type: 'KeyTerm'
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: ktId,
+          type: 'emphasizes',
+          weight: 1.0,
+          confidence: 1.0
+        });
+      }
+
+      // 1h. Inline Code `code`
+      for (const ic of (ast.inlineCodes || [])) {
+        const icId = this.entityResolver.generateEntityId(ic.code, 'CodeSnippet');
+        this.graphDb.upsertEntity({
+          id: icId,
+          name: ic.code,
+          canonical_name: ic.code,
+          type: 'CodeSnippet',
+          properties: { code: ic.code }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: icId,
+          type: 'references_code',
+          weight: 0.85,
+          confidence: 1.0
+        });
+      }
+
+      // 1i. Callouts & Math Formulas
+      for (const co of (ast.callouts || [])) {
+        const coId = this.entityResolver.generateEntityId(`${filePath}:${co.type}:${co.title}`, 'Callout');
+        this.graphDb.upsertEntity({
+          id: coId,
+          name: `${co.type}: ${co.title}`,
+          canonical_name: co.title,
+          type: 'Callout',
+          properties: { calloutType: co.type }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: coId,
+          type: 'has_callout',
+          weight: 0.9,
+          confidence: 1.0
+        });
+      }
+
+      for (const mf of (ast.mathFormulas || [])) {
+        const mfId = this.entityResolver.generateEntityId(mf.formula, 'Formula');
+        this.graphDb.upsertEntity({
+          id: mfId,
+          name: mf.formula.length > 30 ? mf.formula.slice(0, 30) + '...' : mf.formula,
+          canonical_name: mf.formula,
+          type: 'Formula',
+          properties: { rawFormula: mf.formula }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: mfId,
+          type: 'contains_formula',
+          weight: 0.9,
+          confidence: 1.0
+        });
+      }
+
+      // 1j. Tasks (- [ ] task, - [x] task)
+      for (const t of (ast.tasks || [])) {
+        const taskId = this.entityResolver.generateEntityId(`${filePath}:${t.taskText}`, 'Task');
+        this.graphDb.upsertEntity({
+          id: taskId,
+          name: t.taskText,
+          canonical_name: t.taskText,
+          type: 'Task',
+          properties: { completed: t.completed }
+        });
+
+        this.graphDb.upsertRelationship({
+          source_id: rootEntityId,
+          target_id: taskId,
+          type: t.completed ? 'has_completed_task' : 'has_open_task',
+          weight: 0.95,
+          confidence: 1.0
+        });
+      }
+
+      // 2. Cross-Note Plain Text Mention Mining
+      if (this.graphDb?.db) {
+        try {
+          const otherNotes = this.graphDb.db.prepare("SELECT id, name, note_path FROM entities WHERE type = 'Note' AND id != ?").all(rootEntityId);
+          for (const other of otherNotes) {
+            if (other.name && other.name.length >= 3 && content.toLowerCase().includes(other.name.toLowerCase())) {
+              this.graphDb.upsertRelationship({
+                source_id: rootEntityId,
+                target_id: other.id,
+                type: 'mentions_note',
+                weight: 0.85,
+                confidence: 0.85
+              });
+            }
+          }
+        } catch {}
+      }
+
+      // 3. Neural AI Pipeline (ModernBERT NER + RE)
+      const extractor = this.getExtractor();
+      if (extractor && typeof extractor.extractEntitiesAndRelations === 'function') {
+        const aiResults = await extractor.extractEntitiesAndRelations(content, {
+          confidenceThreshold: 0.60,
+          evidenceStore: this.evidenceStore,
+          sourceId: filePath
+        });
+
+        const createdEntities = new Map();
+
+        // Save AI extracted entities
+        for (const ent of aiResults.entities) {
+          const resolved = this.entityResolver.resolveMention(ent.name, ent.type || 'Entity');
+          if (resolved) {
+            this.graphDb.upsertEntity({
+              id: resolved.id,
+              name: resolved.name,
+              canonical_name: resolved.canonical_name,
+              type: resolved.type,
+              properties: ent.properties || {}
+            });
+            createdEntities.set(ent.name, resolved.id);
+
+            // Connect root note to extracted entity
+            this.graphDb.upsertRelationship({
+              source_id: rootEntityId,
+              target_id: resolved.id,
+              type: 'mentions',
+              weight: ent.confidence || 0.8,
+              confidence: ent.confidence || 0.8,
+              evidence_id: ent.evidenceId
+            });
+          }
+        }
+
+        // Save AI extracted relationships
+        for (const rel of aiResults.relationships) {
+          const srcId = createdEntities.get(rel.source_name) || this.entityResolver.generateEntityId(rel.source_name, rel.source_type);
+          const tgtId = createdEntities.get(rel.target_name) || this.entityResolver.generateEntityId(rel.target_name, rel.target_type);
+
+          if (srcId && tgtId && srcId !== tgtId) {
+            this.graphDb.upsertRelationship({
+              source_id: srcId,
+              target_id: tgtId,
+              type: rel.type || 'related_to',
+              weight: rel.weight || 0.85,
+              confidence: rel.confidence || 0.85,
+              evidence_id: rel.evidenceId
+            });
+          }
         }
       }
 
-      // Upsert all relationships
-      if (parsedData.relationships && Array.isArray(parsedData.relationships)) {
-        for (const rel of parsedData.relationships) {
-          if (!rel.source_id || !rel.target_id || !rel.type) continue;
-          
-          this.graphDb.upsertRelationship({
-            source_id: rel.source_id,
-            target_id: rel.target_id,
-            type: rel.type,
-            weight: Number(rel.weight) || 1.0,
-            metadata: rel.metadata || {}
-          });
-        }
-      }
-
-      log.info(`Finished processing graph for: ${filePath}. Extracted ${parsedData.entities?.length || 0} nodes.`);
-      return true;
+      log.info(`Successfully processed note graph for: ${filePath}`);
     } catch (err) {
-      log.error(`Failed to process graph for note ${filePath}:`, err.message);
-      return false;
+      log.error(`Failed to process note graph for ${filePath}:`, err);
+      throw err;
     }
-  }
-
-  _cleanJsonResponse(text) {
-    const raw = String(text || '').trim();
-    const match = raw.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
-    return match ? match[1].trim() : raw;
   }
 }
 

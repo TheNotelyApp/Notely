@@ -56,7 +56,7 @@ if (process.parentPort) {
         graphDb = new GraphDB(workspaceRoot);
         graphDb.initialize();
 
-        graphQueue = new GraphQueue();
+        graphQueue = new GraphQueue(graphDb);
         const mockAgent = { appDataDir };
         graphService = new GraphService(mockAgent, graphDb);
         graphWorker = new GraphWorker(graphDb, graphQueue, graphService);
@@ -83,6 +83,12 @@ if (process.parentPort) {
 
         const workspaceNotes = scanMarkdownFiles(workspaceRoot);
         for (const notePath of workspaceNotes) {
+          try {
+            const stat = fs.statSync(notePath);
+            if (graphDb && typeof graphDb.isNoteUpToDate === 'function' && graphDb.isNoteUpToDate(notePath, stat.mtimeMs)) {
+              continue; // Skip unchanged notes already up-to-date in GraphDB
+            }
+          } catch {}
           graphQueue.enqueue(notePath);
         }
 

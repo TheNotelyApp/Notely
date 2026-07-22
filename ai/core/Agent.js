@@ -4,7 +4,6 @@
 
 const DocumentService = require('../tools/DocumentReader');
 const EmbeddingService = require('../embeddings/EmbeddingService');
-const RelationshipService = require('../graph/RelationshipService');
 const QueryExecutor = require('./QueryExecutor');
 const ContextManager = require('../context/ContextManager');
 const MemoryManager = require('../memory/InteractionLog');
@@ -22,11 +21,7 @@ class Agent {
     // (called from initializeAISystem once the HF token is resolved).
     this.documentService = new DocumentService(this.db, '');
     this.embeddingService = new EmbeddingService(this.db, null);
-    this.relationshipService = new RelationshipService(
-      this.db,
-      this.embeddingService,
-      this.documentService
-    );
+    this.relationshipService = null;
     this.queryExecutor = new QueryExecutor(this);
     this.contextManager = new ContextManager(this.db, this.documentService);
     this.memoryManager = new MemoryManager(this.db);
@@ -237,7 +232,9 @@ class Agent {
     this.memoryManager.clearSession();
     this.contextManager.clearCache();
     this.embeddingService.clearCache();
-    this.relationshipService.clearCache();
+    if (this.relationshipService?.clearCache) {
+      this.relationshipService.clearCache();
+    }
     console.log('[Agent] Reset successfully');
   }
 

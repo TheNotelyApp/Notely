@@ -468,21 +468,45 @@ export default function KnowledgeGraph({ onBack }) {
                   Entity Types
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {Object.keys(TYPE_COLORS).map(type => {
-                    const color = TYPE_COLORS[type];
-                    const count = nodes.filter(n => n.data.raw.type === type).length;
-                    return (
-                      <label key={type} className="kg-filter-checkbox" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', cursor: 'pointer', padding: '2px 0' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedTypes[type] !== false}
-                          onChange={() => handleTypeToggle(type)}
-                        />
-                        <span className="kg-filter-color-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: color.border }}></span>
-                        <span style={{ fontWeight: selectedTypes[type] ? 600 : 400, color: selectedTypes[type] ? 'var(--text-strong)' : 'var(--text-secondary)' }}>{type} ({count})</span>
-                      </label>
-                    );
-                  })}
+                  {(() => {
+                    const getTypeColor = (type) => {
+                      if (TYPE_COLORS[type]) return TYPE_COLORS[type];
+                      let hash = 0;
+                      for (let i = 0; i < type.length; i++) {
+                        hash = (type.charCodeAt(i) + ((hash << 5) - hash)) | 0;
+                      }
+                      const hue = Math.abs(hash) % 360;
+                      return {
+                        background: `hsl(${hue}, 75%, 95%)`,
+                        border: `hsl(${hue}, 70%, 45%)`,
+                        text: `hsl(${hue}, 70%, 45%)`
+                      };
+                    };
+
+                    const typesInGraph = new Set(nodes.map(n => n.data?.raw?.type || 'Entity'));
+                    const allTypesSet = new Set([...Object.keys(TYPE_COLORS), ...typesInGraph]);
+                    const sortedTypes = Array.from(allTypesSet).sort((a, b) => {
+                      const countA = nodes.filter(n => (n.data?.raw?.type || 'Entity') === a).length;
+                      const countB = nodes.filter(n => (n.data?.raw?.type || 'Entity') === b).length;
+                      return countB - countA;
+                    });
+
+                    return sortedTypes.map(type => {
+                      const color = getTypeColor(type);
+                      const count = nodes.filter(n => (n.data?.raw?.type || 'Entity') === type).length;
+                      return (
+                        <label key={type} className="kg-filter-checkbox" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', cursor: 'pointer', padding: '2px 0' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedTypes[type] !== false}
+                            onChange={() => handleTypeToggle(type)}
+                          />
+                          <span className="kg-filter-color-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: color.border }}></span>
+                          <span style={{ fontWeight: selectedTypes[type] ? 600 : 400, color: selectedTypes[type] ? 'var(--text-strong)' : 'var(--text-secondary)' }}>{type} ({count})</span>
+                        </label>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 

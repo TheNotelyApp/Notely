@@ -22,19 +22,27 @@ class HybridRetriever {
     if (activeNotePath) {
       walkedNotes.add(activeNotePath);
       const activeRelations = this.graphRetriever.traverse(activeNotePath, 2);
-      graphHits.push(...activeRelations.map(r => r.to_path));
+      for (const r of activeRelations) {
+        if (r.to_path) {
+          graphHits.push({ path: r.to_path, weight: r.weight || 1.0, depth: r.depth || 1 });
+        }
+      }
     }
     
     // Traverse from top semantic matches to find connected entities
     for (const match of semanticResults.slice(0, 3)) {
-      if (!walkedNotes.has(match.note_path)) {
+      if (match.note_path && !walkedNotes.has(match.note_path)) {
         walkedNotes.add(match.note_path);
         const rels = this.graphRetriever.traverse(match.note_path, 1);
-        graphHits.push(...rels.map(r => r.to_path));
+        for (const r of rels) {
+          if (r.to_path) {
+            graphHits.push({ path: r.to_path, weight: r.weight || 1.0, depth: r.depth || 1 });
+          }
+        }
       }
     }
 
-    // 3. Reciprocal Rank Fusion (RRF)
+    // 3. Reciprocal Rank Fusion (RRF) with Depth Attenuation & Weighting
     const rrfScores = new Map(); // note_path -> score
     const k = 60; // standard RRF constant
 
@@ -45,21 +53,26 @@ class HybridRetriever {
       rrfScores.set(res.note_path, score);
     });
 
-    // Add graph ranks (frequency of relations counts as ranking factor)
+    // Add weighted graph ranks
     const graphRankMap = new Map();
-    graphHits.forEach((path) => {
-      graphRankMap.set(path, (graphRankMap.get(path) || 0) + 1);
+    graphHits.forEach((hit) => {
+      const decay = 1 / (1 + (hit.depth || 1));
+      const score = (hit.weight || 1.0) * decay;
+      graphRankMap.set(hit.path, (graphRankMap.get(hit.path) || 0) + score);
     });
     
-    // Sort graph hits by connection frequency
+    // Sort graph hits by weighted connection score
     const sortedGraphHits = Array.from(graphRankMap.entries())
       .sort((a, b) => b[1] - a[1])
       .map(entry => entry[0]);
 
     sortedGraphHits.forEach((path, index) => {
       const rank = index + 1;
-      const score = 1 / (k + rank);
-      rrfScores.set(path, (rrfScores.get(path) || 0) + score);
+      const baseRrf = 1 / (k + rank);
+      const graphWeightBonus = graphRankMap.get(path) || 1.0;
+      const score = baseRrf * (1 + 0.25 * graphWeightBonus);
+      const existing = rrfScores.get(path) || 0;
+      rrfScores.set(path, existing + score);
     });
 
     // Sort by merged RRF scores
@@ -70,7 +83,6 @@ class HybridRetriever {
     // Retrieve full contents for the final merged paths
     const results = [];
     for (const [notePath, score] of merged) {
-      // Find content from semantic results, otherwise load from disk
       let content = '';
       const semMatch = semanticResults.find(r => r.note_path === notePath);
       if (semMatch) {

@@ -121,8 +121,13 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       aiAgent.personaDB = personaDB;
 
       if (aiAgent.embeddingDb && aiAgent.embeddingService) {
+        const GraphDB = require('./graph/GraphDB');
+        if (!aiAgent.graphDb) {
+          aiAgent.graphDb = new GraphDB(workspaceRoot);
+          aiAgent.graphDb.initialize();
+        }
         const semanticRetriever = new SemanticRetriever(aiAgent.embeddingDb, aiAgent.embeddingService);
-        const graphRetriever = new GraphRetriever(aiAgent.graphDb ?? aiAgent.db);
+        const graphRetriever = new GraphRetriever(aiAgent.graphDb);
         const hybridRetriever = new HybridRetriever(semanticRetriever, graphRetriever);
         aiAgent.contextEngine = new ContextEngine(store, semanticRetriever, graphRetriever, hybridRetriever);
       }

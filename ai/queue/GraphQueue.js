@@ -4,10 +4,47 @@ const { createLogger } = require('../core/logger');
 const log = createLogger('GraphQueue');
 
 class GraphQueue {
-  constructor() {
+  constructor(graphDb = null) {
+    this.graphDb = graphDb;
     this.queue = [];
     this.statusMap = new Map(); // id -> { id, note_path, status, error, retries, created_at }
-    this.nextJobId = 1;
+    this.nextJobId = Date.now();
+    if (this.graphDb) {
+      this.loadFromDb();
+    }
+  }
+
+  setGraphDb(graphDb) {
+    this.graphDb = graphDb;
+    if (this.graphDb) {
+      this.loadFromDb();
+    }
+  }
+
+  loadFromDb() {
+    if (!this.graphDb?.db) return;
+    try {
+      const rows = this.graphDb.db.prepare(
+        "SELECT * FROM graph_queue WHERE status IN ('pending', 'processing') ORDER BY priority DESC, created_at ASC"
+      ).all();
+      for (const row of rows) {
+        const job = {
+          id: row.id,
+          note_path: row.note_path,
+          priority: row.priority,
+          status: 'pending', // Reset processing to pending on reload
+          error: row.error,
+          retries: row.retries,
+          created_at: row.created_at
+        };
+        if (!this.statusMap.has(job.id)) {
+          this.queue.push(job);
+          this.statusMap.set(job.id, job);
+        }
+      }
+    } catch (err) {
+      log.warn('Failed to load queue from database:', err.message);
+    }
   }
 
   enqueue(notePath, priority = 1) {
@@ -35,6 +72,19 @@ class GraphQueue {
     this.queue.push(job);
     this.statusMap.set(id, job);
 
+    if (this.graphDb?.db) {
+      try {
+        const stmt = this.graphDb.db.prepare(`
+          INSERT INTO graph_queue (id, note_path, priority, status, error, retries, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET status = excluded.status, priority = excluded.priority
+        `);
+        stmt.run(job.id, job.note_path, job.priority, job.status, job.error, job.retries, job.created_at);
+      } catch (err) {
+        log.warn(`Failed to persist enqueued job ${id}:`, err.message);
+      }
+    }
+
     // Sort by priority (higher priority first)
     this.queue.sort((a, b) => b.priority - a.priority);
 
@@ -46,6 +96,11 @@ class GraphQueue {
     const job = this.queue.find(j => j.status === 'pending');
     if (job) {
       job.status = 'processing';
+      if (this.graphDb?.db) {
+        try {
+          this.graphDb.db.prepare("UPDATE graph_queue SET status = 'processing' WHERE id = ?").run(job.id);
+        } catch {}
+      }
     }
     return job;
   }
@@ -58,12 +113,23 @@ class GraphQueue {
         job.error = error;
         job.retries += 1;
       }
+      if (this.graphDb?.db) {
+        try {
+          const stmt = this.graphDb.db.prepare('UPDATE graph_queue SET status = ?, error = ?, retries = ? WHERE id = ?');
+          stmt.run(status, error, job.retries, jobId);
+        } catch {}
+      }
     }
   }
 
   clear() {
     this.queue = [];
     this.statusMap.clear();
+    if (this.graphDb?.db) {
+      try {
+        this.graphDb.db.prepare('DELETE FROM graph_queue').run();
+      } catch {}
+    }
     log.info('GraphQueue cleared');
   }
 
@@ -85,3 +151,4 @@ class GraphQueue {
 }
 
 module.exports = GraphQueue;
+
