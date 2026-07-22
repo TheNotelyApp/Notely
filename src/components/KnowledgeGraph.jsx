@@ -9,7 +9,7 @@ import {
   Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw } from 'lucide-react';
+import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw, ExternalLink } from 'lucide-react';
 import {
   aiGetGraph,
   aiBuildGraph,
@@ -23,6 +23,7 @@ import {
   onGraphProgress
 } from '../services/electronService';
 import { OverlayDialog } from './OverlayDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 import * as d3Force from 'd3-force';
 import '../styles/KnowledgeGraph.css';
@@ -96,6 +97,7 @@ const RELATIONSHIP_COLORS = {
 };
 
 export default function KnowledgeGraph({ onBack }) {
+  const { confirm } = useConfirm();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -328,6 +330,15 @@ export default function KnowledgeGraph({ onBack }) {
   };
 
   const handleRebuild = async () => {
+    const confirmed = await confirm({
+      title: 'Rebuild Knowledge Graph?',
+      message: 'Are you sure you want to rebuild the Knowledge Graph from scratch? This will re-parse all notes and extract entities in the background.',
+      confirmLabel: 'Rebuild Graph',
+      cancelLabel: 'Cancel',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
     try {
       setError('');
       setIsRebuilding(true);
@@ -637,9 +648,20 @@ export default function KnowledgeGraph({ onBack }) {
 
               {/* Extraction Logs Panel */}
               <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
-                  Extraction Logs
-                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
+                    Extraction Logs
+                  </h4>
+                  <button
+                    className="btn btn-tertiary"
+                    onClick={() => window.dispatchEvent(new CustomEvent('app:menu-action', { detail: { action: 'open-app-logs' } }))}
+                    style={{ padding: '2px 6px', fontSize: '9px', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                    title="Open full System & Application Logs"
+                  >
+                    <ExternalLink size={10} />
+                    System Logs
+                  </button>
+                </div>
                 <div style={{
                   background: 'var(--surface-muted)',
                   borderRadius: '4px',
@@ -680,7 +702,14 @@ export default function KnowledgeGraph({ onBack }) {
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={async () => {
-                  if (window.confirm('Clear all Knowledge Graph entities and relationships from cache?')) {
+                  const confirmed = await confirm({
+                    title: 'Clear Knowledge Graph Cache?',
+                    message: 'Are you sure you want to clear all Knowledge Graph entities and relationships from cache?',
+                    confirmLabel: 'Clear Cache',
+                    cancelLabel: 'Cancel',
+                    variant: 'danger'
+                  });
+                  if (confirmed) {
                     await aiClearGraphData();
                     loadGraphData();
                   }

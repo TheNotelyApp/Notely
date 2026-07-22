@@ -6,7 +6,11 @@ import {
   Pause,
   Play,
   AlertCircle,
-  FileText
+  FileText,
+  RotateCw,
+  ExternalLink,
+  Trash2,
+  Cpu
 } from 'lucide-react';
 import {
   aiGetEmbeddingsStatus,
@@ -21,10 +25,12 @@ import {
   aiGetPreferences
 } from '../services/electronService';
 import { OverlayDialog } from './OverlayDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 import '../styles/KnowledgeGraph.css'; // Reuses base layout rules for unified styling
 
 export default function EmbeddingsPage({ onBack }) {
+  const { confirm } = useConfirm();
   const [status, setStatus] = useState({
     totalChunks: 0,
     indexedNotes: 0,
@@ -138,7 +144,15 @@ export default function EmbeddingsPage({ onBack }) {
   };
 
   const handleRebuild = async () => {
-    if (!window.confirm('Are you sure you want to drop all indexed chunks and rebuild everything?')) return;
+    const confirmed = await confirm({
+      title: 'Rebuild Embeddings Database?',
+      message: 'Are you sure you want to drop all indexed vector chunks and rebuild the embeddings index?',
+      confirmLabel: 'Rebuild Embeddings',
+      cancelLabel: 'Cancel',
+      variant: 'primary'
+    });
+    if (!confirmed) return;
+
     try {
       setLoading(true);
       const res = await aiRebuildEmbeddings();
@@ -147,7 +161,6 @@ export default function EmbeddingsPage({ onBack }) {
           detail: { message: 'Embeddings rebuild triggered.', type: 'success' }
         }));
         setIsRebuilding(true);
-        setShowProgressModal(true);
         await loadEmbeddingsStatus();
       } else {
         setError(res.error || 'Failed to clear data');
@@ -168,11 +181,12 @@ export default function EmbeddingsPage({ onBack }) {
             <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Notes</button>
             <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
           </span>
-          <span className="detail-breadcrumb-current">Embeddings Engine</span>
+          <span className="detail-breadcrumb-current">Vector Embeddings</span>
         </nav>
       </div>
 
       <div className="knowledge-graph-container">
+        {/* Header Actions Bar */}
         <div className="kg-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', height: '52px', boxSizing: 'border-box' }}>
           <div className="kg-search-wrapper" style={{ height: '32px' }}>
             <Search size={16} className="kg-search-icon" />
@@ -186,28 +200,66 @@ export default function EmbeddingsPage({ onBack }) {
             />
           </div>
 
-          {/* Unified Model & DB Status details pill in header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Provider:</span>
-              <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'Local' : 'HuggingFace'}</strong>
+          {/* Model & DB Status details pill in header */}
+          {status.queueSize > 0 || isRebuilding ? (
+            <div
+              onClick={() => setShowProgressModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--surface-muted)',
+                border: '1px solid var(--accent-solid)',
+                padding: '0 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                color: 'var(--text-strong)',
+                marginLeft: 'auto',
+                height: '32px',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+              title="Click to view detailed indexing progress"
+            >
+              <RefreshCw size={12} className="spin" style={{ color: 'var(--accent-solid)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 600 }}>Indexing vector embeddings...</span>
+                <div style={{ width: '120px', height: '3px', background: 'var(--border-soft)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${status.queueTotal > 0 ? Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100)) : 0}%`,
+                    height: '100%',
+                    background: 'var(--accent-solid)',
+                    transition: 'width 0.2s ease'
+                  }} />
+                </div>
+              </div>
+              <span style={{ fontWeight: 700, fontSize: '10px', color: 'var(--accent-solid)' }}>
+                {status.queueTotal > 0 ? Math.round(((status.queueTotal - status.queueSize) / status.queueTotal) * 100) : 0}%
+              </span>
             </div>
-            <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Model:</span>
-              <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'BGE-Small-En-v1.5' : 'bge-small-en'}</strong>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Provider:</span>
+                <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'Local' : 'HuggingFace'}</strong>
+              </div>
+              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Model:</span>
+                <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'BGE-Small-En-v1.5' : 'bge-small-en'}</strong>
+              </div>
+              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>DB Size:</span>
+                <strong style={{ color: 'var(--text-strong)' }}>{status.dbSize || '0 KB'}</strong>
+              </div>
+              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: modelStatus.downloaded ? 'var(--status-success-text)' : 'var(--text-warning)' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: modelStatus.downloaded ? 'var(--status-success-border)' : 'var(--text-warning)' }}></span>
+                {modelStatus.downloaded ? 'Ready' : 'Missing'}
+              </span>
             </div>
-            <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>DB Size:</span>
-              <strong style={{ color: 'var(--text-strong)' }}>{status.dbSize || '0 KB'}</strong>
-            </div>
-            <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: modelStatus.downloaded ? 'var(--status-success-text)' : 'var(--text-warning)' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: modelStatus.downloaded ? 'var(--status-success-border)' : 'var(--text-warning)' }}></span>
-              {modelStatus.downloaded ? 'Ready' : 'Missing'}
-            </span>
-          </div>
+          )}
 
           {!modelStatus.downloaded && (
             <button
@@ -230,163 +282,149 @@ export default function EmbeddingsPage({ onBack }) {
           )}
 
           <div className="kg-stats-pill" style={{ gap: '12px', display: 'flex', alignItems: 'center', height: '32px', boxSizing: 'border-box', margin: 0, padding: '0 12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Database size={12} />
-              <span>Chunks: {status.totalChunks} | Indexed Notes: {status.indexedNotes}</span>
-            </div>
-            {status.queueTotal > 0 && (
-              status.queueSize > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="kg-category-badge" style={{ background: 'var(--kg-task-bg)', border: '1px solid var(--kg-task-border)', color: 'var(--kg-task-border)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <RefreshCw size={12} className="spin" />
-                    Queue: {status.queueSize} remaining
-                  </span>
-                  <div style={{ width: '80px', height: '6px', background: 'var(--border-soft)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100))}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, var(--accent-default) 0%, var(--accent-hover) 100%)',
-                      transition: 'width 0.3s ease-out'
-                    }} />
-                  </div>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {Math.round(((status.queueTotal - status.queueSize) / status.queueTotal) * 100)}%
-                  </span>
-                </div>
-              ) : (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', background: 'var(--status-success-bg)', border: '1px solid var(--status-success-border)' }}>
-                  <span style={{ fontSize: '10px', color: 'var(--status-success-text)', fontWeight: 600 }}>
-                    ✓ Index Up to Date ({status.queueTotal} notes)
-                  </span>
-                </div>
-              )
-            )}
+            <Database size={12} />
+            <span>Chunks: {status.totalChunks} | Indexed Notes: {status.indexedNotes}</span>
           </div>
+
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handlePauseResume}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 10px', fontSize: '11px' }}
+          >
+            {status.isPaused ? <Play size={12} /> : <Pause size={12} />}
+            <span>{status.isPaused ? 'Resume Worker' : 'Pause Worker'}</span>
+          </button>
+
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={loadEmbeddingsStatus}
+            disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 10px', fontSize: '11px' }}
+            title="Reload Vector Embeddings status"
+          >
+            <RotateCw size={12} className={loading ? 'spin' : ''} />
+            <span>Reload Data</span>
+          </button>
         </div>
 
         <div className="kg-body">
           {/* Settings & Controls Sidebar */}
-          <div className="kg-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              
-               {/* Index Worker Controls */}
-              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
-                  Index Worker
+          <div className="kg-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
+            <div className="kg-sidebar-section-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
+              {/* Vector Engine Stats Card */}
+              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
+                  <Cpu size={11} />
+                  Engine Metadata
                 </h4>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <span className={status.isWorking ? 'spin' : ''} style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: status.isWorking ? 'var(--accent-default)' : status.isPaused ? 'var(--text-muted)' : 'var(--status-success-border)',
-                      boxShadow: status.isWorking ? '0 0 8px var(--accent-default)' : status.isPaused ? 'none' : '0 0 8px var(--status-success-border)'
-                    }}></span>
-                    <span style={{ color: 'var(--text-muted)' }}>Status:</span>
-                    <strong style={{ color: 'var(--text-strong)' }}>{status.isWorking ? 'Processing' : status.isPaused ? 'Paused' : 'Idle'}</strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Provider:</span>
+                    <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'Local BGE' : 'HuggingFace'}</strong>
                   </div>
-                  <button
-                    className="kg-details-close"
-                    onClick={handlePauseResume}
-                    style={{
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '6px',
-                      padding: '4px 10px',
-                      background: 'var(--surface-bg)',
-                      color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '11px',
-                      fontWeight: 500,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {status.isPaused ? <Play size={12} /> : <Pause size={12} />}
-                    <span>{status.isPaused ? 'Resume' : 'Pause'}</span>
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Dimensions:</span>
+                    <strong style={{ color: 'var(--text-strong)' }}>384 dense float</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Worker Status:</span>
+                    <span style={{ fontWeight: 600, color: status.isWorking ? 'var(--accent-solid)' : status.isPaused ? 'var(--text-warning)' : 'var(--status-success-text)' }}>
+                      {status.isWorking ? 'Processing' : status.isPaused ? 'Paused' : 'Idle'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Queue Size:</span>
+                    <strong style={{ color: 'var(--text-strong)' }}>{status.queueSize} remaining</strong>
+                  </div>
                 </div>
               </div>
 
-              {/* Indexing Event Logs (Last 10) */}
-              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
-                  Indexing Event Logs
-                </h4>
+              {/* Indexing Event Logs */}
+              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
+                    Indexing Logs
+                  </h4>
+                  <button
+                    className="btn btn-tertiary"
+                    onClick={() => window.dispatchEvent(new CustomEvent('app:menu-action', { detail: { action: 'open-app-logs' } }))}
+                    style={{ padding: '2px 6px', fontSize: '9px', height: '18px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                    title="Open full System & Application Logs"
+                  >
+                    <ExternalLink size={10} />
+                    System Logs
+                  </button>
+                </div>
                 <div style={{
-                  maxHeight: '130px',
-                  overflowY: 'auto',
                   background: 'var(--surface-muted)',
-                  borderRadius: '6px',
-                  padding: '8px',
+                  borderRadius: '4px',
+                  padding: '6px',
                   border: '1px solid var(--border-soft)',
                   fontFamily: 'monospace',
                   fontSize: '9px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px'
+                  gap: '3px'
                 }}>
                   {status.logs.length === 0 ? (
-                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No logs available</span>
+                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No logs available.</span>
                   ) : (
                     status.logs.slice(0, 10).map((logItem, idx) => {
                       const timeStr = logItem.timestamp ? new Date(logItem.timestamp).toLocaleTimeString() : (logItem.ts || '');
                       const eventName = String(logItem.level || logItem.event || 'INFO').toUpperCase();
                       const detailText = logItem.message || logItem.detail || '';
                       return (
-                        <div key={logItem.id || idx} style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', lineHeight: 1.3 }}>
+                        <div key={logItem.id || idx} style={{ display: 'flex', gap: '4px', lineHeight: 1.3 }}>
                           <span style={{ color: 'var(--text-muted)' }}>[{timeStr}]</span>
                           <span style={{ color: eventName === 'ERROR' ? 'var(--text-danger)' : 'var(--accent-solid)', fontWeight: 600 }}>{eventName}</span>
-                          <span style={{ color: 'var(--text-secondary)' }}>{detailText}</span>
+                          <span style={{ color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{detailText}</span>
                         </div>
                       );
                     })
                   )}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('app:menu-action', { detail: { action: 'open-app-logs' } }))}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-solid)', fontSize: '10px', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                  >
-                    View Dedicated Log Page →
-                  </button>
-                </div>
               </div>
             </div>
 
-            {/* Sticky Actions */}
-            <div className="kg-sidebar-section" style={{ borderTop: '1px solid var(--border-default)', padding: '16px', background: 'var(--surface-elevated)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Actions Panel - Rebuild & Clear on single row */}
+            <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: '6px' }}>
               <button
-                className="btn btn-secondary"
+                className="btn btn-primary btn-sm"
                 onClick={handleRebuild}
                 disabled={loading}
-                style={{ width: '100%', justifyContent: 'center', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
               >
-                <RefreshCw size={14} className={loading ? 'spin' : ''} />
-                <span>Rebuild Embeddings DB</span>
+                <RefreshCw size={11} className={loading ? 'spin' : ''} />
+                <span>{loading ? 'Building...' : 'Rebuild'}</span>
               </button>
 
               <button
-                className="btn btn-secondary"
+                className="btn btn-secondary btn-sm"
                 onClick={async () => {
-                  if (window.confirm('Clear all indexed vector embeddings data from cache?')) {
+                  const confirmed = await confirm({
+                    title: 'Clear Embeddings Cache?',
+                    message: 'Are you sure you want to clear all indexed vector embeddings data from cache?',
+                    confirmLabel: 'Clear Cache',
+                    cancelLabel: 'Cancel',
+                    variant: 'danger'
+                  });
+                  if (confirmed) {
                     await aiClearEmbeddingsData();
                     loadEmbeddingsStatus();
                   }
                 }}
-                style={{ width: '100%', justifyContent: 'center', height: '32px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-danger)' }}
+                style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', color: 'var(--text-danger)', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
               >
-                <span>Clear Embeddings Data</span>
+                <Trash2 size={11} />
+                <span>Clear Data</span>
               </button>
             </div>
 
-            {/* Chunk Detail Card */}
+            {/* Selected Chunk Detail Card */}
             {selectedChunk && (
-              <div className="kg-details-card animate-fade-in">
+              <div className="kg-details-card animate-fade-in" style={{ margin: '10px' }}>
                 <div className="kg-details-head">
-                  <h4>Chunk Content</h4>
+                  <h4>Chunk Detail</h4>
                   <button className="kg-details-close" onClick={() => setSelectedChunk(null)}>✕</button>
                 </div>
                 <div className="kg-details-body" style={{ maxHeight: '200px', overflowY: 'auto' }}>
@@ -405,8 +443,8 @@ export default function EmbeddingsPage({ onBack }) {
             )}
           </div>
 
-          {/* Searchable Chunk Inspector & Log viewer */}
-          <div className="kg-canvas-wrapper" style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--surface-bg)', overflow: 'hidden' }}>
+          {/* Searchable Chunk Inspector */}
+          <div className="kg-canvas-wrapper" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface-bg)', overflow: 'hidden', paddingBottom: '28px' }}>
             {error && (
               <div className="kg-error-overlay">
                 <AlertCircle size={20} style={{ color: 'var(--kg-task-border)' }} />
@@ -415,7 +453,7 @@ export default function EmbeddingsPage({ onBack }) {
             )}
 
             {/* Chunks Inspector list */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 16px 64px 16px', boxSizing: 'border-box' }}>
               <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-strong)', margin: '0 0 12px 0' }}>Chunks Inspector</h3>
               {status.chunks.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px', color: 'var(--text-muted)' }}>
@@ -423,44 +461,46 @@ export default function EmbeddingsPage({ onBack }) {
                   <span>No note chunks found. Try writing a note or rebuilding the index.</span>
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '8px' }}>Note Path</th>
-                      <th style={{ padding: '8px' }}>Type</th>
-                      <th style={{ padding: '8px' }}>Lines</th>
-                      <th style={{ padding: '8px' }}>Preview</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {status.chunks.map((chunk) => (
-                      <tr
-                        key={chunk.id}
-                        onClick={() => setSelectedChunk(chunk)}
-                        style={{ borderBottom: '1px solid var(--border-soft)', cursor: 'pointer', hover: 'background: var(--surface-muted)' }}
-                        className="kg-table-row"
-                      >
-                        <td style={{ padding: '8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={chunk.note_path}>
-                          {chunk.note_path.split(/[/\\]/).pop()}
-                        </td>
-                        <td style={{ padding: '8px' }}>
-                          <span className="kg-category-badge" style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)' }}>
-                            {chunk.chunk_type || 'text'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px', color: 'var(--text-secondary)' }}>
-                          {chunk.start_line}-{chunk.end_line}
-                        </td>
-                        <td style={{ padding: '8px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
-                          {chunk.content}
-                        </td>
+                <>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                    <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-bg)', zIndex: 1 }}>
+                      <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '8px', background: 'var(--surface-bg)' }}>Note Path</th>
+                        <th style={{ padding: '8px', background: 'var(--surface-bg)' }}>Type</th>
+                        <th style={{ padding: '8px', background: 'var(--surface-bg)' }}>Lines</th>
+                        <th style={{ padding: '8px', background: 'var(--surface-bg)' }}>Preview</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {status.chunks.map((chunk) => (
+                        <tr
+                          key={chunk.id}
+                          onClick={() => setSelectedChunk(chunk)}
+                          style={{ borderBottom: '1px solid var(--border-soft)', cursor: 'pointer' }}
+                          className="kg-table-row"
+                        >
+                          <td style={{ padding: '8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={chunk.note_path}>
+                            {chunk.note_path.split(/[/\\]/).pop()}
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <span className="kg-category-badge" style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)' }}>
+                              {chunk.chunk_type || 'text'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px', color: 'var(--text-secondary)' }}>
+                            {chunk.start_line}-{chunk.end_line}
+                          </td>
+                          <td style={{ padding: '8px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
+                            {chunk.content}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ height: '48px' }} />
+                </>
               )}
             </div>
-
           </div>
         </div>
       </div>
@@ -486,7 +526,7 @@ export default function EmbeddingsPage({ onBack }) {
               <div style={{
                 width: `${status.queueTotal > 0 ? Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100)) : 0}%`,
                 height: '100%',
-                background: 'var(--accent-default)',
+                background: 'var(--accent-solid)',
                 transition: 'width 0.3s ease'
               }} />
             </div>
@@ -501,7 +541,7 @@ export default function EmbeddingsPage({ onBack }) {
             <button
               className="btn btn-secondary"
               onClick={() => setShowProgressModal(false)}
-              style={{ padding: "6px 12px", fontSize: "12px", background: 'var(--surface-muted)', border: '1px solid var(--border-default)', borderRadius: '4px', cursor: 'pointer' }}
+              style={{ padding: "6px 12px", fontSize: "12px" }}
             >
               Run in Background
             </button>
