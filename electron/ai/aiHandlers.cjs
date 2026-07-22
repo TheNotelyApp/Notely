@@ -688,10 +688,14 @@ async function handleDownloadGraphModel(_event, _payload) {
     const GraphModelDownloader = require('../../ai/graph/GraphModelDownloader');
     const downloader = new GraphModelDownloader(appDataDir);
 
+    const workerManager = require('./workerManager.cjs');
     const win = BrowserWindow.getFocusedWindow();
     downloader.downloadModel((progressObj) => {
       if (win && !win.isDestroyed()) {
         win.webContents.send('ai:graph-model:progress', progressObj);
+      }
+      if (progressObj && progressObj.status === 'complete' && workerManager) {
+        workerManager.reloadGraphModel();
       }
     }).catch(err => {
       console.error('[AI IPC] Async graph model downloader error:', err);

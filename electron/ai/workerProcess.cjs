@@ -173,6 +173,14 @@ if (process.parentPort) {
         if (indexWorker) indexWorker.pause();
       } else if (type === 'resume') {
         if (indexWorker) indexWorker.resume();
+      } else if (type === 'reloadGraphModel') {
+        if (graphService && typeof graphService.getExtractor === 'function') {
+          const extractor = graphService.getExtractor();
+          if (extractor && typeof extractor.load === 'function') {
+            extractor.isLoaded = false;
+            await extractor.load().catch(() => {});
+          }
+        }
       } else if (type === 'shutdown') {
         if (indexWorker) indexWorker.pause();
         if (graphWorker) graphWorker.pause();

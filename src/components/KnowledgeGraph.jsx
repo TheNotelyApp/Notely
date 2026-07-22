@@ -160,11 +160,16 @@ export default function KnowledgeGraph({ onBack }) {
             target: rel.target_id
           }));
 
+        const nodeCount = forceNodes.length;
+        const dynamicDistance = Math.max(100, Math.min(300, linkDistance + (nodeCount > 50 ? 40 : 0)));
+        const dynamicCharge = Math.min(-150, chargeStrength - (nodeCount > 50 ? 120 : 0));
+        const dynamicCollision = Math.max(50, collideRadius + (nodeCount > 50 ? 15 : 0));
+
         const simulation = d3Force.forceSimulation(forceNodes)
-          .force('link', d3Force.forceLink(forceLinks).id(d => d.id).distance(linkDistance))
-          .force('charge', d3Force.forceManyBody().strength(chargeStrength))
-          .force('center', d3Force.forceCenter(350, 300))
-          .force('collision', d3Force.forceCollide().radius(collideRadius))
+          .force('link', d3Force.forceLink(forceLinks).id(d => d.id).distance(dynamicDistance))
+          .force('charge', d3Force.forceManyBody().strength(dynamicCharge))
+          .force('center', d3Force.forceCenter(400, 350))
+          .force('collision', d3Force.forceCollide().radius(dynamicCollision))
           .stop();
 
         for (let i = 0; i < 40; i++) simulation.tick();

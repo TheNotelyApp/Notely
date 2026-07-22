@@ -163,6 +163,12 @@ function resumeWorker() {
   }
 }
 
+function reloadGraphModel() {
+  if (childProcess) {
+    childProcess.postMessage({ type: 'reloadGraphModel' });
+  }
+}
+
 function shutdownWorker() {
   if (childProcess) {
     childProcess.postMessage({ type: 'shutdown' });
@@ -180,6 +186,7 @@ module.exports = {
   resumeWorker,
   pauseGraphWorker,
   resumeGraphWorker,
+  reloadGraphModel,
   shutdownWorker,
   rebuildGraph,
   getGraphProgressState: () => graphProgressState,
