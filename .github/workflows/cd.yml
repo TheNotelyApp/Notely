@@ -41,8 +41,9 @@ jobs:
 
           | File | Type | Notes |
           |------|------|-------|
-          | `Notely Setup *.exe` | **Installer** (recommended) | Installs to your system, fast launch every time |
-          | `Notely-*-win.zip` | **Portable ZIP** | Extract once, run directly — portable + fast |
+          | `Notely Setup *.exe` | **NSIS Installer** (recommended) | Installs to system with start menu / desktop shortcuts |
+          | `Notely *.exe` | **Portable Standalone EXE** | Single all-in-one executable, zero installation required |
+          | `Notely-*-win.zip` | **Portable ZIP** | Portable ZIP package — extract and run anywhere |
         files: |
           release/*.exe
           release/*.zip

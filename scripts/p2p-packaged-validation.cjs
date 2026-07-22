@@ -7,9 +7,13 @@ const projectRoot = process.cwd();
 const releaseDir = path.join(projectRoot, "release");
 const artifactsDir = path.join(projectRoot, ".artifacts");
 
+const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"));
+const version = pkg.version;
+
 const expectedReleaseFiles = [
-  "Notely Setup 0.1.0.exe",
-  "Notely 0.1.0.exe"
+  `Notely Setup ${version}.exe`,
+  `Notely ${version}.exe`,
+  `Notely-${version}-win.zip`
 ];
 
 function fileInfo(filePath) {
