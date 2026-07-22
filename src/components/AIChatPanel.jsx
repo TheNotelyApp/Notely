@@ -347,8 +347,9 @@ export default function AIChatPanel({
         {messages.length ? (
           <>
             {messages.map((message) => {
-              const cleanText = String(message.text || "")
-                .replace(/[ \t\r]+\n/g, "\n")
+              const cleanText = String(message.text || message.content || "")
+                .replace(/\r\n/g, "\n")
+                .replace(/[ \t]+\n/g, "\n")
                 .replace(/\n{3,}/g, "\n\n")
                 .trim();
               return (

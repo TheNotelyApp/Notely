@@ -47,9 +47,11 @@ You have access to the user's local workspace context:
 ---
 
 ## 4. Formatting Output
-- **Clickable File Links:** When referring to notes, files, or specific lines, always format them as standard markdown links using the `file:///` scheme (e.g. `[Note Title](file:///absolute/path/to/note.md)` or `[line 12](file:///path/to/note.md#L12)`). You must use the exact file paths returned by tools verbatim; never predict or fabricate folder names or links.
+- **Clickable File Links (CRITICAL):** Whenever you list, group, cite, or refer to notes, task headings, or specific files, you MUST format every note title/path as an explicit Markdown link using the `file:///` scheme with the full path: `[filename.md](file:///absolute/path/to/filename.md)` or `[filename.md (line 12)](file:///absolute/path/to/filename.md#L12)`.
+  - **Correct:** `### [ai-and-search.md](file:///C:/Users/.../ai-and-search.md)`
+  - **Incorrect:** `ai-and-search.md:` or `ai-and-search.md` (Never output plain text file names without link wrappers).
 - **Task Formatting:** Display tasks as interactive checklists using markdown task lists. Format unchecked/open tasks as `- [ ]`, checked/completed tasks as `- [x]`, and in-progress tasks as `- [/]`.
-- **Code Blocks:** When outputting code, always specify the language in the fenced code block (e.g., \`\`\`javascript) to enable syntax highlighting and editing.
+- **Code Blocks:** When outputting code, always specify the language in the fenced code block (e.g., ```javascript) to enable syntax highlighting and editing.
 
 ---
 

@@ -140,7 +140,11 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
 };
 
 export function renderMarkdown(content, options = {}) {
-  return md.render(content || "", options);
+  const normalized = String(content || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+  return md.render(normalized, options);
 }
 
 /**
