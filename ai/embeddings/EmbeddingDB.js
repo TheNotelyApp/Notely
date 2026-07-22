@@ -47,7 +47,7 @@ class EmbeddingDB {
         return {
           id: r.id,
           note_path: r.note_path,
-          embedding: Array.from(arr),
+          embedding: arr,
           embedding_model: r.embedding_model
         };
       });
@@ -176,7 +176,9 @@ class EmbeddingDB {
     );
 
     if (chunk.embedding) {
-      const floatArr = Array.isArray(chunk.embedding) ? chunk.embedding : Array.from(chunk.embedding);
+      const floatArr = chunk.embedding instanceof Float32Array
+        ? chunk.embedding
+        : new Float32Array(chunk.embedding);
       const existingIdx = this.vectorCache.findIndex(v => v.id === chunk.id);
       const cachedItem = {
         id: chunk.id,

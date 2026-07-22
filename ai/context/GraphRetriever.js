@@ -46,7 +46,7 @@ class GraphRetriever {
         )
         SELECT DISTINCT from_path, relation, to_path, depth
         FROM graph_walk
-        ORDER BY depth ASC
+        ORDER BY depth ASC, CASE relation WHEN 'references' THEN 1 WHEN 'depends_on' THEN 2 WHEN 'uses' THEN 3 ELSE 4 END ASC
         LIMIT 50
       `).all(notePath, maxDepth);
 
