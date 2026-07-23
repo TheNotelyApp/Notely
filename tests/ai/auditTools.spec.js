@@ -11,7 +11,7 @@ describe('AI Subsystem Technical Audit Tests', () => {
   let graphDb;
 
   beforeAll(() => {
-    tempDir = path.join(__dirname, 'temp-audit-test');
+    tempDir = path.join(__dirname, `temp-audit-test-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`);
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
