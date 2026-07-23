@@ -723,6 +723,7 @@ export function DocumentDetail({
   onOpenInEditor,
   onRevealInExplorer,
   onCopyLinkPath,
+  onReloadFromDisk,
 }) {
   const { confirm } = useConfirm();
   const MAX_EDITOR_HISTORY = 200;
@@ -878,11 +879,13 @@ export function DocumentDetail({
 
   const handleReloadFromDisk = async () => {
     try {
-      if (typeof onOpenDocument === "function") {
-        await onOpenDocument(document.filePath);
-        setChangedOnDisk(false);
-        onNotify?.("Note reloaded from disk.", "success");
+      if (typeof onReloadFromDisk === "function") {
+        await onReloadFromDisk(document.filePath);
+      } else if (typeof onOpenDocument === "function") {
+        await onOpenDocument(document.filePath, { forceReload: true, preserveActiveTab: true });
       }
+      setChangedOnDisk(false);
+      onNotify?.("Note reloaded from disk.", "success");
     } catch (err) {
       onNotify?.(err?.message || "Failed to reload document.", "error");
     }
@@ -1757,6 +1760,7 @@ export function DocumentDetail({
           onOpenInEditor={onOpenInEditor}
           onRevealInExplorer={onRevealInExplorer}
           onCopyLinkPath={onCopyLinkPath}
+          onReloadFromDisk={onReloadFromDisk}
         />
       )}
       {!isFocusMode && (

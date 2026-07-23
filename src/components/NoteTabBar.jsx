@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2 } from "lucide-react";
+import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2, RefreshCw } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { IconColorPickerModal } from "./IconColorPickerModal";
@@ -22,6 +22,7 @@ export function NoteTabBar({
   onOpenInEditor,
   onRevealInExplorer,
   onCopyLinkPath,
+  onReloadFromDisk,
 }) {
   const barRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -414,6 +415,17 @@ export function NoteTabBar({
             Close All Tabs
           </button>
           <div className="tab-context-menu-separator" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onReloadFromDisk?.(contextMenu.filePath);
+              setContextMenu(null);
+            }}
+          >
+            <RefreshCw size={14} />
+            Reload from Disk
+          </button>
           <button
             type="button"
             role="menuitem"

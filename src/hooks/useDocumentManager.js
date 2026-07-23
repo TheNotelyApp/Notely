@@ -115,11 +115,6 @@ export function useDocumentManager({ notify }) {
   }, [workspaceStorageScope, setOpenTabs, setActiveTabPath, setCurrent, setHistory]);
 
   useEffect(() => {
-    setActiveTabPath(null);
-    setCurrent(null);
-  }, [setActiveTabPath, setCurrent]);
-
-  useEffect(() => {
     if (!activeTabPath) {
       setCurrent(null);
       setSavedHash("");
@@ -333,7 +328,7 @@ export function useDocumentManager({ notify }) {
     });
 
     const cached = tabStates[filePath];
-    if (cached) {
+    if (cached && !options.forceReload) {
       setActiveTabPath(filePath);
       setCurrent(cached.doc);
       setSavedHash(cached.savedHash);
@@ -413,10 +408,30 @@ export function useDocumentManager({ notify }) {
     }
   }
 
-  async function handleReloadCurrentFromDisk() {
-    if (!current?.filePath) return;
+  async function reloadDocument(filePath) {
+    if (!filePath) return;
+    try {
+      await openDocument(filePath, { forceReload: true, preserveActiveTab: true });
+    } catch (err) {
+      setError(err?.message || "Unable to reload document.");
+      throw err;
+    }
+  }
 
-    if (dirty) {
+  async function handleReloadCurrentFromDisk(targetFilePath) {
+    const filePathToReload = targetFilePath || current?.filePath;
+    if (!filePathToReload) return;
+
+    const state = tabStates[filePathToReload];
+    const isTargetDirty = state
+      ? state.savedHash !== JSON.stringify({
+          header: state.doc?.header || "",
+          rawNotes: state.doc?.rawNotes || "",
+          cleansed: state.doc?.cleansed || "",
+        })
+      : dirty;
+
+    if (isTargetDirty) {
       const confirmed = await confirm({
         title: "Discard Changes?",
         message: "Reload this note from disk and discard unsaved changes?",
@@ -428,11 +443,44 @@ export function useDocumentManager({ notify }) {
     }
 
     try {
-      await openDocument(current.filePath, { preserveActiveTab: true });
+      await reloadDocument(filePathToReload);
       notify("Reloaded latest file from disk.", "success");
     } catch (err) {
-      setError(err?.message || "Unable to reload document.");
       notify(err?.message || "Unable to reload document.", "error");
+    }
+  }
+
+  async function handleReloadWorkspace() {
+    setLoading(true);
+    try {
+      await loadDocumentsData();
+      if (openTabs && openTabs.length > 0) {
+        for (const filePath of openTabs) {
+          try {
+            const doc = await readDocument(filePath);
+            const hash = JSON.stringify({
+              header: doc.header || "",
+              rawNotes: doc.rawNotes || "",
+              cleansed: doc.cleansed || "",
+            });
+            setTabStates((prev) => ({
+              ...prev,
+              [filePath]: { doc, savedHash: hash },
+            }));
+            if (activeTabPath === filePath) {
+              setCurrent(doc);
+              setSavedHash(hash);
+            }
+          } catch {
+            // ignore missing files during reload
+          }
+        }
+      }
+      notify("Workspace reloaded from disk.", "success");
+    } catch (err) {
+      notify(err?.message || "Failed to reload workspace.", "error");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -1079,8 +1127,12 @@ export function useDocumentManager({ notify }) {
     }
   }
 
-  async function handleOpenReferencedDocument(filePath, lineNumber) {
+  async function handleOpenReferencedDocument(filePath, optionsOrLineNumber) {
     if (!filePath) return;
+    const options = (typeof optionsOrLineNumber === "object" && optionsOrLineNumber !== null)
+      ? optionsOrLineNumber
+      : { lineNumber: optionsOrLineNumber };
+
     if (current && dirty && current.filePath !== filePath) {
       const confirmed = await confirm({
         title: "Discard Changes?",
@@ -1091,7 +1143,7 @@ export function useDocumentManager({ notify }) {
       });
       if (!confirmed) return;
     }
-    await openDocument(filePath, { lineNumber });
+    await openDocument(filePath, options);
   }
 
   async function handleLandingNavigateUp() {
@@ -1190,6 +1242,8 @@ export function useDocumentManager({ notify }) {
     loadDocumentsData,
     openDocument,
     saveDocument,
+    reloadDocument,
+    handleReloadWorkspace,
     handleReloadCurrentFromDisk,
     handleRenameCurrentDocument,
     handleDeleteCurrentDocument,
