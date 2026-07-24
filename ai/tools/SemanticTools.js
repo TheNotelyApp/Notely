@@ -122,7 +122,14 @@ class SemanticToolRunner {
   }
 }
 
+function getToolRunner(toolName, agent) {
+  const runner = new SemanticToolRunner(agent);
+  return (args) => runner.run(toolName, args);
+}
+
 module.exports = {
   semanticToolsCatalog,
-  SemanticToolRunner
+  SemanticToolRunner,
+  getToolRunner
 };
+

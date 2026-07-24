@@ -649,6 +649,18 @@ export default function App() {
     defaultValue: "open",
     normalize: normalizeEmbeddedMarkdownMode,
   });
+  const [tableEditorEnabled, setTableEditorEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:table-editor-enabled",
+    defaultValue: true,
+    normalize: (value) => value !== false,
+  });
+  const [scrollSyncEnabled, setScrollSyncEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:scroll-sync-enabled",
+    defaultValue: true,
+    normalize: (value) => value !== false,
+  });
 
   const [ignoredSpellingWords, setIgnoredSpellingWords] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
@@ -1269,17 +1281,39 @@ export default function App() {
       outlineEnabled,
       splitPreviewEnabled: current ? mode === "split" : false,
       focusModeEnabled: current ? focusModeEnabled : false,
+      scrollSyncEnabled,
+      tableEditorEnabled,
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
       autosaveEnabled,
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths, autosaveEnabled]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
       if (action === "toggle-autosave") {
         setAutosaveEnabled((prev) => !prev);
+        return;
+      }
+
+      if (action === "toggle-scroll-sync") {
+        setScrollSyncEnabled((prev) => !prev);
+        return;
+      }
+
+      if (action === "set-table-editor-gui") {
+        setTableEditorEnabled(true);
+        return;
+      }
+
+      if (action === "set-table-editor-raw") {
+        setTableEditorEnabled(false);
+        return;
+      }
+
+      if (action === "toggle-table-editor") {
+        setTableEditorEnabled((prev) => !prev);
         return;
       }
 
@@ -2999,6 +3033,10 @@ export default function App() {
             onOutlineEnabledChange={setOutlineEnabled}
             focusModeEnabled={focusModeEnabled}
             onFocusModeChange={setFocusModeEnabled}
+            tableEditorEnabled={tableEditorEnabled}
+            onTableEditorToggle={setTableEditorEnabled}
+            scrollSyncEnabled={scrollSyncEnabled}
+            onScrollSyncEnabledChange={setScrollSyncEnabled}
             onReloadFromDisk={(filePath) => handleReloadCurrentFromDisk(filePath)}
             aiSidebar={aiSidebarComponent}
           />

@@ -19,11 +19,13 @@ const ContextOrchestrator = require('./ContextOrchestrator');
 const PromptLoader = require('../prompts/PromptLoader');
 const PromptPipeline = require('../prompts/PromptPipeline');
 const PersonaManager = require('../personas/PersonaManager');
+const LogDB = require('../logs/LogDB');
 
 class Agent {
   constructor(databaseManager, llmRegistry) {
     this.db = databaseManager;
     this.llmRegistry = llmRegistry;
+    this.logDb = null;
 
     // Prompt Architecture Infrastructure
     this.promptLoader = new PromptLoader();
@@ -82,6 +84,10 @@ class Agent {
       // Store workspace root
       this.workspaceRoot = workspaceRoot;
       this.documentService.workspaceRoot = workspaceRoot;
+
+      // Initialize LogDB for prompt and AI logging
+      this.logDb = new LogDB(workspaceRoot);
+      this.logDb.initialize();
 
       // Initialize GraphDB
       this.graphDb = new GraphDB(workspaceRoot);
@@ -226,6 +232,20 @@ class Agent {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Log LLM prompt execution to LogDB (PromptTracker)
+   */
+  logPrompt(query, systemPrompt, metadata = {}) {
+    if (this.logDb && this.logDb.isInitialized) {
+      const displayQuery = query ? String(query).slice(0, 80) : 'N/A';
+      this.logDb.addLog('PromptTracker', `Prompt executed for query: "${displayQuery}"`, 'info', {
+        query,
+        systemPrompt,
+        ...metadata
+      });
     }
   }
 

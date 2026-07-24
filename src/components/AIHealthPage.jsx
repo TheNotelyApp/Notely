@@ -15,7 +15,7 @@ import {
   Search,
   X
 } from 'lucide-react';
-import { aiGetHealth, aiListConversations, aiGetMessages } from '../services/electronService';
+import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs } from '../services/electronService';
 import { renderMarkdown } from '../utils/renderUtils';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
@@ -94,17 +94,64 @@ function MessageBubble({ msg }) {
   );
 }
 
+function PromptLogCard({ logItem }) {
+  const [open, setOpen] = useState(false);
+  const meta = logItem.metadata || {};
+  const sysPrompt = meta.systemPrompt || '';
+
+  return (
+    <div className="ahp-tool-call" style={{ margin: '8px 0' }}>
+      <button className="ahp-tool-call-header" onClick={() => setOpen(o => !o)} type="button">
+        <Terminal size={12} className="ahp-tool-icon" />
+        <span className="ahp-tool-name">Prompt &middot; {meta.model || 'LLM'}</span>
+        <span className="ahp-tool-args-preview">"{meta.query || logItem.message}"</span>
+        <span className="ahp-pill" style={{ marginLeft: 'auto', fontSize: '10px' }}>{sysPrompt.length} chars</span>
+        <ChevronRight size={12} className={`ahp-tool-chevron${open ? ' open' : ''}`} />
+      </button>
+      {open && (
+        <div className="ahp-tool-body">
+          {meta.persona && <div className="ahp-tool-section-label">Active Persona: {meta.persona}</div>}
+          <div className="ahp-tool-section-label">User Query</div>
+          <pre className="ahp-tool-pre">{meta.query || 'N/A'}</pre>
+
+          <div className="ahp-tool-section-label">Assembled System Prompt ({sysPrompt.length} chars)</div>
+          <pre className="ahp-tool-pre" style={{ maxHeight: '240px' }}>{sysPrompt || '(no system prompt captured)'}</pre>
+
+          {meta.messages && meta.messages.length > 0 && (
+            <>
+              <div className="ahp-tool-section-label">Context Messages</div>
+              <pre className="ahp-tool-pre">{JSON.stringify(meta.messages, null, 2)}</pre>
+            </>
+          )}
+
+          <div className="ahp-tool-section-label">Timestamp</div>
+          <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>{new Date(logItem.timestamp).toLocaleString()}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConversationPane({ conv, onBack }) {
   const [messages, setMessages] = useState(null);
+  const [promptLogs, setPromptLogs] = useState([]);
+  const [activeTab, setActiveTab] = useState('messages');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await aiGetMessages(conv.id);
-        if (res?.success) setMessages(res.data || []);
-        else setError(res?.error || 'Failed to load messages.');
+        const [msgRes, logRes] = await Promise.all([
+          aiGetMessages(conv.id),
+          aiGetLogs('PromptTracker', 100).catch(() => ({ success: true, data: [] }))
+        ]);
+        if (msgRes?.success) setMessages(msgRes.data || []);
+        else setError(msgRes?.error || 'Failed to load messages.');
+
+        if (logRes?.success) {
+          setPromptLogs(logRes.data || []);
+        }
       } catch (e) {
         setError(e.message);
       } finally {
@@ -122,14 +169,45 @@ function ConversationPane({ conv, onBack }) {
         </button>
         <div className="ahp-trace-title">{conv.title}</div>
         <div className="ahp-trace-meta">Persona: {conv.persona} &middot; {new Date(conv.created_at).toLocaleDateString()}</div>
+        
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          <button
+            className={`btn ${activeTab === 'messages' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '28px', padding: '0 10px', fontSize: '12px' }}
+            onClick={() => setActiveTab('messages')}
+            type="button"
+          >
+            <MessageSquare size={12} />
+            <span>Messages</span>
+            <span className="ahp-conv-count" style={{ marginLeft: '2px' }}>{messages?.length || 0}</span>
+          </button>
+          <button
+            className={`btn ${activeTab === 'prompts' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '28px', padding: '0 10px', fontSize: '12px' }}
+            onClick={() => setActiveTab('prompts')}
+            type="button"
+          >
+            <Terminal size={12} />
+            <span>Prompt Tracker</span>
+            <span className="ahp-conv-count" style={{ marginLeft: '2px' }}>{promptLogs.length}</span>
+          </button>
+        </div>
       </div>
       <div className="ahp-trace-body">
-        {loading && <div className="ahp-empty">Loading messages&hellip;</div>}
+        {loading && <div className="ahp-empty">Loading details&hellip;</div>}
         {error && <div className="ahp-error-bar"><AlertCircle size={14} /> {error}</div>}
-        {!loading && !error && messages?.length === 0 && (
-          <div className="ahp-empty">No messages in this conversation.</div>
+        {!loading && !error && activeTab === 'messages' && (
+          <>
+            {messages?.length === 0 && <div className="ahp-empty">No messages in this conversation.</div>}
+            {messages?.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+          </>
         )}
-        {messages?.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+        {!loading && !error && activeTab === 'prompts' && (
+          <>
+            {promptLogs.length === 0 && <div className="ahp-empty">No prompt tracking logs recorded yet.</div>}
+            {promptLogs.map(item => <PromptLogCard key={item.id} logItem={item} />)}
+          </>
+        )}
       </div>
     </div>
   );

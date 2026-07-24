@@ -91,12 +91,13 @@ class ContextOrchestrator {
       if (this.agent?.workspaceBrain) {
         try {
           const wbFacts = await this.agent.workspaceBrain.getWorkspaceFacts(query, context.activeNotePath);
+          const factsArray = Array.isArray(wbFacts) ? wbFacts : [];
           executionTrace.push({
             name: 'workspace_graph_retrieval',
             args: { query, activeNotePath: context.activeNotePath || null },
-            output: `Retrieved ${wbFacts.length} workspace facts & graph relations`
+            output: `Retrieved ${factsArray.length} workspace facts & graph relations`
           });
-          for (const fact of wbFacts) {
+          for (const fact of factsArray) {
             collectedEvidence.push({
               source: fact.source || 'WorkspaceBrain',
               filePath: fact.filePath || '',

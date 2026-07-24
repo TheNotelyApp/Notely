@@ -117,6 +117,15 @@ class QueryExecutor {
       const { generateText } = await import('ai');
       const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
 
+      if (this.agent && typeof this.agent.logPrompt === 'function') {
+        this.agent.logPrompt(query, systemPrompt, {
+          persona: context.persona || 'general',
+          model: llm?.name || 'unknown',
+          messages,
+          uiContext: context.uiContext || null
+        });
+      }
+
       const result = await generateText({
         model,
         system: systemPrompt,
@@ -260,6 +269,16 @@ class QueryExecutor {
     try {
       const { streamText } = await import('ai');
       const { model, systemPrompt, messages, mergedTools, llm, toolChoice } = await this._prepareConfig(query, context);
+
+      if (this.agent && typeof this.agent.logPrompt === 'function') {
+        this.agent.logPrompt(query, systemPrompt, {
+          persona: context.persona || 'general',
+          model: llm?.name || 'unknown',
+          messages,
+          uiContext: context.uiContext || null,
+          streaming: true
+        });
+      }
 
       const result = await streamText({
         model,
