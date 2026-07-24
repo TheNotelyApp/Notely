@@ -36,13 +36,21 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       aiAgent = null;
     }
 
-    try {
-      const workerManager = require('../electron/ai/workerManager.cjs');
-      if (workerManager && typeof workerManager.shutdownWorker === 'function') {
-        workerManager.shutdownWorker();
+    function getWorkerManager() {
+      try {
+        return require('../electron/ai/workerManager.cjs');
+      } catch {
+        return null;
       }
-    } catch {
-      // Ignore if workerManager not available yet
+    }
+
+    const workerManager = getWorkerManager();
+    if (workerManager && typeof workerManager.shutdownWorker === 'function') {
+      try {
+        workerManager.shutdownWorker();
+      } catch (shutdownErr) {
+        console.warn('[AI System] Worker shutdown warning:', shutdownErr.message);
+      }
     }
 
     aiConfig = new AIConfig();

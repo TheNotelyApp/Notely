@@ -1,60 +1,94 @@
 /**
- * Planner - Intent classification & multi-step execution planner for Notely AI
- * Decomposes complex user queries into ordered tool dependency execution graphs.
+ * Planner - Layer 3 of Decoupled Hybrid Planning Architecture
+ * Responsibility: Execution DAG Planning
+ *
+ * Takes an IntentManifest (Intent Detection) and Resolved Capabilities (Capability Resolution)
+ * to build structured, ordered execution plan DAGs for tool orchestration.
  */
+
+const IntentAnalyzer = require('./IntentAnalyzer');
+const CapabilityResolver = require('./CapabilityResolver');
+const { createLogger } = require('./logger');
+const log = createLogger('Planner');
 
 class Planner {
   constructor(agent) {
     this.agent = agent;
+    this.intentAnalyzer = new IntentAnalyzer();
+    this.capabilityResolver = new CapabilityResolver();
   }
 
   /**
-   * Classify user query intent
+   * Build an Execution Plan from Intent Manifest and Resolved Capabilities
    * @param {string} query
-   * @returns {string} - 'DirectQuery' | 'TopicExploration' | 'TimelineReconstruction' | 'TaskSummary'
+   * @param {object} [context={}]
+   * @returns {{ intent: string, steps: Array<{ toolName: string, capability: string, args: object }> }}
    */
-  classifyIntent(query) {
-    const q = String(query || '').toLowerCase();
-    if (q.includes('timeline') || q.includes('history of') || q.includes('how did') && q.includes('evolve')) {
-      return 'TimelineReconstruction';
-    }
-    if (q.includes('task') || q.includes('todo') || q.includes('action item') || q.includes('assigned to')) {
-      return 'TaskSummary';
-    }
-    if (q.includes('architecture') || q.includes('explore') || q.includes('relationship') || q.includes('connected to')) {
-      return 'TopicExploration';
-    }
-    return 'DirectQuery';
+  createPlan(query, context = {}) {
+    const intentManifest = this.intentAnalyzer.analyze(query, context);
+    const resolvedCapabilities = this.capabilityResolver.resolveCapabilities(intentManifest.informationNeeds);
+
+    const steps = resolvedCapabilities.map(cap => ({
+      capability: cap.capability,
+      toolName: cap.toolName,
+      args: { query, limit: 5, notePath: query, status: 'open', ...context }
+    }));
+
+    log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, stepsCount: steps.length });
+    return {
+      intent: intentManifest.goal,
+      manifest: intentManifest,
+      steps
+    };
   }
 
   /**
-   * Build execution plan graph for query
+   * Async LLM-driven plan generation using active provider structured outputs
    * @param {string} query
-   * @returns {{ intent: string, steps: Array<{ toolName: string, args: object }> }}
+   * @param {object} [context={}]
+   * @returns {Promise<{ intent: string, steps: Array<{ toolName: string, capability: string, args: object }> }>}
    */
-  createPlan(query) {
-    const intent = this.classifyIntent(query);
-    const steps = [];
+  async createPlanAsync(query, context = {}) {
+    if (this.agent?.llmRegistry) {
+      try {
+        const activeProvider = this.agent.llmRegistry.getActiveProvider();
+        if (activeProvider) {
+          const { generateObject } = await import('ai');
+          const { z } = await import('zod');
+          const model = await activeProvider.getModelInstance();
+          const tools = this.capabilityResolver.getRegisteredTools();
+          
+          const toolListDesc = tools.map(t => `- ${t.name}: ${t.description}`).join('\n');
+          const result = await generateObject({
+            model,
+            system: `You are Notely's AI Capability Execution Planner. Analyze the user request and build an ordered execution plan of semantic tool calls:\n${toolListDesc}`,
+            prompt: `User Query: "${query}"`,
+            schema: z.object({
+              intent: z.string().describe('Abstract intent goal category'),
+              steps: z.array(
+                z.object({
+                  capability: z.string().describe('Abstract capability contract name e.g. notes:search, tasks:extract, graph:traverse'),
+                  toolName: z.string().describe('Name of registered tool endpoint to invoke'),
+                  args: z.record(z.any()).optional().describe('Execution parameters')
+                })
+              ).describe('Ordered execution steps')
+            })
+          });
 
-    switch (intent) {
-      case 'TimelineReconstruction':
-        steps.push({ toolName: 'reconstruct_timeline', args: { topic: query } });
-        steps.push({ toolName: 'find_discussions', args: { topic: query } });
-        break;
-      case 'TaskSummary':
-        steps.push({ toolName: 'find_people_and_tasks', args: { status: 'open' } });
-        break;
-      case 'TopicExploration':
-        steps.push({ toolName: 'explore_topic_graph', args: { topic: query, maxHops: 2 } });
-        steps.push({ toolName: 'find_architecture', args: { component: query } });
-        break;
-      case 'DirectQuery':
-      default:
-        steps.push({ toolName: 'find_discussions', args: { topic: query } });
-        break;
+          if (result.object?.steps?.length > 0) {
+            log.info(`LLM dynamic capability plan generated (${result.object.steps.length} steps) for: "${query.slice(0, 40)}"`);
+            return {
+              intent: result.object.intent || 'synthesize_workspace_notes',
+              steps: result.object.steps
+            };
+          }
+        }
+      } catch (err) {
+        log.warn('LLM dynamic planning fallback:', err.message);
+      }
     }
 
-    return { intent, steps };
+    return this.createPlan(query, context);
   }
 }
 

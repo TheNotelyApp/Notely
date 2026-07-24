@@ -67,58 +67,38 @@ class SemanticToolRunner {
     this.agent = agent;
   }
 
-  async run(toolName, args) {
-    if (toolName === 'find_discussions') {
-      const topic = args.topic || '';
-      if (this.agent.contextEngine?.hybridRetriever) {
-        return this.agent.contextEngine.hybridRetriever.search(topic, null, 5);
+  /**
+   * Execute tool dynamically via ApplicationToolRegistry or ContextEngine fallbacks
+   * @param {string} toolName
+   * @param {object} args
+   * @returns {Promise<any>}
+   */
+  async run(toolName, args = {}) {
+    try {
+      const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
+      const registered = applicationToolRegistry.findTool(toolName);
+      if (registered) {
+        return await applicationToolRegistry.executeTool(registered.name, args);
       }
-      return this.agent.workspaceBrain?.getWorkspaceFacts(topic) || [];
+    } catch{
+      // Ignore registry resolution errors in isolated unit test environments
     }
 
-    if (toolName === 'find_architecture') {
-      const component = args.component || '';
-      if (this.agent.contextEngine?.hybridRetriever) {
-        return this.agent.contextEngine.hybridRetriever.search(component, null, 5);
-      }
-      return this.agent.workspaceBrain?.getWorkspaceFacts(component) || [];
+    const query = args.query || args.topic || args.component || args.notePath || '';
+
+    if (this.agent?.contextEngine?.hybridRetriever && query) {
+      return await this.agent.contextEngine.hybridRetriever.search(query, null, 5);
     }
 
-    if (toolName === 'find_people_and_tasks') {
-      const tasks = [];
-      if (this.agent.documentService) {
-        const files = this.agent.documentService._collectMarkdownFiles(this.agent.workspaceRoot);
-        const fs = require('fs');
-        for (const f of files) {
-          try {
-            const text = fs.readFileSync(f, 'utf8');
-            if (args.personName && text.toLowerCase().includes(args.personName.toLowerCase())) {
-              tasks.push({ file: f, mention: true });
-            }
-          } catch {
-            // ignore
-          }
-        }
-      }
-      return tasks;
+    if (this.agent?.graphDb && (toolName.includes('graph') || toolName.includes('topic'))) {
+      return await this.agent.graphDb.findRelatedEntities(query, args.maxHops || args.maxDepth || 2);
     }
 
-    if (toolName === 'reconstruct_timeline') {
-      const topic = args.topic;
-      return [
-        { event: `Notes found relating to ${topic}`, timestamp: new Date().toISOString() }
-      ];
+    if (this.agent?.workspaceBrain?.getWorkspaceFacts && query) {
+      return await this.agent.workspaceBrain.getWorkspaceFacts(query);
     }
 
-    if (toolName === 'explore_topic_graph') {
-      const topic = args.topic;
-      if (this.agent.graphDb) {
-        return this.agent.graphDb.findRelatedEntities(topic, args.maxHops || 2);
-      }
-      return [];
-    }
-
-    throw new Error(`Unknown semantic tool: ${toolName}`);
+    return [];
   }
 }
 

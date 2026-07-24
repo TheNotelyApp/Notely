@@ -216,6 +216,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['read_note'],
       sdkName: 'read_note',
+      capability: 'notes:read',
+      informationNeeds: ['read_file', 'note_content'],
       serviceName: 'NoteApplicationService',
       description: 'Read the contents of a specific note file in the workspace.',
       schema: z.object({
@@ -284,41 +286,6 @@ class ApplicationToolRegistry {
       }
     });
 
-    // 3. notes.move
-    this.registerTool({
-      name: 'notes.move',
-      version: 'v1',
-      aliases: ['move_note'],
-      sdkName: 'move_note',
-      serviceName: 'NoteApplicationService',
-      description: 'Move or rename a note within the workspace.',
-      schema: z.object({
-        sourcePath: z.string().optional().describe('Source file path.'),
-        source_path: z.string().optional().describe('Source file path.'),
-        targetPath: z.string().optional().describe('Target destination file path.'),
-        target_path: z.string().optional().describe('Target destination file path.')
-      }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          sourcePath: { type: 'string', description: 'Source file path.' },
-          targetPath: { type: 'string', description: 'Target destination file path.' }
-        },
-        required: ['sourcePath', 'targetPath']
-      },
-      execute: async (args) => {
-        const sourcePath = args.sourcePath || args.source_path;
-        const targetPath = args.targetPath || args.target_path;
-        if (!sourcePath || !targetPath) {
-          throw new Error('Both source path and target path are required.');
-        }
-        return this.noteService.moveNote({
-          ...args,
-          sourcePath,
-          targetPath
-        });
-      }
-    });
 
     // 4. notes.extract_tasks
     this.registerTool({
@@ -326,6 +293,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['get_tasks'],
       sdkName: 'get_tasks',
+      capability: 'tasks:extract',
+      informationNeeds: ['action_items', 'tasks', 'checklists'],
       serviceName: 'NoteApplicationService',
       description: 'Extract checklist tasks across notes in the workspace.',
       schema: z.object({
@@ -349,6 +318,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['search_notes'],
       sdkName: 'search_notes',
+      capability: 'notes:search',
+      informationNeeds: ['workspace_content_search', 'keyword_notes'],
       serviceName: 'KnowledgeApplicationService',
       description: 'Search note files matching a query string in the workspace.',
       schema: z.object({
@@ -372,6 +343,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['semantic_search'],
       sdkName: 'semantic_search',
+      capability: 'notes:search',
+      informationNeeds: ['workspace_content_search', 'semantic_similarity'],
       serviceName: 'KnowledgeApplicationService',
       description: 'Find semantically similar notes using vector embeddings.',
       schema: z.object({
@@ -398,6 +371,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['hybrid_search'],
       sdkName: 'hybrid_search',
+      capability: 'notes:search',
+      informationNeeds: ['workspace_content_search', 'hybrid_retrieval'],
       serviceName: 'KnowledgeApplicationService',
       description: 'Hybrid search combining full-text search and vector similarity.',
       schema: z.object({
@@ -421,6 +396,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['get_graph'],
       sdkName: 'get_graph',
+      capability: 'graph:traverse',
+      informationNeeds: ['entity_relationships', 'system_architecture'],
       serviceName: 'KnowledgeApplicationService',
       description: 'Traverse knowledge graph relationships for a given note.',
       schema: z.object({
@@ -521,6 +498,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['recent_activity'],
       sdkName: 'recent_activity',
+      capability: 'workspace:activity',
+      informationNeeds: ['recent_changes', 'chronological_events'],
       serviceName: 'WorkspaceApplicationService',
       description: 'Get list of recently modified notes in the workspace.',
       schema: z.object({
@@ -541,6 +520,8 @@ class ApplicationToolRegistry {
       version: 'v1',
       aliases: ['web_search'],
       sdkName: 'web_search',
+      capability: 'web:search',
+      informationNeeds: ['external_web_content', 'web_lookup'],
       serviceName: 'WebToolService',
       description: 'Search the live web for external topics, documentation, news, or reference information.',
       schema: z.object({

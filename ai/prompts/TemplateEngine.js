@@ -36,10 +36,14 @@ class TemplateEngine {
     if (ctx && ctx.raw) {
       return `CURATED WORKSPACE CONTEXT:\n${ctx.raw}`;
     }
+    let rawActiveContent = ctx.activeNoteContent ? ctx.activeNoteContent.trim() : 'none';
+    if (rawActiveContent.length > 12000) {
+      rawActiveContent = rawActiveContent.slice(0, 12000) + '\n\n... [Note content truncated for prompt length context limit]';
+    }
     const variables = {
       workspaceRoot: ctx.workspaceRoot || 'none',
       activeNotePath: ctx.activeNotePath || ctx.currentFile || 'none',
-      activeNoteContent: ctx.activeNoteContent ? ctx.activeNoteContent.trim() : 'none',
+      activeNoteContent: rawActiveContent,
       documentCount: ctx.documentCount !== undefined ? ctx.documentCount : 0
     };
     return this.render(rawTemplate, variables);
@@ -59,6 +63,9 @@ class TemplateEngine {
       evidenceText = evidence
         .map(item => (typeof item === 'string' ? item : item.content || JSON.stringify(item)))
         .join('\n\n');
+    }
+    if (evidenceText.length > 16000) {
+      evidenceText = evidenceText.slice(0, 16000) + '\n\n... [Retrieved evidence truncated for prompt length context limit]';
     }
     return this.render(rawTemplate, { retrievedEvidence: evidenceText });
   }

@@ -192,7 +192,7 @@ class QueryExecutor {
         }
       }
 
-      // Raw formatting fallback if manual summary did not succeed
+      // Clean markdown synthesis fallback if manual summary did not succeed
       if (!textResult && result.steps && result.steps.length > 0) {
         let formattedOutput = '';
         for (const step of result.steps) {
@@ -202,25 +202,30 @@ class QueryExecutor {
               const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
               if (toolResult) {
                 const val = toolResult.output !== undefined ? toolResult.output : toolResult.result;
-                formattedOutput += `\n\n`;
-                if (typeof val === 'string') {
-                  try {
-                    const parsed = JSON.parse(val);
-                    formattedOutput += `\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``;
-                  } catch {
-                    formattedOutput += val;
-                  }
+                if (typeof val === 'string' && val.trim()) {
+                  formattedOutput += `\n\n${val.trim()}`;
+                } else if (Array.isArray(val) && val.length > 0) {
+                  const items = val.map(item => {
+                    if (typeof item === 'string') return `- ${item}`;
+                    if (item.title || item.note || item.file || item.path) {
+                      const label = item.title || item.note || item.file || item.path;
+                      const detail = item.snippet || item.text || item.content || '';
+                      return `- **${label}**: ${detail}`;
+                    }
+                    return `- ${JSON.stringify(item)}`;
+                  });
+                  formattedOutput += `\n\n${items.join('\n')}`;
                 } else if (typeof val === 'object' && val !== null) {
-                  formattedOutput += `\`\`\`json\n${JSON.stringify(val, null, 2)}\n\`\`\``;
-                } else {
-                  formattedOutput += `${val}`;
+                  const label = val.title || val.note || val.file || val.path || 'Workspace details';
+                  const detail = val.snippet || val.text || val.content || JSON.stringify(val);
+                  formattedOutput += `\n\n- **${label}**: ${detail}`;
                 }
               }
             }
           }
         }
         if (formattedOutput) {
-          textResult = `Based on your workspace notes, here is the relevant details:${formattedOutput}`;
+          textResult = `Based on your workspace notes, here are the relevant details:${formattedOutput}`;
         }
       }
 
@@ -256,6 +261,16 @@ class QueryExecutor {
       };
     } catch (error) {
       console.error('[QueryExecutor] Execution failed:', error.message);
+      const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider');
+      if (isProviderError) {
+        return {
+          type: 'query',
+          result: `⚠️ **AI Provider Connection Error**\n\nUnable to communicate with the active AI provider: ${error.message}\n\nPlease check your internet connection and verify your API key in **Settings > AI Settings**.`,
+          tokensUsed: 0,
+          trace: [],
+          isError: true
+        };
+      }
       throw error;
     }
   }
@@ -345,6 +360,20 @@ class QueryExecutor {
         return { type: 'aborted', result: 'Generation stopped.' };
       }
       console.error('[QueryExecutor] Stream execution failed:', error.message);
+      const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider');
+      if (isProviderError) {
+        const errorMsg = `⚠️ **AI Provider Connection Error**\n\nUnable to communicate with the active AI provider: ${error.message}\n\nPlease check your internet connection and verify your API key in **Settings > AI Settings**.`;
+        if (onChunk) {
+          onChunk({ type: 'text', content: errorMsg });
+        }
+        return {
+          type: 'query',
+          result: errorMsg,
+          tokensUsed: 0,
+          trace: [],
+          isError: true
+        };
+      }
       throw error;
     }
   }

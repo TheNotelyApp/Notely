@@ -9,15 +9,15 @@ describe('Planner & Semantic Tools Tests (Phase 2)', () => {
     const timelinePlan = planner.createPlan('Show me the timeline of authentication changes');
     assert.strictEqual(timelinePlan.intent, 'TimelineReconstruction');
     assert.strictEqual(timelinePlan.steps.length, 2);
-    assert.strictEqual(timelinePlan.steps[0].toolName, 'reconstruct_timeline');
+    assert.strictEqual(timelinePlan.steps[0].toolName, 'recent_activity');
 
     const taskPlan = planner.createPlan('Find open tasks assigned to me');
     assert.strictEqual(taskPlan.intent, 'TaskSummary');
-    assert.strictEqual(taskPlan.steps[0].toolName, 'find_people_and_tasks');
+    assert.strictEqual(taskPlan.steps[0].toolName, 'get_tasks');
 
     const topicPlan = planner.createPlan('Explore architecture of graph database');
     assert.strictEqual(topicPlan.intent, 'TopicExploration');
-    assert.strictEqual(topicPlan.steps[0].toolName, 'explore_topic_graph');
+    assert.strictEqual(topicPlan.steps[0].toolName, 'hybrid_search');
   });
 
   it('SemanticToolRunner should execute semantic tools cleanly', async () => {

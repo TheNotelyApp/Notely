@@ -31,8 +31,8 @@ class ContextOrchestrator {
     const targetConfidence = options.targetConfidence || 0.70;
     const maxIterations = options.maxIterations || 3;
 
-    // 1. Understand Intent & Build Internal Execution Plan
-    const plan = this.planner.createPlan(query);
+    // 1. Understand Intent & Build Internal Execution Plan via 4-Layer Decoupled Planning Architecture
+    const plan = await this.planner.createPlanAsync(query, context);
     log.debug('Internal execution plan generated', { intent: plan.intent, stepsCount: plan.steps.length });
 
     let collectedEvidence = [];
