@@ -44,6 +44,10 @@ export function EditorPane({
   onForceSaveDocument,
   initialLine = null,
   onLineJumped,
+  tableEditorEnabled: propTableEditorEnabled,
+  onTableEditorToggle,
+  scrollSyncEnabled: propScrollSyncEnabled,
+  onScrollSyncEnabledChange,
 }) {
   const previewRef = useRef(null);
   const splitPaneRef = useRef(null);
@@ -51,16 +55,31 @@ export function EditorPane({
   const [splitRatio, setSplitRatio] = useState(50);
   const [editorReadyTick, setEditorReadyTick] = useState(0);
   const [selectedMediaPreview, setSelectedMediaPreview] = useState(null);
-  const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
-  const [tableEditorEnabled, setTableEditorEnabled] = useState(() => {
+  const [localScrollSyncEnabled, setLocalScrollSyncEnabled] = useState(true);
+  const [localTableEditorEnabled, setLocalTableEditorEnabled] = useState(() => {
     return localStorage.getItem("notes:table-editor-enabled") !== "false";
   });
 
+  const scrollSyncEnabled = typeof propScrollSyncEnabled === "boolean" ? propScrollSyncEnabled : localScrollSyncEnabled;
+  const setScrollSyncEnabled = useCallback((nextVal) => {
+    const val = typeof nextVal === "function" ? nextVal(scrollSyncEnabled) : Boolean(nextVal);
+    if (typeof onScrollSyncEnabledChange === "function") {
+      onScrollSyncEnabledChange(val);
+    } else {
+      setLocalScrollSyncEnabled(val);
+    }
+  }, [onScrollSyncEnabledChange, scrollSyncEnabled]);
+
+  const tableEditorEnabled = typeof propTableEditorEnabled === "boolean" ? propTableEditorEnabled : localTableEditorEnabled;
   const handleTableEditorToggle = useCallback((nextValue) => {
-    const value = Boolean(nextValue);
-    setTableEditorEnabled(value);
-    localStorage.setItem("notes:table-editor-enabled", String(value));
-  }, []);
+    const val = typeof nextValue === "function" ? nextValue(tableEditorEnabled) : Boolean(nextValue);
+    if (typeof onTableEditorToggle === "function") {
+      onTableEditorToggle(val);
+    } else {
+      setLocalTableEditorEnabled(val);
+      localStorage.setItem("notes:table-editor-enabled", String(val));
+    }
+  }, [onTableEditorToggle, tableEditorEnabled]);
 
   const jumpToLine = useCallback((line) => {
     const editor = textareaRef?.current;
@@ -123,25 +142,21 @@ export function EditorPane({
     const previewElement = previewRef.current;
     if (!editorElement || !previewElement) return undefined;
 
-    // Use a generation counter instead of a named source string.
-    // Any sync triggered in generation N ignores scroll events that arrive in the same N.
-    let lockGen = 0;
+    let activeSyncSource = null;
+    let resetSyncTimer = null;
     let editorRaf = 0;
     let previewRaf = 0;
     let resizeRaf = 0;
-    let unlockTimer = 0;
     let resizeObserver = null;
     let mutationObserver = null;
     let cachedAnchors = null;
 
-    const lock = () => {
-      lockGen++;
-      clearTimeout(unlockTimer);
-      // Give the browser two frames to settle programmatic scrollTop changes
-      // before allowing the opposite panel's scroll event to re-trigger a sync
-      unlockTimer = setTimeout(() => { lockGen = 0; }, 80);
+    const scheduleResetSyncSource = () => {
+      clearTimeout(resetSyncTimer);
+      resetSyncTimer = setTimeout(() => {
+        activeSyncSource = null;
+      }, 60);
     };
-
 
     const getScrollRatio = (element) => {
       const scrollable = Math.max(0, element.scrollHeight - element.clientHeight);
@@ -271,20 +286,22 @@ export function EditorPane({
     };
 
     const handleEditorScroll = () => {
-      if (lockGen !== 0) return;          // still in a sync cycle — ignore
+      if (activeSyncSource === "preview") return;
+      activeSyncSource = "editor";
       cancelAnimationFrame(editorRaf);
       editorRaf = requestAnimationFrame(() => {
-        lock();
         syncPreviewFromEditor();
+        scheduleResetSyncSource();
       });
     };
 
     const handlePreviewScroll = () => {
-      if (lockGen !== 0) return;          // still in a sync cycle — ignore
+      if (activeSyncSource === "editor") return;
+      activeSyncSource = "preview";
       cancelAnimationFrame(previewRaf);
       previewRaf = requestAnimationFrame(() => {
-        lock();
         syncEditorFromPreview();
+        scheduleResetSyncSource();
       });
     };
 
@@ -292,7 +309,7 @@ export function EditorPane({
       cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(() => {
         cachedAnchors = null;
-        if (lockGen === 0) syncPreviewFromEditor();
+        if (!activeSyncSource) syncPreviewFromEditor();
       });
     };
 
@@ -327,7 +344,7 @@ export function EditorPane({
       cancelAnimationFrame(editorRaf);
       cancelAnimationFrame(previewRaf);
       cancelAnimationFrame(resizeRaf);
-      clearTimeout(unlockTimer);
+      clearTimeout(resetSyncTimer);
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
       previewElement.removeEventListener("load", syncAfterPreviewResize, true);
