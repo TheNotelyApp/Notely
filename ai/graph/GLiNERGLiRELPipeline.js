@@ -1,4 +1,3 @@
-const path = require('path');
 const { createLogger } = require('../core/logger');
 const GLiNERExtractor = require('./GLiNERExtractor');
 const GLiRELExtractor = require('./GLiRELExtractor');

@@ -164,10 +164,6 @@ export function MarkdownToolbar({
   canRedo = false,
   onIgnoreSpellingWord,
   screenCaptureMode = "auto",
-  tableEditorEnabled = true,
-  onTableEditorToggle,
-  outlineEnabled = true,
-  onOutlineEnabledChange,
 }) {
   const imageInputRef = useRef(null);
   const mermaidPopoverRef = useRef(null);
@@ -176,14 +172,12 @@ export function MarkdownToolbar({
   const webLinkPopoverRef = useRef(null);
   const tablePopoverRef = useRef(null);
   const validationPopoverRef = useRef(null);
-  const viewMenuPopoverRef = useRef(null);
   const [showMermaidBuilder, setShowMermaidBuilder] = useState(false);
   const [showAssetLinker, setShowAssetLinker] = useState(false);
   const [showReferenceLinker, setShowReferenceLinker] = useState(false);
   const [showWebLinker, setShowWebLinker] = useState(false);
   const [showTableBuilder, setShowTableBuilder] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
-  const [showViewMenu, setShowViewMenu] = useState(false);
   const [availableAssets, setAvailableAssets] = useState([]);
   const [availableReferenceNotes, setAvailableReferenceNotes] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(false);

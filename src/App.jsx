@@ -433,7 +433,7 @@ export default function App() {
     openDocument,
     saveDocument,
     handleReloadCurrentFromDisk,
-    reloadDocument,
+    reloadDocument: _reloadDocument,
     handleReloadWorkspace,
     handleDeleteCurrentDocument,
     handleDeleteCurrentFolder,
