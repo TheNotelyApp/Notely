@@ -699,6 +699,10 @@ export function DocumentDetail({
   onOutlineEnabledChange,
   focusModeEnabled = false,
   onFocusModeChange,
+  tableEditorEnabled,
+  onTableEditorToggle,
+  scrollSyncEnabled,
+  onScrollSyncEnabledChange,
   aiSidebar = null,
   ignoredSpellingWords = [],
   onIgnoreSpellingWord,
@@ -2163,6 +2167,10 @@ export function DocumentDetail({
             onLineJumped={onLineJumped}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={onOutlineEnabledChange}
+            tableEditorEnabled={tableEditorEnabled}
+            onTableEditorToggle={onTableEditorToggle}
+            scrollSyncEnabled={scrollSyncEnabled}
+            onScrollSyncEnabledChange={onScrollSyncEnabledChange}
           />
         </main>
 

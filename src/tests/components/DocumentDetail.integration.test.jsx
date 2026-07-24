@@ -798,4 +798,28 @@ describe("DocumentDetail popup and panel toggles", () => {
     confirmSpy.mockRestore();
     view.unmount();
   });
+
+  it("passes tableEditorEnabled and scrollSyncEnabled options down to split view and toolbar", () => {
+    const onTableEditorToggle = vi.fn();
+    const onScrollSyncEnabledChange = vi.fn();
+    const view = renderDetail({
+      ...baseProps,
+      mode: "split",
+      tableEditorEnabled: true,
+      onTableEditorToggle,
+      scrollSyncEnabled: true,
+      onScrollSyncEnabledChange,
+    });
+
+    const syncToggleBtn = view.host.querySelector(".split-sync-toggle");
+    expect(syncToggleBtn).not.toBeNull();
+    expect(syncToggleBtn?.textContent).toContain("Sync scroll");
+
+    act(() => {
+      syncToggleBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onScrollSyncEnabledChange).toHaveBeenCalledWith(false);
+    view.unmount();
+  });
 });

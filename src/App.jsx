@@ -49,6 +49,7 @@ const GitCommitDialog = lazy(() =>
 );
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
+import NotePreviewModal from "./components/NotePreviewModal";
 
 const TasksPanel = lazy(() =>
   import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
@@ -363,6 +364,13 @@ export default function App() {
     zoomFactor, setZoomFactorState,
   } = useUIState();
 
+  const [globalNotePreviewTarget, setGlobalNotePreviewTarget] = useState({ open: false, filePath: null, lineNum: null });
+
+  const handlePreviewNote = useCallback((filePath, lineNum = null) => {
+    if (!filePath) return;
+    setGlobalNotePreviewTarget({ open: true, filePath, lineNum });
+  }, []);
+
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [exportImportOpen, setExportImportOpen] = useState(false);
@@ -640,6 +648,18 @@ export default function App() {
     key: "notes:embedded-markdown-mode",
     defaultValue: "open",
     normalize: normalizeEmbeddedMarkdownMode,
+  });
+  const [tableEditorEnabled, setTableEditorEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:table-editor-enabled",
+    defaultValue: true,
+    normalize: (value) => value !== false,
+  });
+  const [scrollSyncEnabled, setScrollSyncEnabled] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:scroll-sync-enabled",
+    defaultValue: true,
+    normalize: (value) => value !== false,
   });
 
   const [ignoredSpellingWords, setIgnoredSpellingWords] = useWorkspaceScopedStorage({
@@ -1261,17 +1281,39 @@ export default function App() {
       outlineEnabled,
       splitPreviewEnabled: current ? mode === "split" : false,
       focusModeEnabled: current ? focusModeEnabled : false,
+      scrollSyncEnabled,
+      tableEditorEnabled,
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
       autosaveEnabled,
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, recentWorkspacePaths, autosaveEnabled]);
+  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
       if (action === "toggle-autosave") {
         setAutosaveEnabled((prev) => !prev);
+        return;
+      }
+
+      if (action === "toggle-scroll-sync") {
+        setScrollSyncEnabled((prev) => !prev);
+        return;
+      }
+
+      if (action === "set-table-editor-gui") {
+        setTableEditorEnabled(true);
+        return;
+      }
+
+      if (action === "set-table-editor-raw") {
+        setTableEditorEnabled(false);
+        return;
+      }
+
+      if (action === "toggle-table-editor") {
+        setTableEditorEnabled((prev) => !prev);
         return;
       }
 
@@ -2663,6 +2705,7 @@ export default function App() {
           activeQueryId={activeQueryId}
           onApply={handleApplyAIResult}
           onOpenDocument={handleOpenReferencedDocumentFromUI}
+          onPreviewNote={handlePreviewNote}
           isLoading={aiQueryLoading}
           error={aiQueryError || null}
           contextSummary={aiContextSummary}
@@ -2990,6 +3033,10 @@ export default function App() {
             onOutlineEnabledChange={setOutlineEnabled}
             focusModeEnabled={focusModeEnabled}
             onFocusModeChange={setFocusModeEnabled}
+            tableEditorEnabled={tableEditorEnabled}
+            onTableEditorToggle={setTableEditorEnabled}
+            scrollSyncEnabled={scrollSyncEnabled}
+            onScrollSyncEnabledChange={setScrollSyncEnabled}
             onReloadFromDisk={(filePath) => handleReloadCurrentFromDisk(filePath)}
             aiSidebar={aiSidebarComponent}
           />
@@ -3685,6 +3732,16 @@ export default function App() {
 
 
       </div>
+      <NotePreviewModal
+        open={globalNotePreviewTarget.open}
+        filePath={globalNotePreviewTarget.filePath}
+        lineNum={globalNotePreviewTarget.lineNum}
+        onClose={() => setGlobalNotePreviewTarget({ open: false, filePath: null, lineNum: null })}
+        onOpenDocument={(path, line) => {
+          handleOpenReferencedDocumentFromUI(path, line);
+          setGlobalNotePreviewTarget({ open: false, filePath: null, lineNum: null });
+        }}
+      />
       <GlobalTooltip />
     </div>
   );

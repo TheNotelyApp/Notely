@@ -48,9 +48,11 @@ Customize how the AI talks to you:
 
 ---
 
-## 4. Diagnostics & Tool Trace Log
+## 4. Diagnostics, Tool Trace & Prompt Tracker Log
 
-If you want to inspect how the AI retrieves data or what tools it invokes:
+If you want to inspect how the AI retrieves data, what system prompts are assembled, or what tools it invokes:
 1. Go to **AI Diagnostics** / **AI Health** page.
 2. Select a conversation session from the list.
-3. Click to expand the collapsible **Tool calls** inspector under the assistant bubbles. This details the exact tool name (e.g. `read_note`, `search_notes`), arguments passed, and raw return values.
+3. Use the dual-tab inspector pane:
+   - **Messages**: View chat bubbles with collapsible **Tool calls** detailing arguments and raw outputs.
+   - **Prompt Tracker**: View complete assembled 13-stage system prompts, character counts, active persona guidelines, model parameters, and raw payload data stored persistently in `.notes-app/ai-logs.db` (`PromptTracker` subsystem).

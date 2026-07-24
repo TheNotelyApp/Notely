@@ -2,24 +2,25 @@
  * QueryExecutor - Routes queries to AI models with multi-step tool execution
  */
 
-const fs = require('fs');
-const path = require('path');
 const { getTools } = require('../tools/ToolRegistry');
+const PromptPipeline = require('../prompts/PromptPipeline');
 
 class QueryExecutor {
   constructor(agent) {
     this.agent = agent;
+    this.promptPipeline = new PromptPipeline();
   }
 
   async _prepareConfig(query, context) {
+    this.agent.lastQuery = query;
     const llm = this.agent.llmRegistry.getActiveProvider();
     const model = await llm.getModelInstance();
     const tools = await getTools(this.agent);
 
-    // 1. Build core persona instructions — prefer ContextEngine persona if available
-    let systemPrompt;
+    let personaInput = context.persona || 'general';
     let contextEngineTools = {};
     let ceMessages = [];
+
     if (this.agent.contextEngine) {
       try {
         const conversationId = context.conversationId || 'default';
@@ -28,45 +29,62 @@ class QueryExecutor {
           activeNotePath: context.currentFile || null,
           activeNoteContent: context.activeNoteContent || null
         });
-        systemPrompt = ceCtx.system;
+        if (ceCtx.personaId) {
+          personaInput = ceCtx.personaId;
+        } else if (ceCtx.system) {
+          personaInput = { systemInstructions: ceCtx.system };
+        }
         contextEngineTools = ceCtx.tools || {};
         ceMessages = ceCtx.messages || [];
       } catch (ceErr) {
         console.warn('[QueryExecutor] ContextEngine.buildContext failed, falling back:', ceErr.message);
       }
-    }
-    // Load core system instructions from markdown file
-    let baseInstructions = '';
-    try {
-      const promptPath = path.join(__dirname, 'system_prompt.md');
-      if (fs.existsSync(promptPath)) {
-        baseInstructions = fs.readFileSync(promptPath, 'utf8');
-      }
-    } catch (readErr) {
-      console.warn('[QueryExecutor] Failed to read system_prompt.md:', readErr.message);
-    }
-
-    // Combine base instructions with the active persona instructions
-    let finalSystemPrompt = baseInstructions || 'You are a helpful AI assistant for Notely, a modern markdown notes application.';
-    if (systemPrompt) {
-      finalSystemPrompt += `\n\n---\nACTIVE PERSONA ROLE/INSTRUCTIONS:\n${systemPrompt}`;
     } else if (context.systemPrompt) {
-      finalSystemPrompt += `\n\n---\nACTIVE PERSONA ROLE/INSTRUCTIONS:\n${context.systemPrompt}`;
+      personaInput = { systemInstructions: context.systemPrompt };
     }
 
-    // Append workspace context metadata
-    finalSystemPrompt += `\n\nWorkspace context:
-- Workspace folder: ${this.agent.workspaceRoot || 'none'}
-- Current open note path: ${context.currentFile || 'none'}`;
-
-    if (context.relatedDocuments && context.relatedDocuments.length > 0) {
-      finalSystemPrompt += `\n- Related documents:`;
-      context.relatedDocuments.forEach(doc => {
-        finalSystemPrompt += `\n  * ${doc.path}`;
-      });
+    // Multi-Tool Planning & Context Orchestration
+    let orchestratorTrace = [];
+    let retrievedEvidence = '';
+    if (this.agent.contextOrchestrator) {
+      try {
+        const orchRes = await this.agent.contextOrchestrator.orchestrate(query, context);
+        if (orchRes.aggregatedContext) {
+          retrievedEvidence = orchRes.aggregatedContext;
+        }
+        if (orchRes.trace) {
+          orchestratorTrace = orchRes.trace;
+        }
+      } catch (orchErr) {
+        console.warn('[QueryExecutor] ContextOrchestrator execution fallback:', orchErr.message);
+        if (this.agent.workspaceBrain) {
+          try {
+            const facts = await this.agent.workspaceBrain.getWorkspaceFacts(query, context);
+            if (this.agent.reasoningBrain) {
+              const evidenceStr = this.agent.reasoningBrain.formatEvidenceContext(facts);
+              if (evidenceStr) {
+                retrievedEvidence = evidenceStr;
+              }
+            }
+          } catch { /* ignore fallback */ }
+        }
+      }
     }
 
-    systemPrompt = finalSystemPrompt;
+    // Assemble final prompt using PromptPipeline
+    const pipeline = this.agent.promptPipeline || this.promptPipeline;
+    const systemPrompt = pipeline.assemble({
+      persona: personaInput,
+      workspaceContext: {
+        workspaceRoot: this.agent.workspaceRoot || 'none',
+        activeNotePath: context.currentFile || 'none',
+        activeNoteContent: context.activeNoteContent || null,
+        documentCount: this.agent.documentService?.getAllDocuments()?.length || 0
+      },
+      conversationMemory: ceMessages.length > 0 ? ceMessages : null,
+      retrievedEvidence: retrievedEvidence || (context.relatedDocuments ? context.relatedDocuments.map(d => d.path).join('\n') : null),
+      uiContext: context.uiContext || null
+    });
 
     const mergedTools = {
       ...tools,
@@ -86,7 +104,7 @@ class QueryExecutor {
       messages = [{ role: 'user', content: query }];
     }
 
-    return { model, systemPrompt, messages, mergedTools, llm, toolChoice };
+    return { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace };
   }
 
   /**
@@ -95,7 +113,16 @@ class QueryExecutor {
   async execute(query, context = {}) {
     try {
       const { generateText } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice } = await this._prepareConfig(query, context);
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
+
+      if (this.agent && typeof this.agent.logPrompt === 'function') {
+        this.agent.logPrompt(query, systemPrompt, {
+          persona: context.persona || 'general',
+          model: llm?.name || 'unknown',
+          messages,
+          uiContext: context.uiContext || null
+        });
+      }
 
       const result = await generateText({
         model,
@@ -133,12 +160,12 @@ class QueryExecutor {
         try {
           const nextMessages = [...messages];
           if (nextMessages.length > 0 && nextMessages[nextMessages.length - 1].role === 'user') {
-            let toolContext = `I executed the following tools to help answer the request:`;
+            let toolContext = `Retrieved the following contextual information from the workspace notes:`;
             for (const tr of toolResultsContent) {
               const val = tr.output !== undefined ? tr.output : tr.result;
-              toolContext += `\n\n- Tool: ${tr.toolName}\nOutput: ${typeof val === 'object' ? JSON.stringify(val) : val}`;
+              toolContext += `\n\n- Information: ${typeof val === 'object' ? JSON.stringify(val) : val}`;
             }
-            toolContext += `\n\nBased on these tool outputs, please provide a friendly, structured, and concise natural language response to my query: "${query}".`;
+            toolContext += `\n\nBased on these workspace details, please provide a friendly, structured, and concise natural language response to my query: "${query}".`;
             
             nextMessages[nextMessages.length - 1] = {
               role: 'user',
@@ -175,7 +202,7 @@ class QueryExecutor {
               const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
               if (toolResult) {
                 const val = toolResult.output !== undefined ? toolResult.output : toolResult.result;
-                formattedOutput += `\n\n#### Tool Output: ${call.toolName}\n`;
+                formattedOutput += `\n\n`;
                 if (typeof val === 'string') {
                   try {
                     const parsed = JSON.parse(val);
@@ -193,12 +220,12 @@ class QueryExecutor {
           }
         }
         if (formattedOutput) {
-          textResult = `I executed tools to fetch this information for you:${formattedOutput}`;
+          textResult = `Based on your workspace notes, here is the relevant details:${formattedOutput}`;
         }
       }
 
       // Construct the trace array of executed tools and outputs
-      const trace = [];
+      const trace = Array.isArray(orchestratorTrace) ? [...orchestratorTrace] : [];
       if (result.steps) {
         for (const step of result.steps) {
           if (step.toolCalls) {
@@ -215,11 +242,17 @@ class QueryExecutor {
         }
       }
 
+      const workspaceFiles = this.agent.documentService ? this.agent.documentService._collectMarkdownFiles(this.agent.workspaceRoot) : [];
+      const SelfCorrectionEngine = require('./SelfCorrectionEngine');
+      const validation = SelfCorrectionEngine.validateAndCorrect(textResult || '', { query, workspaceFiles });
+      const finalResultText = validation.validatedText || textResult || "AI query completed with no text output.";
+
       return {
         type: 'query',
-        result: textResult || "AI query completed with no text output.",
+        result: finalResultText,
         tokensUsed,
-        trace
+        trace,
+        corrected: validation.corrected
       };
     } catch (error) {
       console.error('[QueryExecutor] Execution failed:', error.message);
@@ -234,6 +267,16 @@ class QueryExecutor {
     try {
       const { streamText } = await import('ai');
       const { model, systemPrompt, messages, mergedTools, llm, toolChoice } = await this._prepareConfig(query, context);
+
+      if (this.agent && typeof this.agent.logPrompt === 'function') {
+        this.agent.logPrompt(query, systemPrompt, {
+          persona: context.persona || 'general',
+          model: llm?.name || 'unknown',
+          messages,
+          uiContext: context.uiContext || null,
+          streaming: true
+        });
+      }
 
       const result = await streamText({
         model,

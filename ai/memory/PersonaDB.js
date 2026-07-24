@@ -1,11 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { createLogger } = require('../core/logger');
+const { PersonaStandard } = require('../personas/PersonaStandard');
 
 const log = createLogger('PersonaDB');
 
 // Default fields required in frontmatter for persona md files
-const REQUIRED_FIELDS = ['name', 'description', 'type', 'version'];
+const REQUIRED_FIELDS = ['name', 'description', 'version'];
 
 class PersonaDB {
   constructor(appDataDir) {
@@ -46,27 +48,35 @@ class PersonaDB {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
-        file_path TEXT,
+        file_path TEXT NOT NULL,
         type TEXT NOT NULL DEFAULT 'custom',
-        version TEXT,
+        version TEXT DEFAULT '1.0.0',
         avatar TEXT DEFAULT '👤',
-        prompt TEXT NOT NULL,
+        content_hash TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
     `);
     
-    // Migration: Add avatar column if it does not exist (older databases)
+    // Migration: Add content_hash column if it does not exist (older databases)
     try {
-      this.db.exec("ALTER TABLE personas ADD COLUMN avatar TEXT DEFAULT '👤'");
+      this.db.exec("ALTER TABLE personas ADD COLUMN content_hash TEXT");
     } catch {
       // Column already exists, ignore error
     }
   }
 
+  static computeHash(content) {
+    return crypto.createHash('sha256').update(content || '', 'utf8').digest('hex');
+  }
+
   _seedBuiltins() {
     const now = new Date().toISOString();
-    const templatesDir = path.join(__dirname, '..', 'personas');
+    let templatesDir = path.join(__dirname, '..', '..', 'resources', 'prompts', 'personas');
+    
+    if (!fs.existsSync(templatesDir)) {
+      templatesDir = path.join(__dirname, '..', 'personas');
+    }
     
     if (!fs.existsSync(templatesDir)) {
       log.warn(`Packaged personas templates directory not found at: ${templatesDir}`);
@@ -75,29 +85,34 @@ class PersonaDB {
 
     const files = fs.readdirSync(templatesDir).filter(f => f.endsWith('.md'));
     const insert = this.db.prepare(
-      `INSERT OR REPLACE INTO personas (id, name, description, file_path, type, version, avatar, prompt, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO personas (id, name, description, file_path, type, version, avatar, content_hash, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name=excluded.name, description=excluded.description, file_path=excluded.file_path,
+         type=excluded.type, version=excluded.version, avatar=excluded.avatar, content_hash=excluded.content_hash, updated_at=excluded.updated_at`
     );
 
     for (const file of files) {
       const srcPath = path.join(templatesDir, file);
-      const id = file.slice(0, -3); // e.g. 'default', 'creative'
+      const id = file.slice(0, -3); // e.g. 'general', 'brainstorming'
       const destPath = path.join(this.personasDir, file);
 
       try {
-        // ALWAYS overwrite default personas in local appDataDir/personas/ with packaged template versions
+        // ALWAYS copy/overwrite builtin template file to appDataDir/personas/
         fs.copyFileSync(srcPath, destPath);
 
-        const { meta, prompt } = PersonaDB.parsePersonaFile(destPath);
+        const rawContent = fs.readFileSync(destPath, 'utf8');
+        const contentHash = PersonaDB.computeHash(rawContent);
+        const { meta } = PersonaDB.parsePersonaFile(destPath);
         insert.run(
           id,
           meta.name || id,
           meta.description || '',
           destPath,
           'builtin',
-          meta.version || '1.0',
+          meta.version || '1.0.0',
           meta.avatar || '👤',
-          prompt,
+          contentHash,
           now,
           now
         );
@@ -108,11 +123,50 @@ class PersonaDB {
   }
 
   list() {
-    return this.db.prepare('SELECT * FROM personas ORDER BY type DESC, name ASC').all();
+    const rows = this.db.prepare('SELECT * FROM personas ORDER BY type DESC, name ASC').all();
+    return rows.map(r => this._hydratePersonaRow(r)).filter(Boolean);
   }
 
   get(id) {
-    return this.db.prepare('SELECT * FROM personas WHERE id = ?').get(id) || null;
+    const row = this.db.prepare('SELECT * FROM personas WHERE id = ?').get(id);
+    if (!row) return null;
+    return this._hydratePersonaRow(row);
+  }
+
+  _hydratePersonaRow(row) {
+    if (!row || !row.file_path || !fs.existsSync(row.file_path)) {
+      return {
+        ...row,
+        prompt: '',
+        meta: {}
+      };
+    }
+    try {
+      const rawContent = fs.readFileSync(row.file_path, 'utf8');
+      const contentHash = PersonaDB.computeHash(rawContent);
+      const { meta, prompt } = PersonaDB.parsePersonaFile(row.file_path);
+      return {
+        ...row,
+        ...meta,
+        id: row.id,
+        name: meta.name || row.name,
+        description: meta.description || row.description,
+        avatar: meta.avatar || row.avatar || '👤',
+        type: row.type,
+        version: meta.version || row.version || '1.0.0',
+        file_path: row.file_path,
+        content_hash: contentHash,
+        prompt,
+        meta
+      };
+    } catch (err) {
+      log.warn(`Failed to parse persona file ${row.file_path}:`, err.message);
+      return {
+        ...row,
+        prompt: '',
+        meta: {}
+      };
+    }
   }
 
   save(persona) {
@@ -127,35 +181,27 @@ class PersonaDB {
       filePath = path.join(this.personasDir, `${persona.id}.md`);
     }
 
-    // Update SQLite DB
+    // Write full stitched markdown to disk first
+    const markdownContent = PersonaStandard.formatPersonaMarkdown(persona);
+    fs.writeFileSync(filePath, markdownContent, 'utf8');
+
+    const contentHash = PersonaDB.computeHash(markdownContent);
+    // Parse back to confirm validity
+    const { meta } = PersonaDB.parsePersonaFile(filePath);
+
+    // Upsert into SQLite DB registry
     this.db.prepare(
-      `INSERT INTO personas (id, name, description, file_path, type, version, avatar, prompt, created_at, updated_at)
+      `INSERT INTO personas (id, name, description, file_path, type, version, avatar, content_hash, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          name=excluded.name, description=excluded.description, file_path=excluded.file_path,
-         type=excluded.type, version=excluded.version, avatar=excluded.avatar, prompt=excluded.prompt, updated_at=excluded.updated_at`
+         type=excluded.type, version=excluded.version, avatar=excluded.avatar, content_hash=excluded.content_hash, updated_at=excluded.updated_at`
     ).run(
-      persona.id, persona.name, persona.description ?? '', filePath,
-      persona.type ?? 'custom', persona.version ?? '1.0', persona.avatar ?? '👤', persona.prompt, now, now
+      persona.id, meta.name || persona.name, meta.description || persona.description || '', filePath,
+      persona.type ?? 'custom', meta.version || persona.version || '1.0.0', meta.avatar || persona.avatar || '👤', contentHash, now, now
     );
 
-    // Sync to disk
-    try {
-      const content = [
-        '---',
-        `name: "${persona.name}"`,
-        `description: "${persona.description ?? ''}"`,
-        `type: "${persona.type ?? 'custom'}"`,
-        `version: "${persona.version ?? '1.0'}"`,
-        `avatar: "${persona.avatar || '👤'}"`,
-        '---',
-        '',
-        persona.prompt
-      ].join('\n');
-      fs.writeFileSync(filePath, content, 'utf8');
-    } catch (err) {
-      log.error(`Failed to write persona changes to disk at ${filePath}:`, err);
-    }
+    return this.get(persona.id);
   }
 
   delete(id) {
@@ -207,7 +253,12 @@ class PersonaDB {
     try {
       const { meta, prompt } = PersonaDB.parsePersonaFile(srcPath);
 
-      const id = meta.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const id = meta.id || meta.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const existing = this.get(id);
+      if (existing) {
+        throw new Error(`A persona with ID or name "${id}" already exists. Rename or change ID to import.`);
+      }
+
       const destPath = path.join(this.personasDir, `${id}.md`);
       if (srcPath !== destPath) {
         fs.copyFileSync(srcPath, destPath);
@@ -219,16 +270,22 @@ class PersonaDB {
         description: meta.description,
         file_path: destPath,
         type: 'custom',
-        version: meta.version,
+        version: meta.version || '1.0.0',
         avatar: meta.avatar || '👤',
-        prompt
+        tone: meta.tone,
+        verbosity: meta.verbosity,
+        responseStructure: meta.responseStructure,
+        clarificationStrategy: meta.clarificationStrategy,
+        preferredExamples: meta.preferredExamples,
+        fallbackBehaviour: meta.fallbackBehaviour,
+        owner: meta.owner,
+        systemInstructions: prompt
       });
 
       return { id, name: meta.name };
     } catch (err) {
       log.error(`Failed to import persona from file: ${srcPath}`, err);
-      // Return a placeholder representation
-      return { id: 'invalid', name: 'Invalid Persona File' };
+      throw err;
     }
   }
 
@@ -236,17 +293,21 @@ class PersonaDB {
     const row = this.get(id);
     if (!row) throw new Error(`Persona "${id}" not found.`);
 
-    const content = [
-      '---',
-      `name: "${row.name}"`,
-      `description: "${row.description}"`,
-      `type: "${row.type}"`,
-      `version: "${row.version}"`,
-      `avatar: "${row.avatar || '👤'}"`,
-      '---',
-      '',
-      row.prompt
-    ].join('\n');
+    const content = PersonaStandard.formatPersonaMarkdown({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      version: row.version,
+      avatar: row.avatar,
+      tone: row.tone,
+      verbosity: row.verbosity,
+      responseStructure: row.responseStructure,
+      clarificationStrategy: row.clarificationStrategy,
+      preferredExamples: row.preferredExamples,
+      fallbackBehaviour: row.fallbackBehaviour,
+      owner: row.owner,
+      systemInstructions: row.prompt
+    });
 
     fs.writeFileSync(destPath, content, 'utf8');
     return destPath;

@@ -77,7 +77,7 @@ class ContextEngine {
 
     log.info(`Context built for conversation=${conversationId} persona=${personaId} msgs=${messages.length}`);
 
-    return { system, messages, tools };
+    return { system, messages, tools, personaId };
   }
 }
 

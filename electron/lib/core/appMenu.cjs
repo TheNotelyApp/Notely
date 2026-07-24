@@ -32,6 +32,8 @@ function buildAppMenuTemplate(win, context = {}) {
   const outlineEnabled = context?.outlineEnabled !== false;
   const splitPreviewEnabled = context?.splitPreviewEnabled === true;
   const focusModeEnabled = context?.focusModeEnabled === true;
+  const scrollSyncEnabled = context?.scrollSyncEnabled !== false;
+  const tableEditorEnabled = context?.tableEditorEnabled !== false;
   const previewImageMode = context?.previewImageMode === "original" ? "original" : "thumbnail";
   const embeddedMarkdownMode = context?.embeddedMarkdownMode === "inline" ? "inline" : "open";
   const typoCheckEnabled = context?.typoCheckEnabled !== false;
@@ -276,6 +278,29 @@ function buildAppMenuTemplate(win, context = {}) {
               checked: focusModeEnabled,
               accelerator: "CmdOrCtrl+Alt+F",
               click: () => sendMenuAction(win, "toggle-focus-mode")
+            },
+            {
+              label: "Sync Split Scroll",
+              type: "checkbox",
+              checked: scrollSyncEnabled,
+              click: () => sendMenuAction(win, "toggle-scroll-sync")
+            }
+          ]
+        },
+        {
+          label: "Table Click Behavior",
+          submenu: [
+            {
+              label: "Interactive Table Editor",
+              type: "checkbox",
+              checked: tableEditorEnabled,
+              click: () => sendMenuAction(win, "set-table-editor-gui")
+            },
+            {
+              label: "Raw Markdown",
+              type: "checkbox",
+              checked: !tableEditorEnabled,
+              click: () => sendMenuAction(win, "set-table-editor-raw")
             }
           ]
         },

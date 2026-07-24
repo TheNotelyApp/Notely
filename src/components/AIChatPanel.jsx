@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Send, X, Trash2, Pencil, Check, History, RotateCcw } from "lucide-react";
 import AppButton from "./AppButton";
 import AppTextarea from "./AppTextarea";
+import NotePreviewModal from "./NotePreviewModal";
 import { renderMarkdown } from "../utils/renderUtils";
 import { aiListPersonas } from "../services/electronService";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
@@ -38,9 +39,9 @@ function buildStarterPrompts(contextSummary) {
     ];
   }
   return [
-    "Summarize this note into key takeaways.",
-    "Find gaps or unclear areas in this note.",
-    "Use full workspace context to find related ideas.",
+    "Summarize this note in 3 key bullet points.",
+    "Extract all action items & TODOs.",
+    "Explain the core technical concepts mentioned.",
   ];
 }
 
@@ -75,6 +76,7 @@ export default function AIChatPanel({
   activeQueryId,
   onApply,
   onOpenDocument,
+  onPreviewNote,
   isLoading = false,
   error = null,
   contextSummary = null,
@@ -90,6 +92,7 @@ export default function AIChatPanel({
   onLoadConversation,
   onDeleteConversation,
 }) {
+  const [previewTarget, setPreviewTarget] = useState(null);
   const [draft, setDraft] = useState("");
   const [scope, setScope] = useState("auto");
   const [personas, setPersonas] = useState([]);
@@ -99,6 +102,14 @@ export default function AIChatPanel({
   const inputRef = useRef(null);
   const lastAutoRunRequestIdRef = useRef("");
   const messagesEndRef = useRef(null);
+
+  const handlePreviewLink = (rawPath, lineNum = null) => {
+    if (onPreviewNote) {
+      onPreviewNote(rawPath, lineNum);
+    } else {
+      setPreviewTarget({ path: rawPath, lineNum });
+    }
+  };
 
   const { confirm } = useConfirm();
 
@@ -379,7 +390,7 @@ export default function AIChatPanel({
                             lineNum = parseInt(hashMatch[1], 10);
                             rawPath = rawPath.replace(/#L\d+/i, '');
                           }
-                          onOpenDocument?.(rawPath, lineNum);
+                          handlePreviewLink(rawPath, lineNum);
                         }
                       }}
                     />
@@ -413,7 +424,7 @@ export default function AIChatPanel({
                             <button
                               key={idx}
                               type="button"
-                              onClick={() => onOpenDocument?.(ref.path)}
+                              onClick={() => handlePreviewLink(ref.path)}
                               title={`${ref.path} (${(ref.relevance * 100).toFixed(0)}% relevance)`}
                               style={{ background: "var(--surface-accent)", color: "var(--accent-solid)", padding: "1px 5px", borderRadius: "3px", border: "1px solid var(--border-soft)", fontFamily: "monospace", fontSize: "10px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "2px" }}
                             >
@@ -540,6 +551,14 @@ export default function AIChatPanel({
           </div>
         </div>
       </div>
+      {/* Global Note Preview Modal Fallback */}
+      <NotePreviewModal
+        open={Boolean(previewTarget)}
+        filePath={previewTarget?.path}
+        lineNum={previewTarget?.lineNum}
+        onClose={() => setPreviewTarget(null)}
+        onOpenDocument={onOpenDocument}
+      />
     </aside>
   );
 }
