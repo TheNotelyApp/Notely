@@ -306,7 +306,7 @@ class EmbeddingDB {
       // Extract keywords >= 3 chars, ignoring stop words
       const stopWords = new Set(['what', 'do', 'we', 'have', 'oin', 'the', 'and', 'for', 'with', 'this', 'that', 'from', 'you', 'your']);
       const terms = cleanStr
-        .replace(/[^a-z0-9\s_\-]/g, '')
+        .replace(/[^a-z0-9\s_-]/g, '')
         .split(/\s+/)
         .filter(w => w.length >= 3 && !stopWords.has(w));
 

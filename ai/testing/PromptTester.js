@@ -4,7 +4,6 @@
 
 const PromptLoader = require('../prompts/PromptLoader');
 const PromptPipeline = require('../prompts/PromptPipeline');
-const TemplateEngine = require('../prompts/TemplateEngine');
 
 class PromptTester {
   /**

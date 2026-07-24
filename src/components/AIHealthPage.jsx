@@ -104,7 +104,7 @@ function PromptLogCard({ logItem }) {
       <button className="ahp-tool-call-header" onClick={() => setOpen(o => !o)} type="button">
         <Terminal size={12} className="ahp-tool-icon" />
         <span className="ahp-tool-name">Prompt &middot; {meta.model || 'LLM'}</span>
-        <span className="ahp-tool-args-preview">"{meta.query || logItem.message}"</span>
+        <span className="ahp-tool-args-preview">&quot;{meta.query || logItem.message}&quot;</span>
         <span className="ahp-pill" style={{ marginLeft: 'auto', fontSize: '10px' }}>{sysPrompt.length} chars</span>
         <ChevronRight size={12} className={`ahp-tool-chevron${open ? ' open' : ''}`} />
       </button>

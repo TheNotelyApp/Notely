@@ -3,7 +3,6 @@
  */
 
 const path = require('path');
-const fs = require('fs');
 const PromptLoader = require('../prompts/PromptLoader');
 const { PersonaStandard } = require('./PersonaStandard');
 const { createLogger } = require('../core/logger');

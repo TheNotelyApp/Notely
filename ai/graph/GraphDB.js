@@ -343,7 +343,7 @@ class GraphDB {
       try {
         const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR id = ? LIMIT 1');
         startEntity = stmt.get(String(identifier).trim(), identifier);
-      } catch (__err) {
+      } catch {
         /* ignore lookup error */
       }
     }
@@ -351,7 +351,7 @@ class GraphDB {
       try {
         const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) LIKE LOWER(?) LIMIT 1');
         startEntity = stmt.get(`%${String(identifier).trim()}%`);
-      } catch (__err) {
+      } catch {
         /* ignore lookup error */
       }
     }
@@ -368,7 +368,7 @@ class GraphDB {
         try {
           const ev = this.db.prepare('SELECT raw_sentence FROM evidence WHERE id = ?').get(e.evidence_id);
           evidenceText = ev?.raw_sentence || null;
-        } catch (__err) {
+        } catch {
           /* ignore evidence lookup error */
         }
       }

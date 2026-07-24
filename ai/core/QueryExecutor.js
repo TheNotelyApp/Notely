@@ -2,8 +2,6 @@
  * QueryExecutor - Routes queries to AI models with multi-step tool execution
  */
 
-const fs = require('fs');
-const path = require('path');
 const { getTools } = require('../tools/ToolRegistry');
 const PromptPipeline = require('../prompts/PromptPipeline');
 

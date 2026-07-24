@@ -88,7 +88,7 @@ The AI behaves like an experienced researcher gathering sufficient evidence befo
 * **Dynamic Tool Output Chaining**: Tool outputs chain into subsequent retrieval steps (e.g. note paths $\rightarrow$ graph expansion $\rightarrow$ timeline).
 * **Context Aggregation & Deduplication**: Consolidates evidence, eliminates duplicate snippets, ranks importance, and attaches source note link attributions (`[file.md](file:///path)`).
 * **Confidence Evaluation Loop**: Measures overall evidence confidence ($0.0 - 1.0$). If confidence $< 0.70$, performs additional graph or discussion retrieval steps before handoff to `ReasoningBrain.js`.
-* **Diagnostic Trace Telemetry**: Records all tool calls, graph traversals, and outputs into `executionTrace`, which is passed to the UI **AI Health & Diagnostics** page (`AIHealthPage.jsx`).
+* **Diagnostic Trace Telemetry & Prompt Tracking**: Records all tool calls, graph traversals, and outputs into `executionTrace`. Persists full assembled system prompts, persona metadata, and token stats via `LogDB.js` into `.notes-app/ai-logs.db` (`PromptTracker` subsystem), inspectable from the UI **AI Health & Diagnostics** page (`AIHealthPage.jsx`).
 
 ---
 

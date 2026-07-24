@@ -137,7 +137,6 @@ class ContextOrchestrator {
    */
   _deriveNextSteps(query, existingEvidence) {
     const steps = [];
-    const lowerQuery = String(query).toLowerCase();
 
     // If existing evidence contains linked notes, trigger graph expansion
     const linkedPaths = existingEvidence
@@ -168,18 +167,32 @@ class ContextOrchestrator {
       targetArray.push({ toolName, content: result, score: 0.75 });
     } else if (Array.isArray(result)) {
       for (const item of result) {
-        targetArray.push({
-          toolName,
-          filePath: item.filePath || item.path || '',
-          content: typeof item === 'string' ? item : (item.content || item.snippet || JSON.stringify(item)),
-          score: item.score || 0.8
-        });
+        if (typeof item === 'string') {
+          targetArray.push({ toolName, content: item, score: 0.8 });
+        } else if (typeof item === 'object' && item !== null) {
+          const filePath = item.filePath || item.path || item.note_path || item.file || '';
+          let text = item.snippet || item.content || item.text || item.evidence;
+          if (!text && Array.isArray(item.graph_triples) && item.graph_triples.length > 0) {
+            text = item.graph_triples.join('; ');
+          }
+          if (!text) {
+            text = JSON.stringify(item);
+          }
+          targetArray.push({
+            toolName,
+            filePath,
+            content: text,
+            score: item.score || 0.8
+          });
+        }
       }
     } else if (typeof result === 'object' && result !== null) {
+      const filePath = result.filePath || result.path || result.note_path || '';
+      const text = result.snippet || result.content || result.text || JSON.stringify(result);
       targetArray.push({
         toolName,
-        filePath: result.filePath || '',
-        content: JSON.stringify(result),
+        filePath,
+        content: text,
         score: 0.7
       });
     }
