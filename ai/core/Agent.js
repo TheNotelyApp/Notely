@@ -16,10 +16,19 @@ const ReasoningBrain = require('./ReasoningBrain');
 const ActionBrain = require('./ActionBrain');
 const ContextOrchestrator = require('./ContextOrchestrator');
 
+const PromptLoader = require('../prompts/PromptLoader');
+const PromptPipeline = require('../prompts/PromptPipeline');
+const PersonaManager = require('../personas/PersonaManager');
+
 class Agent {
   constructor(databaseManager, llmRegistry) {
     this.db = databaseManager;
     this.llmRegistry = llmRegistry;
+
+    // Prompt Architecture Infrastructure
+    this.promptLoader = new PromptLoader();
+    this.promptPipeline = new PromptPipeline(this.promptLoader);
+    this.personaManager = new PersonaManager(this.promptLoader);
 
     // Initialize 3-Brain Architecture & Context Orchestrator
     this.workspaceBrain = new WorkspaceBrain(this);

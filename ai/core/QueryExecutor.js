@@ -5,10 +5,12 @@
 const fs = require('fs');
 const path = require('path');
 const { getTools } = require('../tools/ToolRegistry');
+const PromptPipeline = require('../prompts/PromptPipeline');
 
 class QueryExecutor {
   constructor(agent) {
     this.agent = agent;
+    this.promptPipeline = new PromptPipeline();
   }
 
   async _prepareConfig(query, context) {
@@ -17,10 +19,10 @@ class QueryExecutor {
     const model = await llm.getModelInstance();
     const tools = await getTools(this.agent);
 
-    // 1. Build core persona instructions — prefer ContextEngine persona if available
-    let systemPrompt;
+    let personaInput = context.persona || 'general';
     let contextEngineTools = {};
     let ceMessages = [];
+
     if (this.agent.contextEngine) {
       try {
         const conversationId = context.conversationId || 'default';
@@ -29,51 +31,28 @@ class QueryExecutor {
           activeNotePath: context.currentFile || null,
           activeNoteContent: context.activeNoteContent || null
         });
-        systemPrompt = ceCtx.system;
+        if (ceCtx.personaId) {
+          personaInput = ceCtx.personaId;
+        } else if (ceCtx.system) {
+          personaInput = { systemInstructions: ceCtx.system };
+        }
         contextEngineTools = ceCtx.tools || {};
         ceMessages = ceCtx.messages || [];
       } catch (ceErr) {
         console.warn('[QueryExecutor] ContextEngine.buildContext failed, falling back:', ceErr.message);
       }
-    }
-    // Load core system instructions from markdown file
-    let baseInstructions = '';
-    try {
-      const promptPath = path.join(__dirname, 'system_prompt.md');
-      if (fs.existsSync(promptPath)) {
-        baseInstructions = fs.readFileSync(promptPath, 'utf8');
-      }
-    } catch (readErr) {
-      console.warn('[QueryExecutor] Failed to read system_prompt.md:', readErr.message);
-    }
-
-    // Combine base instructions with the active persona instructions
-    let finalSystemPrompt = baseInstructions || 'You are a helpful AI assistant for Notely, a modern markdown notes application.';
-    if (systemPrompt) {
-      finalSystemPrompt += `\n\n---\nACTIVE PERSONA ROLE/INSTRUCTIONS:\n${systemPrompt}`;
     } else if (context.systemPrompt) {
-      finalSystemPrompt += `\n\n---\nACTIVE PERSONA ROLE/INSTRUCTIONS:\n${context.systemPrompt}`;
-    }
-
-    // Append workspace context metadata
-    finalSystemPrompt += `\n\nWorkspace context:
-- Workspace folder: ${this.agent.workspaceRoot || 'none'}
-- Current open note path: ${context.currentFile || 'none'}`;
-
-    if (context.relatedDocuments && context.relatedDocuments.length > 0) {
-      finalSystemPrompt += `\n- Related documents:`;
-      context.relatedDocuments.forEach(doc => {
-        finalSystemPrompt += `\n  * ${doc.path}`;
-      });
+      personaInput = { systemInstructions: context.systemPrompt };
     }
 
     // Multi-Tool Planning & Context Orchestration
     let orchestratorTrace = [];
+    let retrievedEvidence = '';
     if (this.agent.contextOrchestrator) {
       try {
         const orchRes = await this.agent.contextOrchestrator.orchestrate(query, context);
         if (orchRes.aggregatedContext) {
-          finalSystemPrompt += `\n\n${orchRes.aggregatedContext}`;
+          retrievedEvidence = orchRes.aggregatedContext;
         }
         if (orchRes.trace) {
           orchestratorTrace = orchRes.trace;
@@ -86,7 +65,7 @@ class QueryExecutor {
             if (this.agent.reasoningBrain) {
               const evidenceStr = this.agent.reasoningBrain.formatEvidenceContext(facts);
               if (evidenceStr) {
-                finalSystemPrompt += `\n\n[PROACTIVE WORKSPACE EVIDENCE FOR CURRENT QUERY]:\n${evidenceStr}`;
+                retrievedEvidence = evidenceStr;
               }
             }
           } catch { /* ignore fallback */ }
@@ -94,7 +73,20 @@ class QueryExecutor {
       }
     }
 
-    systemPrompt = finalSystemPrompt;
+    // Assemble final prompt using PromptPipeline
+    const pipeline = this.agent.promptPipeline || this.promptPipeline;
+    const systemPrompt = pipeline.assemble({
+      persona: personaInput,
+      workspaceContext: {
+        workspaceRoot: this.agent.workspaceRoot || 'none',
+        activeNotePath: context.currentFile || 'none',
+        activeNoteContent: context.activeNoteContent || null,
+        documentCount: this.agent.documentService?.getAllDocuments()?.length || 0
+      },
+      conversationMemory: ceMessages.length > 0 ? ceMessages : null,
+      retrievedEvidence: retrievedEvidence || (context.relatedDocuments ? context.relatedDocuments.map(d => d.path).join('\n') : null),
+      uiContext: context.uiContext || null
+    });
 
     const mergedTools = {
       ...tools,
