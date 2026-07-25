@@ -87,6 +87,11 @@ class Agent {
       this.logDb = new LogDB(workspaceRoot);
       this.logDb.initialize();
 
+      // Initialize TelemetryDB for isolated flow execution telemetry
+      const TelemetryDB = require('../telemetry/TelemetryDB');
+      this.telemetryDb = new TelemetryDB(workspaceRoot);
+      this.telemetryDb.initialize();
+
       // Initialize GraphDB
       this.graphDb = new GraphDB(workspaceRoot);
       this.graphDb.initialize();

@@ -17,11 +17,13 @@ function getSubsystemHealth() {
   let embeddingDBPath = 'none';
   let graphDBPath = 'none';
   let logDBPath = 'none';
+  let telemetryDBPath = 'none';
   let totalPersonas = 0;
   let totalConversations = 0;
   let totalChunks = 0;
   let totalRelations = 0;
   let totalLogs = 0;
+  let totalTelemetry = 0;
   let requestsCount = 0;
   let tokensUsed = 0;
 
@@ -61,8 +63,17 @@ function getSubsystemHealth() {
           WHERE subsystem IN ('FlowTracker', 'PromptTracker')
         `).get();
         if (statsRes) {
-          requestsCount = statsRes.reqCount || 0;
-          tokensUsed = statsRes.tokSum || 0;
+          requestsCount += statsRes.reqCount || 0;
+          tokensUsed += statsRes.tokSum || 0;
+        }
+      }
+      if (agent.telemetryDb && agent.telemetryDb.db) {
+        telemetryDBPath = agent.telemetryDb.dbPath || 'none';
+        const telStats = agent.telemetryDb.db.prepare("SELECT COUNT(*) as cnt, SUM(tokens_used) as tokSum FROM telemetry_logs").get();
+        if (telStats) {
+          totalTelemetry = telStats.cnt || 0;
+          requestsCount += telStats.cnt || 0;
+          tokensUsed += telStats.tokSum || 0;
         }
       }
     } catch (err) {
@@ -102,11 +113,13 @@ function getSubsystemHealth() {
       embeddingDBPath,
       graphDBPath,
       logDBPath,
+      telemetryDBPath,
       totalPersonas,
       totalConversations,
       totalChunks,
       totalRelations,
-      totalLogs
+      totalLogs,
+      totalTelemetry
     },
     systemStats: {
       requestsCount,

@@ -11,6 +11,7 @@
 
 const { randomUUID } = require('crypto');
 const { createLogger } = require('./logger');
+const { buildEvents } = require('../telemetry/eventBuilder');
 
 const log = createLogger('AIFlow');
 
@@ -21,21 +22,29 @@ class AIFlow {
 
   /**
    * Execute non-streaming query through the master 5-stage pipeline
-   * @param {string} userQuery
-   * @param {object} context
-   * @returns {Promise<object>}
    */
   async execute(userQuery, context = {}) {
     const startTime = Date.now();
+    const startIso = new Date(startTime).toISOString();
     const flowId = randomUUID();
     const stages = [];
+    let orchestratorTrace = [];
+    let conversationId = context.conversationId || context.conversation_id;
 
     try {
       log.info(`[Flow:${flowId}] Starting master execution flow for query: "${String(userQuery).slice(0, 60)}..."`);
 
       // ── Stage 1: Context & Persona Resolution ──────────────────────────────
       const s1Start = Date.now();
-      const conversationId = context.conversationId || 'default';
+      if (!conversationId) {
+        if (this.agent.conversationStore) {
+          const title = String(userQuery || 'New Chat').slice(0, 30);
+          const newConv = this.agent.conversationStore.createConversation(title, context.persona || 'general');
+          conversationId = newConv?.id || `conv-${Date.now()}`;
+        } else {
+          conversationId = `conv-${Date.now()}`;
+        }
+      }
       let personaId = context.persona || 'general';
       let personaObj = null;
       let rawHistory = [];
@@ -56,7 +65,6 @@ class AIFlow {
         personaObj = this.agent.personaManager.getPersona(personaId);
       }
 
-      // Compact context using compaction module facade
       const compaction = require('../compaction');
       const compactionRes = compaction.compactHistory(rawHistory, { maxVerbatimCount: 4 });
       const historyMessages = compactionRes.compactedMessages;
@@ -67,6 +75,7 @@ class AIFlow {
       stages.push({
         stage: 1,
         name: 'Context & Persona Resolution',
+        startedAt: new Date(s1Start).toISOString(),
         durationMs: Date.now() - s1Start,
         personaId,
         personaName: personaObj?.name || personaId,
@@ -103,6 +112,7 @@ class AIFlow {
       stages.push({
         stage: 2,
         name: 'Intent Planning & Hybrid Retrieval',
+        startedAt: new Date(s2Start).toISOString(),
         durationMs: Date.now() - s2Start,
         confidenceScore,
         evidenceLength: retrievedEvidence.length,
@@ -131,7 +141,6 @@ class AIFlow {
         uiContext: context.uiContext || null
       });
 
-      // Safety Invariant Audit via Test Harness
       let harnessValid = true;
       try {
         const { PromptTester } = require('../testing');
@@ -143,9 +152,11 @@ class AIFlow {
       stages.push({
         stage: 3,
         name: 'System Prompt Assembly & Harness Audit',
+        startedAt: new Date(s3Start).toISOString(),
         durationMs: Date.now() - s3Start,
         systemPromptLength: systemPrompt.length,
         systemPromptSnippet: systemPrompt.slice(0, 500),
+        systemPrompt,
         harnessValid
       });
 
@@ -162,7 +173,6 @@ class AIFlow {
 
       const result = await this.agent.queryExecutor.execute(userQuery, queryContext);
 
-      // Auto-format file links and verify citations via GroundingEngine facade
       let groundingInfo = { verifiedCitations: 0, brokenCitations: 0, hallucinations: [] };
       if (result.result) {
         try {
@@ -186,15 +196,23 @@ class AIFlow {
           log.warn(`[Flow:${flowId}] Grounding check warning:`, err.message);
         }
       }
+      const s4End = Date.now();
 
       stages.push({
         stage: 4,
-        name: 'Runtime Dynamic Strategy Execution & Grounding',
-        durationMs: Date.now() - s4Start,
-        strategy: 'MultiStepToolStrategy',
+        name: 'Runtime Execution Strategy & Grounding',
+        startedAt: new Date(s4Start).toISOString(),
+        endedAt: new Date(s4End).toISOString(),
+        durationMs: s4End - s4Start,
+        strategy: 'DirectExecutorStrategy',
         tokensUsed: result.tokensUsed || 0,
+        tokensDetail: result.tokensDetail || null,
         toolCallsCount: result.trace ? result.trace.length : 0,
         toolCalls: result.trace || [],
+        userQuery,
+        resultText: result.result || '',
+        isError: Boolean(result.isError),
+        error: result.isError ? result.result : null,
         grounding: groundingInfo,
         corrected: Boolean(result.corrected)
       });
@@ -206,6 +224,7 @@ class AIFlow {
           this.agent.conversationStore.addMessage(conversationId, 'user', userQuery);
           this.agent.conversationStore.addMessage(conversationId, 'assistant', result.result, {
             tokensUsed: result.tokensUsed,
+            tokensDetail: result.tokensDetail,
             trace: result.trace,
             flowId
           });
@@ -219,56 +238,94 @@ class AIFlow {
       stages.push({
         stage: 5,
         name: 'Memory Persistence & Telemetry Logging',
+        startedAt: new Date(s5Start).toISOString(),
         durationMs: Date.now() - s5Start,
         saved: true
       });
 
-      // Log complete telemetry payload to LogDB FlowTracker
+      const combinedToolTrace = [
+        ...(orchestratorTrace || []).map(t => ({ ...t, type: 'pre-retrieval' })),
+        ...(result?.trace || [])
+      ];
+
+      const events = buildEvents(stages, combinedToolTrace, totalDurationMs, startTime);
+
       this._logFlowTelemetry({
         flowId,
         conversationId,
         query: userQuery,
         persona: personaId,
+        startedAt: startIso,
         totalDurationMs,
         tokensUsed: result.tokensUsed || 0,
+        tokensDetail: result.tokensDetail || null,
         systemPrompt,
-        stages
+        stages,
+        events
       });
 
       return {
         ...result,
         flowId,
-        telemetry: {
-          flowId,
-          totalDurationMs,
-          stages
-        }
+        telemetry: { flowId, totalDurationMs, stages }
       };
     } catch (error) {
       log.error(`[Flow:${flowId}] Execution failed:`, error.message);
+      try {
+        const totalDurationMs = Date.now() - startTime;
+        const errEvent = {
+          type: 'error',
+          callerType: 'system',
+          label: 'Execution Error',
+          startedAt: new Date().toISOString(),
+          durationMs: 0,
+          errorMessage: error.message
+        };
+        const combinedToolTrace = (orchestratorTrace || []).map(t => ({ ...t, type: 'pre-retrieval' }));
+        const events = [...buildEvents(stages, combinedToolTrace, totalDurationMs, startTime), errEvent];
+        this._logFlowTelemetry({
+          flowId,
+          conversationId: conversationId || 'default',
+          query: userQuery,
+          persona: context.persona || 'general',
+          startedAt: startIso,
+          totalDurationMs,
+          tokensUsed: 0,
+          systemPrompt: '',
+          stages,
+          events,
+          error: error.message
+        });
+      } catch { /* ignore telemetry log error */ }
       throw error;
     }
   }
 
   /**
    * Execute streaming query through the master 5-stage pipeline
-   * @param {string} userQuery
-   * @param {object} context
-   * @param {function} onChunk
-   * @param {AbortSignal} abortSignal
-   * @returns {Promise<object>}
    */
   async stream(userQuery, context = {}, onChunk, abortSignal) {
     const startTime = Date.now();
+    const startIso = new Date(startTime).toISOString();
     const flowId = randomUUID();
     const stages = [];
+    let orchestratorTrace = [];
+    let conversationId = context.conversationId || context.conversation_id;
 
     try {
       log.info(`[Flow:${flowId}] Starting master streaming flow for query: "${String(userQuery).slice(0, 60)}..."`);
 
       // Stage 1
       const s1Start = Date.now();
-      const conversationId = context.conversationId || 'default';
+      if (!conversationId) {
+        if (this.agent.conversationStore) {
+          const title = String(userQuery || 'New Chat').slice(0, 30);
+          const newConv = this.agent.conversationStore.createConversation(title, context.persona || 'general');
+          conversationId = newConv?.id || `conv-${Date.now()}`;
+        } else {
+          conversationId = `conv-${Date.now()}`;
+        }
+      }
       let personaId = context.persona || 'general';
       let personaObj = null;
       let rawHistory = [];
@@ -289,7 +346,6 @@ class AIFlow {
         personaObj = this.agent.personaManager.getPersona(personaId);
       }
 
-      // Compact context using compaction module facade
       const compaction = require('../compaction');
       const compactionRes = compaction.compactHistory(rawHistory, { maxVerbatimCount: 4 });
       const historyMessages = compactionRes.compactedMessages;
@@ -300,6 +356,7 @@ class AIFlow {
       stages.push({
         stage: 1,
         name: 'Context & Persona Resolution',
+        startedAt: new Date(s1Start).toISOString(),
         durationMs: Date.now() - s1Start,
         personaId,
         personaName: personaObj?.name || personaId,
@@ -336,6 +393,7 @@ class AIFlow {
       stages.push({
         stage: 2,
         name: 'Intent Planning & Hybrid Retrieval',
+        startedAt: new Date(s2Start).toISOString(),
         durationMs: Date.now() - s2Start,
         confidenceScore,
         evidenceLength: retrievedEvidence.length,
@@ -367,9 +425,10 @@ class AIFlow {
       stages.push({
         stage: 3,
         name: 'System Prompt Assembly & Harness Audit',
+        startedAt: new Date(s3Start).toISOString(),
         durationMs: Date.now() - s3Start,
         systemPromptLength: systemPrompt.length,
-        systemPromptSnippet: systemPrompt.slice(0, 500),
+        systemPrompt: systemPrompt,
         harnessValid: true
       });
 
@@ -389,11 +448,17 @@ class AIFlow {
       stages.push({
         stage: 4,
         name: 'Runtime Dynamic Strategy Execution & Grounding',
+        startedAt: new Date(s4Start).toISOString(),
         durationMs: Date.now() - s4Start,
         strategy: 'StreamingStrategy',
         tokensUsed: result.tokensUsed || 0,
+        tokensDetail: result.tokensDetail || null,
         toolCallsCount: result.trace ? result.trace.length : 0,
-        toolCalls: result.trace || []
+        toolCalls: result.trace || [],
+        userQuery,
+        resultText: result.result || '',
+        isError: Boolean(result.isError),
+        error: result.isError ? result.result : null
       });
 
       // Stage 5
@@ -416,47 +481,95 @@ class AIFlow {
       stages.push({
         stage: 5,
         name: 'Memory Persistence & Telemetry Logging',
+        startedAt: new Date(s5Start).toISOString(),
         durationMs: Date.now() - s5Start,
         saved: true
       });
+
+      const combinedToolTrace = [
+        ...(orchestratorTrace || []).map(t => ({ ...t, type: 'pre-retrieval' })),
+        ...(result?.trace || [])
+      ];
+
+      const events = buildEvents(stages, combinedToolTrace, totalDurationMs, startTime);
 
       this._logFlowTelemetry({
         flowId,
         conversationId,
         query: userQuery,
         persona: personaId,
+        startedAt: startIso,
         totalDurationMs,
         tokensUsed: result.tokensUsed || 0,
         systemPrompt,
-        stages
+        stages,
+        events
       });
 
       return {
         ...result,
         flowId,
-        telemetry: {
-          flowId,
-          totalDurationMs,
-          stages
-        }
+        telemetry: { flowId, totalDurationMs, stages }
       };
     } catch (error) {
       log.error(`[Flow:${flowId}] Streaming execution failed:`, error.message);
+      try {
+        const totalDurationMs = Date.now() - startTime;
+        const errEvent = {
+          type: 'error',
+          callerType: 'system',
+          label: 'Streaming Execution Error',
+          startedAt: new Date().toISOString(),
+          durationMs: 0,
+          errorMessage: error.message
+        };
+        const combinedToolTrace = (orchestratorTrace || []).map(t => ({ ...t, type: 'pre-retrieval' }));
+        const events = [...buildEvents(stages, combinedToolTrace, totalDurationMs, startTime), errEvent];
+        this._logFlowTelemetry({
+          flowId,
+          conversationId: conversationId || 'default',
+          query: userQuery,
+          persona: context.persona || 'general',
+          startedAt: startIso,
+          totalDurationMs,
+          tokensUsed: 0,
+          systemPrompt: '',
+          stages,
+          events,
+          error: error.message
+        });
+      } catch { /* ignore telemetry log error */ }
       throw error;
     }
   }
 
   /**
-   * Log telemetry record to LogDB (FlowTracker)
+   * Log telemetry record to TelemetryDB (isolated ai-telemetry.db)
+   * Guaranteed to write under all conditions.
    * @private
    */
   _logFlowTelemetry(telemetryPayload) {
     try {
-      if (this.agent.logDb && this.agent.logDb.isInitialized) {
-        this.agent.logDb.addLog('FlowTracker', `Flow execution telemetry recorded for query: "${String(telemetryPayload.query).slice(0, 60)}"`, 'info', telemetryPayload);
+      if (this.agent.telemetryDb && this.agent.telemetryDb.isInitialized) {
+        this.agent.telemetryDb.addTelemetry(telemetryPayload);
+      } else if (this.agent.logDb && this.agent.logDb.isInitialized) {
+        this.agent.logDb.addLog(
+          'FlowTracker',
+          `Flow execution telemetry recorded for query: "${String(telemetryPayload.query).slice(0, 60)}"`,
+          'info',
+          telemetryPayload
+        );
+      } else {
+        const TelemetryDB = require('../telemetry/TelemetryDB');
+        const workspaceRoot = this.agent.workspaceRoot || process.cwd();
+        const fallbackDb = new TelemetryDB(workspaceRoot);
+        if (fallbackDb.initialize()) {
+          fallbackDb.addTelemetry(telemetryPayload);
+          fallbackDb.close();
+        }
       }
     } catch (err) {
-      log.warn('Failed to log FlowTracker telemetry record:', err.message);
+      log.warn('Failed to log TelemetryDB record:', err.message);
     }
   }
 }

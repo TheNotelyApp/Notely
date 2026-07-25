@@ -140,7 +140,12 @@ class QueryExecutor {
         maxSteps: 5 // Allow multi-step tool calls
       });
 
-      let tokensUsed = result.usage?.totalTokens || 0;
+      const usageObj = result.usage || {};
+      const promptTokens = usageObj.promptTokens || usageObj.inputTokens || 0;
+      const completionTokens = usageObj.completionTokens || usageObj.outputTokens || 0;
+      let tokensUsed = usageObj.totalTokens || (promptTokens + completionTokens);
+      const tokensDetail = { promptTokens, completionTokens, totalTokens: tokensUsed };
+
       if (llm.usageStats) {
         llm.usageStats.tokensUsedTotal += tokensUsed;
         llm.usageStats.requestsTotal += 1;
@@ -162,7 +167,7 @@ class QueryExecutor {
         }
       }
 
-      // Manual fallback summary generation if tool calls were made but no final text was output
+      // Surface error if response text was not generated after tool calls
       if (!textResult && allToolCalls.length > 0) {
         try {
           const nextMessages = [...messages];
@@ -172,7 +177,7 @@ class QueryExecutor {
               const val = tr.output !== undefined ? tr.output : tr.result;
               toolContext += `\n\n- Information: ${typeof val === 'object' ? JSON.stringify(val) : val}`;
             }
-            toolContext += `\n\nBased on these workspace details, please provide a friendly, structured, and concise natural language response to my query: "${query}".`;
+            toolContext += `\n\nBased on these workspace details, please provide a structured natural language response to my query: "${query}".`;
             
             nextMessages[nextMessages.length - 1] = {
               role: 'user',
@@ -189,68 +194,54 @@ class QueryExecutor {
               textResult = summaryResult.text;
               const extraTokens = summaryResult.usage?.totalTokens || 0;
               tokensUsed += extraTokens;
+              tokensDetail.totalTokens = tokensUsed;
               if (llm.usageStats) {
                 llm.usageStats.tokensUsedTotal += extraTokens;
               }
             }
           }
         } catch (summaryErr) {
-          console.error('[QueryExecutor] Manual summary fallback failed:', summaryErr.message);
+          console.error('[QueryExecutor] Provider error during response synthesis:', summaryErr.message);
+          return {
+            type: 'query',
+            result: `⚠️ **AI Provider Error**\n\n${summaryErr.message}`,
+            tokensUsed,
+            tokensDetail,
+            trace: [],
+            isError: true
+          };
         }
       }
 
-      // Clean markdown synthesis fallback if manual summary did not succeed
-      if (!textResult && result.steps && result.steps.length > 0) {
-        let formattedOutput = '';
-        for (const step of result.steps) {
-          if (step.toolCalls && step.toolCalls.length > 0) {
-            for (const call of step.toolCalls) {
-              const stepResult = result.steps.find(s => s.toolResults && s.toolResults.some(r => r.toolCallId === call.toolCallId));
-              const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
-              if (toolResult) {
-                const val = toolResult.output !== undefined ? toolResult.output : toolResult.result;
-                if (typeof val === 'string' && val.trim()) {
-                  formattedOutput += `\n\n${val.trim()}`;
-                } else if (Array.isArray(val) && val.length > 0) {
-                  const items = val.map(item => {
-                    if (typeof item === 'string') return `- ${item}`;
-                    if (item.title || item.note || item.file || item.path) {
-                      const label = item.title || item.note || item.file || item.path;
-                      const detail = item.snippet || item.text || item.content || '';
-                      return `- **${label}**: ${detail}`;
-                    }
-                    return `- ${JSON.stringify(item)}`;
-                  });
-                  formattedOutput += `\n\n${items.join('\n')}`;
-                } else if (typeof val === 'object' && val !== null) {
-                  const label = val.title || val.note || val.file || val.path || 'Workspace details';
-                  const detail = val.snippet || val.text || val.content || JSON.stringify(val);
-                  formattedOutput += `\n\n- **${label}**: ${detail}`;
-                }
-              }
-            }
-          }
-        }
-        if (formattedOutput) {
-          textResult = `Based on your workspace notes, here are the relevant details:${formattedOutput}`;
-        }
-      }
+      // Construct the trace array of executed tools and outputs with timestamps
+      const trace = Array.isArray(orchestratorTrace)
+        ? orchestratorTrace.map(t => ({
+            name: t.name || t.toolName || 'tool',
+            args: t.args || t.parameters || {},
+            type: t.type || 'programmatic',
+            startedAt: t.startedAt || new Date().toISOString(),
+            endedAt: t.endedAt || new Date().toISOString(),
+            durationMs: t.durationMs || 0,
+            output: t.output !== undefined ? t.output : (t.result !== undefined ? t.result : null)
+          }))
+        : [];
 
-      // Construct the trace array of executed tools and outputs
-      const trace = Array.isArray(orchestratorTrace) ? orchestratorTrace.map(t => ({ ...t, type: t.type || 'programmatic' })) : [];
       if (result.steps) {
         for (const step of result.steps) {
-          if (step.toolCalls) {
-            for (const call of step.toolCalls) {
-              const stepResult = result.steps.find(s => s.toolResults && s.toolResults.some(r => r.toolCallId === call.toolCallId));
-              const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
-              trace.push({
-                name: call.toolName,
-                args: call.args,
-                type: 'llm',
-                output: toolResult ? (toolResult.output !== undefined ? toolResult.output : toolResult.result) : null
-              });
-            }
+          const toolCalls = step.toolCalls || [];
+          const toolResults = step.toolResults || [];
+          for (const call of toolCalls) {
+            const toolRes = toolResults.find(r => r.toolCallId === call.toolCallId);
+            const rawOutput = toolRes ? (toolRes.output !== undefined ? toolRes.output : (toolRes.result !== undefined ? toolRes.result : null)) : null;
+            trace.push({
+              name: call.toolName || call.name || 'tool',
+              args: call.args || call.parameters || {},
+              type: 'llm',
+              startedAt: toolRes?.startedAt || new Date().toISOString(),
+              endedAt: toolRes?.endedAt || new Date().toISOString(),
+              durationMs: toolRes?.durationMs || 0,
+              output: rawOutput
+            });
           }
         }
       }
@@ -264,17 +255,19 @@ class QueryExecutor {
         type: 'query',
         result: finalResultText,
         tokensUsed,
+        tokensDetail,
         trace,
         corrected: validation.corrected
       };
     } catch (error) {
       console.error('[QueryExecutor] Execution failed:', error.message);
-      const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider');
+      const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider') || error.message.includes('Groq') || error.message.includes('rate limit');
       if (isProviderError) {
         return {
           type: 'query',
-          result: `⚠️ **AI Provider Connection Error**\n\nUnable to communicate with the active AI provider: ${error.message}\n\nPlease check your internet connection and verify your API key in **Settings > AI Settings**.`,
+          result: `⚠️ **AI Provider Error**\n\n${error.message}`,
           tokensUsed: 0,
+          tokensDetail: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
           trace: [],
           isError: true
         };
@@ -333,27 +326,45 @@ class QueryExecutor {
       }
 
       const usage = await result.usage;
-      const tokensUsed = usage?.totalTokens || 0;
+      const promptTokens = usage?.promptTokens || usage?.inputTokens || 0;
+      const completionTokens = usage?.completionTokens || usage?.outputTokens || 0;
+      const tokensUsed = usage?.totalTokens || (promptTokens + completionTokens);
+      const tokensDetail = { promptTokens, completionTokens, totalTokens: tokensUsed };
+
       if (llm.usageStats) {
         llm.usageStats.tokensUsedTotal += tokensUsed;
         llm.usageStats.requestsTotal += 1;
       }
 
       const steps = await result.steps;
-      const trace = Array.isArray(orchestratorTrace) ? orchestratorTrace.map(t => ({ ...t, type: t.type || 'programmatic' })) : [];
+      const trace = Array.isArray(orchestratorTrace)
+        ? orchestratorTrace.map(t => ({
+            name: t.name || t.toolName || 'tool',
+            args: t.args || t.parameters || {},
+            type: t.type || 'programmatic',
+            startedAt: t.startedAt || new Date().toISOString(),
+            endedAt: t.endedAt || new Date().toISOString(),
+            durationMs: t.durationMs || 0,
+            output: t.output !== undefined ? t.output : (t.result !== undefined ? t.result : null)
+          }))
+        : [];
+
       if (steps) {
         for (const step of steps) {
-          if (step.toolCalls) {
-            for (const call of step.toolCalls) {
-              const stepResult = steps.find(s => s.toolResults && s.toolResults.some(r => r.toolCallId === call.toolCallId));
-              const toolResult = stepResult?.toolResults?.find(r => r.toolCallId === call.toolCallId);
-              trace.push({
-                name: call.toolName,
-                args: call.args,
-                type: 'llm',
-                output: toolResult ? (toolResult.output !== undefined ? toolResult.output : toolResult.result) : null
-              });
-            }
+          const toolCalls = step.toolCalls || [];
+          const toolResults = step.toolResults || [];
+          for (const call of toolCalls) {
+            const toolRes = toolResults.find(r => r.toolCallId === call.toolCallId);
+            const rawOutput = toolRes ? (toolRes.output !== undefined ? toolRes.output : (toolRes.result !== undefined ? toolRes.result : null)) : null;
+            trace.push({
+              name: call.toolName || call.name || 'tool',
+              args: call.args || call.parameters || {},
+              type: 'llm',
+              startedAt: toolRes?.startedAt || new Date().toISOString(),
+              endedAt: toolRes?.endedAt || new Date().toISOString(),
+              durationMs: toolRes?.durationMs || 0,
+              output: rawOutput
+            });
           }
         }
       }
@@ -362,6 +373,7 @@ class QueryExecutor {
         type: 'query',
         result: fullText,
         tokensUsed,
+        tokensDetail,
         trace
       };
     } catch (error) {
@@ -370,9 +382,9 @@ class QueryExecutor {
         return { type: 'aborted', result: 'Generation stopped.' };
       }
       console.error('[QueryExecutor] Stream execution failed:', error.message);
-      const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider');
+      const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider') || error.message.includes('Groq') || error.message.includes('rate limit');
       if (isProviderError) {
-        const errorMsg = `⚠️ **AI Provider Connection Error**\n\nUnable to communicate with the active AI provider: ${error.message}\n\nPlease check your internet connection and verify your API key in **Settings > AI Settings**.`;
+        const errorMsg = `⚠️ **AI Provider Error**\n\n${error.message}`;
         if (onChunk) {
           onChunk({ type: 'text', content: errorMsg });
         }
