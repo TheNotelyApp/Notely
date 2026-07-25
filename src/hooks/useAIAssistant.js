@@ -388,11 +388,13 @@ export function useAIAssistant({
             draftTitle,
             activePersona?.id || "default"
           );
-          if (convResp?.success) {
-            currentConversationIdRef.current = convResp.data?.id;
+          if (convResp?.success && convResp.data?.id) {
+            currentConversationIdRef.current = convResp.data.id;
+          } else {
+            currentConversationIdRef.current = `conv-${Date.now()}`;
           }
         } catch {
-          // Non-fatal — chat still works, just not persisted
+          currentConversationIdRef.current = `conv-${Date.now()}`;
         }
       }
     }

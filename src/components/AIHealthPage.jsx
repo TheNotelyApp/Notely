@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Activity,
   Database,
   Cpu,
   AlertCircle,
-  RefreshCw,
   MessageSquare,
   ChevronRight,
   Terminal,
@@ -19,7 +18,15 @@ import {
   Maximize2,
   Minimize2,
   Clock,
-  Trash2
+  Trash2,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Brain,
+  FileText,
+  Bot,
+  Filter,
+  Download
 } from 'lucide-react';
 import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs } from '../services/electronService';
 import { renderMarkdown } from '../utils/renderUtils';
@@ -27,16 +34,64 @@ import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
 import '../styles/AIHealthPage.css';
 
-function StatusDot({ ok }) {
-  return (
-    <span className="ahp-status-dot" data-ok={ok ? 'true' : 'false'} />
-  );
-}
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatPersonaName(p) {
   if (!p) return 'general';
   if (typeof p === 'object') return p.name || p.id || 'general';
   return String(p);
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+  } catch { return iso; }
+}
+
+function fmtMs(ms) {
+  if (ms == null || ms < 0) return '—';
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function copyToClipboard(text, label) {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text);
+    }
+  } catch (err) {
+    console.warn('Clipboard write failed:', err);
+  }
+  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `${label} copied to clipboard`, type: 'success' } }));
+}
+
+// ─── Event config ───────────────────────────────────────────────────────────
+
+const EVENT_CONFIG = {
+  conversation_loaded: { icon: Brain, color: '#a78bfa', label: 'Context & Persona', bg: 'rgba(167,139,250,0.12)' },
+  planner: { icon: Activity, color: '#60a5fa', label: 'Intent Planning', bg: 'rgba(96,165,250,0.12)' },
+  context_building: { icon: Database, color: '#34d399', label: 'Context Building', bg: 'rgba(52,211,153,0.12)' },
+  prompt_construction: { icon: FileText, color: '#fbbf24', label: 'Prompt Construction', bg: 'rgba(251,191,36,0.12)' },
+  llm_execution: { icon: Bot, color: '#e879f9', label: 'LLM Execution', bg: 'rgba(232,121,249,0.12)' },
+  llm_request: { icon: Bot, color: '#f472b6', label: 'LLM Request', bg: 'rgba(244,114,182,0.12)' },
+  tool_execution: { icon: Wrench, color: '#fb923c', label: 'Tool Execution', bg: 'rgba(251,146,60,0.12)' },
+  tool_invocation: { icon: Wrench, color: '#fb923c', label: 'Tool Invocation', bg: 'rgba(251,146,60,0.12)' },
+  tool_response: { icon: Terminal, color: '#4ade80', label: 'Tool Response', bg: 'rgba(74,222,128,0.12)' },
+  llm_response: { icon: Bot, color: '#e879f9', label: 'LLM Response', bg: 'rgba(232,121,249,0.12)' },
+  final_response: { icon: CheckCircle, color: '#10b981', label: 'Final Response', bg: 'rgba(16,185,129,0.12)' },
+  trace_completed: { icon: CheckCircle, color: '#10b981', label: 'Trace Complete', bg: 'rgba(16,185,129,0.12)' },
+  error: { icon: AlertCircle, color: '#f87171', label: 'Error', bg: 'rgba(248,113,113,0.12)' },
+};
+
+function getEventCfg(type) {
+  return EVENT_CONFIG[type] || { icon: Activity, color: '#94a3b8', label: type, bg: 'rgba(148,163,184,0.1)' };
+}
+
+// ─── Small reusable components ───────────────────────────────────────────────
+
+function StatusDot({ ok }) {
+  return <span className="ahp-status-dot" data-ok={ok ? 'true' : 'false'} />;
 }
 
 function StatCard({ label, value, accent }) {
@@ -62,56 +117,7 @@ function DbRow({ label, count, countLabel, path, status }) {
   );
 }
 
-function ToolCallBlock({ step }) {
-  const [open, setOpen] = useState(false);
-  const name = step.name || step.tool || step.toolName || 'tool_call';
-  const isProgrammatic = step.type === 'programmatic';
-  const args = step.args || step.parameters || step.input || {};
-  const rawOutput = typeof step.output !== 'undefined' ? step.output : typeof step.result !== 'undefined' ? step.result : typeof step.response !== 'undefined' ? step.response : '(empty)';
-  const formattedOutput = typeof rawOutput === 'object' && rawOutput !== null ? JSON.stringify(rawOutput, null, 2) : String(rawOutput);
-
-  return (
-    <div className="ahp-tool-call" style={{ margin: '6px 0' }}>
-      <button
-        className="ahp-tool-call-header"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(o => !o);
-        }}
-        type="button"
-        style={{ cursor: 'pointer', padding: '8px 10px' }}
-      >
-        <Wrench size={12} className="ahp-tool-icon" />
-        <span className="ahp-tool-name">{name}</span>
-        <span style={{
-          fontSize: '10px',
-          fontWeight: 600,
-          padding: '1px 6px',
-          borderRadius: '4px',
-          background: isProgrammatic ? 'var(--bg-tertiary, rgba(255, 255, 255, 0.08))' : 'rgba(99, 102, 241, 0.15)',
-          color: isProgrammatic ? 'var(--text-muted, #a0aec0)' : 'var(--accent-default, #6366f1)',
-          marginLeft: '4px'
-        }}>
-          {isProgrammatic ? '⚡ Pre-Retrieval' : '🤖 LLM Call'}
-        </span>
-        <span className="ahp-tool-args-preview" style={{ marginLeft: 'auto', opacity: 0.7 }}>{JSON.stringify(args).slice(0, 40)}</span>
-        <ChevronRight size={12} className={`ahp-tool-chevron${open ? ' open' : ''}`} />
-      </button>
-      {open && (
-        <div className="ahp-tool-body" style={{ padding: '8px 10px' }}>
-          <div className="ahp-tool-section-label">Execution Source</div>
-          <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-normal)', marginBottom: '6px' }}>
-            {isProgrammatic ? '⚡ Programmatic Context Retrieval (Pre-LLM Orchestration)' : '🤖 Direct LLM Autonomous Tool Execution'}
-          </div>
-          <div className="ahp-tool-section-label">Args</div>
-          <pre className="ahp-tool-pre">{JSON.stringify(args, null, 2)}</pre>
-          <div className="ahp-tool-section-label">Output</div>
-          <pre className="ahp-tool-pre">{formattedOutput}</pre>
-        </div>
-      )}
-    </div>
-  );
-}
+// ─── Message bubble (Messages tab) ──────────────────────────────────────────
 
 function MessageBubble({ msg }) {
   const isUser = msg.role === 'user';
@@ -134,360 +140,777 @@ function MessageBubble({ msg }) {
   );
 }
 
-function FlowTelemetryCard({ logItem, hideLeftTimestamp, hideDotNode }) {
-  const [open, setOpen] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [showTools, setShowTools] = useState(false);
-  const [fullPrompt, setFullPrompt] = useState(false);
+// ─── Event detail panels ─────────────────────────────────────────────────────
+
+function PreBlock({ label, children, copyValue, maxHeight = '160px' }) {
   const [copied, setCopied] = useState(false);
-  const [copiedTrace, setCopiedTrace] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const meta = logItem.metadata || {};
-  const sysPrompt = meta.systemPrompt || '';
-  const stages = meta.stages || [];
-  const queryText = meta.query || logItem.message || 'N/A';
-  const totalDurationMs = meta.totalDurationMs || 0;
-  const tokensUsed = meta.tokensUsed || 0;
-
-  const handleCopy = (e) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(sysPrompt);
-    setCopied(true);
-    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'System prompt copied to clipboard', type: 'success' } }));
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCopyTrace = (e) => {
-    e.stopPropagation();
-    const tracePayload = {
-      flowId: meta.flowId || logItem.id,
-      persona: formatPersonaName(meta.persona),
-      userQuery: queryText,
-      totalDurationMs,
-      tokensUsed,
-      timestamp: logItem.timestamp,
-      executionStages: stages,
-      executedTools: toolCalls,
-      assembledSystemPrompt: sysPrompt
-    };
-    navigator.clipboard.writeText(JSON.stringify(tracePayload, null, 2));
-    setCopiedTrace(true);
-    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Full flow trace JSON copied to clipboard', type: 'success' } }));
-    setTimeout(() => setCopiedTrace(false), 2000);
-  };
-
-  const stage4 = stages.find(s => s.stage === 4);
-  const toolCalls = stage4?.toolCalls || meta.toolCalls || meta.executedTools || meta.trace || [];
+  let content = '';
+  if (children == null) {
+    content = '(no output returned)';
+  } else if (typeof children === 'object') {
+    try {
+      content = JSON.stringify(children, null, 2);
+    } catch {
+      content = String(children);
+    }
+  } else {
+    content = String(children);
+  }
+  if (!content.trim()) content = '(empty output)';
 
   return (
-    <div className="ahp-tool-call" style={{ margin: '0 0 8px 0', border: '1px solid var(--border-soft, rgba(255,255,255,0.08))', borderRadius: '8px', overflow: 'hidden', background: 'var(--surface-bg)' }}>
-      <button
-        className="ahp-tool-call-header"
-        onClick={() => setOpen(o => !o)}
-        type="button"
-        style={{
-          padding: '10px 14px',
-          background: 'var(--bg-secondary, rgba(255,255,255,0.02))',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          width: '100%',
-          textAlign: 'left'
-        }}
-      >
-        {!hideLeftTimestamp && (
-          <span className="ahp-pill" style={{
-            fontSize: '10.5px',
-            fontWeight: 600,
-            background: 'var(--surface-subtle, rgba(255,255,255,0.04))',
-            color: 'var(--text-muted, #a0aec0)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            flexShrink: 0,
-            fontFamily: 'monospace',
-            width: '95px'
-          }}>
-            <Clock size={12} /> {new Date(logItem.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    <div className="atv-pre-wrap">
+      {(label || copyValue !== undefined) && (
+        <div className="atv-pre-header">
+          {label && <span className="atv-pre-label">{label}</span>}
+          {copyValue !== undefined && (
+            <button
+              type="button"
+              className="atv-pre-copy"
+              onClick={() => { copyToClipboard(typeof copyValue === 'string' ? copyValue : JSON.stringify(copyValue, null, 2), label || 'Value'); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            >
+              {copied ? <Check size={10} /> : <Copy size={10} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          )}
+        </div>
+      )}
+      <pre className="ahp-tool-pre" style={{ maxHeight: expanded ? 'none' : maxHeight, overflow: 'auto' }}>
+        {content}
+      </pre>
+      {content.length > 300 && (
+        <button type="button" className="atv-expand-btn" onClick={() => setExpanded(e => !e)}>
+          {expanded ? <><ChevronUp size={10} /> Show less</> : <><ChevronDown size={10} /> Show more</>}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function KV({ k, v }) {
+  if (v == null || v === '' || v === 0) return null;
+  return (
+    <div className="atv-kv-row">
+      <span className="atv-kv-key">{k}</span>
+      <span className="atv-kv-val">{typeof v === 'boolean' ? (v ? '✓ yes' : '✗ no') : String(v)}</span>
+    </div>
+  );
+}
+
+function EventDetail({ event }) {
+  const { type, startedAt, endedAt, durationMs, tokensUsed, input, output } = event;
+
+  const startStr = startedAt ? fmtTime(startedAt) : null;
+  const endStr = endedAt ? fmtTime(endedAt) : null;
+
+  return (
+    <div className="atv-event-detail">
+      {/* Standardized performance & timestamp header bar */}
+      <div className="atv-detail-meta-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px', paddingBottom: '6px', borderBottom: '1px dashed var(--border-soft)' }}>
+        {startStr && <span className="atv-stat-chip"><Clock size={9} /> Start: {startStr}</span>}
+        {endStr && <span className="atv-stat-chip"><Clock size={9} /> End: {endStr}</span>}
+        {durationMs != null && durationMs > 0 && <span className="atv-stat-chip"><Zap size={9} /> Latency: {fmtMs(durationMs)}</span>}
+        {tokensUsed != null && tokensUsed > 0 && <span className="atv-stat-chip"><Bot size={9} /> {tokensUsed} tokens</span>}
+      </div>
+
+      {/* Module-specific Metadata */}
+      {type === 'conversation_loaded' && (
+        <>
+          <KV k="Persona ID" v={event.personaId} />
+          <KV k="Persona Name" v={event.personaName} />
+          <KV k="History Messages" v={event.historyCount} />
+          <KV k="Active Note" v={event.activeNotePath} />
+          <KV k="Compacted" v={event.isCompacted} />
+          <KV k="Turns Compacted" v={event.compactedTurnsCount} />
+        </>
+      )}
+
+      {type === 'planner' && (
+        <>
+          <KV k="Confidence Score" v={event.confidenceScore > 0 ? `${(event.confidenceScore * 100).toFixed(0)}%` : null} />
+          <KV k="Evidence Retrieved" v={event.evidenceLength > 0 ? `${event.evidenceLength} chars` : null} />
+        </>
+      )}
+
+      {type === 'prompt_construction' && (
+        <>
+          <KV k="System Prompt Length" v={event.systemPromptLength} />
+          <KV k="Harness Validated" v={event.harnessValid} />
+          <SystemPromptViewer prompt={event.systemPrompt || event.turnSystemPrompt || ''} />
+        </>
+      )}
+
+      {(type === 'tool_execution' || type === 'tool_invocation' || type === 'tool_response') && (
+        <>
+          <KV k="Tool" v={event.toolName} />
+          <KV k="Type" v={event.toolType} />
+          {event.args && <PreBlock label="Arguments (Input)" copyValue={event.args}>{event.args}</PreBlock>}
+          {output !== undefined && output !== null && <PreBlock label="Response Output (Result)" copyValue={output}>{output}</PreBlock>}
+        </>
+      )}
+
+      {(type === 'llm_execution' || type === 'llm_request' || type === 'llm_response') && (
+        <>
+          <KV k="Strategy" v={event.strategy} />
+          <KV k="Tool Calls Count" v={event.toolCallsCount} />
+          <KV k="Corrected" v={event.corrected} />
+          {event.grounding && (
+            <>
+              <KV k="Verified Citations" v={event.grounding.verifiedCitations} />
+              <KV k="Broken Citations" v={event.grounding.brokenCitations} />
+            </>
+          )}
+        </>
+      )}
+
+      {type === 'trace_completed' && (
+        <>
+          <KV k="Total Turn Latency" v={fmtMs(event.totalDurationMs || durationMs)} />
+          <KV k="Status" v={event.status || 'ok'} />
+        </>
+      )}
+
+      {/* Input payload */}
+      {type !== 'tool_execution' && type !== 'tool_invocation' && input != null && input !== '' && typeof input === 'string' && input.length > 0 && (
+        <PreBlock label="Input Payload" copyValue={input}>{input}</PreBlock>
+      )}
+
+      {/* Output payload */}
+      {type !== 'prompt_construction' && type !== 'tool_execution' && type !== 'tool_response' && output != null && output !== '' && typeof output === 'string' && output.length > 0 && (
+        <PreBlock label="Output Payload" copyValue={output}>{output}</PreBlock>
+      )}
+    </div>
+  );
+}
+
+// ─── Single timeline event row ───────────────────────────────────────────────
+
+function EventRow({ event, isLast }) {
+  const [open, setOpen] = useState(false);
+  const cfg = getEventCfg(event.type);
+  const Icon = cfg.icon;
+
+  return (
+    <div className="atv-event-wrapper">
+      {/* connector line above */}
+      <div className="atv-connector-top" />
+
+      <div className={`atv-event-row${open ? ' open' : ''}`}>
+        {/* Icon node */}
+        <div className="atv-event-icon-col">
+          <div className="atv-event-node" style={{ background: cfg.bg, borderColor: cfg.color }}>
+            <Icon size={12} style={{ color: cfg.color }} />
+          </div>
+        </div>
+
+        {/* Timestamp */}
+        <span className="atv-event-time">{fmtTime(event.startedAt)}</span>
+
+        {/* Label + type badge */}
+        <div className="atv-event-label-wrap">
+          <span className="atv-event-label">{event.label || cfg.label}</span>
+          <span className="atv-event-type-badge" style={{ background: cfg.bg, color: cfg.color }}>
+            {event.type}
+          </span>
+        </div>
+
+        {/* Duration pill */}
+        {event.durationMs != null && event.durationMs > 0 && (
+          <span className="atv-duration-pill">
+            <Zap size={9} /> {fmtMs(event.durationMs)}
           </span>
         )}
 
-        {!hideDotNode && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <span style={{
-              width: '22px',
-              height: '22px',
-              borderRadius: '50%',
-              background: 'var(--accent-default, #6366f1)',
-              color: '#fff',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 8px rgba(99, 102, 241, 0.45)',
-              flexShrink: 0
-            }}>
-              <Activity size={12} />
-            </span>
-          </div>
-        )}
-
-        <span className="ahp-tool-name" style={{ fontWeight: 600, color: 'var(--text-normal)', flexShrink: 0 }}>
-          AIFlow &middot; {formatPersonaName(meta.persona)}
-        </span>
-
-        <span className="ahp-tool-args-preview" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', opacity: 0.85, flex: 1, margin: '0 4px' }}>
-          &quot;{queryText}&quot;
-        </span>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-          {totalDurationMs > 0 && (
-            <span className="ahp-pill" style={{ fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: 'var(--accent-default, #6366f1)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-              ⚡ {totalDurationMs}ms
-            </span>
-          )}
-          {tokensUsed > 0 && (
-            <span className="ahp-pill" style={{ fontSize: '10px', fontWeight: 600 }}>
-              {tokensUsed} tokens
-            </span>
-          )}
-          <ChevronRight size={14} className={`ahp-tool-chevron${open ? ' open' : ''}`} />
-        </div>
-      </button>
+        {/* Expand toggle */}
+        <button
+          type="button"
+          className="atv-expand-toggle"
+          onClick={() => setOpen(o => !o)}
+          aria-label={open ? 'Collapse' : 'Expand'}
+        >
+          <ChevronDown size={13} className={`atv-chevron${open ? ' open' : ''}`} />
+        </button>
+      </div>
 
       {open && (
-        <div className="ahp-tool-body" style={{ padding: '14px', gap: '10px', display: 'flex', flexDirection: 'column' }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <div className="ahp-tool-section-label" style={{ margin: 0 }}>User Query</div>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                style={{ fontSize: '10.5px', height: '22px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                onClick={handleCopyTrace}
-              >
-                {copiedTrace ? <Check size={12} /> : <Copy size={12} />}
-                {copiedTrace ? 'Copied Trace!' : 'Copy Full Trace JSON'}
-              </button>
-            </div>
-            <pre className="ahp-tool-pre" style={{ whiteSpace: 'pre-wrap', maxHeight: '80px', margin: '4px 0' }}>{queryText}</pre>
+        <div className="atv-event-detail-wrap">
+          <EventDetail event={event} />
+        </div>
+      )}
+
+      {/* connector line below */}
+      {!isLast && <div className="atv-connector-bottom" />}
+    </div>
+  );
+}
+
+// ─── System prompt viewer (shared across all traces for a flow) ──────────────
+
+function SystemPromptViewer({ prompt }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [fullHeight, setFullHeight] = useState(false);
+  if (!prompt) return null;
+  return (
+    <div className="atv-sysprompt-block">
+      <button
+        type="button"
+        className="atv-sysprompt-header"
+        onClick={() => setOpen(o => !o)}
+      >
+        <Terminal size={12} />
+        <span>Assembled System Prompt</span>
+        <span className="atv-sysprompt-len">({prompt.length} chars)</span>
+        <ChevronDown size={12} className={`atv-chevron${open ? ' open' : ''}`} />
+      </button>
+      {open && (
+        <div className="atv-sysprompt-body">
+          <div className="atv-sysprompt-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ fontSize: '10.5px', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              onClick={() => setFullHeight(f => !f)}
+            >
+              {fullHeight ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+              {fullHeight ? 'Collapse' : 'Expand'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ fontSize: '10.5px', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              onClick={() => { copyToClipboard(prompt, 'System prompt'); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            >
+              {copied ? <Check size={11} /> : <Copy size={11} />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
           </div>
-
-          <div>
-            <div className="ahp-tool-section-label">Execution Timeline ({stages.length || 5} Stages)</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', position: 'relative', paddingLeft: '4px' }}>
-              <div style={{
-                position: 'absolute',
-                left: '18px',
-                top: '12px',
-                bottom: '12px',
-                width: '2px',
-                background: 'rgba(99, 102, 241, 0.3)',
-                zIndex: 0
-              }} />
-              {stages.map((stg) => (
-                <div key={stg.stage} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '6px 10px',
-                  background: 'var(--surface-bg, rgba(20, 20, 30, 0.95))',
-                  border: '1px solid var(--border-soft, rgba(255, 255, 255, 0.08))',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  gap: '10px',
-                  position: 'relative',
-                  zIndex: 1
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    <span style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: 'var(--accent-default, #6366f1)',
-                      color: '#fff',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: '10px',
-                      boxShadow: '0 0 8px rgba(99, 102, 241, 0.4)'
-                    }}>
-                      {stg.stage}
-                    </span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-normal)' }}>{stg.name}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                    <span style={{ opacity: 0.4 }}>→</span>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                      padding: '2px 7px',
-                      borderRadius: '4px',
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      color: 'var(--accent-default, #6366f1)',
-                      fontWeight: 600,
-                      fontSize: '10px'
-                    }}>
-                      <Clock size={12} /> {stg.durationMs}ms
-                    </span>
-                  </div>
-
-                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                    {stg.stage === 1 && stg.personaName && <span>Persona: <strong>{stg.personaName}</strong></span>}
-                    {stg.stage === 2 && stg.confidenceScore > 0 && <span>Confidence: <strong>{(stg.confidenceScore * 100).toFixed(0)}%</strong></span>}
-                    {stg.stage === 4 && stg.toolCallsCount > 0 && <span>Tools: <strong>{stg.toolCallsCount}</strong></span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {toolCalls.length > 0 && (
-            <div style={{ border: '1px solid var(--border-color, rgba(255,255,255,0.08))', borderRadius: '6px' }}>
-              <button
-                type="button"
-                onClick={() => setShowTools(t => !t)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 10px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-normal)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600 }}>
-                  <Terminal size={12} /> Executed Tool Calls ({toolCalls.length})
-                </div>
-                <ChevronRight size={12} className={`ahp-tool-chevron${showTools ? ' open' : ''}`} />
-              </button>
-              {showTools && (
-                <div style={{ padding: '8px 10px 10px' }}>
-                  {toolCalls.map((step, i) => (
-                    <ToolCallBlock key={i} step={step} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {sysPrompt && (
-            <div style={{ border: '1px solid var(--border-color, rgba(255,255,255,0.08))', borderRadius: '6px' }}>
-              <button
-                type="button"
-                onClick={() => setShowPrompt(p => !p)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 10px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-normal)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600 }}>
-                  <Terminal size={12} /> Assembled System Prompt ({sysPrompt.length} chars)
-                </div>
-                <ChevronRight size={12} className={`ahp-tool-chevron${showPrompt ? ' open' : ''}`} />
-              </button>
-              {showPrompt && (
-                <div style={{ padding: '8px 10px 10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginBottom: '6px' }}>
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      style={{ fontSize: '10.5px', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                      onClick={handleCopy}
-                    >
-                      {copied ? <Check size={12} /> : <Copy size={12} />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      style={{ fontSize: '10.5px', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                      onClick={() => setFullPrompt(f => !f)}
-                    >
-                      {fullPrompt ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                      {fullPrompt ? 'Collapse Height' : 'Expand Height'}
-                    </button>
-                  </div>
-                  <pre className="ahp-tool-pre" style={{ maxHeight: fullPrompt ? 'none' : '220px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {sysPrompt}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '4px' }}>Logged at {new Date(logItem.timestamp).toLocaleString()}</div>
+          <pre className="ahp-tool-pre" style={{ maxHeight: fullHeight ? 'none' : '220px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {prompt}
+          </pre>
         </div>
       )}
     </div>
   );
 }
 
-function TimelineFlowRow({ logItem, isLast }) {
+// ─── Trace detail view (shows after clicking a trace row) ────────────────────
+
+function TraceDetail({ logItem, onClose }) {
+  const [expandAll, setExpandAll] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState('all');
   const meta = logItem.metadata || {};
-  const timeStr = new Date(logItem.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const events = Array.isArray(meta.events) ? meta.events : [];
+  const query = meta.query || logItem.message || '';
+  const systemPrompt = meta.systemPrompt || '';
+  const totalMs = meta.totalDurationMs || 0;
+  const tokens = meta.tokensUsed || 0;
+
+  // Derive tool call count from events
+  const toolCount = events.filter(e => e.type === 'tool_invocation').length;
+  const hasError = events.some(e => e.type === 'error');
+
+  const filterTypes = ['all', 'llm_request', 'llm_response', 'tool_invocation', 'tool_response', 'planner', 'prompt_construction'];
+  const filtered = filter === 'all' ? events : events.filter(e => e.type === filter);
+
+  const handleCopyTelemetry = (e) => {
+    if (e) e.stopPropagation();
+    const tracePayload = {
+      flowId: meta.flowId || logItem.id,
+      persona: formatPersonaName(meta.persona),
+      userQuery: query,
+      totalDurationMs: totalMs,
+      tokensUsed: tokens,
+      timestamp: logItem.timestamp,
+      executionStages: meta.stages || [],
+      executionEvents: events,
+      executedTools: events.filter(ev => ev.type === 'tool_invocation').map(ev => ({ name: ev.toolName, args: ev.args })),
+      assembledSystemPrompt: systemPrompt
+    };
+    copyToClipboard(JSON.stringify(tracePayload, null, 2), 'Full telemetry JSON');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportMD = () => {
+    const lines = [
+      `# AI Execution Trace`,
+      ``,
+      `**Query:** ${query}`,
+      `**Persona:** ${formatPersonaName(meta.persona)}`,
+      `**Duration:** ${fmtMs(totalMs)}`,
+      `**Tokens:** ${tokens}`,
+      `**Flow ID:** ${meta.flowId || '—'}`,
+      ``,
+      `## Timeline`,
+      ``,
+      ...events.map(ev => `- \`${fmtTime(ev.startedAt)}\` **${ev.label || ev.type}** ${ev.durationMs ? `(${fmtMs(ev.durationMs)})` : ''}`),
+    ];
+    copyToClipboard(lines.join('\n'), 'Trace Markdown');
+  };
+
+  if (events.length === 0) {
+    // Legacy log without events[] — show old-style stage summary
+    return (
+      <div className="atv-trace-detail">
+        <div className="atv-trace-detail-header">
+          <button type="button" className="atv-back-btn" onClick={onClose}><ArrowLeft size={13} /> Traces</button>
+          <span className="atv-trace-query">{query}</span>
+          <div className="atv-trace-detail-actions">
+            <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={handleCopyTelemetry}>
+              {copied ? <Check size={11} /> : <Copy size={11} />}
+              {copied ? 'Copied!' : 'Copy Full Telemetry'}
+            </button>
+          </div>
+        </div>
+        <div className="atv-legacy-notice">
+          <AlertCircle size={13} />
+          <span>This trace was recorded before the timeline upgrade. Granular event data is not available. Re-send the same message to generate a full trace.</span>
+        </div>
+        {/* Show stages if available */}
+        {Array.isArray(meta.stages) && meta.stages.length > 0 && (
+          <div className="atv-stages-legacy">
+            {meta.stages.map(stg => (
+              <div key={stg.stage} className="atv-stage-legacy-row">
+                <span className="atv-stage-num">{stg.stage}</span>
+                <span className="atv-stage-name">{stg.name}</span>
+                <span className="atv-duration-pill"><Zap size={9} /> {fmtMs(stg.durationMs)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <SystemPromptViewer prompt={systemPrompt} />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
-      {/* Left timestamp */}
-      <div style={{
-        width: '68px',
-        fontSize: '11px',
-        fontWeight: 600,
-        color: 'var(--text-muted)',
-        fontFamily: 'monospace',
-        flexShrink: 0,
-        textAlign: 'right',
-        paddingTop: '10px',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'flex-end',
-        gap: '4px'
-      }}>
-        <Clock size={12} style={{ opacity: 0.7, marginTop: '1px' }} />
-        <span>{timeStr}</span>
-      </div>
-
-      {/* Center glowing dot node & continuous vertical timeline thread */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{ width: '2px', height: '10px', background: 'rgba(99, 102, 241, 0.35)', flexShrink: 0 }} />
-        <div style={{
-          width: '22px',
-          height: '22px',
-          borderRadius: '50%',
-          background: 'var(--accent-default, #6366f1)',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 0 10px rgba(99, 102, 241, 0.5)',
-          flexShrink: 0,
-          zIndex: 2
-        }}>
-          <Activity size={12} />
+    <div className="atv-trace-detail">
+      {/* Header */}
+      <div className="atv-trace-detail-header">
+        <button type="button" className="atv-back-btn" onClick={onClose}><ArrowLeft size={13} /> Traces</button>
+        <span className="atv-trace-query" title={query}>{query}</span>
+        <div className="atv-trace-detail-actions">
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={handleCopyTelemetry}>
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? 'Copied Telemetry!' : 'Copy Full Telemetry'}
+          </button>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={handleExportMD}>
+            <FileText size={11} /> Export MD
+          </button>
         </div>
-        {!isLast && <div style={{ width: '2px', flex: 1, background: 'rgba(99, 102, 241, 0.35)', minHeight: '16px' }} />}
       </div>
 
-      {/* Flow card on right */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <FlowTelemetryCard logItem={logItem} hideLeftTimestamp hideDotNode />
+      {/* Stats bar */}
+      <div className="atv-trace-stats">
+        <span className="atv-stat-chip"><Clock size={10} /> {fmtMs(totalMs)}</span>
+        <span className="atv-stat-chip"><Bot size={10} /> {tokens} tokens</span>
+        {toolCount > 0 && <span className="atv-stat-chip"><Wrench size={10} /> {toolCount} tools</span>}
+        {hasError && <span className="atv-stat-chip atv-stat-error"><AlertCircle size={10} /> Error</span>}
+        <span className="atv-stat-chip" style={{ opacity: 0.6, fontSize: '9.5px', fontFamily: 'monospace' }}>{meta.flowId?.slice(0, 8)}…</span>
+      </div>
+
+      {/* Controls */}
+      <div className="atv-timeline-controls">
+        <div className="atv-filter-row">
+          <Filter size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          {filterTypes.map(ft => (
+            <button
+              key={ft}
+              type="button"
+              className={`atv-filter-chip${filter === ft ? ' active' : ''}`}
+              onClick={() => setFilter(ft)}
+            >
+              {ft === 'all' ? 'All' : ft.replace(/_/g, ' ')}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(true)}>Expand All</button>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(false)}>Collapse</button>
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div className="atv-timeline">
+        {filtered.length === 0 && (
+          <div className="ahp-empty">No events match this filter.</div>
+        )}
+        {filtered.map((event, idx) => (
+          <EventRowControlled
+            key={`${event.type}-${idx}`}
+            event={event}
+            isLast={idx === filtered.length - 1}
+            forceOpen={expandAll}
+          />
+        ))}
+      </div>
+
+      <SystemPromptViewer prompt={systemPrompt} />
+    </div>
+  );
+}
+
+// Wrapper that lets expandAll override local open state with classic glowing dot & continuous vertical line timeline
+function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = forceOpen || localOpen;
+  const cfg = getEventCfg(event.type);
+  const Icon = cfg.icon;
+  const isSystemDriven = event.type === 'conversation_loaded' ||
+    event.type === 'planner' ||
+    event.type === 'prompt_construction' ||
+    event.type === 'llm_request' ||
+    event.toolType === 'programmatic' ||
+    event.toolType === 'pre-retrieval' ||
+    (event.type === 'tool_execution' && (
+      event.toolType === 'programmatic' ||
+      event.toolType === 'pre-retrieval' ||
+      event.toolName === 'read_note' ||
+      event.toolName === 'search_notes' ||
+      event.toolName === 'get_note_graph' ||
+      event.toolName === 'get_note_stats'
+    ));
+
+  const DriverIcon = isSystemDriven ? Zap : Bot;
+  const driverLabel = isSystemDriven ? 'SYSTEM' : 'LLM';
+  const enrichedEvent = turnSystemPrompt ? { ...event, turnSystemPrompt } : event;
+
+  return (
+    <div className="atv-timeline-row">
+      {/* 1. Left timestamp */}
+      <div className="atv-timeline-time-col">
+        <Clock size={11} className="atv-time-icon" />
+        <span>{fmtTime(event.startedAt)}</span>
+      </div>
+
+      {/* 2. Center continuous vertical line thread & glowing dot node */}
+      <div className="atv-timeline-thread-col">
+        <div className="atv-thread-line-top" />
+        <div
+          className="atv-timeline-dot-node"
+          style={{
+            background: cfg.bg,
+            borderColor: cfg.color,
+            boxShadow: `0 0 10px ${cfg.color}66`
+          }}
+        >
+          <Icon size={12} style={{ color: cfg.color }} />
+        </div>
+        {!isLast && <div className="atv-thread-line-bottom" />}
+      </div>
+
+      {/* 3. Right expandable card container */}
+      <div className={`atv-timeline-card${open ? ' open' : ''}`}>
+        <button
+          type="button"
+          className="atv-card-header"
+          onClick={() => setLocalOpen(o => !o)}
+        >
+          <span className="atv-card-title">{event.label || cfg.label}</span>
+          <span className="atv-event-type-badge" style={{ background: cfg.bg, color: cfg.color }}>
+            {event.type}
+          </span>
+          <span className={`atv-driver-badge ${isSystemDriven ? 'system' : 'llm'}`}>
+            <DriverIcon size={8} /> {driverLabel}
+          </span>
+
+          <div className="atv-card-header-right">
+            {event.durationMs != null && event.durationMs > 0 && (
+              <span className="atv-duration-pill">
+                <Zap size={9} /> {fmtMs(event.durationMs)}
+              </span>
+            )}
+            <ChevronDown size={14} className={`atv-chevron${open ? ' open' : ''}`} />
+          </div>
+        </button>
+
+        {open && (
+          <div className="atv-card-body">
+            <EventDetail event={enrichedEvent} />
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+// ─── Trace list row ──────────────────────────────────────────────────────────
+
+function TraceRow({ logItem, selected, onClick }) {
+  const [copied, setCopied] = useState(false);
+  const meta = logItem.metadata || {};
+  const query = meta.query || logItem.message || '(no query)';
+  const totalMs = meta.totalDurationMs || 0;
+  const tokens = meta.tokensUsed || 0;
+  const events = Array.isArray(meta.events) ? meta.events : [];
+  const toolCount = events.filter(e => e.type === 'tool_invocation').length;
+  const hasEvents = events.length > 0;
+  const ts = new Date(logItem.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const handleCopyRow = (e) => {
+    e.stopPropagation();
+    const tracePayload = {
+      flowId: meta.flowId || logItem.id,
+      persona: formatPersonaName(meta.persona),
+      userQuery: query,
+      totalDurationMs: totalMs,
+      tokensUsed: tokens,
+      timestamp: logItem.timestamp,
+      executionStages: meta.stages || [],
+      executionEvents: events,
+      executedTools: events.filter(ev => ev.type === 'tool_invocation').map(ev => ({ name: ev.toolName, args: ev.args })),
+      assembledSystemPrompt: meta.systemPrompt || ''
+    };
+    copyToClipboard(JSON.stringify(tracePayload, null, 2), 'Full telemetry JSON');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      type="button"
+      className={`atv-trace-row${selected ? ' selected' : ''}`}
+      onClick={onClick}
+    >
+      <div className="atv-trace-row-top">
+        <span className="atv-trace-row-time">{ts}</span>
+        <span className="atv-trace-row-query">{query}</span>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ fontSize: '10px', height: '22px', padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: 'auto', flexShrink: 0 }}
+          onClick={handleCopyRow}
+          title="Copy Full Telemetry JSON"
+        >
+          {copied ? <Check size={10} /> : <Copy size={10} />}
+          {copied ? 'Copied!' : 'Telemetry'}
+        </button>
+        <ChevronRight size={12} className="atv-trace-row-arrow" />
+      </div>
+      <div className="atv-trace-row-meta">
+        {totalMs > 0 && <span className="atv-stat-chip"><Clock size={9} /> {fmtMs(totalMs)}</span>}
+        {tokens > 0 && <span className="atv-stat-chip"><Bot size={9} /> {tokens} tok</span>}
+        {toolCount > 0 && <span className="atv-stat-chip"><Wrench size={9} /> {toolCount} tools</span>}
+        {!hasEvents && <span className="atv-stat-chip" style={{ opacity: 0.5, fontSize: '9px' }}>legacy</span>}
+      </div>
+    </button>
+  );
+}
+
+// ─── Flow Telemetry tab: Unified Single Thread View (Latest on Top) ─────────
+
+function FlowTelemetryPane({ conv, flowLogs }) {
+  const [filter, setFilter] = useState('all');
+  const [expandAll, setExpandAll] = useState(false);
+  const [search, setSearch] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const filterTypes = [
+    { id: 'all', label: 'All' },
+    { id: 'system', label: '⚡ System-Driven' },
+    { id: 'llm', label: '🤖 LLM-Driven' },
+    { id: 'tool_execution', label: 'Tools' },
+    { id: 'llm_execution', label: 'LLM' },
+    { id: 'prompt_construction', label: 'Prompt' },
+    { id: 'planner', label: 'Planner' },
+    { id: 'error', label: 'Errors' }
+  ];
+
+  // Total stats across the conversation thread
+  const totalTokens = flowLogs.reduce((acc, l) => acc + (l.metadata?.tokensUsed || 0), 0);
+  const totalTools = flowLogs.reduce((acc, l) => acc + (Array.isArray(l.metadata?.events) ? l.metadata.events.filter(e => e.type === 'tool_execution' || e.type === 'tool_invocation').length : 0), 0);
+
+  // Search filter
+  const q = search.trim().toLowerCase();
+  const filteredLogs = q
+    ? flowLogs.filter(l => (l.metadata?.query || l.message || '').toLowerCase().includes(q))
+    : flowLogs;
+
+  // Copy full conversation telemetry
+  const handleCopyFullThreadTelemetry = () => {
+    const threadTelemetry = {
+      conversationId: conv.id,
+      conversationTitle: conv.title || 'Conversation',
+      turnCount: flowLogs.length,
+      totalTokens,
+      totalTools,
+      turns: flowLogs.map((logItem, idx) => ({
+        turnNumber: flowLogs.length - idx,
+        timestamp: logItem.timestamp,
+        query: logItem.metadata?.query || logItem.message,
+        persona: logItem.metadata?.persona,
+        durationMs: logItem.metadata?.totalDurationMs || 0,
+        tokensUsed: logItem.metadata?.tokensUsed || 0,
+        systemPrompt: logItem.metadata?.systemPrompt || '',
+        stages: logItem.metadata?.stages || [],
+        events: logItem.metadata?.events || []
+      }))
+    };
+    copyToClipboard(JSON.stringify(threadTelemetry, null, 2), 'Full Thread Telemetry JSON');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="atv-telemetry-pane">
+      {/* Header bar with thread stats & actions */}
+      <div className="atv-trace-detail-header" style={{ borderBottom: '1px solid var(--border-soft)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span className="atv-stat-chip atv-stat-accent"><Activity size={10} /> {flowLogs.length} Turns</span>
+          <span className="atv-stat-chip"><Bot size={10} /> {totalTokens} Tokens</span>
+          {totalTools > 0 && <span className="atv-stat-chip"><Wrench size={10} /> {totalTools} Tools</span>}
+        </div>
+        <div className="atv-trace-detail-actions" style={{ marginLeft: 'auto' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ fontSize: '10.5px', height: '26px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            onClick={handleCopyFullThreadTelemetry}
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? 'Copied Full Telemetry!' : 'Copy Full Telemetry'}
+          </button>
+        </div>
+      </div>
+
+      {/* Filter & Expand controls */}
+      <div className="atv-timeline-controls">
+        <div className="atv-filter-row">
+          <Filter size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          {filterTypes.map(ft => (
+            <button
+              key={ft.id}
+              type="button"
+              className={`atv-filter-chip${filter === ft.id ? ' active' : ''}`}
+              onClick={() => setFilter(ft.id)}
+            >
+              {ft.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(true)}>Expand All</button>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(false)}>Collapse</button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="ahp-conv-search-wrap">
+        <Search size={12} className="ahp-conv-search-icon" />
+        <input
+          className="ahp-conv-search"
+          type="text"
+          placeholder="Search conversation thread events…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {search && (
+          <button className="ahp-conv-search-clear" onClick={() => setSearch('')} type="button" aria-label="Clear">
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* Thread Timeline Body — Merged single timeline with horizontal turn dividers, latest turn on top */}
+      <div className="atv-timeline">
+        {filteredLogs.length === 0 && (
+          <div className="ahp-empty">
+            {flowLogs.length === 0
+              ? 'No flow telemetry recorded yet for this conversation thread. Send a message in chat to generate execution events.'
+              : 'No execution events match your search.'}
+          </div>
+        )}
+
+        {filteredLogs.map((logItem, turnIdx) => {
+          const meta = logItem.metadata || {};
+          const query = meta.query || logItem.message || '(no query)';
+          const totalMs = meta.totalDurationMs || 0;
+          const tokens = meta.tokensUsed || 0;
+          const events = Array.isArray(meta.events) ? meta.events : [];
+          const systemPrompt = meta.systemPrompt || '';
+          const turnNumber = flowLogs.length - turnIdx; // Turn 3, Turn 2, Turn 1 (newest first)
+
+          const filteredEvents = events.filter(e => {
+            if (filter === 'all') return true;
+            const isSys = e.callerType === 'system' ||
+              e.type === 'conversation_loaded' ||
+              e.type === 'planner' ||
+              e.type === 'prompt_construction' ||
+              e.type === 'llm_request' ||
+              e.type === 'error' ||
+              e.toolType === 'programmatic' ||
+              e.toolType === 'pre-retrieval';
+
+            if (filter === 'system') return isSys;
+            if (filter === 'llm') return !isSys;
+            return e.type === filter;
+          });
+
+          const tokensDetail = meta.tokensDetail || null;
+
+          return (
+            <React.Fragment key={logItem.id || `turn-${turnIdx}`}>
+              {/* Horizontal Turn Divider Line */}
+              <div className="atv-turn-divider">
+                <div className="atv-turn-divider-line" />
+                <div className="atv-turn-divider-content">
+                  <span className="atv-turn-badge">Turn #{turnNumber}</span>
+                  <span className="atv-turn-query" title={query}>"{query}"</span>
+                  <div className="atv-turn-meta">
+                    {totalMs > 0 && <span className="atv-stat-chip"><Clock size={9} /> {fmtMs(totalMs)}</span>}
+                    {tokens > 0 && (
+                      <span className="atv-stat-chip" title={tokensDetail ? `Prompt: ${tokensDetail.promptTokens || 0} | Completion: ${tokensDetail.completionTokens || 0}` : ''}>
+                        <Bot size={9} /> {tokens} tok {tokensDetail ? `(${tokensDetail.promptTokens || 0}p/${tokensDetail.completionTokens || 0}c)` : ''}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '9.5px', height: '20px', padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(JSON.stringify(meta, null, 2), `Turn #${turnNumber} Telemetry JSON`);
+                      }}
+                      title={`Copy Turn #${turnNumber} Telemetry`}
+                    >
+                      <Copy size={9} /> Turn JSON
+                    </button>
+                  </div>
+                </div>
+                <div className="atv-turn-divider-line" />
+              </div>
+
+              {/* Legacy fallback notice for old logs */}
+              {events.length === 0 && (
+                <div className="atv-legacy-notice" style={{ margin: '6px 0 10px 0' }}>
+                  <AlertCircle size={12} />
+                  <span>Turn recorded before granular event logging.</span>
+                </div>
+              )}
+
+              {/* Timeline events in this turn running along single timeline */}
+              {filteredEvents.map((event, idx) => (
+                <EventRowControlled
+                  key={`${event.type}-${idx}`}
+                  event={event}
+                  turnSystemPrompt={systemPrompt}
+                  isLast={idx === filteredEvents.length - 1 && turnIdx === filteredLogs.length - 1}
+                  forceOpen={expandAll}
+                />
+              ))}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── ConversationPane ────────────────────────────────────────────────────────
 
 function ConversationPane({ conv, onBack }) {
   const [messages, setMessages] = useState(null);
@@ -495,37 +918,40 @@ function ConversationPane({ conv, onBack }) {
   const [activeTab, setActiveTab] = useState('messages');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [copiedSession, setCopiedSession] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
-        const [msgRes, flowRes, promptRes] = await Promise.all([
+        const [msgRes, flowRes] = await Promise.all([
           aiGetMessages(conv.id),
-          aiGetLogs('FlowTracker', 100, conv.id).catch(() => ({ success: true, data: [] })),
-          aiGetLogs('PromptTracker', 100, conv.id).catch(() => ({ success: true, data: [] }))
+          aiGetLogs('FlowTracker', 200, conv.id).catch(() => ({ success: true, data: [] }))
         ]);
-        const loadedMessages = msgRes?.success ? (msgRes.data || []) : [];
-        if (msgRes?.success) setMessages(loadedMessages);
+        if (cancelled) return;
+
+        if (msgRes?.success) setMessages(msgRes.data || []);
         else setError(msgRes?.error || 'Failed to load messages.');
 
-        const rawFlowLogs = flowRes?.success ? (flowRes.data || []) : [];
-        const rawPromptLogs = promptRes?.success ? (promptRes.data || []) : [];
-        const combinedLogs = [...rawFlowLogs, ...rawPromptLogs];
+        const rawFlow = flowRes?.success ? (flowRes.data || []) : [];
 
-        // Strict session ID matching to prevent leaking flow cards across different chats
-        const filtered = combinedLogs.filter(item => {
-          const itemConvId = item.metadata?.conversationId;
-          return itemConvId === conv.id;
+        // Strict conversation-scoped filtering
+        const matchedFlow = rawFlow.filter(item => item.metadata?.conversationId === conv.id);
+
+        // Sort latest turn first (newest turn strictly at top)
+        matchedFlow.sort((a, b) => {
+          const tA = new Date(a.timestamp).getTime() || a.id || 0;
+          const tB = new Date(b.timestamp).getTime() || b.id || 0;
+          return tB - tA;
         });
-        setFlowLogs(filtered);
+        setFlowLogs(matchedFlow);
       } catch (e) {
-        setError(e.message);
+        if (!cancelled) setError(e.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
+    return () => { cancelled = true; };
   }, [conv.id]);
 
   return (
@@ -536,7 +962,7 @@ function ConversationPane({ conv, onBack }) {
         </button>
         <div className="ahp-trace-title">{conv.title}</div>
         <div className="ahp-trace-meta">Persona: {formatPersonaName(conv.persona)} &middot; {new Date(conv.created_at).toLocaleDateString()}</div>
-        
+
         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
           <button
             className={`btn ${activeTab === 'messages' ? 'btn-primary' : 'btn-secondary'}`}
@@ -560,87 +986,27 @@ function ConversationPane({ conv, onBack }) {
           </button>
         </div>
       </div>
-      <div className="ahp-trace-body">
-        {loading && <div className="ahp-empty">Loading details&hellip;</div>}
+
+      <div className={`ahp-trace-body${activeTab === 'flow' ? ' is-flow-tab' : ''}`}>
+        {loading && <div className="ahp-empty">Loading&hellip;</div>}
         {error && <div className="ahp-error-bar"><AlertCircle size={14} /> {error}</div>}
+
         {!loading && !error && activeTab === 'messages' && (
           <>
             {messages?.length === 0 && <div className="ahp-empty">No messages in this conversation.</div>}
-            {messages?.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+            {messages?.map((msg, idx) => <MessageBubble key={msg.id || `msg-${idx}`} msg={msg} />)}
           </>
         )}
+
         {!loading && !error && activeTab === 'flow' && (
-          <>
-            {flowLogs.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  style={{ fontSize: '11px', height: '26px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                  onClick={() => {
-                    const exportData = {
-                      conversationId: conv.id,
-                      title: conv.title,
-                      persona: formatPersonaName(conv.persona),
-                      totalLogs: flowLogs.length,
-                      telemetry: flowLogs.map(l => ({
-                        timestamp: l.timestamp,
-                        query: l.metadata?.query || l.message,
-                        persona: formatPersonaName(l.metadata?.persona),
-                        totalDurationMs: l.metadata?.totalDurationMs,
-                        tokensUsed: l.metadata?.tokensUsed,
-                        stages: l.metadata?.stages,
-                        systemPrompt: l.metadata?.systemPrompt
-                      }))
-                    };
-                    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
-                    setCopiedSession(true);
-                    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'All session telemetry JSON copied to clipboard', type: 'success' } }));
-                    setTimeout(() => setCopiedSession(false), 2500);
-                  }}
-                >
-                  {copiedSession ? <Check size={12} style={{ color: '#10b981' }} /> : <Copy size={12} />}
-                  {copiedSession ? 'Copied All Session Telemetry!' : 'Copy All Session Telemetry JSON'}
-                </button>
-              </div>
-            )}
-            {flowLogs.length === 0 && <div className="ahp-empty">No flow telemetry logs recorded yet.</div>}
-            {flowLogs.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                {flowLogs.map((item, idx) => (
-                  <TimelineFlowRow key={item.id} logItem={item} isLast={idx === flowLogs.length - 1} />
-                ))}
-              </div>
-            )}
-          </>
+          <FlowTelemetryPane conv={conv} flowLogs={flowLogs} />
         )}
       </div>
-
-      {copiedSession && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: 'var(--bg-secondary, #1e1e2e)',
-          color: 'var(--text-normal, #fff)',
-          border: '1px solid var(--accent-default, #6366f1)',
-          borderRadius: '8px',
-          padding: '10px 16px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '12px',
-          fontWeight: 600,
-          zIndex: 9999
-        }}>
-          <Check size={14} style={{ color: '#10b981' }} />
-          <span>Copied all session flow telemetry JSON to clipboard!</span>
-        </div>
-      )}
     </div>
   );
 }
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function AIHealthPage({ onBack }) {
   const [health, setHealth] = useState(null);
@@ -676,9 +1042,9 @@ export default function AIHealthPage({ onBack }) {
   const q = convSearch.trim().toLowerCase();
   const filteredConversations = q
     ? conversations.filter(c =>
-        c.title.toLowerCase().includes(q) ||
-        formatPersonaName(c.persona).toLowerCase().includes(q)
-      )
+      c.title.toLowerCase().includes(q) ||
+      formatPersonaName(c.persona).toLowerCase().includes(q)
+    )
     : conversations;
 
   return (
@@ -696,9 +1062,7 @@ export default function AIHealthPage({ onBack }) {
       <div className="ahp-body">
         {/* Left column */}
         <div className="ahp-left">
-          {error && (
-            <div className="ahp-error-bar"><AlertCircle size={14} />{error}</div>
-          )}
+          {error && <div className="ahp-error-bar"><AlertCircle size={14} />{error}</div>}
 
           <div className="ahp-card">
             <div className="ahp-card-header">
@@ -749,6 +1113,7 @@ export default function AIHealthPage({ onBack }) {
               <Database size={14} /><span>Database Connections</span>
             </div>
             <div className="ahp-db-list">
+              <DbRow label="Telemetry DB" count={db?.totalTelemetry ?? 0} countLabel="flows" path={db?.telemetryDBPath} status={db?.status} />
               <DbRow label="Logs DB" count={db?.totalLogs ?? 0} countLabel="entries" path={db?.logDBPath} status={db?.status} />
               <DbRow label="Persona Registry" count={db?.totalPersonas ?? 0} countLabel="personas" path={db?.personaDBPath} status={db?.status} />
               <DbRow label="Embeddings DB" count={db?.totalChunks ?? 0} countLabel="chunks" path={db?.embeddingDBPath} status={db?.status} />
@@ -756,20 +1121,29 @@ export default function AIHealthPage({ onBack }) {
             </div>
           </div>
 
-          {/* Database Cleanup Control Card */}
+          {/* Database Cleanup */}
           <div className="ahp-card" style={{ padding: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
               <Trash2 size={12} style={{ color: 'var(--status-danger-text, #ef4444)' }} />
-              <span>Database Logs Cleanup</span>
+              <span>Database & Telemetry Cleanup</span>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                id="ahp-log-cleanup-target"
+                defaultValue="FlowTracker"
+                className="select-input"
+                style={{ flex: 1, minWidth: '130px', fontSize: '11px', height: '26px' }}
+              >
+                <option value="FlowTracker">Telemetry DB (FlowTracker)</option>
+                <option value="all">All Logs & Telemetry DBs</option>
+              </select>
               <select
                 id="ahp-log-cleanup-select"
                 defaultValue="now"
                 className="select-input"
-                style={{ flex: 1, fontSize: '11px', height: '26px' }}
+                style={{ flex: 1, minWidth: '130px', fontSize: '11px', height: '26px' }}
               >
-                <option value="now">All Logs (Default / Now)</option>
+                <option value="now">All Records (Now)</option>
                 <option value="1h">Older than 1 Hour</option>
                 <option value="24h">Older than 24 Hours</option>
                 <option value="7d">Older than 7 Days</option>
@@ -777,23 +1151,25 @@ export default function AIHealthPage({ onBack }) {
               <button
                 type="button"
                 onClick={async () => {
+                  const target = document.getElementById('ahp-log-cleanup-target')?.value || 'FlowTracker';
                   const sel = document.getElementById('ahp-log-cleanup-select')?.value || 'now';
+                  const sub = target === 'all' ? null : target;
                   let beforeTs = null;
                   const now = Date.now();
                   if (sel === 'now') beforeTs = new Date(now).toISOString();
                   else if (sel === '1h') beforeTs = new Date(now - 3600 * 1000).toISOString();
                   else if (sel === '24h') beforeTs = new Date(now - 86400 * 1000).toISOString();
                   else if (sel === '7d') beforeTs = new Date(now - 7 * 86400 * 1000).toISOString();
-                  if (!window.confirm(`Clear logs up to ${sel === 'now' ? 'now' : sel}?`)) return;
-                  await aiClearLogs(null, beforeTs);
-                  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Database logs cleared', type: 'info' } }));
+                  const targetLabel = target === 'FlowTracker' ? 'Telemetry DB' : 'All Logs & Telemetry DBs';
+                  if (!window.confirm(`Clear ${targetLabel} logs up to ${sel === 'now' ? 'now' : sel}?`)) return;
+                  await aiClearLogs(sub, beforeTs);
+                  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `${targetLabel} logs cleared`, type: 'info' } }));
                   load();
                 }}
                 className="btn btn-secondary"
-                style={{ fontSize: '11px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--status-danger-text, #ef4444)' }}
+                style={{ fontSize: '11px', height: '26px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--status-danger-text, #ef4444)' }}
               >
-                <Trash2 size={12} />
-                Clear
+                <Trash2 size={12} /> Clear Logs
               </button>
             </div>
           </div>
