@@ -81,6 +81,32 @@ describe('AIFlow Master Pipeline & Telemetry Tests', () => {
 
     expect(agent.lastLoggedTelemetry).toBeDefined();
     expect(agent.lastLoggedTelemetry.query).toBe('Explain system architecture');
+
+    // Stages now carry startedAt timestamps
+    for (const stg of stages) {
+      expect(stg.startedAt).toBeDefined();
+      expect(typeof stg.startedAt).toBe('string');
+    }
+
+    // events[] flat chronological list is logged
+    const { events } = agent.lastLoggedTelemetry;
+    expect(Array.isArray(events)).toBe(true);
+    expect(events.length).toBeGreaterThan(0);
+
+    const types = events.map(e => e.type);
+    expect(types).toContain('conversation_loaded');
+    expect(types).toContain('planner');
+    expect(types).toContain('prompt_construction');
+    expect(types.some(t => t === 'llm_execution' || t === 'llm_request')).toBe(true);
+    expect(types).toContain('tool_execution');
+    expect(types).toContain('trace_completed');
+
+    // Chronological order within a turn (Stage 1 -> Stage 5 ascending)
+    for (let i = 1; i < events.length; i++) {
+      expect(new Date(events[i].startedAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(events[i - 1].startedAt).getTime()
+      );
+    }
   });
 
   it('should execute streaming 5-stage pipeline cleanly', async () => {
@@ -111,5 +137,18 @@ describe('AIFlow Master Pipeline & Telemetry Tests', () => {
     expect(res).toBeDefined();
     expect(res.result).toBeDefined();
     expect(res.telemetry.stages[1].confidenceScore).toBe(0.0);
+  });
+
+  it('should record error telemetry trace to LogDB when query execution fails', async () => {
+    agent.queryExecutor.execute = async () => {
+      throw new Error('Groq API rate limit error');
+    };
+
+    await expect(flow.execute('Failing query', { conversationId: 'conv-error-1' })).rejects.toThrow('Groq API rate limit error');
+
+    expect(agent.lastLoggedTelemetry).toBeDefined();
+    expect(agent.lastLoggedTelemetry.conversationId).toBe('conv-error-1');
+    expect(agent.lastLoggedTelemetry.error).toBe('Groq API rate limit error');
+    expect(agent.lastLoggedTelemetry.events.some(e => e.type === 'error')).toBe(true);
   });
 });
