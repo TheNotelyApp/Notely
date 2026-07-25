@@ -170,7 +170,7 @@ function PreBlock({ label, children, copyValue, maxHeight = '160px' }) {
               className="atv-pre-copy"
               onClick={() => { copyToClipboard(typeof copyValue === 'string' ? copyValue : JSON.stringify(copyValue, null, 2), label || 'Value'); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
             >
-              {copied ? <Check size={10} /> : <Copy size={10} />}
+              {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           )}
@@ -181,7 +181,7 @@ function PreBlock({ label, children, copyValue, maxHeight = '160px' }) {
       </pre>
       {content.length > 300 && (
         <button type="button" className="atv-expand-btn" onClick={() => setExpanded(e => !e)}>
-          {expanded ? <><ChevronUp size={10} /> Show less</> : <><ChevronDown size={10} /> Show more</>}
+          {expanded ? <><ChevronUp size={12} /> Show less</> : <><ChevronDown size={12} /> Show more</>}
         </button>
       )}
     </div>
@@ -208,10 +208,10 @@ function EventDetail({ event }) {
     <div className="atv-event-detail">
       {/* Standardized performance & timestamp header bar */}
       <div className="atv-detail-meta-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px', paddingBottom: '6px', borderBottom: '1px dashed var(--border-soft)' }}>
-        {startStr && <span className="atv-stat-chip"><Clock size={9} /> Start: {startStr}</span>}
-        {endStr && <span className="atv-stat-chip"><Clock size={9} /> End: {endStr}</span>}
-        {durationMs != null && durationMs > 0 && <span className="atv-stat-chip"><Zap size={9} /> Latency: {fmtMs(durationMs)}</span>}
-        {tokensUsed != null && tokensUsed > 0 && <span className="atv-stat-chip"><Bot size={9} /> {tokensUsed} tokens</span>}
+        {startStr && <span className="atv-stat-chip"><Clock size={12} /> Start: {startStr}</span>}
+        {endStr && <span className="atv-stat-chip"><Clock size={12} /> End: {endStr}</span>}
+        {durationMs != null && durationMs > 0 && <span className="atv-stat-chip"><Zap size={12} /> Latency: {fmtMs(durationMs)}</span>}
+        {tokensUsed != null && tokensUsed > 0 && <span className="atv-stat-chip"><Bot size={12} /> {tokensUsed} tokens</span>}
       </div>
 
       {/* Module-specific Metadata */}
@@ -314,7 +314,7 @@ function SystemPromptViewer({ prompt }) {
               style={{ fontSize: '10.5px', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               onClick={() => setFullHeight(f => !f)}
             >
-              {fullHeight ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+              {fullHeight ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
               {fullHeight ? 'Collapse' : 'Expand'}
             </button>
             <button
@@ -323,7 +323,7 @@ function SystemPromptViewer({ prompt }) {
               style={{ fontSize: '10.5px', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               onClick={() => { copyToClipboard(prompt, 'System prompt'); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
             >
-              {copied ? <Check size={11} /> : <Copy size={11} />}
+              {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
@@ -367,7 +367,7 @@ function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
     <div className="atv-timeline-row">
       {/* 1. Left timestamp */}
       <div className="atv-timeline-time-col">
-        <Clock size={11} className="atv-time-icon" />
+        <Clock size={12} className="atv-time-icon" />
         <span>{fmtTime(event.startedAt)}</span>
       </div>
 
@@ -399,13 +399,13 @@ function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
             {event.type}
           </span>
           <span className={`atv-driver-badge ${isSystemDriven ? 'system' : 'llm'}`}>
-            <DriverIcon size={8} /> {driverLabel}
+            <DriverIcon size={12} /> {driverLabel}
           </span>
 
           <div className="atv-card-header-right">
             {event.durationMs != null && event.durationMs > 0 && (
               <span className="atv-duration-pill">
-                <Zap size={9} /> {fmtMs(event.durationMs)}
+                <Zap size={12} /> {fmtMs(event.durationMs)}
               </span>
             )}
             <ChevronDown size={14} className={`atv-chevron${open ? ' open' : ''}`} />
@@ -481,9 +481,9 @@ function FlowTelemetryPane({ conv, flowLogs }) {
       {/* Header bar with thread stats & actions */}
       <div className="atv-trace-detail-header" style={{ borderBottom: '1px solid var(--border-soft)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span className="atv-stat-chip atv-stat-accent"><Activity size={10} /> {flowLogs.length} Turns</span>
-          <span className="atv-stat-chip"><Bot size={10} /> {totalTokens} Tokens</span>
-          {totalTools > 0 && <span className="atv-stat-chip"><Wrench size={10} /> {totalTools} Tools</span>}
+          <span className="atv-stat-chip atv-stat-accent"><Activity size={12} /> {flowLogs.length} Turns</span>
+          <span className="atv-stat-chip"><Bot size={12} /> {totalTokens} Tokens</span>
+          {totalTools > 0 && <span className="atv-stat-chip"><Wrench size={12} /> {totalTools} Tools</span>}
         </div>
         <div className="atv-trace-detail-actions" style={{ marginLeft: 'auto' }}>
           <button
@@ -492,7 +492,7 @@ function FlowTelemetryPane({ conv, flowLogs }) {
             style={{ fontSize: '10.5px', height: '26px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             onClick={handleCopyFullThreadTelemetry}
           >
-            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? <Check size={12} /> : <Copy size={12} />}
             {copied ? 'Copied Full Telemetry!' : 'Copy Full Telemetry'}
           </button>
         </div>
@@ -501,7 +501,7 @@ function FlowTelemetryPane({ conv, flowLogs }) {
       {/* Filter & Expand controls */}
       <div className="atv-timeline-controls">
         <div className="atv-filter-row">
-          <Filter size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <Filter size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           {filterTypes.map(ft => (
             <button
               key={ft.id}
@@ -582,10 +582,10 @@ function FlowTelemetryPane({ conv, flowLogs }) {
                   <span className="atv-turn-badge">Turn #{turnNumber}</span>
                   <span className="atv-turn-query" title={query}>&quot;{query}&quot;</span>
                   <div className="atv-turn-meta">
-                    {totalMs > 0 && <span className="atv-stat-chip"><Clock size={9} /> {fmtMs(totalMs)}</span>}
+                    {totalMs > 0 && <span className="atv-stat-chip"><Clock size={12} /> {fmtMs(totalMs)}</span>}
                     {tokens > 0 && (
                       <span className="atv-stat-chip" title={tokensDetail ? `Prompt: ${tokensDetail.promptTokens || 0} | Completion: ${tokensDetail.completionTokens || 0}` : ''}>
-                        <Bot size={9} /> {tokens} tok {tokensDetail ? `(${tokensDetail.promptTokens || 0}p/${tokensDetail.completionTokens || 0}c)` : ''}
+                        <Bot size={12} /> {tokens} tok {tokensDetail ? `(${tokensDetail.promptTokens || 0}p/${tokensDetail.completionTokens || 0}c)` : ''}
                       </span>
                     )}
                     <button
@@ -598,7 +598,7 @@ function FlowTelemetryPane({ conv, flowLogs }) {
                       }}
                       title={`Copy Turn #${turnNumber} Telemetry`}
                     >
-                      <Copy size={9} /> Turn JSON
+                      <Copy size={12} /> Turn JSON
                     </button>
                   </div>
                 </div>
