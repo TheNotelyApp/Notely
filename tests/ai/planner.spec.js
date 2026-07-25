@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Planner = require('../../ai/core/Planner');
+const Planner = require('../../ai/planner/Planner');
 const { semanticToolsCatalog, SemanticToolRunner } = require('../../ai/tools/SemanticTools');
 
 describe('Planner & Semantic Tools Tests (Phase 2)', () => {

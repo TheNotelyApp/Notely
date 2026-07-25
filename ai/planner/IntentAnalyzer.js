@@ -6,7 +6,7 @@
  * without hardcoding query string keywords or tool function signatures.
  */
 
-const { createLogger } = require('./logger');
+const { createLogger } = require('../core/logger');
 const log = createLogger('IntentAnalyzer');
 
 class IntentAnalyzer {
@@ -37,29 +37,59 @@ class IntentAnalyzer {
    */
   analyze(query = '', _context = {}) {
     const q = String(query || '').toLowerCase().trim();
-    const stopWords = new Set(['show', 'me', 'the', 'a', 'an', 'and', 'or', 'for', 'with', 'from', 'that', 'this', 'are', 'can', 'how', 'what', 'get', 'all', 'any', 'find', 'of', 'in']);
+    const stopWords = new Set([
+      'show', 'me', 'the', 'a', 'an', 'and', 'or', 'for', 'with', 'from',
+      'that', 'this', 'are', 'can', 'how', 'what', 'get', 'all', 'any',
+      'find', 'of', 'in', 'across', 'my', 'workspace', 'workspaces',
+      'note', 'notes', 'file', 'files', 'about', 'list', 'read', 'open'
+    ]);
     const queryTerms = q.split(/\s+/).filter(t => t.length > 2 && !stopWords.has(t));
     const registeredTools = this.getRegisteredTools();
     const informationNeeds = new Set();
     const subIntents = [];
     let requiresExternalData = false;
 
-    for (const tool of registeredTools) {
-      const metadataText = `${tool.name} ${tool.description} ${tool.capability} ${tool.informationNeeds.join(' ')}`.toLowerCase();
-      for (const term of queryTerms) {
-        const stem = term.length >= 4 ? term.slice(0, 4) : term;
-        if (metadataText.includes(term) || metadataText.includes(stem)) {
-          tool.informationNeeds.forEach(need => informationNeeds.add(need));
-          subIntents.push(tool.capability);
-          if (tool.capability === 'web:search' || tool.capability === 'web:fetch') {
-            requiresExternalData = true;
+    // Direct Intent Pattern Detection
+    const isTaskQuery = /\b(task|tasks|todo|todos|action item|action items|checklist|checklists)\b/i.test(q);
+    const isTimelineQuery = /\b(recent|timeline|history|changelog|changes)\b/i.test(q);
+    const isGraphQuery = /\b(graph|relation|relations|relationship|topology|connection|connections|architecture)\b/i.test(q);
+    const isWebQuery = /\b(web|http|https|online|search web|fetch web)\b/i.test(q);
+
+    if (isTaskQuery) {
+      informationNeeds.add('action_items');
+      subIntents.push('tasks:extract');
+    }
+    if (isTimelineQuery) {
+      informationNeeds.add('recent_changes');
+      subIntents.push('timeline:reconstruct');
+    }
+    if (isGraphQuery) {
+      informationNeeds.add('entity_relationships');
+      subIntents.push('graph:traverse');
+    }
+    if (isWebQuery) {
+      informationNeeds.add('external_web_content');
+      subIntents.push('web:search');
+      requiresExternalData = true;
+    }
+
+    if (informationNeeds.size === 0) {
+      // General search over workspace metadata if specific term matches tool keywords
+      for (const tool of registeredTools) {
+        const metadataText = `${tool.name} ${tool.description} ${tool.capability} ${tool.informationNeeds.join(' ')}`.toLowerCase();
+        for (const term of queryTerms) {
+          const stem = term.length >= 4 ? term.slice(0, 4) : term;
+          if (metadataText.includes(term) || metadataText.includes(stem)) {
+            tool.informationNeeds.forEach(need => informationNeeds.add(need));
+            subIntents.push(tool.capability);
+            if (tool.capability === 'web:search' || tool.capability === 'web:fetch') {
+              requiresExternalData = true;
+            }
           }
         }
       }
+      informationNeeds.add('workspace_content_search');
     }
-
-    // Always include core workspace content search as baseline
-    informationNeeds.add('workspace_content_search');
 
     // Dynamically derive overall goal label
     let goal = 'synthesize_workspace_notes';

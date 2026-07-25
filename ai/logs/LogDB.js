@@ -63,15 +63,25 @@ class LogDB {
     }
   }
 
-  getLogs(subsystem = null, limit = 100) {
+  getLogs(subsystem = null, limit = 100, conversationId = null) {
     if (!this.db) return [];
     try {
       let query = 'SELECT * FROM logs ';
       const params = [];
+      const conditions = [];
 
       if (subsystem) {
-        query += 'WHERE subsystem = ? ';
+        conditions.push('subsystem = ?');
         params.push(subsystem);
+      }
+
+      if (conversationId) {
+        conditions.push("json_extract(metadata, '$.conversationId') = ?");
+        params.push(conversationId);
+      }
+
+      if (conditions.length > 0) {
+        query += 'WHERE ' + conditions.join(' AND ') + ' ';
       }
 
       query += 'ORDER BY id DESC LIMIT ?';
@@ -93,15 +103,28 @@ class LogDB {
     }
   }
 
-  clearLogs(subsystem = null) {
+  clearLogs(subsystem = null, beforeTimestamp = null) {
     if (!this.db) return;
     try {
+      let query = 'DELETE FROM logs';
+      const params = [];
+      const conditions = [];
+
       if (subsystem) {
-        const stmt = this.db.prepare('DELETE FROM logs WHERE subsystem = ?');
-        stmt.run(subsystem);
-      } else {
-        this.db.exec('DELETE FROM logs');
+        conditions.push('subsystem = ?');
+        params.push(subsystem);
       }
+
+      if (beforeTimestamp) {
+        conditions.push('timestamp <= ?');
+        params.push(beforeTimestamp);
+      }
+
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+      }
+
+      this.db.prepare(query).run(...params);
     } catch (err) {
       log.error('Failed to clear logs:', err.message);
     }

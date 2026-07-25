@@ -1,8 +1,8 @@
 const assert = require('assert');
-const IntentAnalyzer = require('../../ai/core/IntentAnalyzer');
-const CapabilityResolver = require('../../ai/core/CapabilityResolver');
-const Planner = require('../../ai/core/Planner');
-const ContextOrchestrator = require('../../ai/core/ContextOrchestrator');
+const IntentAnalyzer = require('../../ai/planner/IntentAnalyzer');
+const CapabilityResolver = require('../../ai/planner/CapabilityResolver');
+const Planner = require('../../ai/planner/Planner');
+const ContextOrchestrator = require('../../ai/planner/ContextOrchestrator');
 
 describe('4-Layer Decoupled Hybrid Planning Architecture Tests', () => {
   it('Layer 1 (IntentAnalyzer) should deconstruct queries into IntentManifests', () => {
@@ -56,5 +56,15 @@ describe('4-Layer Decoupled Hybrid Planning Architecture Tests', () => {
     assert.ok(res);
     assert.ok(res.confidence > 0);
     assert.ok(Array.isArray(res.trace));
+  });
+
+  it('Layer 1-3 should build a focused single-step plan for workspace task queries', () => {
+    const planner = new Planner({});
+    const plan = planner.createPlan('Summarize key tasks across my workspace');
+    assert.strictEqual(plan.intent, 'summarize_tasks_and_actions');
+    assert.strictEqual(plan.steps.length, 1);
+    assert.strictEqual(plan.steps[0].toolName, 'get_tasks');
+    assert.strictEqual(plan.steps[0].args.status, 'open');
+    assert.strictEqual(plan.steps[0].args.notePath, undefined);
   });
 });

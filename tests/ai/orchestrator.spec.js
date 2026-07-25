@@ -1,7 +1,7 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const ContextOrchestrator = require('../../ai/core/ContextOrchestrator');
+const ContextOrchestrator = require('../../ai/planner/ContextOrchestrator');
 
 describe('ContextOrchestrator Multi-Tool Planning & Context Aggregation Tests', () => {
   let mockAgent;

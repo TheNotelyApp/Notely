@@ -28,7 +28,7 @@
  * generateEmbeddings().
  */
 
-const HttpClient = require('../HttpClient');
+const HttpClient = require('../utils/HttpClient');
 const { createLogger } = require('../core/logger');
 
 const log = createLogger('HuggingFaceEmbeddingProvider');

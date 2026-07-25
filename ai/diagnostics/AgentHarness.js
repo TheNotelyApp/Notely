@@ -3,7 +3,7 @@
  * Measures tool selection precision, grounding accuracy, zero-jargon compliance, and retrieval performance.
  */
 
-const GroundingEngine = require('../core/GroundingEngine');
+const { GroundingEngine } = require('../grounding');
 
 class AgentHarness {
   constructor(agent) {

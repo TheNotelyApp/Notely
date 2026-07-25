@@ -29,7 +29,13 @@ class QueryExecutor {
           activeNotePath: context.currentFile || null,
           activeNoteContent: context.activeNoteContent || null
         });
-        if (ceCtx.personaId) {
+        if (ceCtx.persona && (ceCtx.persona.prompt || ceCtx.persona.systemInstructions)) {
+          personaInput = {
+            id: ceCtx.persona.id || ceCtx.personaId,
+            name: ceCtx.persona.name || ceCtx.personaId,
+            systemInstructions: ceCtx.persona.prompt || ceCtx.persona.systemInstructions
+          };
+        } else if (ceCtx.personaId) {
           personaInput = ceCtx.personaId;
         } else if (ceCtx.system) {
           personaInput = { systemInstructions: ceCtx.system };
@@ -117,6 +123,7 @@ class QueryExecutor {
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
+          conversationId: context.conversationId || 'default',
           persona: context.persona || 'general',
           model: llm?.name || 'unknown',
           messages,
@@ -144,7 +151,7 @@ class QueryExecutor {
       // Extract all tool calls and their results from all steps
       const allToolCalls = [];
       const toolResultsContent = [];
-      if (result.steps) {
+      if (Array.isArray(result.steps)) {
         for (const step of result.steps) {
           if (step.toolCalls && step.toolCalls.length > 0) {
             allToolCalls.push(...step.toolCalls);
@@ -230,7 +237,7 @@ class QueryExecutor {
       }
 
       // Construct the trace array of executed tools and outputs
-      const trace = Array.isArray(orchestratorTrace) ? [...orchestratorTrace] : [];
+      const trace = Array.isArray(orchestratorTrace) ? orchestratorTrace.map(t => ({ ...t, type: t.type || 'programmatic' })) : [];
       if (result.steps) {
         for (const step of result.steps) {
           if (step.toolCalls) {
@@ -240,6 +247,7 @@ class QueryExecutor {
               trace.push({
                 name: call.toolName,
                 args: call.args,
+                type: 'llm',
                 output: toolResult ? (toolResult.output !== undefined ? toolResult.output : toolResult.result) : null
               });
             }
@@ -281,10 +289,11 @@ class QueryExecutor {
   async stream(query, context = {}, onChunk, abortSignal) {
     try {
       const { streamText } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice } = await this._prepareConfig(query, context);
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
+          conversationId: context.conversationId || 'default',
           persona: context.persona || 'general',
           model: llm?.name || 'unknown',
           messages,
@@ -331,7 +340,7 @@ class QueryExecutor {
       }
 
       const steps = await result.steps;
-      const trace = [];
+      const trace = Array.isArray(orchestratorTrace) ? orchestratorTrace.map(t => ({ ...t, type: t.type || 'programmatic' })) : [];
       if (steps) {
         for (const step of steps) {
           if (step.toolCalls) {
@@ -341,6 +350,7 @@ class QueryExecutor {
               trace.push({
                 name: call.toolName,
                 args: call.args,
+                type: 'llm',
                 output: toolResult ? (toolResult.output !== undefined ? toolResult.output : toolResult.result) : null
               });
             }

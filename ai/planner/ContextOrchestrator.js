@@ -11,7 +11,7 @@
  */
 
 const Planner = require('./Planner');
-const { createLogger } = require('./logger');
+const { createLogger } = require('../core/logger');
 const log = createLogger('ContextOrchestrator');
 
 class ContextOrchestrator {
@@ -61,6 +61,7 @@ class ContextOrchestrator {
               executionTrace.push({
                 name: step.toolName,
                 args: step.args,
+                type: 'programmatic',
                 output: typeof res === 'object' ? JSON.stringify(res).slice(0, 500) : String(res).slice(0, 500)
               });
               return { toolName: step.toolName, result: res, error: null };
@@ -69,6 +70,7 @@ class ContextOrchestrator {
             executionTrace.push({
               name: step.toolName,
               args: step.args,
+              type: 'programmatic',
               output: `Error: ${err.message}`
             });
             return { toolName: step.toolName, result: null, error: err.message };
@@ -87,14 +89,15 @@ class ContextOrchestrator {
         }
       }
 
-      // Proactive WorkspaceBrain & Graph evidence ingestion
-      if (this.agent?.workspaceBrain) {
+      // Proactive WorkspaceBrain & Graph evidence ingestion (only when evidence is sparse)
+      if (this.agent?.workspaceBrain && collectedEvidence.length === 0 && iterations === 1) {
         try {
           const wbFacts = await this.agent.workspaceBrain.getWorkspaceFacts(query, context.activeNotePath);
           const factsArray = Array.isArray(wbFacts) ? wbFacts : [];
           executionTrace.push({
             name: 'workspace_graph_retrieval',
             args: { query, activeNotePath: context.activeNotePath || null },
+            type: 'programmatic',
             output: `Retrieved ${factsArray.length} workspace facts & graph relations`
           });
           for (const fact of factsArray) {

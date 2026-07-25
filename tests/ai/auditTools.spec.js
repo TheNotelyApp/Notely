@@ -112,7 +112,7 @@ describe('AI Subsystem Technical Audit Tests', () => {
   });
 
   it('should support create_note for new notes and block overwriting existing notes', async () => {
-    const queryTools = require('../../ai/core/QueryTools');
+    const queryTools = require('../../ai/tools/QueryTools');
     const mockAgent = { workspaceRoot: tempDir, graphDb };
 
     // 1. create_note for brand new note

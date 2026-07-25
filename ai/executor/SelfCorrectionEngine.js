@@ -4,7 +4,7 @@
  * Checks for zero-jargon compliance, citation grounding, and evidence alignment.
  */
 
-const GroundingEngine = require('./GroundingEngine');
+const { GroundingEngine } = require('../grounding');
 
 class SelfCorrectionEngine {
   /**

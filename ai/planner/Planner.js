@@ -8,7 +8,7 @@
 
 const IntentAnalyzer = require('./IntentAnalyzer');
 const CapabilityResolver = require('./CapabilityResolver');
-const { createLogger } = require('./logger');
+const { createLogger } = require('../core/logger');
 const log = createLogger('Planner');
 
 class Planner {
@@ -31,7 +31,7 @@ class Planner {
     const steps = resolvedCapabilities.map(cap => ({
       capability: cap.capability,
       toolName: cap.toolName,
-      args: { query, limit: 5, notePath: query, status: 'open', ...context }
+      args: this._buildStepArgs(cap.toolName, query, context)
     }));
 
     log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, stepsCount: steps.length });
@@ -40,6 +40,26 @@ class Planner {
       manifest: intentManifest,
       steps
     };
+  }
+
+  /**
+   * Helper to construct appropriate arguments per tool
+   * @private
+   */
+  _buildStepArgs(toolName, query, context) {
+    if (toolName === 'get_tasks' || toolName === 'notes.extract_tasks') {
+      return { status: 'open' };
+    }
+    if (toolName === 'read_note' || toolName === 'notes.read') {
+      return context.currentFile ? { filePath: context.currentFile } : {};
+    }
+    if (toolName === 'explore_topic_graph') {
+      return { topic: query, maxHops: 2 };
+    }
+    if (toolName === 'recent_activity') {
+      return { limit: 5 };
+    }
+    return { query, limit: 5 };
   }
 
   /**

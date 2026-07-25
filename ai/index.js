@@ -3,7 +3,7 @@
  * Bootstrap file to initialize all AI components
  */
 
-const DatabaseManager = require('./database/LegacyDBManager');
+const { DatabaseManager } = require('./database');
 const LLMRegistry = require('./providers/LLMRegistry');
 const Agent = require('./core/Agent');
 const AIConfig = require('./core/AIConfig');
@@ -129,13 +129,8 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
     // Phase 5 — Context Engine subsystem
     try {
       const path = require('path');
-      const { MemoryDB } = require('./memory/MemoryDB');
-      const { PersonaDB } = require('./memory/PersonaDB');
-      const { ConversationStore } = require('./memory/ConversationStore');
-      const { SemanticRetriever } = require('./context/SemanticRetriever');
-      const { GraphRetriever } = require('./context/GraphRetriever');
-      const { HybridRetriever } = require('./context/HybridRetriever');
-      const { ContextEngine } = require('./context/ContextEngine');
+      const { MemoryDB, PersonaDB, ConversationStore } = require('./memory');
+      const { SemanticRetriever, GraphRetriever, HybridRetriever, ContextEngine } = require('./context');
 
       const memoryDB = new MemoryDB(workspaceRoot);
       memoryDB.initialize();
@@ -148,7 +143,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       aiAgent.personaDB = personaDB;
 
       if (aiAgent.embeddingDb && aiAgent.embeddingService) {
-        const GraphDB = require('./graph/GraphDB');
+        const { GraphDB } = require('./graph');
         if (!aiAgent.graphDb) {
           aiAgent.graphDb = new GraphDB(workspaceRoot);
           aiAgent.graphDb.initialize();

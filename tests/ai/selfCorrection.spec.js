@@ -1,7 +1,7 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const SelfCorrectionEngine = require('../../ai/core/SelfCorrectionEngine');
+const SelfCorrectionEngine = require('../../ai/executor/SelfCorrectionEngine');
 
 describe('SelfCorrectionEngine ReAct Response Validation Tests', () => {
   let tempDir;

@@ -48,6 +48,7 @@ class PersonaDB {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
+        prompt TEXT,
         file_path TEXT NOT NULL,
         type TEXT NOT NULL DEFAULT 'custom',
         version TEXT DEFAULT '1.0.0',
@@ -58,7 +59,12 @@ class PersonaDB {
       );
     `);
     
-    // Migration: Add content_hash column if it does not exist (older databases)
+    // Migrations for older databases
+    try {
+      this.db.exec("ALTER TABLE personas ADD COLUMN prompt TEXT");
+    } catch {
+      // Column already exists, ignore error
+    }
     try {
       this.db.exec("ALTER TABLE personas ADD COLUMN content_hash TEXT");
     } catch {
@@ -85,10 +91,10 @@ class PersonaDB {
 
     const files = fs.readdirSync(templatesDir).filter(f => f.endsWith('.md'));
     const insert = this.db.prepare(
-      `INSERT INTO personas (id, name, description, file_path, type, version, avatar, content_hash, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO personas (id, name, description, prompt, file_path, type, version, avatar, content_hash, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
-         name=excluded.name, description=excluded.description, file_path=excluded.file_path,
+         name=excluded.name, description=excluded.description, prompt=excluded.prompt, file_path=excluded.file_path,
          type=excluded.type, version=excluded.version, avatar=excluded.avatar, content_hash=excluded.content_hash, updated_at=excluded.updated_at`
     );
 
@@ -103,11 +109,14 @@ class PersonaDB {
 
         const rawContent = fs.readFileSync(destPath, 'utf8');
         const contentHash = PersonaDB.computeHash(rawContent);
-        const { meta } = PersonaDB.parsePersonaFile(destPath);
+        const { meta, prompt } = PersonaDB.parsePersonaFile(destPath);
+        const sysInstructions = prompt || meta?.prompt || '';
+
         insert.run(
           id,
           meta.name || id,
           meta.description || '',
+          sysInstructions,
           destPath,
           'builtin',
           meta.version || '1.0.0',

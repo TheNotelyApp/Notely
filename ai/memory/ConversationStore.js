@@ -60,6 +60,7 @@ class ConversationStore {
   }
 
   addMessage(conversationId, role, content, metadata = null) {
+    if (!conversationId || !role || !content) return null;
     const id = randomUUID();
     const now = new Date().toISOString();
     const metadataStr = metadata ? JSON.stringify(metadata) : null;

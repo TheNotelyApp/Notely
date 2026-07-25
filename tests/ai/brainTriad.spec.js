@@ -1,9 +1,9 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const WorkspaceBrain = require('../../ai/core/WorkspaceBrain');
-const ReasoningBrain = require('../../ai/core/ReasoningBrain');
-const ActionBrain = require('../../ai/core/ActionBrain');
+const WorkspaceBrain = require('../../ai/brains/WorkspaceBrain');
+const ReasoningBrain = require('../../ai/brains/ReasoningBrain');
+const ActionBrain = require('../../ai/brains/ActionBrain');
 
 describe('3-Brain Architecture Subsystem Tests (Phase 1)', () => {
   let tempDir;

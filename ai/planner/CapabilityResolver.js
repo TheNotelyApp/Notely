@@ -6,7 +6,7 @@
  * into semantic capability contracts without maintaining static internal hardcoded tool maps.
  */
 
-const { createLogger } = require('./logger');
+const { createLogger } = require('../core/logger');
 const log = createLogger('CapabilityResolver');
 
 class CapabilityResolver {
@@ -48,10 +48,10 @@ class CapabilityResolver {
       // Match tools in ApplicationToolRegistry that advertise this informationNeed or matching capability/alias
       const matchingTool = registeredTools.find(t =>
         t.informationNeeds.includes(need) ||
+        t.capability.toLowerCase().includes(need.toLowerCase()) ||
         t.name.toLowerCase().includes(need.toLowerCase()) ||
-        t.aliases.some(a => a.toLowerCase().includes(need.toLowerCase())) ||
-        t.description.toLowerCase().includes(need.toLowerCase())
-      );
+        t.aliases.some(a => a.toLowerCase().includes(need.toLowerCase()))
+      ) || registeredTools.find(t => t.description.toLowerCase().includes(need.toLowerCase()));
 
       if (matchingTool) {
         resolved.push({

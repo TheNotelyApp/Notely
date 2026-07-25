@@ -4,17 +4,15 @@
 
 const DocumentService = require('../tools/DocumentReader');
 const EmbeddingService = require('../embeddings/EmbeddingService');
-const QueryExecutor = require('./QueryExecutor');
+const { QueryExecutor } = require('../executor');
 const ContextManager = require('../context/ContextManager');
 const MemoryManager = require('../memory/InteractionLog');
 const GraphDB = require('../graph/GraphDB');
 const GraphService = require('../graph/GraphService');
 const GraphBuilder = require('../graph/GraphBuilder');
 
-const WorkspaceBrain = require('./WorkspaceBrain');
-const ReasoningBrain = require('./ReasoningBrain');
-const ActionBrain = require('./ActionBrain');
-const ContextOrchestrator = require('./ContextOrchestrator');
+const { WorkspaceBrain, ReasoningBrain, ActionBrain } = require('../brains');
+const { ContextOrchestrator } = require('../planner');
 
 const PromptLoader = require('../prompts/PromptLoader');
 const PromptPipeline = require('../prompts/PromptPipeline');
@@ -131,15 +129,11 @@ class Agent {
         context.currentFile
       );
       
-      // Preserve activeNoteContent or load from disk if missing
+      // Preserve all incoming context fields (conversationId, persona, uiContext, etc.)
+      Object.assign(queryContext, context);
       queryContext.activeNoteContent = context.activeNoteContent || null;
       if (queryContext.currentFile && !queryContext.activeNoteContent) {
         queryContext.activeNoteContent = this.documentService.getDocumentContent(queryContext.currentFile);
-      }
-
-      // Preserve the frontend persona system prompt
-      if (context.systemPrompt) {
-        queryContext.systemPrompt = context.systemPrompt;
       }
 
       // Execute query
@@ -172,6 +166,32 @@ class Agent {
         error: error.message,
         query: userQuery
       };
+    }
+  }
+
+  /**
+   * Process a query with streaming output
+   */
+  async stream(userQuery, context = {}, onChunk, abortSignal) {
+    if (!this.isInitialized) {
+      throw new Error('Agent not initialized');
+    }
+
+    try {
+      const queryContext = await this.contextManager.buildQueryContext(
+        userQuery,
+        context.currentFile
+      );
+      Object.assign(queryContext, context);
+      queryContext.activeNoteContent = context.activeNoteContent || null;
+      if (queryContext.currentFile && !queryContext.activeNoteContent) {
+        queryContext.activeNoteContent = this.documentService.getDocumentContent(queryContext.currentFile);
+      }
+
+      return this.queryExecutor.stream(userQuery, queryContext, onChunk, abortSignal);
+    } catch (error) {
+      console.error('[Agent] Streaming query processing failed:', error.message);
+      throw error;
     }
   }
 
