@@ -10,7 +10,6 @@ import {
   aiGenerateEmbeddings,
   aiGetHealth,
   aiCreateConversation,
-  aiAddMessage,
   aiListConversations,
   aiGetMessages,
   aiDeleteConversation,

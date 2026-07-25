@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Activity,
   Database,
@@ -25,8 +25,7 @@ import {
   Brain,
   FileText,
   Bot,
-  Filter,
-  Download
+  Filter
 } from 'lucide-react';
 import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs } from '../services/electronService';
 import { renderMarkdown } from '../utils/renderUtils';
@@ -285,66 +284,7 @@ function EventDetail({ event }) {
   );
 }
 
-// ─── Single timeline event row ───────────────────────────────────────────────
 
-function EventRow({ event, isLast }) {
-  const [open, setOpen] = useState(false);
-  const cfg = getEventCfg(event.type);
-  const Icon = cfg.icon;
-
-  return (
-    <div className="atv-event-wrapper">
-      {/* connector line above */}
-      <div className="atv-connector-top" />
-
-      <div className={`atv-event-row${open ? ' open' : ''}`}>
-        {/* Icon node */}
-        <div className="atv-event-icon-col">
-          <div className="atv-event-node" style={{ background: cfg.bg, borderColor: cfg.color }}>
-            <Icon size={12} style={{ color: cfg.color }} />
-          </div>
-        </div>
-
-        {/* Timestamp */}
-        <span className="atv-event-time">{fmtTime(event.startedAt)}</span>
-
-        {/* Label + type badge */}
-        <div className="atv-event-label-wrap">
-          <span className="atv-event-label">{event.label || cfg.label}</span>
-          <span className="atv-event-type-badge" style={{ background: cfg.bg, color: cfg.color }}>
-            {event.type}
-          </span>
-        </div>
-
-        {/* Duration pill */}
-        {event.durationMs != null && event.durationMs > 0 && (
-          <span className="atv-duration-pill">
-            <Zap size={9} /> {fmtMs(event.durationMs)}
-          </span>
-        )}
-
-        {/* Expand toggle */}
-        <button
-          type="button"
-          className="atv-expand-toggle"
-          onClick={() => setOpen(o => !o)}
-          aria-label={open ? 'Collapse' : 'Expand'}
-        >
-          <ChevronDown size={13} className={`atv-chevron${open ? ' open' : ''}`} />
-        </button>
-      </div>
-
-      {open && (
-        <div className="atv-event-detail-wrap">
-          <EventDetail event={event} />
-        </div>
-      )}
-
-      {/* connector line below */}
-      {!isLast && <div className="atv-connector-bottom" />}
-    </div>
-  );
-}
 
 // ─── System prompt viewer (shared across all traces for a flow) ──────────────
 
@@ -396,163 +336,7 @@ function SystemPromptViewer({ prompt }) {
   );
 }
 
-// ─── Trace detail view (shows after clicking a trace row) ────────────────────
 
-function TraceDetail({ logItem, onClose }) {
-  const [expandAll, setExpandAll] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const meta = logItem.metadata || {};
-  const events = Array.isArray(meta.events) ? meta.events : [];
-  const query = meta.query || logItem.message || '';
-  const systemPrompt = meta.systemPrompt || '';
-  const totalMs = meta.totalDurationMs || 0;
-  const tokens = meta.tokensUsed || 0;
-
-  // Derive tool call count from events
-  const toolCount = events.filter(e => e.type === 'tool_invocation').length;
-  const hasError = events.some(e => e.type === 'error');
-
-  const filterTypes = ['all', 'llm_request', 'llm_response', 'tool_invocation', 'tool_response', 'planner', 'prompt_construction'];
-  const filtered = filter === 'all' ? events : events.filter(e => e.type === filter);
-
-  const handleCopyTelemetry = (e) => {
-    if (e) e.stopPropagation();
-    const tracePayload = {
-      flowId: meta.flowId || logItem.id,
-      persona: formatPersonaName(meta.persona),
-      userQuery: query,
-      totalDurationMs: totalMs,
-      tokensUsed: tokens,
-      timestamp: logItem.timestamp,
-      executionStages: meta.stages || [],
-      executionEvents: events,
-      executedTools: events.filter(ev => ev.type === 'tool_invocation').map(ev => ({ name: ev.toolName, args: ev.args })),
-      assembledSystemPrompt: systemPrompt
-    };
-    copyToClipboard(JSON.stringify(tracePayload, null, 2), 'Full telemetry JSON');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleExportMD = () => {
-    const lines = [
-      `# AI Execution Trace`,
-      ``,
-      `**Query:** ${query}`,
-      `**Persona:** ${formatPersonaName(meta.persona)}`,
-      `**Duration:** ${fmtMs(totalMs)}`,
-      `**Tokens:** ${tokens}`,
-      `**Flow ID:** ${meta.flowId || '—'}`,
-      ``,
-      `## Timeline`,
-      ``,
-      ...events.map(ev => `- \`${fmtTime(ev.startedAt)}\` **${ev.label || ev.type}** ${ev.durationMs ? `(${fmtMs(ev.durationMs)})` : ''}`),
-    ];
-    copyToClipboard(lines.join('\n'), 'Trace Markdown');
-  };
-
-  if (events.length === 0) {
-    // Legacy log without events[] — show old-style stage summary
-    return (
-      <div className="atv-trace-detail">
-        <div className="atv-trace-detail-header">
-          <button type="button" className="atv-back-btn" onClick={onClose}><ArrowLeft size={13} /> Traces</button>
-          <span className="atv-trace-query">{query}</span>
-          <div className="atv-trace-detail-actions">
-            <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={handleCopyTelemetry}>
-              {copied ? <Check size={11} /> : <Copy size={11} />}
-              {copied ? 'Copied!' : 'Copy Full Telemetry'}
-            </button>
-          </div>
-        </div>
-        <div className="atv-legacy-notice">
-          <AlertCircle size={13} />
-          <span>This trace was recorded before the timeline upgrade. Granular event data is not available. Re-send the same message to generate a full trace.</span>
-        </div>
-        {/* Show stages if available */}
-        {Array.isArray(meta.stages) && meta.stages.length > 0 && (
-          <div className="atv-stages-legacy">
-            {meta.stages.map(stg => (
-              <div key={stg.stage} className="atv-stage-legacy-row">
-                <span className="atv-stage-num">{stg.stage}</span>
-                <span className="atv-stage-name">{stg.name}</span>
-                <span className="atv-duration-pill"><Zap size={9} /> {fmtMs(stg.durationMs)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <SystemPromptViewer prompt={systemPrompt} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="atv-trace-detail">
-      {/* Header */}
-      <div className="atv-trace-detail-header">
-        <button type="button" className="atv-back-btn" onClick={onClose}><ArrowLeft size={13} /> Traces</button>
-        <span className="atv-trace-query" title={query}>{query}</span>
-        <div className="atv-trace-detail-actions">
-          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={handleCopyTelemetry}>
-            {copied ? <Check size={11} /> : <Copy size={11} />}
-            {copied ? 'Copied Telemetry!' : 'Copy Full Telemetry'}
-          </button>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '26px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={handleExportMD}>
-            <FileText size={11} /> Export MD
-          </button>
-        </div>
-      </div>
-
-      {/* Stats bar */}
-      <div className="atv-trace-stats">
-        <span className="atv-stat-chip"><Clock size={10} /> {fmtMs(totalMs)}</span>
-        <span className="atv-stat-chip"><Bot size={10} /> {tokens} tokens</span>
-        {toolCount > 0 && <span className="atv-stat-chip"><Wrench size={10} /> {toolCount} tools</span>}
-        {hasError && <span className="atv-stat-chip atv-stat-error"><AlertCircle size={10} /> Error</span>}
-        <span className="atv-stat-chip" style={{ opacity: 0.6, fontSize: '9.5px', fontFamily: 'monospace' }}>{meta.flowId?.slice(0, 8)}…</span>
-      </div>
-
-      {/* Controls */}
-      <div className="atv-timeline-controls">
-        <div className="atv-filter-row">
-          <Filter size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-          {filterTypes.map(ft => (
-            <button
-              key={ft}
-              type="button"
-              className={`atv-filter-chip${filter === ft ? ' active' : ''}`}
-              onClick={() => setFilter(ft)}
-            >
-              {ft === 'all' ? 'All' : ft.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(true)}>Expand All</button>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(false)}>Collapse</button>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="atv-timeline">
-        {filtered.length === 0 && (
-          <div className="ahp-empty">No events match this filter.</div>
-        )}
-        {filtered.map((event, idx) => (
-          <EventRowControlled
-            key={`${event.type}-${idx}`}
-            event={event}
-            isLast={idx === filtered.length - 1}
-            forceOpen={expandAll}
-          />
-        ))}
-      </div>
-
-      <SystemPromptViewer prompt={systemPrompt} />
-    </div>
-  );
-}
 
 // Wrapper that lets expandAll override local open state with classic glowing dot & continuous vertical line timeline
 function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
@@ -635,69 +419,6 @@ function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
         )}
       </div>
     </div>
-  );
-}
-
-// ─── Trace list row ──────────────────────────────────────────────────────────
-
-function TraceRow({ logItem, selected, onClick }) {
-  const [copied, setCopied] = useState(false);
-  const meta = logItem.metadata || {};
-  const query = meta.query || logItem.message || '(no query)';
-  const totalMs = meta.totalDurationMs || 0;
-  const tokens = meta.tokensUsed || 0;
-  const events = Array.isArray(meta.events) ? meta.events : [];
-  const toolCount = events.filter(e => e.type === 'tool_invocation').length;
-  const hasEvents = events.length > 0;
-  const ts = new Date(logItem.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  const handleCopyRow = (e) => {
-    e.stopPropagation();
-    const tracePayload = {
-      flowId: meta.flowId || logItem.id,
-      persona: formatPersonaName(meta.persona),
-      userQuery: query,
-      totalDurationMs: totalMs,
-      tokensUsed: tokens,
-      timestamp: logItem.timestamp,
-      executionStages: meta.stages || [],
-      executionEvents: events,
-      executedTools: events.filter(ev => ev.type === 'tool_invocation').map(ev => ({ name: ev.toolName, args: ev.args })),
-      assembledSystemPrompt: meta.systemPrompt || ''
-    };
-    copyToClipboard(JSON.stringify(tracePayload, null, 2), 'Full telemetry JSON');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      type="button"
-      className={`atv-trace-row${selected ? ' selected' : ''}`}
-      onClick={onClick}
-    >
-      <div className="atv-trace-row-top">
-        <span className="atv-trace-row-time">{ts}</span>
-        <span className="atv-trace-row-query">{query}</span>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          style={{ fontSize: '10px', height: '22px', padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: 'auto', flexShrink: 0 }}
-          onClick={handleCopyRow}
-          title="Copy Full Telemetry JSON"
-        >
-          {copied ? <Check size={10} /> : <Copy size={10} />}
-          {copied ? 'Copied!' : 'Telemetry'}
-        </button>
-        <ChevronRight size={12} className="atv-trace-row-arrow" />
-      </div>
-      <div className="atv-trace-row-meta">
-        {totalMs > 0 && <span className="atv-stat-chip"><Clock size={9} /> {fmtMs(totalMs)}</span>}
-        {tokens > 0 && <span className="atv-stat-chip"><Bot size={9} /> {tokens} tok</span>}
-        {toolCount > 0 && <span className="atv-stat-chip"><Wrench size={9} /> {toolCount} tools</span>}
-        {!hasEvents && <span className="atv-stat-chip" style={{ opacity: 0.5, fontSize: '9px' }}>legacy</span>}
-      </div>
-    </button>
   );
 }
 
@@ -859,7 +580,7 @@ function FlowTelemetryPane({ conv, flowLogs }) {
                 <div className="atv-turn-divider-line" />
                 <div className="atv-turn-divider-content">
                   <span className="atv-turn-badge">Turn #{turnNumber}</span>
-                  <span className="atv-turn-query" title={query}>"{query}"</span>
+                  <span className="atv-turn-query" title={query}>&quot;{query}&quot;</span>
                   <div className="atv-turn-meta">
                     {totalMs > 0 && <span className="atv-stat-chip"><Clock size={9} /> {fmtMs(totalMs)}</span>}
                     {tokens > 0 && (
@@ -1013,7 +734,7 @@ export default function AIHealthPage({ onBack }) {
   const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
   const [convSearch, setConvSearch] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {

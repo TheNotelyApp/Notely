@@ -42,7 +42,7 @@ class CompactionEngine {
     if (!assistantText || typeof assistantText !== 'string') return 'Completed response';
 
     // Check for note links file:///
-    const fileLinkMatches = [...assistantText.matchAll(/\[([^\]]+)\]\(file:\/\/\/[^\)]+\)/g)];
+    const fileLinkMatches = [...assistantText.matchAll(/\[([^\]]+)\]\(file:\/\/\/[^)]+\)/g)];
     if (fileLinkMatches.length > 0) {
       const uniqueTitles = [...new Set(fileLinkMatches.map(m => m[1]))];
       return `Referenced notes: ${uniqueTitles.slice(0, 3).join(', ')}`;

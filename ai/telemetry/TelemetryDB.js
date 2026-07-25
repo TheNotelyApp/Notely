@@ -139,9 +139,9 @@ class TelemetryDB {
     let events = [];
     let tokensDetail = null;
 
-    try { if (r.stages) stages = JSON.parse(r.stages); } catch {}
-    try { if (r.events) events = JSON.parse(r.events); } catch {}
-    try { if (r.tokens_detail) tokensDetail = JSON.parse(r.tokens_detail); } catch {}
+    try { if (r.stages) stages = JSON.parse(r.stages); } catch { /* ignore */ }
+    try { if (r.events) events = JSON.parse(r.events); } catch { /* ignore */ }
+    try { if (r.tokens_detail) tokensDetail = JSON.parse(r.tokens_detail); } catch { /* ignore */ }
 
     return {
       id: r.id,
