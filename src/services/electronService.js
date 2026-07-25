@@ -339,16 +339,16 @@ export async function aiGetGraphStatus() {
   return api.aiGetGraphStatus({});
 }
 
-export async function aiGetLogs(subsystem = null, limit = 100) {
+export async function aiGetLogs(subsystem = null, limit = 100, conversationId = null) {
   const api = getNotesApi();
   if (typeof api.aiGetLogs !== "function") return { success: false, data: [] };
-  return api.aiGetLogs({ subsystem, limit });
+  return api.aiGetLogs({ subsystem, limit, conversationId });
 }
 
-export async function aiClearLogs(subsystem = null) {
+export async function aiClearLogs(subsystem = null, beforeTimestamp = null) {
   const api = getNotesApi();
   if (typeof api.aiClearLogs !== "function") return { success: false };
-  return api.aiClearLogs({ subsystem });
+  return api.aiClearLogs({ subsystem, beforeTimestamp });
 }
 
 export async function aiClearEmbeddingsData() {

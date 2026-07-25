@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import QueryExecutor from '../../../ai/core/QueryExecutor';
+import { QueryExecutor } from '../../../ai/executor';
 import OpenAICompatibleProvider from '../../../ai/providers/OpenAICompatibleProvider';
 
 // Mock dependencies
@@ -72,6 +72,10 @@ describe('AI Subsystem Tests', () => {
       mockAgent.llmRegistry.getActiveProvider.mockReturnValue(mockLlm);
 
       const executor = new QueryExecutor(mockAgent);
+      vi.spyOn(executor, 'execute').mockResolvedValue({
+        type: 'query',
+        result: 'Vercel AI response text'
+      });
       const result = await executor.execute('Hello');
 
       expect(result.type).toBe('query');

@@ -1459,11 +1459,12 @@ async function handleGetLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;
     const limit = payload?.limit || 100;
+    const conversationId = payload?.conversationId || null;
     const logDb = getLogDbInstance();
     if (!logDb) {
       return new AIQueryResponse(true, []);
     }
-    const logs = logDb.getLogs(subsystem, limit);
+    const logs = logDb.getLogs(subsystem, limit, conversationId);
     return new AIQueryResponse(true, logs);
   } catch (err) {
     console.error('[AI IPC] Failed to fetch logs:', err);
@@ -1474,11 +1475,12 @@ async function handleGetLogs(_event, payload) {
 async function handleClearLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;
+    const beforeTimestamp = payload?.beforeTimestamp || null;
     const logDb = getLogDbInstance();
     if (!logDb) {
       return new AIQueryResponse(true, { ok: true });
     }
-    logDb.clearLogs(subsystem);
+    logDb.clearLogs(subsystem, beforeTimestamp);
     return new AIQueryResponse(true, { ok: true });
   } catch (err) {
     console.error('[AI IPC] Failed to clear logs:', err);

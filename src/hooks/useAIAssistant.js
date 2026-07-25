@@ -395,11 +395,6 @@ export function useAIAssistant({
           // Non-fatal — chat still works, just not persisted
         }
       }
-
-      // Persist user message
-      if (currentConversationIdRef.current) {
-        aiAddMessage(currentConversationIdRef.current, "user", message).catch(() => {});
-      }
     }
 
     const queryId = `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -479,17 +474,6 @@ export function useAIAssistant({
             : msg
         )
       );
-
-      // Persist assistant message with trace metadata
-      if (currentConversationIdRef.current) {
-        const trace = finalResult?.trace || [];
-        aiAddMessage(
-          currentConversationIdRef.current,
-          "assistant",
-          finalResult?.result || "",
-          trace.length > 0 ? { trace } : null
-        ).catch(() => {});
-      }
     } catch (err) {
       const message = err?.message || "AI query failed.";
       setAiQueryError(message);
