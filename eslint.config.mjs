@@ -56,7 +56,7 @@ export default [
 
   // AI subsystem — CommonJS, runs in the Electron main (Node) process.
   {
-    files: ["ai/**/*.js"],
+    files: ["ai/**/*.js", "src/ai/**/*.js"],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: "commonjs",

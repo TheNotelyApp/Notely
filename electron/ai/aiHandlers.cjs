@@ -11,9 +11,11 @@ const path = require('path');
 let IPC_EVENTS, AIQueryRequest, AIQueryResponse;
 
 try {
-  const distProtocolPath = path.join(__dirname, '..', '..', 'dist', 'ai', 'utils', 'ipcProtocol.js');
+  // Packaged: ai/ lives at app root (from `files: ["ai/**/*"]`).
+  // Dev: src/ai/utils/ is the source location.
+  const rootAiProtocolPath = path.join(__dirname, '..', '..', 'ai', 'utils', 'ipcProtocol.js');
   const srcProtocolPath = path.join(__dirname, '..', '..', 'src', 'ai', 'utils', 'ipcProtocol.js');
-  const ipcProtocolPath = fs.existsSync(distProtocolPath) ? distProtocolPath : srcProtocolPath;
+  const ipcProtocolPath = fs.existsSync(rootAiProtocolPath) ? rootAiProtocolPath : srcProtocolPath;
   console.log('[AI] Attempting to load ipcProtocol from:', ipcProtocolPath);
   ({ IPC_EVENTS, AIQueryRequest, AIQueryResponse } = require(ipcProtocolPath));
   console.log('[AI] Successfully loaded ipcProtocol');

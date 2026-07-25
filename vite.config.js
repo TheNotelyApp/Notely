@@ -21,8 +21,16 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
 
-          if (id.includes("node_modules/mermaid")) return "vendor-mermaid";
-          if (id.includes("node_modules/@xyflow") || id.includes("node_modules/cytoscape")) return "vendor-graph";
+          // mermaid intentionally excluded — MermaidBlock uses dynamic import() so
+          // Vite auto-splits it into a lazy chunk that never runs at page-load time.
+          // Putting it in manualChunks caused a circular chunk + top-level .use() crash
+          // in packaged Electron (file:// protocol).
+          if (
+            id.includes("node_modules/@xyflow") ||
+            id.includes("node_modules/cytoscape") ||
+            id.includes("node_modules/dagre") ||
+            id.includes("node_modules/d3")
+          ) return "vendor-graph";
           if (id.includes("node_modules/pdfjs-dist")) return "vendor-pdf";
           if (id.includes("node_modules/@xterm") || id.includes("node_modules/xterm")) return "vendor-terminal";
           if (id.includes("node_modules/@uiw/react-codemirror") || id.includes("node_modules/@codemirror")) return "vendor-editor";
