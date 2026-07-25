@@ -1,25 +1,25 @@
 ---
 title: AI Architecture
-description: Deep dive into Notely's offline-first AI, 3-Brain Architecture, Multi-Tool Planning & Context Orchestration Engine, vector search, knowledge graph, and ReAct self-correction engine.
-keywords: AI architecture, 3-Brain, ContextOrchestrator, WorkspaceBrain, ReasoningBrain, ActionBrain, vector embeddings, graph DB, SQLite, CTE, cosine similarity, ReAct, SelfCorrectionEngine, AgentHarness, AIHealthPage
+description: Deep dive into Notely's offline-first 13-domain AI subsystem, AIFlow master orchestrator, Context Compaction engine, vector search, knowledge graph, and ReAct self-correction engine.
+keywords: AI architecture, AIFlow, CompactionEngine, ContextOrchestrator, WorkspaceBrain, ReasoningBrain, ActionBrain, vector embeddings, graph DB, SQLite, CTE, cosine similarity, ReAct, SelfCorrectionEngine, AgentHarness, AIHealthPage
 category: AI
 ---
 
-# AI Subsystem & Multi-Tool Orchestration Architecture
+# AI Subsystem & Master Flow Architecture
 
-Notely implements a local-first, offline-ready AI architecture designed for privacy, low latency, multi-tool evidence orchestration, and deterministic grounding. Markdown notes remain the single source of truth, parsed and indexed into offline-first SQLite databases.
+Notely implements a local-first, offline-ready 13-domain AI architecture designed for privacy, low latency, multi-tool evidence orchestration, zero-latency context compaction, and deterministic grounding. Markdown notes remain the single source of truth, parsed and indexed into offline-first SQLite databases.
 
 ---
 
-## 3-Brain Subsystem & Orchestration Blueprint
+## 13-Domain Decoupled Module Facade Blueprint
 
-The following diagram shows the full request path from React Renderer UI through the ContextOrchestrator, 3-Brain Core, Retrieval Engines, and SQLite Storage Layers.
+All 13 sub-domains expose a mandatory single entry point facade (`index.js`). All query executions are coordinated by the master orchestrator **`AIFlow.js`** through a 5-stage pipeline with structured telemetry logging to `LogDB` (`FlowTracker`) and zero-latency **Context Compaction** (`ai/compaction/`).
 
 ```mermaid
 flowchart TD
     subgraph Renderer["Renderer Process (React / Vite)"]
         direction LR
-        AICP["AIChatPanel (Sidebar Chat)"] & AIP["AIPalette (Inline AI)"] & AIH["AIHealthPage (Diagnostics & Traces)"] & KGV["KnowledgeGraph (Interactive Visualizer)"]
+        AICP["AIChatPanel (Sidebar Chat)"] & AIP["AIPalette (Inline AI)"] & AIH["AIHealthPage (Diagnostics & Traces)"] & KGV["KnowledgeGraph (Visualizer)"]
     end
 
     subgraph Preload["Preload Bridge (preload.cjs)"]
@@ -33,22 +33,23 @@ flowchart TD
 
     subgraph AIService["AI Service Coordinator (AIService.js)"]
         SW["Master Enable / Disable Switch"]
-        HOOKS["Note Save · Delete · Rename Hooks"]
+        AIFLOW["AIFlow.js (Master 5-Stage Orchestrator)"]
     end
 
-    subgraph Core ["3-Brain Subsystem & Multi-Tool Orchestrator"]
-        Agent["Agent Orchestrator (Agent.js)"]
-        Orchestrator["ContextOrchestrator.js (Multi-Tool Engine)"]
-        WB["WorkspaceBrain.js (Factual Retrieval)"]
-        RB["ReasoningBrain.js (Pure Reasoning)"]
-        AB["ActionBrain.js (Read-Only Gatekeeper)"]
-        PLN["Planner.js (Intent Classifier)"]
-        SCE["SelfCorrectionEngine.js (ReAct Validator)"]
-    end
-
-    subgraph Retrieval ["Retrieval & Tool Ecosystem"]
-        direction LR
-        CE["ContextEngine (8-Layer Pipeline)"] & HR["HybridRetriever (RRF)"] & SR["SemanticRetriever"] & GR["GraphRetriever (Recursive CTE)"] & ST["SemanticTools"]
+    subgraph Domains ["13 Decoupled Domain Modules (index.js Facades)"]
+        COMP["compaction"]
+        PLAN["planner"]
+        PERS["personas"]
+        PROM["prompts"]
+        CTX["context"]
+        GRAPH["graph"]
+        EMB["embeddings"]
+        MEM["memory"]
+        EXEC["executor"]
+        TOOL["tools"]
+        GND["grounding"]
+        FMT["formatter"]
+        TEST["testing"]
     end
 
     subgraph Storage ["SQLite Storage — WAL Mode"]
@@ -59,58 +60,58 @@ flowchart TD
     Renderer -->|"IPC · contextBridge"| Preload
     Preload -->|"ipcMain.handle"| Handlers
     Handlers --> AIService
-    AIService --> Agent
-
-    Agent --> Orchestrator
-    Agent --> WB
-    Agent --> RB
-    Agent --> AB
-    Agent --> PLN
-
-    Orchestrator -->|"Parallel Promise.allSettled"| ST & HR
-    HR --> SR & GR
-
-    SR --> EMBDB
-    GR --> GRDB
-    Agent --> MEMDB
-    
-    RB --> SCE
+    AIService --> AIFLOW
+    AIFLOW --> Domains
+    Domains --> Storage
 ```
 
 ---
 
-## 1. Multi-Tool Planning & Context Orchestration (`ContextOrchestrator.js`)
+## 1. Master Flow Orchestrator (`AIFlow.js`) & 5-Stage Execution Pipeline
 
-The AI behaves like an experienced researcher gathering sufficient evidence before answering:
+Every query executes through `AIFlow.js`:
 
-* **Intent Understanding & Planning**: `Planner.js` creates internal retrieval plans (`DirectQuery`, `TopicExploration`, `TimelineReconstruction`, `TaskSummary`) without exposing planning details to the user.
-* **Concurrent Tool Execution**: Independent candidate tools (`find_discussions`, `explore_topic_graph`, `find_architecture`) run concurrently using `Promise.allSettled`.
-* **Dynamic Tool Output Chaining**: Tool outputs chain into subsequent retrieval steps (e.g. note paths $\rightarrow$ graph expansion $\rightarrow$ timeline).
-* **Context Aggregation & Deduplication**: Consolidates evidence, eliminates duplicate snippets, ranks importance, and attaches source note link attributions (`[file.md](file:///path)`).
-* **Confidence Evaluation Loop**: Measures overall evidence confidence ($0.0 - 1.0$). If confidence $< 0.70$, performs additional graph or discussion retrieval steps before handoff to `ReasoningBrain.js`.
-* **Diagnostic Trace Telemetry & Prompt Tracking**: Records all tool calls, graph traversals, and outputs into `executionTrace`. Persists full assembled system prompts, persona metadata, and token stats via `LogDB.js` into `.notes-app/ai-logs.db` (`PromptTracker` subsystem), inspectable from the UI **AI Health & Diagnostics** page (`AIHealthPage.jsx`).
-
----
-
-## 2. The 3-Brain Architectural Triad
-
-1. **WorkspaceBrain (`WorkspaceBrain.js`)**: Proactively gathers active note text, vector similarity matches, and graph hops into a normalized evidence payload.
-2. **ReasoningBrain (`ReasoningBrain.js`)**: Synthesizes natural human responses from curated evidence. Possesses zero direct storage or filesystem dependencies.
-3. **ActionBrain (`ActionBrain.js`)**: Acts as a strict permission gatekeeper. Permanently blocks `update_note`, `delete_note`, `move_note`, `rename_note` and prevents overwriting existing notes on `create_note`.
+1. **Stage 1 (Context & Persona Resolution)**: Resolves conversation state, loads active persona, and applies 0ms context compaction (`ai/compaction/`).
+2. **Stage 2 (Intent Planning & Hybrid Retrieval)**: `ContextOrchestrator` runs parallel vector/graph retrieval & confidence scoring.
+3. **Stage 3 (System Prompt Assembly & Safety Audit)**: `PromptPipeline` assembles system prompt & runs safety invariant linter.
+4. **Stage 4 (Runtime Dynamic Strategy Execution & Tools)**: `QueryExecutor` resolves runtime strategy (Streaming, Multi-step tool loop, Self-correction verification) and runs `GroundingEngine`.
+5. **Stage 5 (Memory Persistence & Telemetry Logging)**: Persists turn to `ConversationStore` and logs 5-stage trace payload to `LogDB` (`FlowTracker`).
 
 ---
 
-## 3. Grounding & ReAct Self-Correction Engine
+## 2. Zero-Latency Context Compaction Engine (`ai/compaction/`)
 
-1. **`GroundingEngine.js`**: Audits `[label](file:///path)` markdown citations against local disk. If a link target does not exist, converts the citation to a plain text title label.
-2. **`SelfCorrectionEngine.js`**: Intercepts draft responses before emitting output, stripping technical tool narration jargon (e.g. *"I executed search_notes"*).
+- **2-Tier Sliding Window Algorithm**:
+  - **Tier 1 (Verbatim Window)**: Recent 4 messages preserved verbatim for immediate context.
+  - **Tier 2 (Executive Memory Summary)**: Older turns programmatically compressed into structured bullet points using 0ms NLP intent & outcome extraction heuristics:
+    ```markdown
+    [EXECUTIVE MEMORY SUMMARY OF PAST TURNS]
+    - Turn 1: User requested "explain auth" -> Referenced notes: Architecture Notes
+    - Turn 2: User requested "add telemetry" -> Generated code snippet/action
+    ```
+- **Benefits**: ~75-80% input token reduction, faster LLM latency, zero text redundancy.
+
+---
+
+## 3. UI Diagnostics & Telemetry (`AIHealthPage.jsx`)
+
+- **Messages Tab**: Clean conversation transcript (technical tool call boxes removed).
+- **Flow Telemetry Tab**: Interactive 5-stage execution trace view displaying:
+  1. Timeline & duration per stage
+  2. Persona & active note context
+  3. Pre-retrieval trace steps & confidence score
+  4. System prompt viewer with Copy & Expand
+  5. Tool calls with input arguments & output payloads
+  6. Compaction stats (`compactedTurnsCount`, `isCompacted`)
+  7. Token consumption & latency breakdown
 
 ---
 
 ## 4. Test Suite Verification
 
-Covered by Vitest test suites under `tests/ai/` (27 test files / 72 tests passing 100%):
-* `tests/ai/orchestrator.spec.js`: Multi-tool planning, parallel retrieval, and evidence aggregation tests.
-* `tests/ai/brainTriad.spec.js`: 3-Brain isolation & note immutability tests.
-* `tests/ai/selfCorrection.spec.js`: ReAct validation pass & zero-jargon gate tests.
+Covered by Vitest test suites under `tests/ai/` (**59 test files / 249 tests passing 100%**):
+* `tests/ai/flow.spec.js`: Master `AIFlow` 5-stage orchestration & telemetry tests.
+* `tests/ai/facades.spec.js`: Single entry point facade export integrity for all 13 modules.
+* `tests/ai/compaction.spec.js`: Zero-latency NLP intent extraction & sliding window compaction tests.
+* `tests/ai/grounding.spec.js`: Citation link verification & prompt composition tests.
 * `tests/ai/knowledgeGraph.spec.js`: Knowledge Graph recursive CTE & UTC date matching tests.
