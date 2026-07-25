@@ -162,15 +162,29 @@ class AIFlow {
 
       const result = await this.agent.queryExecutor.execute(userQuery, queryContext);
 
-      // Verify citations and grounding via GroundingEngine facade
+      // Auto-format file links and verify citations via GroundingEngine facade
       let groundingInfo = { verifiedCitations: 0, brokenCitations: 0, hallucinations: [] };
       if (result.result) {
         try {
-          const { verifyCitations } = require('../grounding');
-          const citationCheck = verifyCitations(result.result);
+          const { verifyCitations, formatLineNumberLinks } = require('../grounding');
+          let text = result.result;
+
+          let workspaceFiles = [];
+          if (context.relatedDocuments) {
+            workspaceFiles = context.relatedDocuments.map(d => d.path || d.filePath || d);
+          }
+
+          if (workspaceFiles.length > 0 && formatLineNumberLinks) {
+            text = formatLineNumberLinks(text, workspaceFiles);
+          }
+
+          const citationCheck = verifyCitations(text);
+          result.result = citationCheck.text;
           groundingInfo.verifiedCitations = citationCheck.verifiedCitations;
           groundingInfo.brokenCitations = citationCheck.brokenCitations;
-        } catch { /* ignore grounding error */ }
+        } catch (err) {
+          log.warn(`[Flow:${flowId}] Grounding check warning:`, err.message);
+        }
       }
 
       stages.push({
