@@ -499,7 +499,7 @@ class ApplicationToolRegistry {
       aliases: ['recent_activity'],
       sdkName: 'recent_activity',
       capability: 'workspace:activity',
-      informationNeeds: ['recent_changes', 'chronological_events'],
+      informationNeeds: ['recent_changes', 'chronological_events', 'timeline'],
       serviceName: 'WorkspaceApplicationService',
       description: 'Get list of recently modified notes in the workspace.',
       schema: z.object({

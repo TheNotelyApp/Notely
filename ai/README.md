@@ -17,7 +17,7 @@ Notely's AI is engineered as an **intelligent knowledge companion** rather than 
 
 ---
 
-## Complete 3-Brain Subsystem Architecture
+## Complete 4-Layer Decoupled AI Architecture
 
 ```mermaid
 graph TD

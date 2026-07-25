@@ -37,7 +37,8 @@ class IntentAnalyzer {
    */
   analyze(query = '', _context = {}) {
     const q = String(query || '').toLowerCase().trim();
-    const queryTerms = q.split(/\s+/).filter(t => t.length > 2);
+    const stopWords = new Set(['show', 'me', 'the', 'a', 'an', 'and', 'or', 'for', 'with', 'from', 'that', 'this', 'are', 'can', 'how', 'what', 'get', 'all', 'any', 'find', 'of', 'in']);
+    const queryTerms = q.split(/\s+/).filter(t => t.length > 2 && !stopWords.has(t));
     const registeredTools = this.getRegisteredTools();
     const informationNeeds = new Set();
     const subIntents = [];
@@ -46,7 +47,8 @@ class IntentAnalyzer {
     for (const tool of registeredTools) {
       const metadataText = `${tool.name} ${tool.description} ${tool.capability} ${tool.informationNeeds.join(' ')}`.toLowerCase();
       for (const term of queryTerms) {
-        if (metadataText.includes(term)) {
+        const stem = term.length >= 4 ? term.slice(0, 4) : term;
+        if (metadataText.includes(term) || metadataText.includes(stem)) {
           tool.informationNeeds.forEach(need => informationNeeds.add(need));
           subIntents.push(tool.capability);
           if (tool.capability === 'web:search' || tool.capability === 'web:fetch') {
