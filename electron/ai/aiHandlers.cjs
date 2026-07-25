@@ -1316,8 +1316,13 @@ async function handleConversationCreate(_event, payload) {
 
 async function handleConversationDelete(_event, payload) {
   try {
-    _getStore().deleteConversation(payload?.id);
-    return new AIQueryResponse(true, { deleted: payload?.id });
+    const convId = payload?.id;
+    _getStore().deleteConversation(convId);
+    if (convId) {
+      const telDb = getTelemetryDbInstance();
+      if (telDb) telDb.clearTelemetry(convId);
+    }
+    return new AIQueryResponse(true, { deleted: convId });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
   }
@@ -1326,6 +1331,8 @@ async function handleConversationDelete(_event, payload) {
 async function handleConversationClear(_event, _payload) {
   try {
     _getStore().clearAll();
+    const telDb = getTelemetryDbInstance();
+    if (telDb) telDb.clearTelemetry();
     return new AIQueryResponse(true, { cleared: true });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
@@ -1444,6 +1451,11 @@ async function handleKnowledgeReject(_event, payload) {
 
 let _logDbInstance = null;
 function getLogDbInstance() {
+  // Prefer the agent's already-initialized LogDB — same file, no duplicate connection.
+  const agentLogDb = aiService?.agent?.logDb;
+  if (agentLogDb?.isInitialized) return agentLogDb;
+
+  // Fallback: standalone instance (covers cases where agent isn't up yet but workspaceRoot is known).
   const workspaceRoot = aiService.workspaceRoot;
   if (!workspaceRoot) return null;
   if (!_logDbInstance || _logDbInstance.workspaceRoot !== workspaceRoot) {
@@ -1455,15 +1467,41 @@ function getLogDbInstance() {
   return _logDbInstance;
 }
 
+let _telemetryDbInstance = null;
+function getTelemetryDbInstance() {
+  const agentTelDb = aiService?.agent?.telemetryDb;
+  if (agentTelDb?.isInitialized) return agentTelDb;
+
+  const workspaceRoot = aiService.workspaceRoot;
+  if (!workspaceRoot) return null;
+  if (!_telemetryDbInstance || _telemetryDbInstance.workspaceRoot !== workspaceRoot) {
+    if (_telemetryDbInstance) try { _telemetryDbInstance.close(); } catch { /* ignore */ }
+    const TelemetryDB = require('../../ai/telemetry/TelemetryDB');
+    _telemetryDbInstance = new TelemetryDB(workspaceRoot);
+    _telemetryDbInstance.initialize();
+  }
+  return _telemetryDbInstance;
+}
+
 async function handleGetLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;
-    const limit = payload?.limit || 100;
+    const limit = payload?.limit || 200;
     const conversationId = payload?.conversationId || null;
-    const logDb = getLogDbInstance();
-    if (!logDb) {
+
+    if (subsystem === 'FlowTracker' || conversationId) {
+      const telDb = getTelemetryDbInstance();
+      if (telDb) {
+        const telLogs = conversationId 
+          ? telDb.getTelemetryByConversation(conversationId, limit)
+          : telDb.getLatestTelemetry(limit);
+        return new AIQueryResponse(true, telLogs);
+      }
       return new AIQueryResponse(true, []);
     }
+
+    const logDb = getLogDbInstance();
+    if (!logDb) return new AIQueryResponse(true, []);
     const logs = logDb.getLogs(subsystem, limit, conversationId);
     return new AIQueryResponse(true, logs);
   } catch (err) {
@@ -1476,11 +1514,18 @@ async function handleClearLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;
     const beforeTimestamp = payload?.beforeTimestamp || null;
-    const logDb = getLogDbInstance();
-    if (!logDb) {
-      return new AIQueryResponse(true, { ok: true });
+
+    if (!subsystem || subsystem === 'FlowTracker') {
+      const telDb = getTelemetryDbInstance();
+      if (telDb) {
+        telDb.clearTelemetry(payload?.conversationId || null);
+      }
     }
-    logDb.clearLogs(subsystem, beforeTimestamp);
+
+    const logDb = getLogDbInstance();
+    if (logDb) {
+      logDb.clearLogs(subsystem, beforeTimestamp);
+    }
     return new AIQueryResponse(true, { ok: true });
   } catch (err) {
     console.error('[AI IPC] Failed to clear logs:', err);
