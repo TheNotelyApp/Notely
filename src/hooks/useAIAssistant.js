@@ -468,7 +468,7 @@ export function useAIAssistant({
           msg.queryId === queryId
             ? {
                 ...msg,
-                text: finalResult?.result || msg.text || "AI query completed.",
+                text: (msg.text && msg.text.trim()) ? msg.text : (finalResult?.result || "AI query completed."),
                 references: extractReferences(finalResult?.trace),
                 tools: (finalResult?.trace || []).map(t => t.name).filter(Boolean),
               }

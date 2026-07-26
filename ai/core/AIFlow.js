@@ -817,12 +817,20 @@ class AIFlow {
 
       if (this.agent.conversationStore && result.result && result.type !== 'aborted') {
         try {
-          this.agent.conversationStore.addMessage(conversationId, 'user', userQuery);
-          this.agent.conversationStore.addMessage(conversationId, 'assistant', result.result, {
-            tokensUsed: result.tokensUsed,
-            trace: result.trace,
-            flowId
-          });
+          const existingMsgs = this.agent.conversationStore.getMessages(conversationId) || [];
+          const lastMsg = existingMsgs.length > 0 ? existingMsgs[existingMsgs.length - 1] : null;
+          if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== userQuery) {
+            this.agent.conversationStore.addMessage(conversationId, 'user', userQuery);
+          }
+          const updatedMsgs = this.agent.conversationStore.getMessages(conversationId) || [];
+          const lastAsst = updatedMsgs.length > 0 ? updatedMsgs[updatedMsgs.length - 1] : null;
+          if (!lastAsst || lastAsst.role !== 'assistant' || lastAsst.content !== result.result) {
+            this.agent.conversationStore.addMessage(conversationId, 'assistant', result.result, {
+              tokensUsed: result.tokensUsed,
+              trace: result.trace,
+              flowId
+            });
+          }
         } catch (saveErr) {
           log.warn(`[Flow:${flowId}] Streaming ConversationStore save warning:`, saveErr.message);
         }
