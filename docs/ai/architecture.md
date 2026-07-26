@@ -1,7 +1,7 @@
 ---
 title: AI Architecture
 description: Comprehensive architecture documentation for Notely's local-first AI subsystem, AIFlow master orchestrator, 4-Layer Decoupled Planning Architecture, Context Compaction engine, vector search, knowledge graph, prompt pipeline, and telemetry tracing.
-keywords: AI architecture, AIFlow, CompactionEngine, ContextOrchestrator, IntentAnalyzer, CapabilityResolver, Planner, QueryExecutor, PromptPipeline, retrievalQuality, plannerDecision, LLM fallback, vector embeddings, graph DB, SQLite, CTE, ReAct, SelfCorrectionEngine
+keywords: AI architecture, AIFlow, CompactionEngine, ContextOrchestrator, IntentAnalyzer, CapabilityResolver, Planner, QueryExecutor, PromptPipeline, retrievalQuality, plannerDecision, LLM fallback, vector embeddings, graph DB, SQLite, CTE, ReAct, SelfCorrectionEngine, Module Facades
 category: AI
 ---
 
@@ -13,7 +13,7 @@ Notely implements a local-first, offline-ready 13-domain AI architecture designe
 
 ## 13-Domain Decoupled Module Facade Blueprint
 
-All 13 sub-domains expose a mandatory single entry point facade (`index.js`). All query executions are coordinated by the master orchestrator **`AIFlow.js`** through a 5-stage pipeline with structured telemetry logging to `LogDB` (`FlowTracker`) and zero-latency **Context Compaction** (`ai/compaction/`).
+All 13 sub-domains expose a mandatory single entry point facade (`index.js`). No external module or Electron handler is permitted to import private internal files of another module. All query executions are coordinated by the master orchestrator **`AIFlow.js`** through a 5-stage pipeline with structured telemetry logging to `LogDB` (`FlowTracker`) and zero-latency **Context Compaction** (`ai/compaction/`).
 
 ```mermaid
 flowchart TD
@@ -23,12 +23,12 @@ flowchart TD
     end
 
     subgraph Preload["Preload Bridge (preload.cjs)"]
-        CB["window.electronAPI.ai.*"]
+        CB["window.notesApi.ai* (45+ IPC methods)"]
     end
 
     subgraph Handlers["AI IPC Handlers (aiHandlers.cjs)"]
         TRUST["Trusted Sender Guard"]
-        CHAN["55+ ipcMain.handle channels"]
+        CHAN["IPC_EVENTS Protocol Constants (ai/utils/ipcProtocol.js)"]
     end
 
     subgraph AIService["AI Service Coordinator (AIService.js)"]
@@ -37,32 +37,37 @@ flowchart TD
     end
 
     subgraph Domains ["13 Decoupled Domain Modules (index.js Facades)"]
-        COMP["compaction"]
-        PLAN["planner (Intent, Resolver, Plan DAG)"]
-        PERS["personas"]
-        PROM["prompts (Static Caching)"]
-        CTX["context (HybridRetriever & Relevance Filter)"]
-        GRAPH["graph"]
-        EMB["embeddings"]
-        MEM["memory"]
-        EXEC["executor (Fallback Chain)"]
-        TOOL["tools (ApplicationToolRegistry)"]
-        GND["grounding"]
-        FMT["formatter"]
-        TEST["testing"]
+        COMP["compaction (CompactionEngine)"]
+        PLAN["planner (IntentAnalyzer, CapabilityResolver, Planner)"]
+        PERS["personas (PersonaDB, PersonaStore)"]
+        PROM["prompts (PromptPipeline, PromptLoader)"]
+        CTX["context (ContextEngine, HybridRetriever)"]
+        GRAPH["graph (GraphDB, GraphService, EvidenceStore)"]
+        EMB["embeddings (EmbeddingDB, ONNXEmbedder)"]
+        MEM["memory (MemoryDB, ConversationStore)"]
+        EXEC["executor (QueryExecutor, SelfCorrectionEngine)"]
+        TOOL["tools (ToolRegistry, getRegisteredTools)"]
+        GND["grounding (GroundingEngine)"]
+        FMT["formatter (TaskSummaryFormatter)"]
+        TEST["testing (PipelineRegression)"]
+    end
+
+    subgraph BackgroundProcess ["Utility Process (electron/ai/workerProcess.cjs)"]
+        INDEXWRK["IndexWorker (Embeddings)"] & GRAPHWRK["GraphWorker (Knowledge Graph)"]
     end
 
     subgraph Storage ["SQLite Storage — WAL Mode"]
         direction LR
-        EMBDB[("ai-embeddings.db")] & GRDB[("ai-graph.db")] & MEMDB[("memory.db / personas.db")]
+        EMBDB[("ai-embeddings.db")] & GRDB[("ai-graph.db")] & MEMDB[("ai-memory.db / personas.db")] & TELDB[("ai-telemetry.db")] & LOGDB[("ai-logs.db")]
     end
 
     Renderer -->|"IPC · contextBridge"| Preload
-    Preload -->|"ipcMain.handle"| Handlers
+    Preload -->|"ipcMain.handle / IPC_EVENTS"| Handlers
     Handlers --> AIService
     AIService --> AIFLOW
     AIFLOW --> Domains
     Domains --> Storage
+    BackgroundProcess -->|"Consumes Facades"| Domains
 ```
 
 ---
