@@ -142,12 +142,51 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
   return `<span class="markdown-image-frame">${imageHtml}<span class="markdown-image-actions"><button type="button" class="markdown-image-action" data-image-action="view" aria-label="View image">View</button><button type="button" class="markdown-image-action" data-image-action="edit" aria-label="Annotate image">Annotate</button></span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
 };
 
+/**
+ * Normalizes markdown links (e.g. [text](url)) so that URLs with spaces,
+ * backslashes, or raw file paths parse correctly with MarkdownIt.
+ */
+export function normalizeMarkdownLinks(content) {
+  if (!content) return content;
+
+  // 1. Process explicit markdown links: [alt](url)
+  let normalized = content.replace(/\[([^\]]+)\]\((<[^>]+>|[^)]+)\)/g, (match, text, rawUrl) => {
+    const trimmed = (rawUrl || "").trim();
+    const isAngleWrapped = trimmed.startsWith("<") && trimmed.endsWith(">");
+    let url = isAngleWrapped ? trimmed.slice(1, -1) : trimmed;
+
+    if (url.toLowerCase().startsWith("file:") || /^[a-z]:[\\/]/i.test(url)) {
+      url = url.replace(/\\/g, "/");
+      if (/^[a-z]:\//i.test(url)) {
+        url = `file:///${url}`;
+      }
+    }
+
+    let decoded = url;
+    for (let i = 0; i < 3; i += 1) {
+      try {
+        const next = decodeURIComponent(decoded);
+        if (next === decoded) break;
+        decoded = next;
+      } catch {
+        break;
+      }
+    }
+
+    const safeUrl = encodeURI(decoded);
+    return `[${text}](${safeUrl})`;
+  });
+
+  return normalized;
+}
+
 export function renderMarkdown(content, options = {}) {
   const normalized = String(content || "")
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n");
-  return md.render(normalized, options);
+  const linkNormalized = normalizeMarkdownLinks(normalized);
+  return md.render(linkNormalized, options);
 }
 
 /**
