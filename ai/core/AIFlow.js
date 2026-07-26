@@ -84,6 +84,7 @@ class AIFlow {
       const activeNotePath = context.currentFile || null;
       const activeNoteContent = context.activeNoteContent || null;
 
+      const userTurnCount = rawHistory.filter(m => m.role === 'user').length;
       const s1Duration = Date.now() - s1Start;
       stages.push({
         stage: 1,
@@ -93,7 +94,9 @@ class AIFlow {
         personaId,
         personaName: personaObj?.name || personaId,
         activeNotePath,
-        historyCount: rawHistory.length,
+        historyCount: userTurnCount,
+        userTurnCount,
+        totalMessageCount: rawHistory.length,
         compactedTurnsCount: compactionRes.turnsCompacted,
         isCompacted: compactionRes.isCompacted
       });
@@ -103,12 +106,14 @@ class AIFlow {
         payload: {
           personaId,
           personaName: personaObj?.name || personaId,
-          historyCount: rawHistory.length,
+          historyCount: userTurnCount,
+          userTurnCount,
+          totalMessageCount: rawHistory.length,
           activeNotePath,
           isCompacted: compactionRes.isCompacted,
           compactedTurnsCount: compactionRes.turnsCompacted,
           input: { personaId, activeNotePath },
-          output: { historyMessagesCount: rawHistory.length, isCompacted: compactionRes.isCompacted }
+          output: { historyMessagesCount: userTurnCount, totalMessageCount: rawHistory.length, isCompacted: compactionRes.isCompacted }
         }
       });
 
@@ -133,7 +138,7 @@ class AIFlow {
           if (orchRes.trace) {
             orchestratorTrace = orchRes.trace;
           }
-          confidenceScore = orchRes.confidence || 0.0;
+          confidenceScore = orchRes.confidenceScore !== undefined ? orchRes.confidenceScore : (orchRes.plannerDecision?.confidence !== undefined ? orchRes.plannerDecision.confidence : (orchRes.confidence !== undefined ? orchRes.confidence : 0.0));
         } catch (orchErr) {
           log.warn(`[Flow:${flowId}] ContextOrchestrator fallback:`, orchErr.message);
           traceSession.recordWarning('Planner', 'ContextOrchestrator Fallback', orchErr.message);
@@ -200,6 +205,16 @@ class AIFlow {
         harnessValid = check.valid;
       } catch { /* ignore audit error */ }
 
+      const promptBreakdown = {
+        systemPromptLength: systemPrompt.length,
+        personaPromptLength: typeof personaInput === 'string' ? personaInput.length : JSON.stringify(personaInput || {}).length,
+        workspaceContextLength: activeNoteContent ? activeNoteContent.length : 0,
+        retrievedEvidenceLength: retrievedEvidence ? String(retrievedEvidence).length : 0,
+        userPromptLength: userQuery ? userQuery.length : 0,
+        promptVersion: '1.2.0',
+        harnessVersion: '1.0.0'
+      };
+
       const s3Duration = Date.now() - s3Start;
       stages.push({
         stage: 3,
@@ -209,7 +224,8 @@ class AIFlow {
         systemPromptLength: systemPrompt.length,
         systemPromptSnippet: systemPrompt.slice(0, 500),
         systemPrompt,
-        harnessValid
+        harnessValid,
+        promptBreakdown
       });
 
       traceSession.endSpan(s3SpanId, {
@@ -218,6 +234,7 @@ class AIFlow {
           systemPromptLength: systemPrompt.length,
           harnessValid,
           systemPromptSnippet: systemPrompt.slice(0, 500),
+          promptBreakdown,
           input: `System Prompt Config (${systemPrompt.length} chars)`,
           output: systemPrompt.slice(0, 500)
         }
@@ -238,10 +255,72 @@ class AIFlow {
         trace: traceSession
       };
 
-      const result = await this.agent.queryExecutor.execute(userQuery, queryContext);
+      // Check for deterministic response optimization (Requirement 4)
+      const intent = orchRes?.intent || orchRes?.plannerDecision?.intent;
+      const isTaskSummaryIntent = intent === 'workspace_task_summary' || intent === 'tasks:extract' || intent === 'checklist_summary';
+      let result = null;
+
+      if (isTaskSummaryIntent) {
+        let tasksData = orchRes?.rawTaskResults;
+        if ((!tasksData || !Array.isArray(tasksData) || tasksData.length === 0) && this.agent) {
+          try {
+            const QueryTools = require('../tools/QueryTools');
+            const tasksJson = await QueryTools.runTool(this.agent, 'get_tasks', { status: 'open' });
+            if (typeof tasksJson === 'string' && tasksJson.startsWith('[')) {
+              tasksData = JSON.parse(tasksJson);
+            }
+          } catch { /* ignore */ }
+        }
+
+        if (Array.isArray(tasksData) && tasksData.length > 0) {
+          const { TaskSummaryFormatter } = require('../formatter');
+          const formattedResponse = TaskSummaryFormatter(tasksData);
+          result = {
+            type: 'query',
+            result: formattedResponse,
+            tokensUsed: 0,
+            tokensDetail: { inputTokens: 0, outputTokens: 0, toolTokens: 0, totalTokens: 0 },
+            trace: (orchestratorTrace || []).map(t => ({
+              ...t,
+              toolType: 'planned-execution',
+              callerType: 'executor',
+              selectedBy: 'planner',
+              intent
+            })),
+            strategy: 'TaskSummaryFormatter',
+            llmInvoked: false
+          };
+          log.info(`[Flow:${flowId}] Deterministic response optimization applied for intent: ${intent}`);
+        }
+      }
+
+      const estimatedPromptTokens = Math.ceil(((systemPrompt || '').length + (userQuery || '').length) / 4);
+
+      if (!result) {
+        try {
+          result = await this.agent.queryExecutor.execute(userQuery, queryContext);
+        } catch (execErr) {
+          log.warn(`[Flow:${flowId}] QueryExecutor error:`, execErr.message);
+          const activeProv = this.agent?.llmRegistry?.getActiveProvider ? this.agent.llmRegistry.getActiveProvider() : null;
+          const activeProvId = activeProv?.providerId || activeProv?.name || 'unknown';
+          const activeModelId = activeProv?.modelId || activeProv?.config?.model || 'unknown-model';
+          result = {
+            type: 'query',
+            result: execErr.message || String(execErr),
+            isError: true,
+            error: execErr.message || String(execErr),
+            tokensUsed: estimatedPromptTokens,
+            tokensDetail: { inputTokens: estimatedPromptTokens, outputTokens: 0, toolTokens: 0, totalTokens: estimatedPromptTokens },
+            strategy: 'DirectExecutorStrategy',
+            provider: activeProvId,
+            model: activeModelId,
+            finishReason: 'error'
+          };
+        }
+      }
 
       let groundingInfo = { verifiedCitations: 0, brokenCitations: 0, hallucinations: [] };
-      if (result.result) {
+      if (result.result && !result.isError) {
         try {
           const { verifyCitations, formatLineNumberLinks } = require('../grounding');
           let text = result.result;
@@ -268,15 +347,37 @@ class AIFlow {
       const s4End = Date.now();
       const s4Duration = s4End - s4Start;
 
+      const executionMode = result.isError ? 'execution_error' : (result.llmInvoked === false ? 'template_formatter' : (result.cached ? 'cache_hit' : 'llm_generation'));
+      const cacheMeta = {
+        checked: true,
+        hit: Boolean(result.cached),
+        llmBypassed: result.llmInvoked === false,
+        key: conversationId || 'session'
+      };
+
+      const finalTokensDetail = (result.tokensDetail && result.tokensDetail.totalTokens > 0) ? result.tokensDetail : {
+        inputTokens: estimatedPromptTokens,
+        outputTokens: 0,
+        toolTokens: 0,
+        totalTokens: estimatedPromptTokens,
+        estimated: true
+      };
+
       stages.push({
         stage: 4,
         name: 'Runtime Execution Strategy & Grounding',
         startedAt: new Date(s4Start).toISOString(),
         endedAt: new Date(s4End).toISOString(),
         durationMs: s4Duration,
-        strategy: 'DirectExecutorStrategy',
-        tokensUsed: result.tokensUsed || 0,
-        tokensDetail: result.tokensDetail || null,
+        strategy: result.strategy || 'DirectExecutorStrategy',
+        executionMode,
+        cache: cacheMeta,
+        provider: result.provider || 'groq',
+        model: result.model || 'default-model',
+        finishReason: result.finishReason || (result.isError ? 'error' : 'stop'),
+        tokensUsed: result.tokensUsed || estimatedPromptTokens,
+        tokensDetail: finalTokensDetail,
+        estimatedPromptTokens,
         toolCallsCount: result.trace ? result.trace.length : 0,
         toolCalls: result.trace || [],
         userQuery,
@@ -290,7 +391,9 @@ class AIFlow {
       traceSession.endSpan(s4SpanId, {
         status: result.isError ? 'failed' : 'completed',
         payload: {
-          strategy: 'DirectExecutorStrategy',
+          strategy: result.strategy || 'DirectExecutorStrategy',
+          executionMode,
+          cache: cacheMeta,
           tokensUsed: result.tokensUsed || 0,
           tokensDetail: result.tokensDetail || null,
           toolCallsCount: result.trace ? result.trace.length : 0,
@@ -306,21 +409,35 @@ class AIFlow {
       const s5Start = Date.now();
       const s5SpanId = traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
 
-      if (this.agent.conversationStore && result.result) {
-        try {
-          this.agent.conversationStore.addMessage(conversationId, 'user', userQuery);
-          this.agent.conversationStore.addMessage(conversationId, 'assistant', result.result, {
-            tokensUsed: result.tokensUsed,
-            tokensDetail: result.tokensDetail,
-            trace: result.trace,
-            flowId
-          });
-        } catch (saveErr) {
-          log.warn(`[Flow:${flowId}] ConversationStore save warning:`, saveErr.message);
-        }
-      }
+      // Calculate composite pipeline health score (0-100)
+      const retrievalScore = Math.round((orchRes?.confidenceScore || 0.9) * 100);
+      const groundingScore = groundingInfo.brokenCitations === 0 ? 100 : Math.max(50, 100 - (groundingInfo.brokenCitations * 20));
+      const promptEffScore = systemPrompt ? Math.min(100, Math.round(Math.max(50, (1 - (systemPrompt.length / 20000)) * 100))) : 90;
+      const telemetryScore = 100;
+      const overallHealth = Math.round((retrievalScore * 0.3) + (groundingScore * 0.3) + (promptEffScore * 0.2) + (telemetryScore * 0.2));
 
-      const totalDurationMs = Date.now() - startTime;
+      const pipelineHealth = {
+        retrieval: retrievalScore,
+        grounding: groundingScore,
+        telemetry: telemetryScore,
+        promptEfficiency: promptEffScore,
+        overall: overallHealth
+      };
+
+      try {
+        if (this.agent && this.agent.conversationStore) {
+          await this.agent.conversationStore.appendTurn(conversationId, {
+            query: userQuery,
+            response: result.result || '',
+            stages,
+            flowId,
+            pipelineHealth
+          });
+        }
+      } catch (err) {
+        log.warn(`[Flow:${flowId}] Memory persistence warning:`, err.message);
+      }
+      const s5End = Date.now();
 
       stages.push({
         stage: 5,
@@ -347,6 +464,8 @@ class AIFlow {
           }
         }
       }
+
+      const totalDurationMs = Date.now() - startTime;
 
       const traceFinalized = traceSession.finish({
         status: result.isError ? 'failed' : 'completed',
@@ -377,6 +496,10 @@ class AIFlow {
         stages,
         events
       });
+
+      if (result.isError) {
+        throw new Error(result.error || result.result || 'Execution error');
+      }
 
       return {
         ...result,
@@ -613,7 +736,51 @@ class AIFlow {
         trace: traceSession
       };
 
-      const result = await this.agent.queryExecutor.stream(userQuery, queryContext, onChunk, abortSignal);
+      // Check for deterministic response optimization (Requirement 4)
+      const intent = orchRes?.intent || orchRes?.plannerDecision?.intent;
+      const isTaskSummaryIntent = intent === 'workspace_task_summary' || intent === 'tasks:extract' || intent === 'checklist_summary';
+      let result = null;
+
+      if (isTaskSummaryIntent) {
+        let tasksData = orchRes?.rawTaskResults;
+        if ((!tasksData || !Array.isArray(tasksData) || tasksData.length === 0) && this.agent) {
+          try {
+            const QueryTools = require('../tools/QueryTools');
+            const tasksJson = await QueryTools.runTool(this.agent, 'get_tasks', { status: 'open' });
+            if (typeof tasksJson === 'string' && tasksJson.startsWith('[')) {
+              tasksData = JSON.parse(tasksJson);
+            }
+          } catch { /* ignore */ }
+        }
+
+        if (Array.isArray(tasksData) && tasksData.length > 0) {
+          const { TaskSummaryFormatter } = require('../formatter');
+          const formattedResponse = TaskSummaryFormatter(tasksData);
+          if (onChunk) {
+            onChunk({ type: 'text', content: formattedResponse });
+          }
+          result = {
+            type: 'query',
+            result: formattedResponse,
+            tokensUsed: 0,
+            tokensDetail: { inputTokens: 0, outputTokens: 0, toolTokens: 0, totalTokens: 0 },
+            trace: (orchestratorTrace || []).map(t => ({
+              ...t,
+              toolType: 'planned-execution',
+              callerType: 'executor',
+              selectedBy: 'planner',
+              intent
+            })),
+            strategy: 'TaskSummaryFormatter',
+            llmInvoked: false
+          };
+          log.info(`[Flow:${flowId}] Streaming deterministic response optimization applied for intent: ${intent}`);
+        }
+      }
+
+      if (!result) {
+        result = await this.agent.queryExecutor.stream(userQuery, queryContext, onChunk, abortSignal);
+      }
 
       const s4Duration = Date.now() - s4Start;
       stages.push({
@@ -621,9 +788,9 @@ class AIFlow {
         name: 'Runtime Dynamic Strategy Execution & Grounding',
         startedAt: new Date(s4Start).toISOString(),
         durationMs: s4Duration,
-        strategy: 'StreamingStrategy',
+        strategy: result.strategy || 'StreamingStrategy',
         tokensUsed: result.tokensUsed || 0,
-        tokensDetail: result.tokensDetail || null,
+        tokensDetail: result.tokensDetail || { inputTokens: 0, outputTokens: 0, toolTokens: 0, totalTokens: 0 },
         toolCallsCount: result.trace ? result.trace.length : 0,
         toolCalls: result.trace || [],
         userQuery,

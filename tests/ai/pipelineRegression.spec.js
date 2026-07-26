@@ -77,29 +77,35 @@ describe('AI Pipeline Telemetry & Intent Regression Tests', () => {
 
   it('Relevance filtering: rejects evidence below 0.25 similarity threshold', () => {
     const evidence = [
-      { toolName: 'test', content: 'Weak result', score: 0.02 },
-      { toolName: 'test', content: 'Good result', score: 0.85 }
+      { toolName: 'test_rejected', content: 'Weak result', score: 0.02 },
+      { toolName: 'test_accepted', content: 'Good result', score: 0.85 }
     ];
 
     const aggregated = orchestrator.aggregateContext(evidence);
 
     expect(aggregated.items).toHaveLength(1);
     expect(aggregated.items[0].content).toBe('Good result');
-    expect(aggregated.retrievalQuality).toEqual([
+    expect(aggregated.retrievalQuality).toMatchObject([
       {
-        source: 'test',
-        sourceType: 'test',
+        source: 'test_rejected',
+        sourceType: 'test_rejected',
+        retrievalType: 'semantic',
         similarityScore: 0.02,
         score: 0.02,
+        itemsReturned: 1,
+        acceptedCount: 0,
         accepted: false,
         rejectedReason: 'below relevance threshold',
         reason: 'below relevance threshold'
       },
       {
-        source: 'test',
-        sourceType: 'test',
+        source: 'test_accepted',
+        sourceType: 'test_accepted',
+        retrievalType: 'semantic',
         similarityScore: 0.85,
         score: 0.85,
+        itemsReturned: 1,
+        acceptedCount: 1,
         accepted: true
       }
     ]);

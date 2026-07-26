@@ -55,10 +55,16 @@ class IntentAnalyzer {
     const isGraphQuery = /\b(graph|relation|relations|relationship|topology|connect|connected|connection|connections|architecture)\b/i.test(q);
     const isWebQuery = /\b(web|http|https|online|search web|fetch web)\b/i.test(q);
 
+    // Conversational Follow-up Detection (e.g. "Which shall we take first", "What should we start with")
+    const isConversationalFollowup = /\b(which (one|shall we|should we|to|can we|first)|what next|which first|where to start|what should we|tell me more|go on|continue)\b/i.test(q) && (_context.historyCount > 0 || Array.isArray(_context.conversationMemory) && _context.conversationMemory.length > 0);
+
     if (isTaskQuery) {
       informationNeeds.add('action_items');
       informationNeeds.add('tasks');
       subIntents.push('tasks:extract');
+    } else if (isConversationalFollowup) {
+      informationNeeds.add('conversation_memory');
+      subIntents.push('memory:resolve');
     }
     if (isTimelineQuery) {
       informationNeeds.add('recent_changes');
@@ -96,7 +102,10 @@ class IntentAnalyzer {
     let goal = 'synthesize_workspace_notes';
     let confidence = 0.70;
 
-    if (isTaskQuery || informationNeeds.has('action_items') || informationNeeds.has('tasks')) {
+    if (isConversationalFollowup) {
+      goal = 'conversational_followup';
+      confidence = 0.88;
+    } else if (isTaskQuery || informationNeeds.has('action_items') || informationNeeds.has('tasks')) {
       goal = 'workspace_task_summary';
       confidence = 0.92;
     } else if (informationNeeds.has('entity_relationships')) {

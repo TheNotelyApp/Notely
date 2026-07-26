@@ -91,9 +91,8 @@ const PROVIDER_REGISTRY = {
     },
     models: [
       { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B',   note: 'Best quality · default' },
-      { id: 'llama3-8b-8192',          label: 'Llama 3 8B',       note: 'Fast · lightweight' },
-      { id: 'gemma2-9b-it',            label: 'Gemma 2 9B',       note: 'Google open model' },
-      { id: 'mixtral-8x7b-32768',      label: 'Mixtral 8×7B',     note: '32k context' },
+      { id: 'llama-3.1-8b-instant',    label: 'Llama 3.1 8B Instant', note: 'Fast · lightweight' },
+      { id: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1 70B', note: 'Reasoning model' },
     ],
     defaultModel: 'llama-3.3-70b-versatile',
     factory: (config) => new GroqProvider(config.apiKey, config),

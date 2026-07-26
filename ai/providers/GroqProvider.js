@@ -20,9 +20,9 @@ const GROQ_MODELS = {
   // Default — fast, capable, large context.
   default: 'llama-3.3-70b-versatile',
   // Lighter option for lower latency / higher throughput.
-  fast: 'llama3-8b-8192',
-  // Google's open model via Groq.
-  gemma: 'gemma2-9b-it',
+  fast: 'llama-3.1-8b-instant',
+  // Open model via Groq.
+  gemma: 'llama-3.3-70b-versatile',
 };
 
 class GroqProvider extends OpenAICompatibleProvider {

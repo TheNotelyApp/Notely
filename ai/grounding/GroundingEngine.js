@@ -6,6 +6,25 @@ const fs = require('fs');
 
 class GroundingEngine {
   /**
+   * Format absolute file path to clean markdown link: [basename](file:///path)
+   */
+  static formatFileUriLink(filePath, label) {
+    const filename = label || (filePath ? String(filePath).split(/[\\/]/).pop() : 'note.md');
+    if (!filePath) return `[${filename}]`;
+    const normPath = String(filePath).replace(/\\/g, '/');
+    const fileUri = normPath.startsWith('/') ? normPath : '/' + normPath;
+    return `[${filename}](file://${fileUri})`;
+  }
+
+  /**
+   * Clean any invalid backslash escaping in markdown file links (e.g. ]\(file:/// -> ](file:///)
+   */
+  static cleanMarkdownLinkEscaping(text) {
+    if (!text || typeof text !== 'string') return text || '';
+    return text.replace(/\]\\\(file:\/\/\//g, '](file:///');
+  }
+
+  /**
    * Verify file links in response text
    * @param {string} text
    * @returns {{ text: string, verifiedCitations: number, brokenCitations: number }}
@@ -15,11 +34,12 @@ class GroundingEngine {
       return { text: text || '', verifiedCitations: 0, brokenCitations: 0 };
     }
 
+    let cleanedInput = GroundingEngine.cleanMarkdownLinkEscaping(text);
     let verified = 0;
     let broken = 0;
 
     const linkRegex = /\[([^\]]+)\]\(file:\/\/\/([^)]+)\)/g;
-    const verifiedText = text.replace(linkRegex, (match, label, filePath) => {
+    const verifiedText = cleanedInput.replace(linkRegex, (match, label, filePath) => {
       // Decode URI spaces and split line number hashes
       const cleanFilePath = filePath.split('#')[0];
       const decodedPath = decodeURIComponent(cleanFilePath);

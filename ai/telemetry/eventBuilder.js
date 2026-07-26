@@ -137,16 +137,30 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
           } catch { /* keep rawOutput */ }
         }
 
+        const callerType = tool.callerType || (tool.toolType === 'planned-execution' ? 'executor' : (isLlmDriven ? 'llm' : 'executor'));
+        const toolType = tool.toolType || (isLlmDriven ? 'llm-driven' : 'planned-execution');
+        const selectedBy = tool.selectedBy || (toolType === 'planned-execution' ? 'planner' : 'llm');
+        const intent = tool.intent || s2?.plannerDecision?.intent || 'workspace_task_summary';
+        const itemsReturned = tool.itemsReturned !== undefined ? tool.itemsReturned : (Array.isArray(rawOutput) ? rawOutput.length : (rawOutput ? 1 : 0));
+        const inputSizeBytes = tool.inputSizeBytes !== undefined ? tool.inputSizeBytes : JSON.stringify(argsPayload).length;
+
         events.push({
           type: 'tool_execution',
-          callerType: isLlmDriven ? 'llm' : 'system',
+          eventName: 'tool.executed',
+          callerType,
           label: `Tool: ${toolName}`,
           startedAt: toolStartIso,
           endedAt: toolEndIso,
           durationMs: toolDuration,
           tokensUsed: null,
           toolName,
-          toolType: isLlmDriven ? 'llm-driven' : 'pre-retrieval',
+          toolType,
+          callerType,
+          selectedBy,
+          intent,
+          itemsReturned,
+          inputSizeBytes,
+          outputSizeBytes: resultSizeBytes,
           cacheHit,
           resultSizeBytes,
           usedInFinalAnswer,
@@ -159,15 +173,23 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
 
     const tokensUsedVal = typeof s4.tokensUsed === 'number' ? s4.tokensUsed : (s4.tokensUsed?.totalTokens || null);
     const tokensDetail = s4.tokensDetail || (typeof s4.tokensUsed === 'object' ? s4.tokensUsed : null);
+    const executionMode = s4.executionMode || (s4.strategy === 'TaskSummaryFormatter' ? 'template_formatter' : 'llm_generation');
+    const cacheMeta = s4.cache || { checked: true, hit: false, llmBypassed: s4.strategy === 'TaskSummaryFormatter' };
 
     events.push({
       type: 'llm_execution',
+      eventName: 'llm.completed',
       callerType: 'llm',
       label: 'LLM Execution',
       startedAt: s4StartIso,
       endedAt: s4EndIso,
       durationMs: s4Duration,
       strategy: s4.strategy,
+      executionMode,
+      cache: cacheMeta,
+      provider: s4.provider || 'groq',
+      model: s4.model || 'llama-3.3-70b',
+      finishReason: s4.finishReason || 'stop',
       tokensUsed: tokensUsedVal,
       tokensDetail: tokensDetail,
       toolCallsCount: s4.toolCallsCount || 0,
@@ -180,6 +202,7 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
     if (s4.isError || s4.error) {
       events.push({
         type: 'error',
+        eventName: 'error.occurred',
         callerType: 'system',
         label: 'Provider Error',
         startedAt: s4EndIso,
@@ -192,10 +215,27 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
     }
   }
 
+  // Execution DAG Construction
+  const dagNodes = [
+    { id: 'node_planner', label: 'Planner & Intent', type: 'stage', stage: 2 },
+    { id: 'node_retrieval', label: 'Context Retrieval', type: 'stage', stage: 2 },
+    { id: 'node_prompt', label: 'Prompt Construction', type: 'stage', stage: 3 },
+    { id: 'node_execution', label: 'Dynamic Execution', type: 'stage', stage: 4 },
+    { id: 'node_memory', label: 'Memory & Persistence', type: 'stage', stage: 5 }
+  ];
+
+  const dagEdges = [
+    { source: 'node_planner', target: 'node_retrieval' },
+    { source: 'node_retrieval', target: 'node_prompt' },
+    { source: 'node_prompt', target: 'node_execution' },
+    { source: 'node_execution', target: 'node_memory' }
+  ];
+
   // trace_completed
   const completedAt = new Date(startEpoch + (totalDurationMs || 0)).toISOString();
   events.push({
     type: 'trace_completed',
+    eventName: 'trace.completed',
     callerType: 'system',
     label: 'Trace Complete',
     startedAt: completedAt,
@@ -203,6 +243,8 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
     durationMs: 0,
     tokensUsed: null,
     status: 'ok',
+    dagNodes,
+    dagEdges,
     input: '',
     output: ''
   });

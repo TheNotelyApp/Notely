@@ -119,6 +119,47 @@ function createSuccessResponse(data, metadata = {}) {
   };
 }
 
+/**
+ * Normalize tokens detail structure to ensure totalTokens = inputTokens + outputTokens + toolTokens
+ */
+function normalizeTokensDetail(rawUsage = {}) {
+  const inputTokens = Number(rawUsage.inputTokens || rawUsage.promptTokens || rawUsage.prompt_tokens || 0);
+  const outputTokens = Number(rawUsage.outputTokens || rawUsage.completionTokens || rawUsage.completion_tokens || 0);
+  let toolTokens = Number(rawUsage.toolTokens || rawUsage.tool_tokens || 0);
+  let totalTokens = Number(rawUsage.totalTokens || rawUsage.total_tokens || 0);
+
+  if (totalTokens > 0) {
+    if (totalTokens >= (inputTokens + outputTokens)) {
+      toolTokens = totalTokens - (inputTokens + outputTokens);
+    } else {
+      totalTokens = inputTokens + outputTokens + toolTokens;
+    }
+  } else {
+    totalTokens = inputTokens + outputTokens + toolTokens;
+  }
+
+  return {
+    inputTokens,
+    outputTokens,
+    toolTokens,
+    totalTokens,
+    promptTokens: inputTokens,
+    completionTokens: outputTokens
+  };
+}
+
+/**
+ * Validate token accounting invariant: totalTokens = inputTokens + outputTokens + toolTokens
+ */
+function validateTokenAccounting(tokensDetail) {
+  if (!tokensDetail || typeof tokensDetail !== 'object') return false;
+  const input = Number(tokensDetail.inputTokens || tokensDetail.promptTokens || 0);
+  const output = Number(tokensDetail.outputTokens || tokensDetail.completionTokens || 0);
+  const tool = Number(tokensDetail.toolTokens || 0);
+  const total = Number(tokensDetail.totalTokens || 0);
+  return total === (input + output + tool);
+}
+
 module.exports = {
   estimateTokens,
   buildContextualPrompt,
@@ -127,5 +168,7 @@ module.exports = {
   formatResponse,
   parseCommand,
   createErrorResponse,
-  createSuccessResponse
+  createSuccessResponse,
+  normalizeTokensDetail,
+  validateTokenAccounting
 };

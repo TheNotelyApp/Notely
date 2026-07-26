@@ -4,6 +4,7 @@
 
 const { getTools } = require('../tools/ToolRegistry');
 const PromptPipeline = require('../prompts/PromptPipeline');
+const { normalizeTokensDetail } = require('../utils/aiUtils');
 
 class QueryExecutor {
   constructor(agent) {
@@ -171,10 +172,8 @@ class QueryExecutor {
       });
 
       const usageObj = result.usage || {};
-      const promptTokens = usageObj.promptTokens || usageObj.inputTokens || 0;
-      const completionTokens = usageObj.completionTokens || usageObj.outputTokens || 0;
-      let tokensUsed = usageObj.totalTokens || (promptTokens + completionTokens);
-      const tokensDetail = { promptTokens, completionTokens, totalTokens: tokensUsed };
+      const tokensDetail = normalizeTokensDetail(usageObj);
+      let tokensUsed = tokensDetail.totalTokens;
 
       if (llm.usageStats) {
         llm.usageStats.tokensUsedTotal += tokensUsed;
@@ -245,6 +244,8 @@ class QueryExecutor {
 
       // Construct the trace array of LLM-driven executed tools
       const trace = [];
+      const plannedToolNames = Array.isArray(context.plannedTools) ? context.plannedTools : (context.plannerDecision?.plannedTools || []);
+      const intent = context.intent || context.plannerDecision?.intent || 'workspace_task_summary';
 
       if (result.steps) {
         for (const step of result.steps) {
@@ -257,10 +258,20 @@ class QueryExecutor {
             const toolArgs = call.args || call.parameters || {};
             const toolDur = toolRes?.durationMs || 0;
 
+            const isPlanned = plannedToolNames.includes(toolName) || context.plannerDecision?.selectedStrategy === 'task_pipeline';
+            const toolType = isPlanned ? 'planned-execution' : 'llm-driven';
+            const callerType = isPlanned ? 'executor' : 'llm';
+            const selectedBy = isPlanned ? 'planner' : 'llm';
+
             trace.push({
               name: toolName,
+              toolName,
               args: toolArgs,
               type: 'llm',
+              toolType,
+              callerType,
+              selectedBy,
+              intent,
               startedAt: toolRes?.startedAt || new Date().toISOString(),
               endedAt: toolRes?.endedAt || new Date().toISOString(),
               durationMs: toolDur,
@@ -270,12 +281,14 @@ class QueryExecutor {
             if (traceSession && typeof traceSession.recordEvent === 'function') {
               traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
                 toolName,
-                toolType: 'llm-driven',
+                toolType,
+                callerType,
+                selectedBy,
+                intent,
                 args: toolArgs,
                 input: toolArgs,
                 output: rawOutput,
-                durationMs: toolDur,
-                callerType: 'llm'
+                durationMs: toolDur
               });
             }
           }
@@ -422,10 +435,8 @@ class QueryExecutor {
       }
 
       const usage = await result.usage;
-      const promptTokens = usage?.promptTokens || usage?.inputTokens || 0;
-      const completionTokens = usage?.completionTokens || usage?.outputTokens || 0;
-      const tokensUsed = usage?.totalTokens || (promptTokens + completionTokens);
-      const tokensDetail = { promptTokens, completionTokens, totalTokens: tokensUsed };
+      const tokensDetail = normalizeTokensDetail(usage || {});
+      const tokensUsed = tokensDetail.totalTokens;
 
       if (llm.usageStats) {
         llm.usageStats.tokensUsedTotal += tokensUsed;
@@ -437,14 +448,22 @@ class QueryExecutor {
       const trace = Array.isArray(orchestratorTrace)
         ? orchestratorTrace.map(t => ({
             name: t.name || t.toolName || 'tool',
+            toolName: t.toolName || t.name || 'tool',
             args: t.args || t.parameters || {},
             type: t.type || 'programmatic',
+            toolType: t.toolType || 'planned-execution',
+            callerType: t.callerType || 'executor',
+            selectedBy: t.selectedBy || 'planner',
+            intent: t.intent || context.intent || context.plannerDecision?.intent || 'workspace_task_summary',
             startedAt: t.startedAt || new Date().toISOString(),
             endedAt: t.endedAt || new Date().toISOString(),
             durationMs: t.durationMs || 0,
             output: t.output !== undefined ? t.output : (t.result !== undefined ? t.result : null)
           }))
         : [];
+
+      const plannedToolNames = Array.isArray(context.plannedTools) ? context.plannedTools : (context.plannerDecision?.plannedTools || []);
+      const intent = context.intent || context.plannerDecision?.intent || 'workspace_task_summary';
 
       if (steps) {
         for (const step of steps) {
@@ -457,10 +476,20 @@ class QueryExecutor {
             const toolArgs = call.args || call.parameters || {};
             const toolDur = toolRes?.durationMs || 0;
 
+            const isPlanned = plannedToolNames.includes(toolName) || context.plannerDecision?.selectedStrategy === 'task_pipeline';
+            const toolType = isPlanned ? 'planned-execution' : 'llm-driven';
+            const callerType = isPlanned ? 'executor' : 'llm';
+            const selectedBy = isPlanned ? 'planner' : 'llm';
+
             trace.push({
               name: toolName,
+              toolName,
               args: toolArgs,
               type: 'llm',
+              toolType,
+              callerType,
+              selectedBy,
+              intent,
               startedAt: toolRes?.startedAt || new Date().toISOString(),
               endedAt: toolRes?.endedAt || new Date().toISOString(),
               durationMs: toolDur,
@@ -470,22 +499,31 @@ class QueryExecutor {
             if (traceSession && typeof traceSession.recordEvent === 'function') {
               traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
                 toolName,
-                toolType: 'llm-driven',
+                toolType,
+                callerType,
+                selectedBy,
+                intent,
                 args: toolArgs,
                 input: toolArgs,
                 output: rawOutput,
-                durationMs: toolDur,
-                callerType: 'llm'
+                durationMs: toolDur
               });
             }
           }
         }
       }
 
+      const providerId = llm.providerId || llm.name || 'unknown';
+      const modelId = llm.modelId || 'unknown';
+      const finishReason = (await result.finishReason) || 'stop';
+
       if (traceSession && typeof traceSession.recordEvent === 'function') {
         traceSession.recordEvent('LLM', 'llm_execution', 'Streaming LLM Execution Completed', {
           tokensUsed,
           tokensDetail,
+          provider: providerId,
+          model: modelId,
+          finishReason,
           toolCallsCount: trace.length,
           input: query,
           output: fullText
@@ -497,6 +535,9 @@ class QueryExecutor {
         result: fullText,
         tokensUsed,
         tokensDetail,
+        provider: providerId,
+        model: modelId,
+        finishReason,
         trace
       };
     } catch (error) {

@@ -76,12 +76,31 @@ class SemanticToolRunner {
   async run(toolName, args = {}) {
     try {
       const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
-      const registered = applicationToolRegistry.findTool(toolName);
-      if (registered) {
-        return await applicationToolRegistry.executeTool(registered.name, args);
+      const resolved = applicationToolRegistry.resolveToolName(toolName);
+      if (resolved) {
+        const res = await applicationToolRegistry.executeTool(resolved, args, {
+          workspaceRoot: this.agent?.workspaceRoot,
+          caller: 'planner'
+        });
+        if (res && res.success && res.data) {
+          return res.data;
+        }
       }
-    } catch{
+    } catch {
       // Ignore registry resolution errors in isolated unit test environments
+    }
+
+    if (this.agent) {
+      try {
+        const QueryTools = require('./QueryTools');
+        const rawRes = await QueryTools.runTool(this.agent, toolName, args);
+        if (rawRes && typeof rawRes === 'string' && (rawRes.startsWith('[') || rawRes.startsWith('{'))) {
+          try { return JSON.parse(rawRes); } catch { return rawRes; }
+        }
+        if (rawRes && !rawRes.startsWith('Error:')) return rawRes;
+      } catch {
+        // ignore fallback error
+      }
     }
 
     const query = args.query || args.topic || args.component || args.notePath || '';

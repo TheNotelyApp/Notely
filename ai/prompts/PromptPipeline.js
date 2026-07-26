@@ -33,7 +33,7 @@ class PromptPipeline {
   }
 
   /**
-   * Get cached core static system prompt block
+   * Get cached core static system prompt block (Core identity + Safety + Grounding)
    * @private
    */
   _getStaticCore() {
@@ -43,11 +43,10 @@ class PromptPipeline {
     const baseSystem = this._loadModule('base-system');
     const behaviorPolicy = this._loadModule('behavior-policy');
     const safetyPolicy = this._loadModule('safety-policy');
-    const formattingPolicy = this._loadModule('formatting-policy');
     const permPolicy = this._loadModule('permission-policy');
     const groundingPolicy = this._loadModule('grounding-policy');
 
-    const coreParts = [baseSystem, behaviorPolicy, safetyPolicy, formattingPolicy, permPolicy, groundingPolicy].filter(Boolean);
+    const coreParts = [baseSystem, behaviorPolicy, safetyPolicy, permPolicy, groundingPolicy].filter(Boolean);
     this._cachedStaticCore = coreParts.join('\n\n---\n\n');
     return this._cachedStaticCore;
   }
@@ -61,11 +60,13 @@ class PromptPipeline {
    * @param {Array|string} [options.retrievedEvidence] - Merged evidence from search/graph tools
    * @param {object} [options.uiContext] - UI tab state, selection, view mode
    * @param {string} [options.category] - Query intent category
+   * @param {object} [options.capabilities] - Query capabilities manifest
    * @returns {string}
    */
   assemble(options = {}) {
     const pipelineStages = [];
     const activeCategory = options.category || 'Workspace Search';
+    const caps = options.capabilities || options.manifest?.capabilities || {};
 
     // 1. Core Foundational Policies (Always Included - Cached Static Block)
     const staticCore = this._getStaticCore();
@@ -74,8 +75,15 @@ class PromptPipeline {
     }
 
     // 2. Conditional Modular Policies
+    // Formatting & Visual Policy: Included when diagram, code, or formatting is requested, or by default for general search
+    const needsFormatting = caps.needsDiagram || caps.needsCode || caps.needsCreative || !options.capabilities;
+    if (needsFormatting) {
+      const formattingPolicy = this._loadModule('formatting-policy');
+      if (formattingPolicy) pipelineStages.push(formattingPolicy);
+    }
+
     // Planning Policy: Included for task queries, workspace search, or planning
-    if (['Task Query', 'Workspace Search', 'Planning', 'Graph Exploration'].includes(activeCategory)) {
+    if (['Task Query', 'Workspace Search', 'Planning', 'Graph Exploration'].includes(activeCategory) || caps.needsTasks) {
       const planningPolicy = this._loadModule('planning-policy');
       if (planningPolicy) pipelineStages.push(planningPolicy);
     }

@@ -37,10 +37,12 @@ class ContextOrchestrator {
     log.debug('Internal execution plan generated', { intent: plan.intent, stepsCount: plan.steps.length });
 
     const isTaskQuery = plan.intent === 'workspace_task_summary' || plan.manifest?.capabilities?.needsTasks;
+    const plannedTools = plan.steps ? plan.steps.map(s => s.toolName) : [];
 
     if (traceSession && typeof traceSession.recordEvent === 'function') {
       traceSession.recordEvent('Planner', 'intent_analyzed', 'Intent Planning Completed', {
         intent: plan.intent,
+        plannedTools,
         plannerDecision: plan.plannerDecision || {
           intent: plan.intent,
           confidence: plan.manifest?.confidence || 0.90,
@@ -61,6 +63,9 @@ class ContextOrchestrator {
         confidence: 1.0,
         iterations: 0,
         trace: [],
+        plannedTools: [],
+        executedTools: [],
+        executionSource: 'planner-approved',
         plannerDecision: plan.plannerDecision,
         retrievalQuality: [],
         category: plan.manifest.category
@@ -71,6 +76,7 @@ class ContextOrchestrator {
     let executionTrace = [];
     let iterations = 0;
     let confidence = 0.0;
+    let rawTaskResults = null;
 
     // Active workspace tools runner
     const SemanticTools = require('../tools/SemanticTools');
@@ -95,8 +101,13 @@ class ContextOrchestrator {
                 log.debug(`[ContextOrchestrator] Cache hit for tool: ${step.toolName}`);
                 executionTrace.push({
                   name: step.toolName,
+                  toolName: step.toolName,
                   args: step.args,
                   type: 'programmatic',
+                  toolType: 'planned-execution',
+                  callerType: 'executor',
+                  selectedBy: 'planner',
+                  intent: plan.intent,
                   durationMs: 0,
                   cacheHit: true,
                   output: typeof cached === 'object' ? JSON.stringify(cached).slice(0, 500) : String(cached).slice(0, 500)
@@ -109,7 +120,14 @@ class ContextOrchestrator {
             if (runner) {
               const res = await runner(step.args);
               const tDur = Date.now() - tStart;
-              const outputStr = typeof res === 'object' ? JSON.stringify(res).slice(0, 500) : String(res).slice(0, 500);
+              const outputStr = typeof res === 'object' ? JSON.stringify(res).slice(0, 500) : String(res || '').slice(0, 500);
+              const itemsReturned = Array.isArray(res) ? res.length : (res ? 1 : 0);
+              const inputSizeBytes = JSON.stringify(step.args || {}).length;
+              const outputSizeBytes = outputStr.length;
+
+              if (step.toolName === 'get_tasks' && Array.isArray(res)) {
+                rawTaskResults = res;
+              }
 
               if (traceSession && typeof traceSession.setCachedToolResult === 'function') {
                 traceSession.setCachedToolResult(step.toolName, step.args, res);
@@ -117,9 +135,17 @@ class ContextOrchestrator {
 
               executionTrace.push({
                 name: step.toolName,
+                toolName: step.toolName,
                 args: step.args,
                 type: 'programmatic',
+                toolType: 'planned-execution',
+                callerType: 'executor',
+                selectedBy: 'planner',
+                intent: plan.intent,
                 durationMs: tDur,
+                itemsReturned,
+                inputSizeBytes,
+                outputSizeBytes,
                 cacheHit: false,
                 output: outputStr
               });
@@ -127,12 +153,19 @@ class ContextOrchestrator {
               if (traceSession && typeof traceSession.recordEvent === 'function') {
                 traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${step.toolName}`, {
                   toolName: step.toolName,
-                  toolType: 'pre-retrieval',
+                  toolType: 'planned-execution',
+                  callerType: 'executor',
+                  selectedBy: 'planner',
+                  intent: plan.intent,
                   args: step.args,
                   input: step.args,
                   output: outputStr,
                   durationMs: tDur,
-                  callerType: 'system'
+                  itemsReturned,
+                  inputSizeBytes,
+                  outputSizeBytes,
+                  cacheHit: false,
+                  parentSpanId: options?.s2SpanId || traceSession.rootSpanId
                 });
               }
 
@@ -142,8 +175,13 @@ class ContextOrchestrator {
             const tDur = Date.now() - tStart;
             executionTrace.push({
               name: step.toolName,
+              toolName: step.toolName,
               args: step.args,
               type: 'programmatic',
+              toolType: 'planned-execution',
+              callerType: 'executor',
+              selectedBy: 'planner',
+              intent: plan.intent,
               durationMs: tDur,
               output: `Error: ${err.message}`
             });
@@ -151,7 +189,11 @@ class ContextOrchestrator {
             if (traceSession && typeof traceSession.recordEvent === 'function') {
               traceSession.recordError('Tool', `Tool Error: ${step.toolName}`, err.message, {
                 toolName: step.toolName,
-                args: step.args
+                args: step.args,
+                toolType: 'planned-execution',
+                callerType: 'executor',
+                selectedBy: 'planner',
+                intent: plan.intent
               });
             }
 
@@ -182,8 +224,13 @@ class ContextOrchestrator {
               this._ingestEvidence(collectedEvidence, 'markdown_task_parser', syntaxMatches);
               executionTrace.push({
                 name: 'markdown_task_parser',
+                toolName: 'markdown_task_parser',
                 args: { query: 'TODO FIXME status "- [ ]"' },
                 type: 'programmatic',
+                toolType: 'planned-execution',
+                callerType: 'executor',
+                selectedBy: 'planner',
+                intent: plan.intent,
                 output: `Found ${syntaxMatches.length} markdown task matches`
               });
             }
@@ -200,8 +247,13 @@ class ContextOrchestrator {
                 this._ingestEvidence(collectedEvidence, 'recent_activity', recentActivity);
                 executionTrace.push({
                   name: 'recent_activity',
+                  toolName: 'recent_activity',
                   args: { limit: 5 },
                   type: 'programmatic',
+                  toolType: 'planned-execution',
+                  callerType: 'executor',
+                  selectedBy: 'planner',
+                  intent: plan.intent,
                   output: `Retrieved ${recentActivity.length} recent activity items`
                 });
               }
@@ -225,7 +277,7 @@ class ContextOrchestrator {
             collectedEvidence.push({
               source: fact.source || 'WorkspaceBrain',
               filePath: fact.filePath || '',
-              content: fact.content || '',
+              content: fact.content || fact.snippet || fact.text || JSON.stringify(fact),
               score: fact.score || 0.8
             });
           }
@@ -245,12 +297,26 @@ class ContextOrchestrator {
 
     // Final consolidation
     const finalAggregated = this.aggregateContext(collectedEvidence, { isTaskQuery });
+    const executedTools = executionTrace.map(t => t.toolName || t.name);
+    const executionSource = 'planner-approved';
+
+    const plannerDecision = {
+      ...(plan.plannerDecision || {
+        intent: plan.intent,
+        confidence: plan.manifest?.confidence || 0.90,
+        selectedStrategy: isTaskQuery ? 'task_pipeline' : 'semantic_search',
+        rejectedStrategies: isTaskQuery ? ['graph_search'] : []
+      }),
+      plannedTools,
+      executedTools,
+      executionSource
+    };
 
     if (traceSession && typeof traceSession.recordEvent === 'function') {
       traceSession.recordEvent('Retrieval', 'retrieval_completed', 'Hybrid Context Aggregated', {
         evidenceCount: finalAggregated.items.length,
         confidence: finalAggregated.confidence,
-        plannerDecision: plan.plannerDecision,
+        plannerDecision,
         retrievalQuality: finalAggregated.retrievalQuality,
         iterations
       });
@@ -260,7 +326,12 @@ class ContextOrchestrator {
       evidence: finalAggregated.items,
       aggregatedContext: finalAggregated.contextString,
       confidence: finalAggregated.confidence,
-      plannerDecision: plan.plannerDecision,
+      plannerDecision,
+      plannedTools,
+      executedTools,
+      executionSource,
+      intent: plan.intent,
+      rawTaskResults,
       retrievalQuality: finalAggregated.retrievalQuality,
       iterations,
       trace: executionTrace
@@ -275,10 +346,14 @@ class ContextOrchestrator {
     if (isTaskQuery) {
       return []; // Do NOT invoke graph exploration or generic search for task queries
     }
-    const steps = [];
+    // Filter out rejected low-confidence evidence items (score < 0.10)
+    const validEvidence = existingEvidence.filter(e => (e.score !== undefined ? e.score : 0.8) >= 0.10);
+    if (validEvidence.length === 0) {
+      return []; // Early exit: No valid evidence to expand via graph traversal
+    }
 
-    // If existing evidence contains linked notes, trigger graph expansion
-    const linkedPaths = existingEvidence
+    const steps = [];
+    const linkedPaths = validEvidence
       .map(e => e.filePath)
       .filter(Boolean);
 
@@ -286,11 +361,6 @@ class ContextOrchestrator {
       steps.push({
         toolName: 'explore_topic_graph',
         args: { topic: query, notePath: linkedPaths[0], maxHops: 2 }
-      });
-    } else {
-      steps.push({
-        toolName: 'find_discussions',
-        args: { topic: query }
       });
     }
 
@@ -302,12 +372,15 @@ class ContextOrchestrator {
    * @private
    */
   _ingestEvidence(targetArray, toolName, result) {
+    const deterministicTools = ['markdown_task_parser', 'get_tasks', 'read_note', 'list_notes', 'recent_activity', 'get_people', 'get_current_date'];
+    const isDeterministic = deterministicTools.includes(toolName);
+
     if (typeof result === 'string') {
-      targetArray.push({ toolName, content: result, score: 0.75 });
+      targetArray.push({ toolName, content: result, score: isDeterministic ? 0.95 : 0.75, retrievalType: isDeterministic ? 'deterministic' : 'semantic' });
     } else if (Array.isArray(result)) {
       for (const item of result) {
         if (typeof item === 'string') {
-          targetArray.push({ toolName, content: item, score: 0.8 });
+          targetArray.push({ toolName, content: item, score: isDeterministic ? 0.95 : 0.8, retrievalType: isDeterministic ? 'deterministic' : 'semantic' });
         } else if (typeof item === 'object' && item !== null) {
           const filePath = item.filePath || item.path || item.note_path || item.file || '';
           let text = item.snippet || item.content || item.text || item.evidence;
@@ -321,7 +394,9 @@ class ContextOrchestrator {
             toolName,
             filePath,
             content: text,
-            score: item.score !== undefined ? item.score : 0.8
+            score: item.score !== undefined ? item.score : (isDeterministic ? 0.95 : 0.8),
+            retrievalType: isDeterministic ? 'deterministic' : 'semantic',
+            rawItem: item
           });
         }
       }
@@ -332,32 +407,48 @@ class ContextOrchestrator {
         toolName,
         filePath,
         content: text,
-        score: result.score !== undefined ? result.score : 0.7
+        score: result.score !== undefined ? result.score : (isDeterministic ? 0.95 : 0.7),
+        retrievalType: isDeterministic ? 'deterministic' : 'semantic'
       });
     }
   }
 
   /**
-   * Aggregate, deduplicate, rank, apply relevance filtering (min score 0.25), and compute quality metrics
+   * Aggregate, deduplicate, rank, apply relevance filtering (min score 0.10), and compute quality metrics
    * @param {Array} evidenceItems
    * @param {object} [options={}]
    * @returns {{ items: Array, contextString: string, confidence: number, retrievalQuality: Array }}
    */
   aggregateContext(evidenceItems, options = {}) {
     const isTaskQuery = options.isTaskQuery || false;
-    const minRelevance = options.minRelevance || 0.25;
+    const minRelevance = options.minRelevance || 0.10;
 
     if (!Array.isArray(evidenceItems) || evidenceItems.length === 0) {
+      const emptyQuality = (options.executedTools || []).map(toolName => ({
+        source: toolName,
+        sourceType: toolName,
+        retrievalType: 'semantic',
+        matchConfidence: 0.0,
+        similarityScore: 0.0,
+        score: 0.0,
+        itemsReturned: 0,
+        acceptedCount: 0,
+        accepted: false,
+        rejectedReason: 'no matches found',
+        reason: 'no matches found'
+      }));
       return {
         items: [],
         contextString: isTaskQuery ? 'No tasks found in your workspace.' : '',
         confidence: isTaskQuery ? 0.90 : 0.0,
-        retrievalQuality: []
+        retrievalQuality: emptyQuality
       };
     }
 
     const uniqueMap = new Map();
-    const retrievalQuality = [];
+    const deterministicTools = ['markdown_task_parser', 'get_tasks', 'read_note', 'list_notes', 'recent_activity', 'get_people', 'get_current_date'];
+
+    const toolQualityMap = new Map();
 
     for (const item of evidenceItems) {
       const contentStr = String(item.content || '').trim();
@@ -365,33 +456,55 @@ class ContextOrchestrator {
 
       const score = item.score !== undefined ? item.score : 0.8;
       const sourceType = item.toolName || item.source || item.filePath || 'Workspace Evidence';
+      const isDeterministic = item.retrievalType === 'deterministic' || deterministicTools.includes(item.toolName || item.source);
 
-      if (score < minRelevance) {
-        retrievalQuality.push({
+      if (!toolQualityMap.has(sourceType)) {
+        toolQualityMap.set(sourceType, {
           source: sourceType,
           sourceType,
-          similarityScore: score,
-          score,
-          accepted: false,
-          rejectedReason: 'below relevance threshold',
-          reason: 'below relevance threshold'
+          retrievalType: isDeterministic ? 'deterministic' : 'semantic',
+          matchConfidence: isDeterministic ? 0.95 : score,
+          similarityScore: isDeterministic ? undefined : score,
+          score: score,
+          itemsReturned: 0,
+          acceptedCount: 0,
+          accepted: false
         });
+      }
+
+      const q = toolQualityMap.get(sourceType);
+      q.itemsReturned += 1;
+
+      if (score < minRelevance) {
+        if (q.acceptedCount === 0) {
+          q.rejectedReason = 'below relevance threshold';
+          q.reason = 'below relevance threshold';
+        }
         continue;
       }
 
-      retrievalQuality.push({
-        source: sourceType,
-        sourceType,
-        similarityScore: score,
-        score,
-        accepted: true
-      });
+      q.acceptedCount += 1;
+      q.accepted = true;
+      delete q.rejectedReason;
+      delete q.reason;
 
-      const key = `${item.filePath || ''}:${contentStr.slice(0, 100)}`;
-      if (!uniqueMap.has(key)) {
-        uniqueMap.set(key, item);
+      if (!isDeterministic) {
+        q.similarityScore = Math.max(q.similarityScore || 0, score);
+        q.score = q.similarityScore;
+      }
+
+      const dedupKey = (item.filePath ? item.filePath + ':' : '') + contentStr.slice(0, 150);
+      if (!uniqueMap.has(dedupKey) || (uniqueMap.get(dedupKey).score < score)) {
+        uniqueMap.set(dedupKey, {
+          ...item,
+          content: contentStr,
+          score,
+          retrievalType: isDeterministic ? 'deterministic' : 'semantic'
+        });
       }
     }
+
+    const retrievalQuality = Array.from(toolQualityMap.values());
 
     const deduplicated = Array.from(uniqueMap.values());
     deduplicated.sort((a, b) => (b.score || 0) - (a.score || 0));
