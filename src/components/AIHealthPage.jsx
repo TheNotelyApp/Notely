@@ -517,12 +517,13 @@ function FlowTelemetryPane({ conv, flowLogs }) {
         <div className="atv-trace-detail-actions" style={{ marginLeft: 'auto' }}>
           <button
             type="button"
-            className="btn btn-secondary"
-            style={{ fontSize: '10.5px', height: '26px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '11px', height: '28px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             onClick={handleCopyFullThreadTelemetry}
+            data-tooltip="Copy full conversation telemetry JSON"
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied Full Telemetry!' : 'Copy Full Telemetry'}
+            <span>{copied ? 'Copied Full Telemetry!' : 'Copy Full Telemetry'}</span>
           </button>
         </div>
       </div>
@@ -543,8 +544,26 @@ function FlowTelemetryPane({ conv, flowLogs }) {
           ))}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(true)}>Expand All</button>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: '10.5px', height: '24px', padding: '0 8px' }} onClick={() => setExpandAll(false)}>Collapse</button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '11px', height: '28px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            onClick={() => setExpandAll(true)}
+            data-tooltip="Expand all timeline events"
+          >
+            <Maximize2 size={12} />
+            <span>Expand All</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '11px', height: '28px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            onClick={() => setExpandAll(false)}
+            data-tooltip="Collapse all timeline events"
+          >
+            <Minimize2 size={12} />
+            <span>Collapse</span>
+          </button>
         </div>
       </div>
 
@@ -741,8 +760,15 @@ function ConversationPane({ conv, onBack }) {
   return (
     <div className="ahp-trace-pane">
       <div className="ahp-trace-header">
-        <button className="ahp-back-btn" onClick={onBack} type="button">
-          <ArrowLeft size={14} /> Conversations
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={onBack}
+          type="button"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '28px', padding: '0 10px', marginBottom: '8px' }}
+          data-tooltip="Back to conversation list"
+        >
+          <ArrowLeft size={14} />
+          <span>Back to Conversations</span>
         </button>
         <div className="ahp-trace-title">{conv.title}</div>
         <div className="ahp-trace-meta">Persona: {formatPersonaName(conv.persona)} &middot; {new Date(conv.created_at).toLocaleDateString()}</div>

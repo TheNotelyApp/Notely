@@ -1223,31 +1223,122 @@
   width: min(620px, calc(100vw - 32px));
 }
 
+.confirmation-modal-card {
+  width: min(400px, calc(100vw - 32px)) !important;
+  padding: 0 !important;
+  border-radius: var(--radius-xl, 12px);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-bg);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
 .confirmation-dialog {
-  padding: 24px 20px 20px;
+  padding: 28px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  max-width: 340px;
   margin: 0 auto;
 }
 
+.confirmation-dialog__icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-bottom: 16px;
+  transition: all var(--motion-standard, 180ms ease);
+}
+
+.confirmation-dialog--danger .confirmation-dialog__icon-wrapper {
+  background: rgba(224, 69, 79, 0.12);
+  color: #e0454f;
+}
+
+.confirmation-dialog--warning .confirmation-dialog__icon-wrapper {
+  background: rgba(234, 153, 34, 0.12);
+  color: #ea9922;
+}
+
+.confirmation-dialog--primary .confirmation-dialog__icon-wrapper,
+.confirmation-dialog:not([class*="confirmation-dialog--"]) .confirmation-dialog__icon-wrapper {
+  background: var(--surface-accent);
+  color: var(--accent-solid);
+}
+
+.confirmation-dialog__body {
+  margin-bottom: 24px;
+}
+
 .confirmation-dialog__title {
-  margin: 0 0 10px;
-  font-size: var(--font-size-body);
+  margin: 0 0 8px;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-strong);
+  line-height: 1.35;
 }
 
 .confirmation-dialog__message {
-  margin: 0 0 20px;
-  font-size: var(--font-size-body-sm);
+  margin: 0;
+  font-size: 0.88rem;
   color: var(--text-muted);
   line-height: 1.5;
 }
 
 .confirmation-dialog__actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: stretch;
+  gap: 12px;
+  width: 100%;
+}
+
+.confirmation-dialog__actions > button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  height: 38px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border-radius: var(--radius-md, 6px);
+  cursor: pointer;
+  transition: transform var(--motion-standard, 180ms ease),
+              background var(--motion-standard, 180ms ease),
+              border-color var(--motion-standard, 180ms ease),
+              box-shadow var(--motion-standard, 180ms ease);
+}
+
+.confirmation-dialog__actions > button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.confirmation-dialog__actions > button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.confirmation-dialog__actions > button.small-button:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-default);
+  color: var(--text-strong);
+}
+
+.confirmation-dialog__actions > button.primary-button:hover {
+  background: var(--accent-strong);
+  color: var(--text-on-accent, #ffffff);
+  box-shadow: 0 4px 14px rgba(47, 93, 98, 0.3);
+}
+
+.confirmation-dialog__actions > button.danger:hover {
+  background: #c93b44;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(224, 69, 79, 0.35);
 }
 
 .workspace-export-intro {

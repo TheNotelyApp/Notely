@@ -257,8 +257,16 @@
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--border-soft);
+  height: 36px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.ahp-conv-search-wrap:focus-within {
   background: var(--surface-bg);
+  border-bottom-color: var(--accent-solid);
 }
 
 .ahp-conv-search-icon {
@@ -505,7 +513,7 @@
   background: var(--surface-bg);
 }
 .ahp-tool-call {
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   margin: 6px 0;
   overflow: hidden;
@@ -513,12 +521,12 @@
   transition: border-color var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease);
 }
 .ahp-tool-call:hover {
-  border-color: var(--accent-solid, #6366f1);
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
+  border-color: var(--border-default);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 .ahp-bubble.user .ahp-tool-call {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .ahp-tool-call-header {
@@ -570,12 +578,12 @@
 .ahp-tool-chevron.open { transform: rotate(90deg); }
 
 .ahp-tool-body {
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-subtle);
   padding: 10px 12px;
   font-size: var(--font-size-caption);
 }
 .ahp-bubble.user .ahp-tool-body {
-  border-top-color: rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(255, 255, 255, 0.12);
 }
 
 .ahp-tool-section-label {
@@ -591,7 +599,7 @@
 
 .ahp-tool-pre {
   background: var(--surface-subtle);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   margin: 0;
@@ -606,7 +614,7 @@
   transition: border-color var(--motion-fast, 0.15s ease);
 }
 .ahp-tool-pre:hover {
-  border-color: var(--border-default, rgba(255, 255, 255, 0.18));
+  border-color: var(--border-default);
 }
 
 /* Soft button and control borders aligned with application design system */
@@ -665,7 +673,7 @@
   font-size: 10.5px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: var(--radius-pill, 20px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   border: 1px solid var(--border-soft);
   color: var(--text-muted);
@@ -843,7 +851,7 @@
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: var(--radius-pill, 20px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-soft);
   background: none;
   color: var(--text-muted);
@@ -896,7 +904,7 @@
   gap: 8px;
   background: var(--surface-subtle);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-pill, 20px);
+  border-radius: var(--radius-md);
   padding: 3px 10px;
   max-width: 85%;
 }
@@ -905,7 +913,7 @@
   font-size: 9.5px;
   font-weight: 700;
   padding: 1px 6px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--accent-solid);
   color: #ffffff;
   white-space: nowrap;
@@ -920,7 +928,7 @@
   font-size: 9px;
   font-weight: 700;
   padding: 2px 6px;
-  border-radius: var(--radius-pill, 12px);
+  border-radius: var(--radius-sm);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   white-space: nowrap;
@@ -1019,7 +1027,7 @@
 /* Right expandable card container */
 .atv-timeline-card {
   border-radius: var(--radius-lg, 8px);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-subtle);
   background: var(--surface-bg);
   margin-bottom: 8px;
   overflow: hidden;
@@ -1028,12 +1036,12 @@
 
 .atv-timeline-card:hover {
   border-color: var(--border-default);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .atv-timeline-card.open {
-  border-color: var(--accent-soft, rgba(99, 102, 241, 0.35));
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.1);
+  border-color: var(--border-subtle);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 .atv-card-header {
@@ -1069,7 +1077,7 @@
 
 .atv-card-body {
   padding: 10px 12px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-subtle);
   background: var(--surface-bg);
 }
 

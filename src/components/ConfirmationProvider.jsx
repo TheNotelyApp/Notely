@@ -1,7 +1,7 @@
 import { createContext, useState, useCallback, useRef } from "react";
 import OverlayDialog from "./OverlayDialog";
 import AppButton from "./AppButton";
-import { Check, X } from "lucide-react";
+import { Check, X, AlertTriangle, AlertCircle, Info } from "lucide-react";
 
 export const ConfirmationContext = createContext(null);
 
@@ -57,29 +57,41 @@ export function ConfirmationProvider({ children }) {
         ariaLabel={confirmState.title}
         cardClassName="confirmation-modal-card"
       >
-        <div className="confirmation-dialog">
-          {confirmState.title && (
-            <h3 className="confirmation-dialog__title">
-              {confirmState.title}
-            </h3>
-          )}
-          <p className="confirmation-dialog__message">
-            {confirmState.message}
-          </p>
+        <div className={`confirmation-dialog confirmation-dialog--${confirmState.variant || "primary"}`}>
+          <div className="confirmation-dialog__icon-wrapper" aria-hidden="true">
+            {confirmState.variant === "danger" ? (
+              <AlertTriangle size={20} />
+            ) : confirmState.variant === "warning" ? (
+              <AlertCircle size={20} />
+            ) : (
+              <Info size={20} />
+            )}
+          </div>
+          <div className="confirmation-dialog__body">
+            {confirmState.title && (
+              <h3 className="confirmation-dialog__title">
+                {confirmState.title}
+              </h3>
+            )}
+            <p className="confirmation-dialog__message">
+              {confirmState.message}
+            </p>
+          </div>
           <div className="confirmation-dialog__actions">
             <AppButton
               variant="small"
               onClick={handleCancel}
             >
-              <X size={14} />
+              <X size={16} />
               <span>{confirmState.cancelLabel}</span>
             </AppButton>
             <AppButton
               variant="primary"
+              danger={confirmState.variant === "danger"}
               className={confirmState.variant === "danger" ? "danger" : ""}
               onClick={handleConfirm}
             >
-              <Check size={14} />
+              <Check size={16} />
               <span>{confirmState.confirmLabel}</span>
             </AppButton>
           </div>
