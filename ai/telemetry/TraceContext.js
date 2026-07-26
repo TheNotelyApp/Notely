@@ -13,9 +13,50 @@ class TraceSession {
     this.startedAt = new Date().toISOString();
     this.activeSpans = new Map();
     this.events = [];
+    this.toolCache = new Map();
     
     // Create Root Trace Span
     this.rootSpanId = this.startSpan('Trace Root', 'Conversation', null, { query });
+  }
+
+  /**
+   * Helper key builder for tool caching with canonical sorted keys
+   * @private
+   */
+  _buildToolCacheKey(toolName, args) {
+    try {
+      const canonicalize = (obj) => {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(canonicalize);
+        return Object.keys(obj)
+          .sort()
+          .reduce((acc, k) => {
+            acc[k] = canonicalize(obj[k]);
+            return acc;
+          }, {});
+      };
+      return `${toolName}:${JSON.stringify(canonicalize(args || {}))}`;
+    } catch {
+      return `${toolName}:${String(args)}`;
+    }
+  }
+
+  /**
+   * Retrieve cached tool execution result if available
+   */
+  getCachedToolResult(toolName, args) {
+    const key = this._buildToolCacheKey(toolName, args);
+    return this.toolCache.get(key);
+  }
+
+  /**
+   * Store tool execution result in request-scoped cache (skips write operations)
+   */
+  setCachedToolResult(toolName, args, result) {
+    const isWriteTool = /^(write|create|update|delete|edit|save|modify)_/i.test(toolName);
+    if (isWriteTool) return;
+    const key = this._buildToolCacheKey(toolName, args);
+    this.toolCache.set(key, result);
   }
 
   /**

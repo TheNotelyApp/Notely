@@ -14,48 +14,71 @@ class PromptPipeline {
    */
   constructor(promptLoader = null) {
     this.loader = promptLoader || new PromptLoader();
+    this.moduleCache = new Map();
+    this._cachedStaticCore = null;
   }
 
   /**
-   * Assemble complete system prompt dynamically from static policy assets and runtime context
+   * Load individual prompt module with in-memory caching
+   * @private
+   */
+  _loadModule(name) {
+    if (this.moduleCache.has(name)) {
+      return this.moduleCache.get(name);
+    }
+    const p = this.loader.loadSystemPrompt(name);
+    const body = p && p.body ? p.body : '';
+    this.moduleCache.set(name, body);
+    return body;
+  }
+
+  /**
+   * Get cached core static system prompt block
+   * @private
+   */
+  _getStaticCore() {
+    if (this._cachedStaticCore !== null) {
+      return this._cachedStaticCore;
+    }
+    const baseSystem = this._loadModule('base-system');
+    const behaviorPolicy = this._loadModule('behavior-policy');
+    const safetyPolicy = this._loadModule('safety-policy');
+    const formattingPolicy = this._loadModule('formatting-policy');
+    const permPolicy = this._loadModule('permission-policy');
+    const groundingPolicy = this._loadModule('grounding-policy');
+
+    const coreParts = [baseSystem, behaviorPolicy, safetyPolicy, formattingPolicy, permPolicy, groundingPolicy].filter(Boolean);
+    this._cachedStaticCore = coreParts.join('\n\n---\n\n');
+    return this._cachedStaticCore;
+  }
+
+  /**
+   * Assemble complete system prompt dynamically from modular policy assets and runtime context
    * @param {object} options
    * @param {string|object} [options.persona='general'] - Persona ID or custom persona object
    * @param {object} [options.workspaceContext] - Workspace metadata & current file content
    * @param {Array|string} [options.conversationMemory] - Recent conversation history or memory summary
    * @param {Array|string} [options.retrievedEvidence] - Merged evidence from search/graph tools
    * @param {object} [options.uiContext] - UI tab state, selection, view mode
+   * @param {string} [options.category] - Query intent category
    * @returns {string}
    */
   assemble(options = {}) {
     const pipelineStages = [];
+    const activeCategory = options.category || 'Workspace Search';
 
-    // Stage 1: Base System
-    const baseSystem = this.loader.loadSystemPrompt('base-system');
-    if (baseSystem.body) pipelineStages.push(baseSystem.body);
+    // 1. Core Foundational Policies (Always Included - Cached Static Block)
+    const staticCore = this._getStaticCore();
+    if (staticCore) {
+      pipelineStages.push(staticCore);
+    }
 
-    // Stage 2: Behavior Policy
-    const behaviorPolicy = this.loader.loadSystemPrompt('behavior-policy');
-    if (behaviorPolicy.body) pipelineStages.push(behaviorPolicy.body);
-
-    // Stage 3: Planning Policy
-    const planningPolicy = this.loader.loadSystemPrompt('planning-policy');
-    if (planningPolicy.body) pipelineStages.push(planningPolicy.body);
-
-    // Stage 4: Permission Policy
-    const permissionPolicy = this.loader.loadSystemPrompt('permission-policy');
-    if (permissionPolicy.body) pipelineStages.push(permissionPolicy.body);
-
-    // Stage 5: Grounding Policy
-    const groundingPolicy = this.loader.loadSystemPrompt('grounding-policy');
-    if (groundingPolicy.body) pipelineStages.push(groundingPolicy.body);
-
-    // Stage 6: Safety Policy
-    const safetyPolicy = this.loader.loadSystemPrompt('safety-policy');
-    if (safetyPolicy.body) pipelineStages.push(safetyPolicy.body);
-
-    // Stage 7: Formatting Policy
-    const formattingPolicy = this.loader.loadSystemPrompt('formatting-policy');
-    if (formattingPolicy.body) pipelineStages.push(formattingPolicy.body);
+    // 2. Conditional Modular Policies
+    // Planning Policy: Included for task queries, workspace search, or planning
+    if (['Task Query', 'Workspace Search', 'Planning', 'Graph Exploration'].includes(activeCategory)) {
+      const planningPolicy = this._loadModule('planning-policy');
+      if (planningPolicy) pipelineStages.push(planningPolicy);
+    }
 
     // Stage 8: Active Persona
     let personaContent = '';
@@ -79,24 +102,35 @@ class PromptPipeline {
       pipelineStages.push(`---\n${personaContent}`);
     }
 
-    // Stage 9: Workspace Context Injection
-    if (options.workspaceContext) {
+    // Stage 9: Workspace Context Injection (Only inject when active file or non-trivial context is present)
+    const hasActiveWorkspaceContext = options.workspaceContext && (
+      (options.workspaceContext.activeNotePath && options.workspaceContext.activeNotePath !== 'none') ||
+      Boolean(options.workspaceContext.activeNoteContent) ||
+      Boolean(options.workspaceContext.raw)
+    );
+    if (hasActiveWorkspaceContext) {
+      // Deduplicate activeNoteContent if already present in retrievedEvidence to avoid repeated text chunks
+      const wsCtx = { ...options.workspaceContext };
+      if (wsCtx.activeNoteContent && options.retrievedEvidence && typeof options.retrievedEvidence === 'string' && options.retrievedEvidence.includes(wsCtx.activeNoteContent.trim().slice(0, 100))) {
+        wsCtx.activeNoteContent = '[Active note content included in retrieved evidence below]';
+      }
       const rawWsTemplate = this.loader.loadTemplate('workspace-context');
-      const wsBlock = TemplateEngine.renderWorkspaceContext(rawWsTemplate, options.workspaceContext);
+      const wsBlock = TemplateEngine.renderWorkspaceContext(rawWsTemplate, wsCtx);
       if (wsBlock) pipelineStages.push(wsBlock);
     }
 
-    // Stage 10: Conversation Memory Injection
-    if (options.conversationMemory) {
-      const rawMemTemplate = this.loader.loadTemplate('conversation-memory');
-      const memBlock = TemplateEngine.renderConversationMemory(rawMemTemplate, options.conversationMemory);
-      if (memBlock) pipelineStages.push(memBlock);
-    }
+    // Stage 10: Conversation Memory Injection (Bypassed - conversation history is supplied strictly via messages array to prevent prompt transmission duplication)
 
-    // Stage 11: Retrieved Evidence Injection
+    // Stage 11: Retrieved Evidence Injection (Budget-capped at 4,000 chars)
     if (options.retrievedEvidence) {
+      let evText = typeof options.retrievedEvidence === 'string'
+        ? options.retrievedEvidence
+        : JSON.stringify(options.retrievedEvidence);
+      if (evText.length > 4000) {
+        evText = evText.slice(0, 4000) + '\n... [retrieved evidence capped at 4000 chars context limit]';
+      }
       const rawEvTemplate = this.loader.loadTemplate('retrieved-context');
-      const evBlock = TemplateEngine.renderRetrievedContext(rawEvTemplate, options.retrievedEvidence);
+      const evBlock = TemplateEngine.renderRetrievedContext(rawEvTemplate, evText);
       if (evBlock) pipelineStages.push(evBlock);
     }
 

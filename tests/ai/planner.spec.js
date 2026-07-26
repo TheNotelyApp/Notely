@@ -12,7 +12,7 @@ describe('Planner & Semantic Tools Tests (Phase 2)', () => {
     assert.ok(timelinePlan.steps[0].toolName);
 
     const taskPlan = planner.createPlan('Find open tasks assigned to me');
-    assert.strictEqual(taskPlan.intent, 'summarize_tasks_and_actions');
+    assert.strictEqual(taskPlan.intent, 'workspace_task_summary');
     assert.ok(taskPlan.steps[0].toolName);
 
     const topicPlan = planner.createPlan('Explore architecture of graph database');

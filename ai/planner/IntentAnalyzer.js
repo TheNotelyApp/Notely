@@ -50,13 +50,14 @@ class IntentAnalyzer {
     let requiresExternalData = false;
 
     // Direct Intent Pattern Detection
-    const isTaskQuery = /\b(task|tasks|todo|todos|action item|action items|checklist|checklists)\b/i.test(q);
+    const isTaskQuery = /\b(task|tasks|todo|todos|action item|action items|checklist|checklists|pending|open items|things to do|summarize tasks)\b/i.test(q);
     const isTimelineQuery = /\b(recent|timeline|history|changelog|changes)\b/i.test(q);
-    const isGraphQuery = /\b(graph|relation|relations|relationship|topology|connection|connections|architecture)\b/i.test(q);
+    const isGraphQuery = /\b(graph|relation|relations|relationship|topology|connect|connected|connection|connections|architecture)\b/i.test(q);
     const isWebQuery = /\b(web|http|https|online|search web|fetch web)\b/i.test(q);
 
     if (isTaskQuery) {
       informationNeeds.add('action_items');
+      informationNeeds.add('tasks');
       subIntents.push('tasks:extract');
     }
     if (isTimelineQuery) {
@@ -93,19 +94,70 @@ class IntentAnalyzer {
 
     // Dynamically derive overall goal label
     let goal = 'synthesize_workspace_notes';
-    if (informationNeeds.has('action_items')) {
-      goal = 'summarize_tasks_and_actions';
+    let confidence = 0.70;
+
+    if (isTaskQuery || informationNeeds.has('action_items') || informationNeeds.has('tasks')) {
+      goal = 'workspace_task_summary';
+      confidence = 0.92;
     } else if (informationNeeds.has('entity_relationships')) {
       goal = 'explore_knowledge_graph';
+      confidence = 0.88;
     } else if (informationNeeds.has('recent_changes')) {
       goal = 'reconstruct_project_timeline';
+      confidence = 0.85;
     } else if (requiresExternalData) {
       goal = 'fetch_external_web_data';
+      confidence = 0.90;
     }
+
+    // Intent Category & Capability Routing Classification
+    const isCodeQuery = /\b(code|function|class|bug|error|refactor|syntax|const|let|var|import|api|script|python|javascript|typescript|c\+\+|html|css)\b/i.test(q);
+    const isDiagramQuery = /\b(diagram|mermaid|flowchart|sequence|chart|visualize|architecture diagram)\b/i.test(q);
+    const isCreativeQuery = /\b(brainstorm|idea|ideas|story|poem|write|draft|creative|compose|generate)\b/i.test(q);
+    const isKnowledgeQuery = /^(what is|explain|how does|why is|difference between|compare|define)\b/i.test(q) && !/\b(my|this note|workspace|notes)\b/i.test(q);
+
+    let category = 'Workspace Search';
+    if (isTaskQuery) {
+      category = 'Task Query';
+    } else if (isGraphQuery) {
+      category = 'Graph Exploration';
+    } else if (isDiagramQuery) {
+      category = 'Diagram Generation';
+    } else if (isCodeQuery) {
+      category = 'Code Assistance';
+    } else if (isCreativeQuery) {
+      category = 'Creative Generation';
+    } else if (isKnowledgeQuery) {
+      category = 'Knowledge Question';
+    } else if (isTimelineQuery) {
+      category = 'Simple Retrieval';
+    } else if (_context.activeNotePath || _context.currentFile) {
+      category = 'Document QA';
+    }
+
+    const zeroRetrievalCategories = new Set(['Knowledge Question', 'Creative Generation', 'Code Assistance']);
+    const requiresRetrieval = !zeroRetrievalCategories.has(category) || /\b(note|notes|workspace|file|files|my)\b/i.test(q);
+
+    if (!requiresRetrieval) {
+      informationNeeds.clear();
+    }
+
+    const capabilities = {
+      needsTasks: isTaskQuery,
+      needsGraph: isGraphQuery,
+      needsDiagram: isDiagramQuery,
+      needsCode: isCodeQuery,
+      needsCreative: isCreativeQuery,
+      needsTimeline: isTimelineQuery
+    };
 
     const manifest = {
       query,
       goal,
+      category,
+      confidence,
+      capabilities,
+      requiresRetrieval,
       primaryDomain: 'knowledge_base',
       informationNeeds: Array.from(informationNeeds),
       subIntents: Array.from(new Set(subIntents)),
@@ -113,7 +165,7 @@ class IntentAnalyzer {
       timestamp: new Date().toISOString()
     };
 
-    log.debug('Query intent analyzed dynamically', { goal: manifest.goal, infoNeedsCount: manifest.informationNeeds.length });
+    log.debug('Query intent analyzed dynamically', { goal: manifest.goal, category: manifest.category, confidence: manifest.confidence, requiresRetrieval: manifest.requiresRetrieval });
     return manifest;
   }
 }

@@ -6,9 +6,21 @@ class HybridRetriever {
   constructor(semanticRetriever, graphRetriever) {
     this.semanticRetriever = semanticRetriever;
     this.graphRetriever = graphRetriever;
+    this._cache = new Map(); // cacheKey -> { timestamp, results }
+    this._cacheTTL = 60000;  // 60s cache TTL
   }
 
   async search(query, activeNotePath = null, topK = 5) {
+    const cacheKey = `${String(query).toLowerCase().trim()}_${activeNotePath || ''}_${topK}`;
+    const now = Date.now();
+    if (this._cache.has(cacheKey)) {
+      const cached = this._cache.get(cacheKey);
+      if (now - cached.timestamp < this._cacheTTL) {
+        log.debug(`[HybridRetriever] Cache HIT for query: "${query.slice(0, 30)}"`);
+        return cached.results;
+      }
+    }
+
     const startTime = performance.now();
     
     // 1. Run semantic search
@@ -123,6 +135,7 @@ class HybridRetriever {
 
     const duration = performance.now() - startTime;
     log.info(`Hybrid search completed in ${duration.toFixed(2)}ms. Merged ${results.length} documents.`);
+    this._cache.set(cacheKey, { timestamp: Date.now(), results });
     return results;
   }
 

@@ -28,26 +28,58 @@ class Planner {
     const intentManifest = this.intentAnalyzer.analyze(query, context);
     const resolvedCapabilities = this.capabilityResolver.resolveCapabilities(intentManifest.informationNeeds);
 
-    const steps = resolvedCapabilities.map(cap => ({
-      capability: cap.capability,
-      toolName: cap.toolName,
-      args: this._buildStepArgs(cap.toolName, query, context)
-    }));
+    let steps = [];
+    const seenTools = new Set();
+    for (const cap of resolvedCapabilities) {
+      if (!seenTools.has(cap.toolName)) {
+        seenTools.add(cap.toolName);
+        steps.push({
+          capability: cap.capability,
+          toolName: cap.toolName,
+          args: this._buildStepArgs(cap.toolName, query, context)
+        });
+      }
+    }
+
+    if (intentManifest.goal === 'workspace_task_summary' && !intentManifest.capabilities.needsGraph) {
+      steps = steps.filter(s => s.toolName !== 'explore_topic_graph' && s.capability !== 'graph:traverse');
+    }
+
+    const selectedStrategy = intentManifest.goal === 'workspace_task_summary'
+      ? 'task_pipeline'
+      : (intentManifest.capabilities.needsGraph ? 'graph_search' : 'semantic_search');
+
+    const rejectedStrategies = [];
+    if (selectedStrategy !== 'graph_search' && !intentManifest.capabilities.needsGraph) {
+      rejectedStrategies.push('graph_search');
+    }
+    if (selectedStrategy !== 'task_pipeline' && !intentManifest.capabilities.needsTasks) {
+      rejectedStrategies.push('task_pipeline');
+    }
+
+    const plannerDecision = {
+      intent: intentManifest.goal,
+      confidence: intentManifest.confidence || 0.90,
+      selectedStrategy,
+      rejectedStrategies
+    };
 
     const trace = context.trace || context.traceSession;
     if (trace && typeof trace.recordEvent === 'function') {
       trace.recordEvent('Planner', 'planner:plan_created', 'Execution Plan Created', {
         intent: intentManifest.goal,
+        plannerDecision,
         manifest: intentManifest,
         stepsCount: steps.length,
         steps
       });
     }
 
-    log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, stepsCount: steps.length });
+    log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, plannerDecision, stepsCount: steps.length });
     return {
       intent: intentManifest.goal,
       manifest: intentManifest,
+      plannerDecision,
       steps
     };
   }

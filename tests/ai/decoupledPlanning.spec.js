@@ -9,7 +9,7 @@ describe('4-Layer Decoupled Hybrid Planning Architecture Tests', () => {
     const analyzer = new IntentAnalyzer();
 
     const manifest1 = analyzer.analyze('Find open action items and tasks assigned to me');
-    assert.strictEqual(manifest1.goal, 'summarize_tasks_and_actions');
+    assert.strictEqual(manifest1.goal, 'workspace_task_summary');
     assert.ok(manifest1.informationNeeds.includes('action_items'));
     assert.strictEqual(manifest1.requiresExternalData, false);
 
@@ -61,7 +61,7 @@ describe('4-Layer Decoupled Hybrid Planning Architecture Tests', () => {
   it('Layer 1-3 should build a focused single-step plan for workspace task queries', () => {
     const planner = new Planner({});
     const plan = planner.createPlan('Summarize key tasks across my workspace');
-    assert.strictEqual(plan.intent, 'summarize_tasks_and_actions');
+    assert.strictEqual(plan.intent, 'workspace_task_summary');
     assert.strictEqual(plan.steps.length, 1);
     assert.strictEqual(plan.steps[0].toolName, 'get_tasks');
     assert.strictEqual(plan.steps[0].args.status, 'open');

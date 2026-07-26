@@ -118,10 +118,11 @@ class AIFlow {
       let retrievedEvidence = '';
       let orchestratorTrace = [];
       let confidenceScore = 0.0;
+      let orchRes = null;
 
       if (this.agent.contextOrchestrator) {
         try {
-          const orchRes = await this.agent.contextOrchestrator.orchestrate(userQuery, {
+          orchRes = await this.agent.contextOrchestrator.orchestrate(userQuery, {
             ...context,
             activeNotePath,
             trace: traceSession
@@ -146,6 +147,8 @@ class AIFlow {
         startedAt: new Date(s2Start).toISOString(),
         durationMs: s2Duration,
         confidenceScore,
+        plannerDecision: orchRes?.plannerDecision || null,
+        retrievalQuality: orchRes?.retrievalQuality || [],
         evidenceLength: retrievedEvidence.length,
         preRetrievalTrace: orchestratorTrace
       });
@@ -154,6 +157,8 @@ class AIFlow {
         status: 'completed',
         payload: {
           confidenceScore,
+          plannerDecision: orchRes?.plannerDecision || null,
+          retrievalQuality: orchRes?.retrievalQuality || [],
           evidenceLength: retrievedEvidence.length,
           preRetrievalTraceCount: orchestratorTrace.length,
           input: userQuery,
@@ -170,9 +175,11 @@ class AIFlow {
         systemInstructions: personaObj.prompt || personaObj.systemInstructions || ''
       } : personaId;
 
+      const queryCategory = orchRes?.category || 'Workspace Search';
       const pipeline = this.agent.promptPipeline || require('../prompts').createPromptPipeline();
       const systemPrompt = pipeline.assemble({
         persona: personaInput,
+        category: queryCategory,
         workspaceContext: {
           workspaceRoot: this.agent.workspaceRoot || 'none',
           activeNotePath: activeNotePath || 'none',
@@ -225,7 +232,9 @@ class AIFlow {
         persona: personaInput,
         activeNoteContent,
         systemPrompt,
+        conversationMemory: historyMessages,
         orchestratorTrace,
+        retrievedEvidence,
         trace: traceSession
       };
 
@@ -500,10 +509,11 @@ class AIFlow {
       const s2SpanId = traceSession.startSpan('Intent Planning & Hybrid Retrieval', 'Planner', traceSession.rootSpanId, { component: 'ContextOrchestrator' });
       let retrievedEvidence = '';
       let confidenceScore = 0.0;
+      let orchRes = null;
 
       if (this.agent.contextOrchestrator) {
         try {
-          const orchRes = await this.agent.contextOrchestrator.orchestrate(userQuery, {
+          orchRes = await this.agent.contextOrchestrator.orchestrate(userQuery, {
             ...context,
             activeNotePath,
             trace: traceSession
@@ -528,6 +538,8 @@ class AIFlow {
         startedAt: new Date(s2Start).toISOString(),
         durationMs: s2Duration,
         confidenceScore,
+        plannerDecision: orchRes?.plannerDecision || null,
+        retrievalQuality: orchRes?.retrievalQuality || [],
         evidenceLength: retrievedEvidence.length,
         preRetrievalTrace: orchestratorTrace
       });
@@ -536,6 +548,8 @@ class AIFlow {
         status: 'completed',
         payload: {
           confidenceScore,
+          plannerDecision: orchRes?.plannerDecision || null,
+          retrievalQuality: orchRes?.retrievalQuality || [],
           evidenceLength: retrievedEvidence.length,
           preRetrievalTraceCount: orchestratorTrace.length
         }
@@ -593,7 +607,9 @@ class AIFlow {
         persona: personaInput,
         activeNoteContent,
         systemPrompt,
+        conversationMemory: historyMessages,
         orchestratorTrace,
+        retrievedEvidence,
         trace: traceSession
       };
 

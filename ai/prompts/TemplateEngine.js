@@ -73,8 +73,8 @@ class TemplateEngine {
         })
         .join('\n\n');
     }
-    if (evidenceText.length > 16000) {
-      evidenceText = evidenceText.slice(0, 16000) + '\n\n... [Retrieved evidence truncated for prompt length context limit]';
+    if (evidenceText.length > 4000) {
+      evidenceText = evidenceText.slice(0, 4000) + '\n\n... [Retrieved evidence truncated for prompt length context limit]';
     }
     return this.render(rawTemplate, { retrievedEvidence: evidenceText });
   }

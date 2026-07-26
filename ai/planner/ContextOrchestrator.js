@@ -32,16 +32,39 @@ class ContextOrchestrator {
     const maxIterations = options.maxIterations || 3;
     const traceSession = context.trace || options.trace;
 
-    // 1. Understand Intent & Build Internal Execution Plan via 4-Layer Decoupled Planning Architecture
+    // 1. Understand Intent & Build Internal Execution Plan via Decoupled Planning Architecture
     const plan = await this.planner.createPlanAsync(query, context);
     log.debug('Internal execution plan generated', { intent: plan.intent, stepsCount: plan.steps.length });
+
+    const isTaskQuery = plan.intent === 'workspace_task_summary' || plan.manifest?.capabilities?.needsTasks;
 
     if (traceSession && typeof traceSession.recordEvent === 'function') {
       traceSession.recordEvent('Planner', 'intent_analyzed', 'Intent Planning Completed', {
         intent: plan.intent,
+        plannerDecision: plan.plannerDecision || {
+          intent: plan.intent,
+          confidence: plan.manifest?.confidence || 0.90,
+          selectedStrategy: isTaskQuery ? 'task_pipeline' : 'semantic_search',
+          rejectedStrategies: isTaskQuery ? ['graph_search'] : []
+        },
         stepsCount: plan.steps?.length || 0,
         steps: plan.steps || []
       });
+    }
+
+    // Fast-path bypass for zero-retrieval queries (General Q&A, Coding, Writing, Brainstorming)
+    if (plan.manifest && plan.manifest.requiresRetrieval === false) {
+      log.info(`Zero retrieval required for query category: ${plan.manifest.category}. Bypassing pre-retrieval.`);
+      return {
+        evidence: [],
+        aggregatedContext: '',
+        confidence: 1.0,
+        iterations: 0,
+        trace: [],
+        plannerDecision: plan.plannerDecision,
+        retrievalQuality: [],
+        category: plan.manifest.category
+      };
     }
 
     let collectedEvidence = [];
@@ -57,7 +80,7 @@ class ContextOrchestrator {
       iterations++;
       log.debug(`Executing retrieval iteration ${iterations}/${maxIterations}...`);
 
-      const currentSteps = iterations === 1 ? plan.steps : this._deriveNextSteps(query, collectedEvidence);
+      const currentSteps = iterations === 1 ? plan.steps : this._deriveNextSteps(query, collectedEvidence, isTaskQuery);
       if (currentSteps.length === 0) break;
 
       // Parallel tool execution for independent tools
@@ -65,17 +88,39 @@ class ContextOrchestrator {
         return (async () => {
           const tStart = Date.now();
           try {
+            // Check request-scoped cache first
+            if (traceSession && typeof traceSession.getCachedToolResult === 'function') {
+              const cached = traceSession.getCachedToolResult(step.toolName, step.args);
+              if (cached !== undefined) {
+                log.debug(`[ContextOrchestrator] Cache hit for tool: ${step.toolName}`);
+                executionTrace.push({
+                  name: step.toolName,
+                  args: step.args,
+                  type: 'programmatic',
+                  durationMs: 0,
+                  cacheHit: true,
+                  output: typeof cached === 'object' ? JSON.stringify(cached).slice(0, 500) : String(cached).slice(0, 500)
+                });
+                return { toolName: step.toolName, result: cached, error: null, cacheHit: true };
+              }
+            }
+
             const runner = SemanticTools.getToolRunner(step.toolName, this.agent);
             if (runner) {
               const res = await runner(step.args);
               const tDur = Date.now() - tStart;
               const outputStr = typeof res === 'object' ? JSON.stringify(res).slice(0, 500) : String(res).slice(0, 500);
 
+              if (traceSession && typeof traceSession.setCachedToolResult === 'function') {
+                traceSession.setCachedToolResult(step.toolName, step.args, res);
+              }
+
               executionTrace.push({
                 name: step.toolName,
                 args: step.args,
                 type: 'programmatic',
                 durationMs: tDur,
+                cacheHit: false,
                 output: outputStr
               });
 
@@ -126,8 +171,47 @@ class ContextOrchestrator {
         }
       }
 
-      // Proactive WorkspaceBrain & Graph evidence ingestion (only when evidence is sparse)
-      if (this.agent?.workspaceBrain && collectedEvidence.length === 0 && iterations === 1) {
+      // Explicit task query fallback sequence when get_tasks returns empty
+      if (isTaskQuery && collectedEvidence.length === 0 && iterations === 1) {
+        // 1. Search markdown task syntax (- [ ], TODO, FIXME, status fields)
+        try {
+          const runner = SemanticTools.getToolRunner('search_notes', this.agent) || SemanticTools.getToolRunner('search.notes', this.agent);
+          if (runner) {
+            const syntaxMatches = await runner({ query: 'TODO FIXME status "- [ ]"' });
+            if (syntaxMatches && Array.isArray(syntaxMatches) && syntaxMatches.length > 0) {
+              this._ingestEvidence(collectedEvidence, 'markdown_task_parser', syntaxMatches);
+              executionTrace.push({
+                name: 'markdown_task_parser',
+                args: { query: 'TODO FIXME status "- [ ]"' },
+                type: 'programmatic',
+                output: `Found ${syntaxMatches.length} markdown task matches`
+              });
+            }
+          }
+        } catch { /* ignore fallback error */ }
+
+        // 2. Search recent workspace activity
+        if (collectedEvidence.length === 0) {
+          try {
+            const runner = SemanticTools.getToolRunner('recent_activity', this.agent) || SemanticTools.getToolRunner('workspace.recent_activity', this.agent);
+            if (runner) {
+              const recentActivity = await runner({ limit: 5 });
+              if (recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0) {
+                this._ingestEvidence(collectedEvidence, 'recent_activity', recentActivity);
+                executionTrace.push({
+                  name: 'recent_activity',
+                  args: { limit: 5 },
+                  type: 'programmatic',
+                  output: `Retrieved ${recentActivity.length} recent activity items`
+                });
+              }
+            }
+          } catch { /* ignore fallback error */ }
+        }
+      }
+
+      // Proactive WorkspaceBrain & Graph evidence ingestion (only for non-task queries when evidence is sparse)
+      if (!isTaskQuery && this.agent?.workspaceBrain && collectedEvidence.length === 0 && iterations === 1) {
         try {
           const wbFacts = await this.agent.workspaceBrain.getWorkspaceFacts(query, context.activeNotePath);
           const factsArray = Array.isArray(wbFacts) ? wbFacts : [];
@@ -149,23 +233,25 @@ class ContextOrchestrator {
       }
 
       // 3. Aggregate & Measure Confidence
-      const aggregated = this.aggregateContext(collectedEvidence);
+      const aggregated = this.aggregateContext(collectedEvidence, { isTaskQuery });
       confidence = aggregated.confidence;
       log.debug(`Iteration ${iterations} complete. Measured confidence: ${confidence.toFixed(2)}`);
 
-      if (confidence >= targetConfidence) {
+      if (confidence >= targetConfidence || isTaskQuery) {
         log.info(`Target confidence ${targetConfidence} achieved in ${iterations} iteration(s).`);
         break;
       }
     }
 
     // Final consolidation
-    const finalAggregated = this.aggregateContext(collectedEvidence);
+    const finalAggregated = this.aggregateContext(collectedEvidence, { isTaskQuery });
 
     if (traceSession && typeof traceSession.recordEvent === 'function') {
       traceSession.recordEvent('Retrieval', 'retrieval_completed', 'Hybrid Context Aggregated', {
         evidenceCount: finalAggregated.items.length,
         confidence: finalAggregated.confidence,
+        plannerDecision: plan.plannerDecision,
+        retrievalQuality: finalAggregated.retrievalQuality,
         iterations
       });
     }
@@ -174,6 +260,8 @@ class ContextOrchestrator {
       evidence: finalAggregated.items,
       aggregatedContext: finalAggregated.contextString,
       confidence: finalAggregated.confidence,
+      plannerDecision: plan.plannerDecision,
+      retrievalQuality: finalAggregated.retrievalQuality,
       iterations,
       trace: executionTrace
     };
@@ -183,7 +271,10 @@ class ContextOrchestrator {
    * Derive subsequent retrieval steps if initial confidence is insufficient
    * @private
    */
-  _deriveNextSteps(query, existingEvidence) {
+  _deriveNextSteps(query, existingEvidence, isTaskQuery = false) {
+    if (isTaskQuery) {
+      return []; // Do NOT invoke graph exploration or generic search for task queries
+    }
     const steps = [];
 
     // If existing evidence contains linked notes, trigger graph expansion
@@ -230,7 +321,7 @@ class ContextOrchestrator {
             toolName,
             filePath,
             content: text,
-            score: item.score || 0.8
+            score: item.score !== undefined ? item.score : 0.8
           });
         }
       }
@@ -241,25 +332,60 @@ class ContextOrchestrator {
         toolName,
         filePath,
         content: text,
-        score: 0.7
+        score: result.score !== undefined ? result.score : 0.7
       });
     }
   }
 
   /**
-   * Aggregate, deduplicate, rank, and calculate evidence confidence
+   * Aggregate, deduplicate, rank, apply relevance filtering (min score 0.25), and compute quality metrics
    * @param {Array} evidenceItems
-   * @returns {{ items: Array, contextString: string, confidence: number }}
+   * @param {object} [options={}]
+   * @returns {{ items: Array, contextString: string, confidence: number, retrievalQuality: Array }}
    */
-  aggregateContext(evidenceItems) {
+  aggregateContext(evidenceItems, options = {}) {
+    const isTaskQuery = options.isTaskQuery || false;
+    const minRelevance = options.minRelevance || 0.25;
+
     if (!Array.isArray(evidenceItems) || evidenceItems.length === 0) {
-      return { items: [], contextString: '', confidence: 0.0 };
+      return {
+        items: [],
+        contextString: isTaskQuery ? 'No tasks found in your workspace.' : '',
+        confidence: isTaskQuery ? 0.90 : 0.0,
+        retrievalQuality: []
+      };
     }
 
     const uniqueMap = new Map();
+    const retrievalQuality = [];
+
     for (const item of evidenceItems) {
       const contentStr = String(item.content || '').trim();
       if (!contentStr) continue;
+
+      const score = item.score !== undefined ? item.score : 0.8;
+      const sourceType = item.toolName || item.source || item.filePath || 'Workspace Evidence';
+
+      if (score < minRelevance) {
+        retrievalQuality.push({
+          source: sourceType,
+          sourceType,
+          similarityScore: score,
+          score,
+          accepted: false,
+          rejectedReason: 'below relevance threshold',
+          reason: 'below relevance threshold'
+        });
+        continue;
+      }
+
+      retrievalQuality.push({
+        source: sourceType,
+        sourceType,
+        similarityScore: score,
+        score,
+        accepted: true
+      });
 
       const key = `${item.filePath || ''}:${contentStr.slice(0, 100)}`;
       if (!uniqueMap.has(key)) {
@@ -270,13 +396,22 @@ class ContextOrchestrator {
     const deduplicated = Array.from(uniqueMap.values());
     deduplicated.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-    // Calculate confidence based on evidence count, relevance scores, and file grounding
-    const avgScore = deduplicated.reduce((sum, el) => sum + (el.score || 0.5), 0) / deduplicated.length;
-    const groundingBonus = deduplicated.some(el => el.filePath) ? 0.2 : 0.0;
-    const volumeBonus = Math.min(deduplicated.length * 0.1, 0.3);
-    const confidence = Math.min(1.0, avgScore + groundingBonus + volumeBonus);
+    if (deduplicated.length === 0) {
+      return {
+        items: [],
+        contextString: isTaskQuery ? 'No tasks found in your workspace.' : '',
+        confidence: isTaskQuery ? 0.90 : 0.0,
+        retrievalQuality
+      };
+    }
 
-    // Format clean curated context string for Reasoning layer
+    const topScore = deduplicated.length > 0 ? (deduplicated[0].score || 0.8) : 0.0;
+    const avgScore = deduplicated.reduce((sum, el) => sum + (el.score || 0.5), 0) / deduplicated.length;
+    const groundedCount = deduplicated.filter(el => el.filePath && el.filePath !== 'none').length;
+    const groundingRatio = deduplicated.length > 0 ? groundedCount / deduplicated.length : 0.0;
+    
+    const confidence = Math.min(1.0, (topScore * 0.4) + (avgScore * 0.3) + (groundingRatio * 0.3));
+
     let contextString = `[CURATED WORKSPACE EVIDENCE payload - ${deduplicated.length} item(s)]\n\n`;
     deduplicated.slice(0, 10).forEach((el, idx) => {
       const fileLabel = el.filePath ? ` [File: ${el.filePath}]` : '';
@@ -286,7 +421,8 @@ class ContextOrchestrator {
     return {
       items: deduplicated,
       contextString,
-      confidence
+      confidence,
+      retrievalQuality
     };
   }
 }

@@ -69,7 +69,12 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
     const s3Start = s3.startedAt || new Date(startEpoch).toISOString();
     const s3Dur = s3.durationMs || 0;
     const s3End = s3.endedAt || new Date(new Date(s3Start).getTime() + s3Dur).toISOString();
-    const promptSnippet = s3.systemPromptSnippet || (s3.systemPrompt ? s3.systemPrompt.slice(0, 500) : '');
+    
+    const crypto = require('node:crypto');
+    const fullPromptText = s3.systemPrompt || '';
+    const promptHash = fullPromptText ? crypto.createHash('sha256').update(fullPromptText).digest('hex').slice(0, 16) : 'none';
+    const isProd = process.env.NODE_ENV === 'production';
+    const promptSnippet = isProd ? `[Prompt Hash: ${promptHash}, Size: ${s3.systemPromptLength || 0}B]` : (s3.systemPromptSnippet || fullPromptText.slice(0, 500));
 
     events.push({
       type: 'prompt_construction',
@@ -79,10 +84,11 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
       endedAt: s3End,
       durationMs: s3Dur,
       tokensUsed: null,
+      promptHash,
       systemPromptLength: s3.systemPromptLength,
       harnessValid: s3.harnessValid,
       systemPromptSnippet: promptSnippet,
-      input: `System Prompt Configuration (${s3.systemPromptLength || 0} chars)`,
+      input: `System Prompt Configuration (${s3.systemPromptLength || 0} chars, Hash: ${promptHash})`,
       output: promptSnippet
     });
   }
@@ -95,6 +101,7 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
     const rawEpoch = new Date(s4StartIso).getTime();
     const s4EpochStart = isNaN(rawEpoch) ? startEpoch : rawEpoch;
     const s4EndIso = s4.endedAt || new Date(s4EpochStart + s4Duration).toISOString();
+    const resultTextStr = String(s4.resultText || '').toLowerCase();
 
     const tools = Array.isArray(toolTrace) ? toolTrace : [];
     if (tools.length > 0) {
@@ -110,6 +117,12 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
         const toolEndIso = tool.endedAt || new Date(new Date(toolStartIso).getTime() + toolDuration).toISOString();
         const rawOutput = tool.output !== undefined && tool.output !== null ? tool.output : (tool.result !== undefined ? tool.result : null);
         const argsPayload = tool.args || tool.parameters || {};
+
+        // Effectiveness metrics
+        const outputStr = typeof rawOutput === 'object' ? JSON.stringify(rawOutput) : String(rawOutput || '');
+        const resultSizeBytes = outputStr.length;
+        const cacheHit = tool.cacheHit || false;
+        const usedInFinalAnswer = resultTextStr.length > 0 && outputStr.length > 10 ? resultTextStr.includes(outputStr.slice(0, 30).toLowerCase()) : false;
 
         // Truncate large tool output payloads to prevent DB bloat
         let processedOutput = rawOutput;
@@ -134,6 +147,9 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
           tokensUsed: null,
           toolName,
           toolType: isLlmDriven ? 'llm-driven' : 'pre-retrieval',
+          cacheHit,
+          resultSizeBytes,
+          usedInFinalAnswer,
           args: argsPayload,
           input: argsPayload,
           output: processedOutput
