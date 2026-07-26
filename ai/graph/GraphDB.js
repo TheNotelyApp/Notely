@@ -208,7 +208,15 @@ class GraphDB {
 
     const metadataJson = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
     const stmt = this.db.prepare(query);
-    stmt.run(source_id, target_id, type, weight, confidence, metadataJson, evidence_id);
+    try {
+      stmt.run(source_id, target_id, type, weight, confidence, metadataJson, evidence_id);
+    } catch (err) {
+      if (err.message?.includes('FOREIGN KEY') && evidence_id) {
+        stmt.run(source_id, target_id, type, weight, confidence, metadataJson, null);
+      } else {
+        throw err;
+      }
+    }
   }
 
   getStatus() {

@@ -8,6 +8,8 @@
  */
 
 const { PROVIDER_REGISTRY } = require('./ProviderRegistry');
+const { createLogger } = require('../core/logger');
+const log = createLogger('LLMRegistry');
 
 class LLMRegistry {
   constructor() {
@@ -33,7 +35,7 @@ class LLMRegistry {
    */
   register(name, factory) {
     this.providers.set(name.toLowerCase(), factory);
-    console.log(`[LLMRegistry] Registered provider: ${name}`);
+    log.info(`Registered provider: ${name}`);
   }
 
   /**
@@ -50,10 +52,10 @@ class LLMRegistry {
       const provider = factory(config);
       await provider.initialize();
       this.activeProvider = provider;
-      console.log(`[LLMRegistry] Activated provider: ${name}`);
+      log.info(`Activated provider: ${name}`);
       return provider;
     } catch (error) {
-      console.error(`[LLMRegistry] Failed to activate ${name}:`, error.message);
+      log.error(`Failed to activate ${name}:`, error.message);
       throw error;
     }
   }

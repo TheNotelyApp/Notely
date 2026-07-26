@@ -6,6 +6,7 @@ const PromptLoader = require('./PromptLoader');
 const TemplateEngine = require('./TemplateEngine');
 const { createLogger } = require('../core/logger');
 
+const EVIDENCE_BUDGET_CHARS = 4000;
 const log = createLogger('PromptPipeline');
 
 class PromptPipeline {
@@ -134,8 +135,8 @@ class PromptPipeline {
       let evText = typeof options.retrievedEvidence === 'string'
         ? options.retrievedEvidence
         : JSON.stringify(options.retrievedEvidence);
-      if (evText.length > 4000) {
-        evText = evText.slice(0, 4000) + '\n... [retrieved evidence capped at 4000 chars context limit]';
+      if (evText.length > EVIDENCE_BUDGET_CHARS) {
+        evText = evText.slice(0, EVIDENCE_BUDGET_CHARS) + `\n... [retrieved evidence capped at ${EVIDENCE_BUDGET_CHARS} chars context limit]`;
       }
       const rawEvTemplate = this.loader.loadTemplate('retrieved-context');
       const evBlock = TemplateEngine.renderRetrievedContext(rawEvTemplate, evText);

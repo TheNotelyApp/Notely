@@ -2,14 +2,12 @@
  * QueryExecutor - Routes queries to AI models with multi-step tool execution
  */
 
-const { getTools } = require('../tools/ToolRegistry');
-const PromptPipeline = require('../prompts/PromptPipeline');
+const { getTools } = require('../tools');
 const { normalizeTokensDetail } = require('../utils/aiUtils');
 
 class QueryExecutor {
   constructor(agent) {
     this.agent = agent;
-    this.promptPipeline = new PromptPipeline();
   }
 
   async _prepareConfig(query, context) {
@@ -82,7 +80,7 @@ class QueryExecutor {
       }
 
       // Assemble final prompt using PromptPipeline
-      const pipeline = this.agent.promptPipeline || this.promptPipeline;
+      const pipeline = this.agent.promptPipeline;
       systemPrompt = pipeline.assemble({
         persona: personaInput,
         workspaceContext: {

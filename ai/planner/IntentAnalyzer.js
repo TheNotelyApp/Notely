@@ -9,24 +9,11 @@
 const { createLogger } = require('../core/logger');
 const log = createLogger('IntentAnalyzer');
 
+const { getRegisteredTools } = require('./registryUtils');
+
 class IntentAnalyzer {
-  /**
-   * Fetch registered tools metadata dynamically from ApplicationToolRegistry
-   * @returns {Array}
-   */
   getRegisteredTools() {
-    try {
-      const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
-      return Array.from(applicationToolRegistry.tools.values()).map(t => ({
-        name: t.sdkName || t.name,
-        description: t.description || '',
-        capability: t.capability || 'generic',
-        informationNeeds: Array.isArray(t.informationNeeds) ? t.informationNeeds : []
-      }));
-    } catch (err) {
-      log.warn('Failed to inspect ApplicationToolRegistry in IntentAnalyzer:', err.message);
-      return [];
-    }
+    return getRegisteredTools();
   }
 
   /**
@@ -85,8 +72,8 @@ class IntentAnalyzer {
       for (const tool of registeredTools) {
         const metadataText = `${tool.name} ${tool.description} ${tool.capability} ${tool.informationNeeds.join(' ')}`.toLowerCase();
         for (const term of queryTerms) {
-          const stem = term.length >= 4 ? term.slice(0, 4) : term;
-          if (metadataText.includes(term) || metadataText.includes(stem)) {
+          const termRegex = new RegExp(`\\b${term}\\b`, 'i');
+          if (termRegex.test(metadataText)) {
             tool.informationNeeds.forEach(need => informationNeeds.add(need));
             subIntents.push(tool.capability);
             if (tool.capability === 'web:search' || tool.capability === 'web:fetch') {

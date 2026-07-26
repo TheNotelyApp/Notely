@@ -2,22 +2,19 @@
  * Agent - Main orchestrator for AI agent functionality
  */
 
-const DocumentService = require('../tools/DocumentReader');
-const EmbeddingService = require('../embeddings/EmbeddingService');
+const { DocumentReader: DocumentService } = require('../tools');
+const { EmbeddingService } = require('../embeddings');
 const { QueryExecutor } = require('../executor');
-const ContextManager = require('../context/ContextManager');
-const MemoryManager = require('../memory/InteractionLog');
-const GraphDB = require('../graph/GraphDB');
-const GraphService = require('../graph/GraphService');
-const GraphBuilder = require('../graph/GraphBuilder');
+const { ContextManager } = require('../context');
+const { InteractionLog: MemoryManager } = require('../memory');
+const { GraphDB, GraphService, GraphBuilder } = require('../graph');
 
 const { WorkspaceBrain, ReasoningBrain, ActionBrain } = require('../brains');
 const { ContextOrchestrator } = require('../planner');
 
-const PromptLoader = require('../prompts/PromptLoader');
-const PromptPipeline = require('../prompts/PromptPipeline');
-const PersonaManager = require('../personas/PersonaManager');
-const LogDB = require('../logs/LogDB');
+const { PromptLoader, PromptPipeline } = require('../prompts');
+const { PersonaManager } = require('../personas');
+const { LogDB } = require('../logs');
 
 class Agent {
   constructor(databaseManager, llmRegistry) {
@@ -53,6 +50,7 @@ class Agent {
 
     this.isInitialized = false;
     this.workspaceRoot = null;
+    this.aiFlow = null;
   }
 
   setGraphProvider(provider) {
@@ -88,7 +86,7 @@ class Agent {
       this.logDb.initialize();
 
       // Initialize TelemetryDB for isolated flow execution telemetry
-      const TelemetryDB = require('../telemetry/TelemetryDB');
+      const { TelemetryDB } = require('../telemetry');
       this.telemetryDb = new TelemetryDB(workspaceRoot);
       this.telemetryDb.initialize();
 
@@ -120,84 +118,37 @@ class Agent {
   }
 
   /**
-   * Process a query
+   * Process a query via AIFlow orchestrator
    */
   async query(userQuery, context = {}) {
     if (!this.isInitialized) {
       throw new Error('Agent not initialized');
     }
 
-    try {
-      // Build query context
-      const queryContext = await this.contextManager.buildQueryContext(
-        userQuery,
-        context.currentFile
-      );
-      
-      // Preserve all incoming context fields (conversationId, persona, uiContext, etc.)
-      Object.assign(queryContext, context);
-      queryContext.activeNoteContent = context.activeNoteContent || null;
-      if (queryContext.currentFile && !queryContext.activeNoteContent) {
-        queryContext.activeNoteContent = this.documentService.getDocumentContent(queryContext.currentFile);
-      }
-
-      // Execute query
-      const result = await this.queryExecutor.execute(userQuery, queryContext);
-
-      // Record interaction
-      this.memoryManager.recordInteraction(
-        userQuery,
-        result.result,
-        context.currentFile,
-        this.workspaceRoot,
-        result.type,
-        this.llmRegistry.getActiveProvider().name,
-        result.tokensUsed
-      );
-
-      return {
-        success: true,
-        query: userQuery,
-        result: result.result,
-        type: result.type,
-        tokensUsed: result.tokensUsed,
-        trace: result.trace || [],
-        context: queryContext
-      };
-    } catch (error) {
-      console.error('[Agent] Query processing failed:', error.message);
-      return {
-        success: false,
-        error: error.message,
-        query: userQuery
-      };
+    if (this.aiFlow) {
+      return this.aiFlow.execute(userQuery, context);
     }
+
+    const AIFlow = require('./AIFlow');
+    this.aiFlow = new AIFlow(this);
+    return this.aiFlow.execute(userQuery, context);
   }
 
   /**
-   * Process a query with streaming output
+   * Process a query with streaming output via AIFlow orchestrator
    */
   async stream(userQuery, context = {}, onChunk, abortSignal) {
     if (!this.isInitialized) {
       throw new Error('Agent not initialized');
     }
 
-    try {
-      const queryContext = await this.contextManager.buildQueryContext(
-        userQuery,
-        context.currentFile
-      );
-      Object.assign(queryContext, context);
-      queryContext.activeNoteContent = context.activeNoteContent || null;
-      if (queryContext.currentFile && !queryContext.activeNoteContent) {
-        queryContext.activeNoteContent = this.documentService.getDocumentContent(queryContext.currentFile);
-      }
-
-      return this.queryExecutor.stream(userQuery, queryContext, onChunk, abortSignal);
-    } catch (error) {
-      console.error('[Agent] Streaming query processing failed:', error.message);
-      throw error;
+    if (this.aiFlow) {
+      return this.aiFlow.stream(userQuery, context, onChunk, abortSignal);
     }
+
+    const AIFlow = require('./AIFlow');
+    this.aiFlow = new AIFlow(this);
+    return this.aiFlow.stream(userQuery, context, onChunk, abortSignal);
   }
 
   /**

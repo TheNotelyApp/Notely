@@ -6,6 +6,8 @@ const path = require('path');
 const fs = require('fs');
 const { app, safeStorage } = require('electron');
 
+const APP_SUBDIR = 'notely';
+
 class AIConfig {
   constructor(customAppDataDir = null) {
     if (customAppDataDir) {
@@ -17,7 +19,7 @@ class AIConfig {
         this.appDataDir = path.join(process.env.APPDATA || process.env.HOME || '', 'Notely');
       }
     }
-    this.configDir = path.join(this.appDataDir, 'notely');
+    this.configDir = path.join(this.appDataDir, APP_SUBDIR);
     this.configPath = path.join(this.configDir, 'ai-config.json');
     this.ensureConfigDir();
   }

@@ -36,13 +36,13 @@ class Planner {
         steps.push({
           capability: cap.capability,
           toolName: cap.toolName,
-          args: this._buildStepArgs(cap.toolName, query, context)
+          args: this._buildStepArgs(cap.toolName, query, context, cap.capability)
         });
       }
     }
 
     if (intentManifest.goal === 'workspace_task_summary' && !intentManifest.capabilities.needsGraph) {
-      steps = steps.filter(s => s.toolName !== 'explore_topic_graph' && s.capability !== 'graph:traverse');
+      steps = steps.filter(s => s.capability !== 'graph:traverse');
     }
 
     const selectedStrategy = intentManifest.goal === 'workspace_task_summary'
@@ -88,17 +88,17 @@ class Planner {
    * Helper to construct appropriate arguments per tool
    * @private
    */
-  _buildStepArgs(toolName, query, context) {
-    if (toolName === 'get_tasks' || toolName === 'notes.extract_tasks') {
+  _buildStepArgs(toolName, query, context, capability = '') {
+    if (capability === 'tasks:extract' || toolName === 'get_tasks' || toolName === 'notes.extract_tasks') {
       return { status: 'open' };
     }
-    if (toolName === 'read_note' || toolName === 'notes.read') {
+    if (capability === 'notes:read' || toolName === 'read_note' || toolName === 'notes.read') {
       return context.currentFile ? { filePath: context.currentFile } : {};
     }
-    if (toolName === 'explore_topic_graph') {
+    if (capability === 'graph:traverse' || toolName === 'explore_topic_graph') {
       return { topic: query, maxHops: 2 };
     }
-    if (toolName === 'recent_activity') {
+    if (capability === 'timeline:recent' || toolName === 'recent_activity') {
       return { limit: 5 };
     }
     return { query, limit: 5 };

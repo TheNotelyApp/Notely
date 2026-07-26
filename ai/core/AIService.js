@@ -46,6 +46,7 @@ class AIService {
 
       const AIFlow = require('./AIFlow');
       this.aiFlow = new AIFlow(this.agent);
+      this.agent.aiFlow = this.aiFlow;
 
       log.info('AI Service & AIFlow Orchestrator successfully initialized');
       return result;
@@ -233,6 +234,7 @@ class AIService {
     if (!this.aiFlow) {
       const AIFlow = require('./AIFlow');
       this.aiFlow = new AIFlow(this.agent);
+      this.agent.aiFlow = this.aiFlow;
     }
     return this.aiFlow.execute(message, context);
   }
@@ -247,6 +249,7 @@ class AIService {
     if (!this.aiFlow) {
       const AIFlow = require('./AIFlow');
       this.aiFlow = new AIFlow(this.agent);
+      this.agent.aiFlow = this.aiFlow;
     }
     return this.aiFlow.stream(message, context, onChunk, abortSignal);
   }

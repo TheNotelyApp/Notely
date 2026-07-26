@@ -45,7 +45,7 @@ class ConversationStore {
 
   clearAll(beforeTimestamp = null) {
     if (beforeTimestamp) {
-      this.db.prepare('DELETE FROM conversations WHERE updated_at <= ? OR created_at <= ?').run(beforeTimestamp, beforeTimestamp);
+      this.db.prepare('DELETE FROM conversations WHERE COALESCE(updated_at, created_at) <= ?').run(beforeTimestamp);
     } else {
       this.db.exec('DELETE FROM conversations');
     }

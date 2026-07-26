@@ -310,8 +310,8 @@ class TelemetryDB {
         const stmtEvt = this.db.prepare('DELETE FROM telemetry_events WHERE conversation_id = ?');
         stmtEvt.run(conversationId);
       } else if (beforeTimestamp) {
-        this.db.prepare('DELETE FROM telemetry_logs WHERE timestamp <= ?').run(beforeTimestamp);
-        this.db.prepare('DELETE FROM telemetry_events WHERE timestamp <= ?').run(beforeTimestamp);
+        this.db.prepare('DELETE FROM telemetry_logs WHERE created_at <= ?').run(beforeTimestamp);
+        this.db.prepare('DELETE FROM telemetry_events WHERE created_at <= ?').run(beforeTimestamp);
       } else {
         this.db.prepare('DELETE FROM telemetry_logs').run();
         this.db.prepare('DELETE FROM telemetry_events').run();

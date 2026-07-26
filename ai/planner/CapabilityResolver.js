@@ -9,26 +9,15 @@
 const { createLogger } = require('../core/logger');
 const log = createLogger('CapabilityResolver');
 
+const { getRegisteredTools } = require('./registryUtils');
+
 class CapabilityResolver {
   /**
    * Fetch registered tools metadata dynamically from ApplicationToolRegistry
    * @returns {Array}
    */
   getRegisteredTools() {
-    try {
-      const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
-      return Array.from(applicationToolRegistry.tools.values()).map(t => ({
-        name: t.sdkName || t.aliases?.[0] || t.name,
-        fullName: t.name,
-        aliases: t.aliases || [],
-        capability: t.capability || 'generic',
-        informationNeeds: Array.isArray(t.informationNeeds) ? t.informationNeeds : [],
-        description: t.description || ''
-      }));
-    } catch (err) {
-      log.warn('Failed to resolve ApplicationToolRegistry in CapabilityResolver:', err.message);
-      return [];
-    }
+    return getRegisteredTools();
   }
 
   /**

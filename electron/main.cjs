@@ -149,7 +149,7 @@ async function initializeAIForWorkspace() {
   try {
     const { aiService } = require("../ai/core/AIService.js");
     const AIConfig = require("../ai/core/AIConfig");
-    const { PROVIDER_REGISTRY } = require("../ai/providers/ProviderRegistry");
+    const { PROVIDER_REGISTRY } = require("../ai/providers");
     const config = new AIConfig();
 
     const prefs = config.loadPreferences();

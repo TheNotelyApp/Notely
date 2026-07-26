@@ -4,10 +4,9 @@
  */
 
 const { DatabaseManager } = require('./database');
-const LLMRegistry = require('./providers/LLMRegistry');
+const { LLMRegistry, HuggingFaceEmbeddingProvider } = require('./providers');
 const Agent = require('./core/Agent');
 const AIConfig = require('./core/AIConfig');
-const { HuggingFaceEmbeddingProvider } = require('./providers/HuggingFaceEmbeddingProvider');
 const { createLogger } = require('./core/logger');
 
 const log = createLogger('AISystemBootstrap');
@@ -85,7 +84,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       }
     } else if (activeEmbProvider === 'internal') {
       try {
-        const ONNXEmbedder = require('./embeddings/ONNXEmbedder');
+        const { ONNXEmbedder } = require('./embeddings');
         const onnxProvider = new ONNXEmbedder(appDataDir);
         const fs = require('fs');
         const path = require('path');
@@ -112,7 +111,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       const hfToken = embeddingConfig?.token || null;
       workerManager.startWorker(workspaceRoot, appDataDir, hfToken);
 
-      const EmbeddingDB = require("./embeddings/EmbeddingDB");
+      const { EmbeddingDB } = require("./embeddings");
       aiAgent.embeddingDb = new EmbeddingDB(workspaceRoot);
       aiAgent.embeddingDb.initialize();
 
