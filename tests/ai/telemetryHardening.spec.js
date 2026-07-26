@@ -3,7 +3,6 @@
  * Comprehensive tests for AI Telemetry, Observability, Prompt Modularity, and Health Score fixes.
  */
 
-const { describe, it, expect, beforeEach } = require('vitest');
 const ContextOrchestrator = require('../../ai/planner/ContextOrchestrator');
 const PromptPipeline = require('../../ai/prompts/PromptPipeline');
 const { buildEvents } = require('../../ai/telemetry/eventBuilder');

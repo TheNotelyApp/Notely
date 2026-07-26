@@ -923,7 +923,8 @@ async function handleSetAPIKey(event, payload) {
           await hfProvider.initialize();
           aiService.agent.setEmbeddingProvider(hfProvider);
         } else {
-          await aiService.agent.llmRegistry.activateProvider(provider, { apiKey });
+          const savedModel = config.getProviderModel(provider);
+          await aiService.agent.llmRegistry.activateProvider(provider, { apiKey, model: savedModel });
         }
       } catch (activationError) {
         console.warn('[AI IPC] Provider activation after key save failed:', activationError.message);
@@ -1536,13 +1537,13 @@ async function handleClearLogs(_event, payload) {
     if (!subsystem || subsystem === 'FlowTracker') {
       const telDb = getTelemetryDbInstance();
       if (telDb) {
-        telDb.clearTelemetry(payload?.conversationId || null);
+        telDb.clearTelemetry(payload?.conversationId || null, beforeTimestamp);
       }
     }
 
     if (!subsystem) {
       try {
-        _getStore().clearAll();
+        _getStore().clearAll(beforeTimestamp);
       } catch (err) {
         console.warn('[AI IPC] Note: Failed clearing conversation store during clearLogs:', err.message);
       }

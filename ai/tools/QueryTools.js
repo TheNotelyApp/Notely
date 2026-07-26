@@ -168,15 +168,29 @@ const runTool = async (agent, name, args) => {
     }
   }
   if (name === 'search_notes') {
-    const queryStr = args.query;
+    const queryStr = args.query || '';
     try {
       const fs = require('fs');
-      const files = agent.documentService._collectMarkdownFiles(agent.workspaceRoot);
+      const { extractSearchKeywords } = require('../utils/SearchQueryUtils');
+      const keywords = extractSearchKeywords(queryStr);
+      const cleanQuery = queryStr.trim().toLowerCase();
+      const files = agent.documentService ? agent.documentService._collectMarkdownFiles(agent.workspaceRoot) : [];
       const results = [];
+
       for (const filePath of files) {
         try {
           const text = fs.readFileSync(filePath, 'utf8');
-          if (filePath.toLowerCase().includes(queryStr.toLowerCase()) || text.toLowerCase().includes(queryStr.toLowerCase())) {
+          const lowerPath = filePath.toLowerCase();
+          const lowerText = text.toLowerCase();
+
+          let match = false;
+          if (cleanQuery && (lowerPath.includes(cleanQuery) || lowerText.includes(cleanQuery))) {
+            match = true;
+          } else if (keywords.length > 0) {
+            match = keywords.some(kw => lowerPath.includes(kw) || lowerText.includes(kw));
+          }
+
+          if (match) {
             results.push({ path: filePath, preview: text.slice(0, 150) + '...' });
           }
         } catch {

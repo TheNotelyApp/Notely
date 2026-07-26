@@ -262,6 +262,34 @@ class ContextOrchestrator {
         }
       }
 
+      // Keyword search fallback for general queries when initial evidence is empty
+      if (!isTaskQuery && collectedEvidence.length === 0 && iterations === 1) {
+        try {
+          const { normalizeSearchQuery } = require('../utils/SearchQueryUtils');
+          const cleanKw = normalizeSearchQuery(query);
+          if (cleanKw && cleanKw !== query.trim().toLowerCase()) {
+            const runner = SemanticTools.getToolRunner('search_notes', this.agent) || SemanticTools.getToolRunner('search.notes', this.agent);
+            if (runner) {
+              const matches = await runner({ query: cleanKw, limit: 5 });
+              if (matches && Array.isArray(matches) && matches.length > 0) {
+                this._ingestEvidence(collectedEvidence, 'search_notes_keyword_fallback', matches);
+                executionTrace.push({
+                  name: 'search_notes_keyword_fallback',
+                  toolName: 'search_notes',
+                  args: { query: cleanKw, limit: 5 },
+                  type: 'programmatic',
+                  toolType: 'planned-execution',
+                  callerType: 'executor',
+                  selectedBy: 'planner',
+                  intent: plan.intent,
+                  output: `Keyword search fallback retrieved ${matches.length} matches`
+                });
+              }
+            }
+          }
+        } catch { /* ignore keyword search fallback error */ }
+      }
+
       // Proactive WorkspaceBrain & Graph evidence ingestion (only for non-task queries when evidence is sparse)
       if (!isTaskQuery && this.agent?.workspaceBrain && collectedEvidence.length === 0 && iterations === 1) {
         try {

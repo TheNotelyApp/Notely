@@ -102,9 +102,16 @@ class QueryExecutor {
     let toolChoice = 'auto';
 
     // Build messages array strictly (history + current user query)
+    const historyMsgs = (Array.isArray(ceMessages) && ceMessages.length > 0)
+      ? ceMessages
+      : (Array.isArray(context.conversationMemory) ? context.conversationMemory : []);
+
     let messages = [];
-    if (Array.isArray(ceMessages) && ceMessages.length > 0) {
-      messages = [...ceMessages];
+    if (historyMsgs.length > 0) {
+      messages = historyMsgs.map(m => ({
+        role: m.role || 'user',
+        content: m.content || ''
+      }));
       if (messages[messages.length - 1]?.content !== query || messages[messages.length - 1]?.role !== 'user') {
         messages.push({ role: 'user', content: query });
       }
@@ -116,12 +123,48 @@ class QueryExecutor {
   }
 
   /**
+   * Helper to format tool parameter schemas with jsonSchema() and cache execution
+   */
+  _wrapTools(tools, jsonSchema, traceSession) {
+    if (!tools) return {};
+    const wrapped = {};
+    for (const [tName, tObj] of Object.entries(tools)) {
+      if (!tObj) continue;
+      let toolDef = tObj;
+      if (typeof tObj.execute === 'function') {
+        let rawParams = tObj.parameters || tObj.inputSchema;
+        let schemaToUse = rawParams;
+        if (rawParams && typeof rawParams === 'object' && !rawParams._def && !rawParams.jsonSchema) {
+          schemaToUse = jsonSchema(rawParams);
+        }
+        toolDef = {
+          ...tObj,
+          parameters: schemaToUse,
+          execute: async (args, options) => {
+            if (traceSession && typeof traceSession.getCachedToolResult === 'function') {
+              const cached = traceSession.getCachedToolResult(tName, args);
+              if (cached !== undefined) return cached;
+            }
+            const res = await tObj.execute(args, options);
+            if (traceSession && typeof traceSession.setCachedToolResult === 'function') {
+              traceSession.setCachedToolResult(tName, args, res);
+            }
+            return res;
+          }
+        };
+      }
+      wrapped[tName] = toolDef;
+    }
+    return wrapped;
+  }
+
+  /**
    * Execute a query using Vercel AI SDK and the tool registry
    */
   async execute(query, context = {}) {
     try {
-      const { generateText } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace: _orchestratorTrace } = await this._prepareConfig(query, context);
+      const { generateText, jsonSchema } = await import('ai');
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace: _orchestratorTrace, _retrievedEvidence } = await this._prepareConfig(query, context);
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
@@ -134,31 +177,7 @@ class QueryExecutor {
       }
 
       const traceSession = context.trace || context.traceSession;
-      const cachedWrappedTools = {};
-      if (mergedTools) {
-        for (const [tName, tObj] of Object.entries(mergedTools)) {
-          if (tObj && typeof tObj.execute === 'function') {
-            cachedWrappedTools[tName] = {
-              ...tObj,
-              execute: async (args, options) => {
-                if (traceSession && typeof traceSession.getCachedToolResult === 'function') {
-                  const cached = traceSession.getCachedToolResult(tName, args);
-                  if (cached !== undefined) {
-                    return cached;
-                  }
-                }
-                const res = await tObj.execute(args, options);
-                if (traceSession && typeof traceSession.setCachedToolResult === 'function') {
-                  traceSession.setCachedToolResult(tName, args, res);
-                }
-                return res;
-              }
-            };
-          } else {
-            cachedWrappedTools[tName] = tObj;
-          }
-        }
-      }
+      const cachedWrappedTools = this._wrapTools(mergedTools, jsonSchema, traceSession);
 
       const result = await generateText({
         model,
@@ -219,84 +238,52 @@ class QueryExecutor {
 
             if (summaryResult.text) {
               textResult = summaryResult.text;
-              const extraTokens = summaryResult.usage?.totalTokens || 0;
-              tokensUsed += extraTokens;
-              tokensDetail.totalTokens = tokensUsed;
-              if (llm.usageStats) {
-                llm.usageStats.tokensUsedTotal += extraTokens;
-              }
             }
           }
-        } catch (summaryErr) {
-          console.error('[QueryExecutor] Provider error during response synthesis:', summaryErr.message);
-          return {
-            type: 'query',
-            result: `⚠️ **AI Provider Error**\n\n${summaryErr.message}`,
-            tokensUsed,
-            tokensDetail,
-            trace: [],
-            isError: true
-          };
-        }
+        } catch { /* ignore summary error */ }
       }
 
-      // Construct the trace array of LLM-driven executed tools
-      const trace = [];
-      const plannedToolNames = Array.isArray(context.plannedTools) ? context.plannedTools : (context.plannerDecision?.plannedTools || []);
-      const intent = context.intent || context.plannerDecision?.intent || 'workspace_task_summary';
+      const trace = Array.isArray(_orchestratorTrace)
+        ? _orchestratorTrace.map(t => ({
+            name: t.name || t.toolName || 'tool',
+            toolName: t.toolName || t.name || 'tool',
+            args: t.args || t.parameters || {},
+            type: t.type || 'programmatic',
+            toolType: t.toolType || 'planned-execution',
+            callerType: t.callerType || 'executor',
+            selectedBy: t.selectedBy || 'planner',
+            intent: t.intent || context.intent || context.plannerDecision?.intent || 'workspace_task_summary',
+            startedAt: t.startedAt || new Date().toISOString(),
+            endedAt: t.endedAt || new Date().toISOString(),
+            durationMs: t.durationMs || 0,
+            output: t.output !== undefined ? t.output : (t.result !== undefined ? t.result : null)
+          }))
+        : [];
 
-      if (result.steps) {
-        for (const step of result.steps) {
-          const toolCalls = step.toolCalls || [];
-          const toolResults = step.toolResults || [];
-          for (const call of toolCalls) {
-            const toolRes = toolResults.find(r => r.toolCallId === call.toolCallId);
-            const rawOutput = toolRes ? (toolRes.output !== undefined ? toolRes.output : (toolRes.result !== undefined ? toolRes.result : null)) : null;
-            const toolName = call.toolName || call.name || 'tool';
-            const toolArgs = call.args || call.parameters || {};
-            const toolDur = toolRes?.durationMs || 0;
+      for (const call of allToolCalls) {
+        const toolRes = toolResultsContent.find(r => r.toolCallId === call.toolCallId);
+        const rawOutput = toolRes ? (toolRes.output !== undefined ? toolRes.output : (toolRes.result !== undefined ? toolRes.result : null)) : null;
+        const toolName = call.toolName || call.name || 'tool';
 
-            const isPlanned = plannedToolNames.includes(toolName) || context.plannerDecision?.selectedStrategy === 'task_pipeline';
-            const toolType = isPlanned ? 'planned-execution' : 'llm-driven';
-            const callerType = isPlanned ? 'executor' : 'llm';
-            const selectedBy = isPlanned ? 'planner' : 'llm';
-
-            trace.push({
-              name: toolName,
-              toolName,
-              args: toolArgs,
-              type: 'llm',
-              toolType,
-              callerType,
-              selectedBy,
-              intent,
-              startedAt: toolRes?.startedAt || new Date().toISOString(),
-              endedAt: toolRes?.endedAt || new Date().toISOString(),
-              durationMs: toolDur,
-              output: rawOutput
-            });
-
-            if (traceSession && typeof traceSession.recordEvent === 'function') {
-              traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
-                toolName,
-                toolType,
-                callerType,
-                selectedBy,
-                intent,
-                args: toolArgs,
-                input: toolArgs,
-                output: rawOutput,
-                durationMs: toolDur
-              });
-            }
-          }
-        }
+        trace.push({
+          name: toolName,
+          toolName: toolName,
+          args: call.args || {},
+          type: 'llm',
+          toolType: 'dynamic-llm-call',
+          callerType: 'llm',
+          selectedBy: 'llm',
+          intent: context.intent || context.plannerDecision?.intent || 'workspace_task_summary',
+          startedAt: new Date().toISOString(),
+          endedAt: new Date().toISOString(),
+          durationMs: 0,
+          output: rawOutput
+        });
       }
 
       if (traceSession && typeof traceSession.recordEvent === 'function') {
-        traceSession.recordEvent('LLM', 'llm_execution', 'LLM Execution Completed', {
-          tokensUsed,
-          tokensDetail,
+        traceSession.recordEvent('LLM', 'llm_call', 'LLM Query Execution Completed', {
+          tokensUsedTotal: tokensUsed,
           toolCallsCount: trace.length,
           input: query,
           output: textResult || ''
@@ -305,7 +292,7 @@ class QueryExecutor {
 
       const workspaceFiles = this.agent.documentService ? this.agent.documentService._collectMarkdownFiles(this.agent.workspaceRoot) : [];
       const SelfCorrectionEngine = require('./SelfCorrectionEngine');
-      const validation = SelfCorrectionEngine.validateAndCorrect(textResult || '', { query, workspaceFiles });
+      const validation = SelfCorrectionEngine.validateAndCorrect(textResult || '', { query, workspaceFiles, retrievedEvidence: context.retrievedEvidence || "" });
       const finalResultText = validation.validatedText || textResult || "AI query completed with no text output.";
 
       return {
@@ -318,53 +305,6 @@ class QueryExecutor {
       };
     } catch (error) {
       console.error('[QueryExecutor] Execution failed:', error.message);
-      const traceSession = context.trace || context.traceSession;
-      if (traceSession && typeof traceSession.recordEvent === 'function') {
-        traceSession.recordEvent('LLM', 'llm_fallback', 'LLM Provider Fallback Triggered', {
-          llmFallbackTriggered: true,
-          originalError: error.message
-        });
-      }
-
-      // 1. Try Secondary Configured Provider or Local ONNX Model Fallback
-      if (this.agent?.llmRegistry) {
-        try {
-          const providers = this.agent.llmRegistry.listProviders();
-          const activeProviderName = this.agent.llmRegistry.activeProvider?.id?.toLowerCase() || '';
-          const fallbackProviderName = providers.find(p => p !== activeProviderName && p !== 'embedding') || (this.agent.llmRegistry.hasProvider('local-onnx') ? 'local-onnx' : null);
-
-          if (fallbackProviderName && !context._isFallbackAttempt) {
-            console.log(`[QueryExecutor] Fallback triggered to secondary provider: ${fallbackProviderName}`);
-            const fallbackProvider = await this.agent.llmRegistry.activateProvider(fallbackProviderName, {});
-            const fallbackModel = await fallbackProvider.getModelInstance();
-
-            const { generateText } = await import('ai');
-            const { systemPrompt, messages, cachedWrappedTools, toolChoice } = await this._prepareConfig(query, { ...context, _isFallbackAttempt: true });
-
-            const fbResult = await generateText({
-              model: fallbackModel,
-              system: systemPrompt,
-              messages,
-              tools: cachedWrappedTools,
-              toolChoice,
-              maxSteps: 3
-            });
-
-            if (fbResult.text) {
-              return {
-                type: 'query',
-                result: fbResult.text,
-                tokensUsed: fbResult.usage?.totalTokens || 0,
-                tokensDetail: { promptTokens: fbResult.usage?.promptTokens || 0, completionTokens: fbResult.usage?.completionTokens || 0, totalTokens: fbResult.usage?.totalTokens || 0 },
-                trace: [],
-                llmFallbackTriggered: true
-              };
-            }
-          }
-        } catch (fbErr) {
-          console.warn('[QueryExecutor] Secondary provider fallback failed:', fbErr.message);
-        }
-      }
 
       const isProviderError = error.message.includes('API key') || error.message.includes('fetch') || error.message.includes('network') || error.message.includes('401') || error.message.includes('403') || error.message.includes('429') || error.message.includes('Provider') || error.message.includes('Groq') || error.message.includes('rate limit');
       if (isProviderError) {
@@ -374,7 +314,6 @@ class QueryExecutor {
           tokensUsed: 0,
           tokensDetail: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
           trace: [],
-          llmFallbackTriggered: true,
           isError: true
         };
       }
@@ -388,7 +327,7 @@ class QueryExecutor {
   async stream(query, context = {}, onChunk, abortSignal) {
     try {
       const { streamText } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace, _retrievedEvidence } = await this._prepareConfig(query, context);
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
@@ -528,15 +467,21 @@ class QueryExecutor {
         });
       }
 
+      const workspaceFiles = this.agent.documentService ? this.agent.documentService._collectMarkdownFiles(this.agent.workspaceRoot) : [];
+      const SelfCorrectionEngine = require('./SelfCorrectionEngine');
+      const validation = SelfCorrectionEngine.validateAndCorrect(fullText || '', { query, workspaceFiles, retrievedEvidence: context.retrievedEvidence || "" });
+      const finalResultText = validation.validatedText || fullText || "AI query completed with no text output.";
+
       return {
         type: 'query',
-        result: fullText,
+        result: finalResultText,
         tokensUsed,
         tokensDetail,
         provider: providerId,
         model: modelId,
         finishReason,
-        trace
+        trace,
+        corrected: validation.corrected
       };
     } catch (error) {
       if (error.name === 'AbortError' || abortSignal?.aborted) {

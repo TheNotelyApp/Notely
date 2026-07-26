@@ -18,13 +18,21 @@ class KnowledgeApplicationService {
   }
 
   /**
-   * Search notes across workspace using full-text keyword matching.
+   * Search notes across workspace using full-text keyword matching & token scoring.
    */
   async searchNotes({ workspaceRoot, query, limit = 10 }) {
     if (!query || typeof query !== 'string' || !query.trim()) {
       return [];
     }
     const cleanQuery = query.trim().toLowerCase();
+    let extractKeywords;
+    try {
+      extractKeywords = require('../../ai/utils/SearchQueryUtils.js').extractSearchKeywords;
+    } catch {
+      extractKeywords = (q) => q.toLowerCase().replace(/[^a-z0-9_\-\s]/g, ' ').split(/\s+/).filter(t => t.length >= 2);
+    }
+    const keywords = extractKeywords(query);
+
     const files = collectMarkdownFiles(workspaceRoot);
     const matches = [];
 
@@ -32,17 +40,67 @@ class KnowledgeApplicationService {
       try {
         const text = fs.readFileSync(filePath, 'utf8');
         const fileName = path.basename(filePath);
-        if (fileName.toLowerCase().includes(cleanQuery) || text.toLowerCase().includes(cleanQuery)) {
-          const lowerText = text.toLowerCase();
-          const matchIdx = lowerText.indexOf(cleanQuery);
-          const start = Math.max(0, matchIdx - 40);
-          const end = Math.min(text.length, matchIdx + cleanQuery.length + 60);
-          const snippet = matchIdx !== -1 ? text.slice(start, end).replace(/\s+/g, ' ') : text.slice(0, 100);
+        const lowerFileName = fileName.toLowerCase();
+        const lowerText = text.toLowerCase();
+
+        let score = 0;
+        let matchIdx = -1;
+        let matchedKeyword = '';
+
+        // 1. Exact phrase matching
+        if (lowerFileName.includes(cleanQuery)) {
+          score += 1.0;
+          matchIdx = 0;
+        } else if (lowerText.includes(cleanQuery)) {
+          score += 0.85;
+          matchIdx = lowerText.indexOf(cleanQuery);
+          matchedKeyword = cleanQuery;
+        }
+
+        // 2. Multi-term token matching
+        let matchedKeywordCount = 0;
+        for (const kw of keywords) {
+          if (lowerFileName.includes(kw)) {
+            score += 0.4;
+            matchedKeywordCount++;
+            if (matchIdx === -1) {
+              matchIdx = 0;
+              matchedKeyword = kw;
+            }
+          }
+          if (lowerText.includes(kw)) {
+            score += 0.25;
+            matchedKeywordCount++;
+            if (matchIdx === -1) {
+              matchIdx = lowerText.indexOf(kw);
+              matchedKeyword = kw;
+            }
+          }
+        }
+
+        if (keywords.length > 1 && matchedKeywordCount >= keywords.length) {
+          score += 0.2;
+        }
+
+        if (score > 0) {
+          let snippet = '';
+          if (matchedKeyword) {
+            const idx = lowerText.indexOf(matchedKeyword);
+            if (idx !== -1) {
+              const start = Math.max(0, idx - 40);
+              const end = Math.min(text.length, idx + matchedKeyword.length + 60);
+              snippet = text.slice(start, end).replace(/\s+/g, ' ');
+            } else {
+              snippet = text.slice(0, 100).replace(/\s+/g, ' ');
+            }
+          } else {
+            snippet = text.slice(0, 100).replace(/\s+/g, ' ');
+          }
 
           matches.push({
             path: filePath,
             title: fileName,
-            score: fileName.toLowerCase().includes(cleanQuery) ? 1.0 : 0.7,
+            score,
             snippet: snippet ? `...${snippet}...` : ''
           });
         }

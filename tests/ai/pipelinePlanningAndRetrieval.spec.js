@@ -4,7 +4,6 @@
  * Evidence Thresholding, and Stage Confidence Synchronization.
  */
 
-const { describe, it, expect } = require('vitest');
 const IntentAnalyzer = require('../../ai/planner/IntentAnalyzer');
 const ContextOrchestrator = require('../../ai/planner/ContextOrchestrator');
 

@@ -9,6 +9,7 @@
 const IntentAnalyzer = require('./IntentAnalyzer');
 const CapabilityResolver = require('./CapabilityResolver');
 const { createLogger } = require('../core/logger');
+const { normalizeSearchQuery } = require('../utils/SearchQueryUtils');
 const log = createLogger('Planner');
 
 class Planner {
@@ -100,6 +101,10 @@ class Planner {
     }
     if (capability === 'timeline:recent' || toolName === 'recent_activity') {
       return { limit: 5 };
+    }
+    if (capability === 'notes:search' || toolName === 'search_notes' || toolName === 'search.notes' || toolName === 'semantic_search' || toolName === 'search.similar') {
+      const normalized = normalizeSearchQuery(query);
+      return { query: normalized || query, limit: 5 };
     }
     return { query, limit: 5 };
   }

@@ -90,6 +90,20 @@ class SelfCorrectionEngine {
       }
     }
 
+    // 5. Contradictory Missing Note Disclaimer Correction
+    const hasEvidence = Boolean(options.retrievedEvidence || options.evidenceContext);
+    if (hasEvidence) {
+      const missingDisclaimerRegex = /(?:unfortunately,\s*)?i\s+searched\s+your\s+workspace\s+notes,\s+but\s+i\s+couldn['’]t\s+find\s+any\s+note\s+mentioning\s+[^.\n\r]+[.!]?/gi;
+      if (missingDisclaimerRegex.test(currentText)) {
+        issues.push('Stripped contradictory missing note disclaimer when retrieved evidence exists');
+        currentText = currentText.replace(missingDisclaimerRegex, '').trim();
+        if (!currentText.trim() || currentText.startsWith('If you\'re looking for') || currentText.startsWith('Would you like me to')) {
+          currentText = 'Based on your workspace notes, here is the relevant information:';
+        }
+        corrected = true;
+      }
+    }
+
     return {
       validatedText: currentText,
       corrected,

@@ -151,11 +151,20 @@ class HybridRetriever {
         },
         required: ['query']
       },
-      execute: async ({ query, activeNotePath = null, topK = 5 }) => {
-        const results = await this.search(query, activeNotePath, topK);
-        if (!results.length) return 'No relevant note content found.';
+      execute: async (args = {}) => {
+        let q = String(args?.query || '').trim();
+        if (!q) {
+          return 'Error: Search query parameter is required and cannot be empty.';
+        }
+
+        const activeNotePath = args?.activeNotePath || null;
+        const topK = args?.topK || 5;
+        const results = await this.search(q, activeNotePath, topK);
+        if (!results.length) return `No note content matching "${q}" found in workspace.`;
         return results.map((r, i) => {
-          let output = `[${i + 1}] ${r.note_path} (RRF score: ${r.score.toFixed(4)})\n${r.content}`;
+          const normPath = String(r.note_path).replace(/\\/g, '/');
+          const fileUri = normPath.startsWith('/') ? normPath : '/' + normPath;
+          let output = `[${i + 1}] [${r.note_path}](file://${fileUri}) (RRF score: ${r.score.toFixed(4)})\n${r.content}`;
           if (r.graph_triples && r.graph_triples.length) {
             output += `\n\nKnowledge Graph Connections:\n  * ` + r.graph_triples.slice(0, 10).join('\n  * ');
           }

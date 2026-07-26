@@ -21,7 +21,7 @@ class GroundingEngine {
    */
   static cleanMarkdownLinkEscaping(text) {
     if (!text || typeof text !== 'string') return text || '';
-    return text.replace(/\]\\\(file:\/\/\//g, '](file:///');
+    return text.replace(/\]\\\(file:\/\/\//g, '](file:///').replace(/(file:\/\/\/[^)]+)\\\)/g, '$1)');
   }
 
   /**
@@ -79,11 +79,12 @@ class GroundingEngine {
     }));
 
     const hallucinations = [];
-    const titleRegex = /(?:a\s+)?note\s+(?:titled|named|called|on|about|titled:?)\s+["']?([A-Za-z0-9\s\-_]+?)["']?(?=[,.\n\r]|\s+that|\s+covers|\s+discusses|\s+is|\s+covers)/gi;
+    const titleRegex = /(?:a\s+)?note\s+(?:titled|named|called|titled:?)\s+["']([^"']+)["']/gi;
 
     const cleanedText = text.replace(titleRegex, (match, claimedTitle) => {
       const normTitle = String(claimedTitle || '').trim().toLowerCase();
-      if (normTitle && normTitle.length > 2 && !noteBasenames.has(normTitle)) {
+      const normTitleNoExt = normTitle.replace(/\.md$/i, '');
+      if (normTitle && normTitle.length > 2 && !noteBasenames.has(normTitle) && !noteBasenames.has(normTitleNoExt)) {
         hallucinations.push(claimedTitle);
         return `(no note file found in workspace matching "${claimedTitle}")`;
       }

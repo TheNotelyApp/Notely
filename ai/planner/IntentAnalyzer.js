@@ -107,8 +107,8 @@ class IntentAnalyzer {
     }
 
     // Intent Category & Capability Routing Classification
-    const isCodeQuery = /\b(code|function|class|bug|error|refactor|syntax|const|let|var|import|api|script|python|javascript|typescript|c\+\+|html|css)\b/i.test(q);
-    const isDiagramQuery = /\b(diagram|mermaid|flowchart|sequence|chart|visualize|architecture diagram)\b/i.test(q);
+    const isCodeQuery = /\b(code|function|class|bug|error|refactor|syntax|const|let|var|import|api|script|html|css)\b/i.test(q);
+    const isDiagramQuery = /\b(diagram|flowchart|sequence|chart|visualize|architecture)\b/i.test(q);
     const isCreativeQuery = /\b(brainstorm|idea|ideas|story|poem|write|draft|creative|compose|generate)\b/i.test(q);
     const isKnowledgeQuery = /^(what is|explain|how does|why is|difference between|compare|define)\b/i.test(q) && !/\b(my|this note|workspace|notes)\b/i.test(q);
 

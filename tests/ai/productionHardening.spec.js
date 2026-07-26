@@ -3,7 +3,6 @@
  * Regression tests for AI Telemetry & Production Hardening fixes.
  */
 
-const { describe, it, expect, beforeEach } = require('vitest');
 const { TaskSummaryFormatter, formatFileUriLink } = require('../../ai/formatter');
 const { normalizeTokensDetail, validateTokenAccounting } = require('../../ai/utils/aiUtils');
 const GroundingEngine = require('../../ai/grounding/GroundingEngine');

@@ -334,7 +334,12 @@ class ApplicationToolRegistry {
         },
         required: ['query']
       },
-      execute: async (args) => this.knowledgeService.searchNotes(args)
+      execute: async (args = {}) => {
+        if (!args?.query || typeof args.query !== 'string' || !args.query.trim()) {
+          throw new Error('Search query parameter is required and cannot be empty.');
+        }
+        return this.knowledgeService.searchNotes({ ...args, query: args.query });
+      }
     });
 
     // 6. search.similar

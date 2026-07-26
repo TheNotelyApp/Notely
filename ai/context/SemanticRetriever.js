@@ -113,12 +113,20 @@ class SemanticRetriever {
         },
         required: ['query']
       },
-      execute: async ({ query, topK = 5 }) => {
-        const results = await this.search(query, topK);
-        if (!results.length) return 'No relevant note content found.';
-        return results.map((r, i) =>
-          `[${i + 1}] ${r.note_path} (score: ${r.score.toFixed(3)})\n${r.content}`
-        ).join('\n\n');
+      execute: async (args = {}) => {
+        let q = String(args?.query || '').trim();
+        if (!q) {
+          return 'Error: Search query parameter is required and cannot be empty.';
+        }
+
+        const topK = args?.topK || 5;
+        const results = await this.search(q, topK);
+        if (!results.length) return `No note content matching "${q}" found in workspace.`;
+        return results.map((r, i) => {
+          const normPath = String(r.note_path).replace(/\\/g, '/');
+          const fileUri = normPath.startsWith('/') ? normPath : '/' + normPath;
+          return `[${i + 1}] [${r.note_path}](file://${fileUri}) (score: ${r.score.toFixed(3)})\n${r.content}`;
+        }).join('\n\n');
       }
     };
   }
