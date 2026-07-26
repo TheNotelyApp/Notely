@@ -815,6 +815,10 @@ export default function KnowledgeGraph({ onBack }) {
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               fitView
+              fitViewOptions={{ padding: 0.2, maxZoom: 0.1 }}
+              minZoom={0.001}
+              maxZoom={2.5}
+              defaultViewport={{ x: 0, y: 0, zoom: 0.1 }}
               style={{ width: '100%', height: '100%', background: 'var(--app-bg)' }}
             >
               <Controls style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-strong)' }} />
