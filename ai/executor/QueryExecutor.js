@@ -427,7 +427,7 @@ class QueryExecutor {
       }
 
       const { jsonSchema } = await import('ai');
-      const traceSession = context.trace || context.traceSession;
+      let traceSession = context.trace || context.traceSession;
       const wrappedStreamTools = this._wrapTools(mergedTools, jsonSchema, traceSession);
 
       // Honor provider capability: cap multi-step tool calls per provider limit.

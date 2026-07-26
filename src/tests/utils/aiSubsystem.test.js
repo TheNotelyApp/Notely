@@ -7,7 +7,8 @@ vi.mock('ai', () => ({
   generateText: vi.fn().mockResolvedValue({
     text: 'Vercel AI response text',
     usage: { totalTokens: 42 }
-  })
+  }),
+  wrapLanguageModel: vi.fn((opts) => opts.model)
 }));
 
 // Inject mock directly into Node's require cache to intercept the CommonJS require('groq-sdk')

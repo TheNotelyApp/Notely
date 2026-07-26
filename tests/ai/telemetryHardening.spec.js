@@ -35,18 +35,16 @@ describe('Telemetry & Observability Hardening Regression Suite', () => {
     expect(aggregated.retrievalQuality[0].accepted).toBe(true);
   });
 
-  // Test 2: Modular System Prompt Assembly
   it('2. Dynamically excludes unrequested prompt modules based on capabilities', () => {
-    const defaultPrompt = promptPipeline.assemble({});
-    const taskOnlyPrompt = promptPipeline.assemble({
+    const defaultPrompt = promptPipeline.assemble({ category: 'Simple Retrieval', capabilities: { needsTasks: false } });
+    const taskPrompt = promptPipeline.assemble({
       category: 'Task Query',
-      capabilities: { needsDiagram: false, needsCode: false, needsTasks: true }
+      capabilities: { needsTasks: true }
     });
 
-    // Formatting policy (Mermaid/Code rules) should be excluded when not needed
-    expect(defaultPrompt).toContain('Formatting & Visual Rendering Policy');
-    expect(taskOnlyPrompt).not.toContain('Formatting & Visual Rendering Policy');
-    expect(taskOnlyPrompt.length).toBeLessThan(defaultPrompt.length);
+    // Planning policy should be dynamically included for Task Queries
+    expect(taskPrompt).toContain('Planning & Orchestration Policy');
+    expect(defaultPrompt).not.toContain('Planning & Orchestration Policy');
   });
 
   // Test 3: Enhanced Tool Metrics in Telemetry Events

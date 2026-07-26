@@ -163,7 +163,7 @@ const runTool = async (agent, name, args) => {
         return `Note not found: the file "${filePath}" does not exist in this workspace.`;
       }
       return fs.readFileSync(filePath, 'utf8');
-    } catch (err) {
+    } catch {
       return 'Could not read note file — it may be locked or inaccessible.';
     }
   }
@@ -198,7 +198,7 @@ const runTool = async (agent, name, args) => {
         }
       }
       return JSON.stringify(results.slice(0, 10), null, 2);
-    } catch (err) {
+    } catch {
       return 'Search encountered an issue — no results available.';
     }
   }
@@ -237,7 +237,7 @@ const runTool = async (agent, name, args) => {
         }
       }
       return JSON.stringify(tasksList.slice(0, 50), null, 2);
-    } catch (err) {
+    } catch {
       return 'Could not retrieve tasks from workspace.';
     }
   }
@@ -255,7 +255,7 @@ const runTool = async (agent, name, args) => {
         fileName: filePath.split(/[\\/]/).pop(),
         filePath
       })).slice(0, 100), null, 2);
-    } catch (err) {
+    } catch {
       return 'Could not list notes in workspace.';
     }
   }
@@ -299,7 +299,7 @@ const runTool = async (agent, name, args) => {
         return JSON.stringify(matched, null, 2);
       }
       return JSON.stringify(personMap, null, 2);
-    } catch (err) { return 'Could not retrieve people from workspace notes.'; }
+    } catch { return 'Could not retrieve people from workspace notes.'; }
   }
   if (name === 'semantic_search') {
     try {
@@ -308,7 +308,7 @@ const runTool = async (agent, name, args) => {
       const results = await agent.contextEngine.semanticRetriever.search(queryStr, args.topK || 5);
       if (!results.length) return 'No semantically similar notes found.';
       return results.map((r, i) => `[${i+1}] ${r.note_path} (score: ${r.score.toFixed(3)})\n${r.content}`).join('\n\n');
-    } catch (err) { return 'Semantic search is currently unavailable.'; }
+    } catch { return 'Semantic search is currently unavailable.'; }
   }
   if (name === 'explore_graph') {
     const target = args.identifier || args.notePath || '';
@@ -327,7 +327,7 @@ const runTool = async (agent, name, args) => {
         }
         return line;
       }).join('\n');
-    } catch (err) { return 'Knowledge graph traversal is currently unavailable.'; }
+    } catch { return 'Knowledge graph traversal is currently unavailable.'; }
   }
   if (name === 'create_note') {
     try {
