@@ -250,6 +250,15 @@ describe("MarkdownPreview image behaviors", () => {
     view.unmount();
   });
 
+  it("normalizes backslash-escaped markdown links and windows file URIs cleanly", () => {
+    const { normalizeMarkdownLinks, renderMarkdown } = require("../../utils/renderUtils");
+    const raw = "The note [getting-started-with-diagrams.md]\\(file:///C:\\Users\\oksbw\\OneDrive\\Documents\\Notely%20Notes\\getting-started-with-diagrams.md\\) touches on this.";
+    const normalized = normalizeMarkdownLinks(raw);
+    expect(normalized).toBe("The note [getting-started-with-diagrams.md](file:///C:/Users/oksbw/OneDrive/Documents/Notely%20Notes/getting-started-with-diagrams.md) touches on this.");
+    const html = renderMarkdown(raw);
+    expect(html).toContain('<a href="file:///C:/Users/oksbw/OneDrive/Documents/Notely%20Notes/getting-started-with-diagrams.md">getting-started-with-diagrams.md</a>');
+  });
+
   it("renders inline markdown for extensionless local note links", async () => {
     readMarkdownSourceMock.mockResolvedValue("# Architecture\n\nRendered from extensionless link.");
 

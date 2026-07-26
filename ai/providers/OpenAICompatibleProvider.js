@@ -29,8 +29,77 @@ class OpenAICompatibleProvider extends LLMProvider {
   async getModelInstance() {
     if (this.baseUrl.includes('api.groq.com')) {
       const { createGroq } = await import('@ai-sdk/groq');
+      const { wrapLanguageModel } = await import('ai');
       const client = createGroq({ apiKey: this.apiKey });
-      return client(this.model);
+      const baseModel = client(this.model);
+
+      /**
+       * GROQ / LLAMA TOOL-CALLING FIX
+       *
+       * Root cause: Llama 3.x models on Groq intermittently generate malformed
+       * tool calls with empty or missing required arguments, e.g.:
+       *
+       *   <function=search_notes{}>   ← no `query` arg, Groq rejects with HTTP 400
+       *
+       * This is a prompt-discipline failure: Llama calls the tool before
+       * determining what the required parameters should be. The fix has two parts:
+       *
+       * 1. transformParams (ROOT CAUSE FIX):
+       *    Inject a Llama-specific instruction into the system prompt that forces
+       *    the model to derive all required tool arguments from user intent before
+       *    invoking any function. This prevents the malformed call from being
+       *    generated in the first place.
+       *
+       * 2. wrapGenerate (SECONDARY DEFENCE):
+       *    If a tool call arg arrives as a double-encoded JSON string (another
+       *    Llama format quirk), JSON.parse it to an object before the Vercel AI
+       *    SDK's schema validator runs. Without this, valid JSON args encoded as
+       *    strings would throw AI_InvalidToolInputError.
+       *
+       * QueryExecutor has no Groq-specific logic — all quirks are isolated here.
+       */
+      const groqMiddleware = {
+        // ROOT CAUSE FIX: inject tool-calling discipline into the system prompt.
+        transformParams: async ({ params }) => {
+          const llamaToolInstruction =
+            '\n\n[TOOL CALLING RULES - FOLLOW STRICTLY]\n' +
+            '- Before calling any tool, extract ALL required parameters from the user message.\n' +
+            '- For search_notes: derive the `query` value from the user\'s question topic. Never call search_notes with empty args {}.\n' +
+            '- If you cannot determine a required argument, answer from your knowledge instead of calling the tool.\n' +
+            '- Never emit <function=...> text syntax. Use the structured tool call format only.';
+
+          return {
+            ...params,
+            prompt: params.prompt?.map(msg => {
+              if (msg.role === 'system') {
+                return {
+                  ...msg,
+                  content: typeof msg.content === 'string'
+                    ? msg.content + llamaToolInstruction
+                    : msg.content
+                };
+              }
+              return msg;
+            }) ?? params.prompt
+          };
+        },
+
+        // SECONDARY DEFENCE: normalize double-encoded string args → object.
+        wrapGenerate: async ({ doGenerate, params }) => {
+          const result = await doGenerate(params);
+          if (result.toolCalls && result.toolCalls.length > 0) {
+            result.toolCalls = result.toolCalls.map(tc => {
+              if (typeof tc.args === 'string') {
+                try { tc.args = JSON.parse(tc.args); } catch { /* leave as-is */ }
+              }
+              return tc;
+            });
+          }
+          return result;
+        }
+      };
+
+      return wrapLanguageModel({ model: baseModel, middleware: groqMiddleware });
     }
     const { createOpenAI } = await import('@ai-sdk/openai');
     const client = createOpenAI({ apiKey: this.apiKey, baseURL: this.baseUrl });

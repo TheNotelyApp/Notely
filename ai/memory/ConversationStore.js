@@ -24,7 +24,7 @@ class ConversationStore {
     return this.db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) || null;
   }
 
-  createConversation(title = 'New Chat', persona = 'default') {
+  createConversation(title = 'New Chat', persona = 'general') {
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.prepare(

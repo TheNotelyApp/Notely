@@ -122,17 +122,20 @@ class PersonaStandard {
       '---'
     ].join('\n');
 
-    const body = [
-      `# Persona: ${p.name}`,
-      '',
-      '## Role Definition & Mindset',
+    const hasHeader = p.systemInstructions.includes('# Persona:') || p.systemInstructions.includes('## Role Definition');
+    const bodyParts = [];
+    if (!hasHeader) {
+      bodyParts.push(`# Persona: ${p.name}`, '', '## Role Definition & Mindset');
+    }
+    bodyParts.push(
       p.systemInstructions,
       '',
       '## Communication Style & Tone',
       `- Tone: ${p.tone}`,
       `- Verbosity: ${p.verbosity}`,
       `- Preferred Structure: ${p.responseStructure}`
-    ].join('\n');
+    );
+    const body = bodyParts.join('\n');
 
     return `${frontmatter}\n\n${body}\n`;
   }

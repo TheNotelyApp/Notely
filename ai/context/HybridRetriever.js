@@ -154,7 +154,7 @@ class HybridRetriever {
       execute: async (args = {}) => {
         let q = String(args?.query || '').trim();
         if (!q) {
-          return 'Error: Search query parameter is required and cannot be empty.';
+          return 'No search query provided — no results.';
         }
 
         const activeNotePath = args?.activeNotePath || null;

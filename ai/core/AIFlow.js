@@ -121,7 +121,7 @@ class AIFlow {
       const s2Start = Date.now();
       const s2SpanId = traceSession.startSpan('Intent Planning & Hybrid Retrieval', 'Planner', traceSession.rootSpanId, { component: 'ContextOrchestrator' });
       let retrievedEvidence = '';
-      let orchestratorTrace = [];
+      orchestratorTrace = [];
       let confidenceScore = 0.0;
       let orchRes = null;
 
@@ -257,7 +257,9 @@ class AIFlow {
 
       // Check for deterministic response optimization (Requirement 4)
       const intent = orchRes?.intent || orchRes?.plannerDecision?.intent;
-      const isTaskSummaryIntent = intent === 'workspace_task_summary' || intent === 'tasks:extract' || intent === 'checklist_summary';
+      const isTaskIntent = ['workspace_task_summary', 'tasks:extract', 'checklist_summary'].includes(intent);
+      const isTargetedQuestion = /\b(do we have|is there|are there|which|who|where|when|why|how|about|on|for|related|first|next|priority|specific)\b/i.test(String(userQuery).toLowerCase());
+      const isTaskSummaryIntent = isTaskIntent && !isTargetedQuestion;
       let result = null;
 
       if (isTaskSummaryIntent) {
@@ -304,9 +306,15 @@ class AIFlow {
           const activeProv = this.agent?.llmRegistry?.getActiveProvider ? this.agent.llmRegistry.getActiveProvider() : null;
           const activeProvId = activeProv?.providerId || activeProv?.name || 'unknown';
           const activeModelId = activeProv?.modelId || activeProv?.config?.model || 'unknown-model';
+          const safeErrMsg = (() => {
+            const msg = execErr.message || '';
+            const isProviderErr = msg.includes('API key') || msg.includes('401') || msg.includes('429') || msg.includes('rate limit') || msg.includes('fetch') || msg.includes('network') || msg.includes('Groq') || msg.includes('Provider');
+            if (isProviderErr) return `⚠️ **AI Provider Error**\n\n${msg}`;
+            return 'An error occurred while processing your request. Please try again.';
+          })();
           result = {
             type: 'query',
-            result: execErr.message || String(execErr),
+            result: safeErrMsg,
             isError: true,
             error: execErr.message || String(execErr),
             tokensUsed: estimatedPromptTokens,
@@ -647,7 +655,7 @@ class AIFlow {
           if (orchRes.trace) {
             orchestratorTrace = orchRes.trace;
           }
-          confidenceScore = orchRes.confidence || 0.0;
+          confidenceScore = orchRes.confidenceScore !== undefined ? orchRes.confidenceScore : (orchRes.plannerDecision?.confidence !== undefined ? orchRes.plannerDecision.confidence : (orchRes.confidence !== undefined ? orchRes.confidence : 0.0));
         } catch (orchErr) {
           log.warn(`[Flow:${flowId}] Streaming ContextOrchestrator fallback:`, orchErr.message);
           traceSession.recordWarning('Planner', 'Streaming ContextOrchestrator Fallback', orchErr.message);
@@ -702,6 +710,14 @@ class AIFlow {
         trace: traceSession
       });
 
+      let harnessValid = true;
+      try {
+        const { PromptTester } = require('../testing');
+        const tester = new PromptTester();
+        const check = tester.validateSafetyInvariants(systemPrompt);
+        harnessValid = check.valid;
+      } catch { /* ignore audit error */ }
+
       const s3Duration = Date.now() - s3Start;
       stages.push({
         stage: 3,
@@ -710,14 +726,14 @@ class AIFlow {
         durationMs: s3Duration,
         systemPromptLength: systemPrompt.length,
         systemPrompt: systemPrompt,
-        harnessValid: true
+        harnessValid
       });
 
       traceSession.endSpan(s3SpanId, {
         status: 'completed',
         payload: {
           systemPromptLength: systemPrompt.length,
-          harnessValid: true
+          harnessValid
         }
       });
 
@@ -738,7 +754,9 @@ class AIFlow {
 
       // Check for deterministic response optimization (Requirement 4)
       const intent = orchRes?.intent || orchRes?.plannerDecision?.intent;
-      const isTaskSummaryIntent = intent === 'workspace_task_summary' || intent === 'tasks:extract' || intent === 'checklist_summary';
+      const isTaskIntent = ['workspace_task_summary', 'tasks:extract', 'checklist_summary'].includes(intent);
+      const isTargetedQuestion = /\b(do we have|is there|are there|which|who|where|when|why|how|about|on|for|related|first|next|priority|specific)\b/i.test(String(userQuery).toLowerCase());
+      const isTaskSummaryIntent = isTaskIntent && !isTargetedQuestion;
       let result = null;
 
       if (isTaskSummaryIntent) {
@@ -757,7 +775,7 @@ class AIFlow {
           const { TaskSummaryFormatter } = require('../formatter');
           const formattedResponse = TaskSummaryFormatter(tasksData);
           if (onChunk) {
-            onChunk({ type: 'text', content: formattedResponse });
+            onChunk({ type: 'replace', content: formattedResponse });
           }
           result = {
             type: 'query',
@@ -780,6 +798,14 @@ class AIFlow {
 
       if (!result) {
         result = await this.agent.queryExecutor.stream(userQuery, queryContext, onChunk, abortSignal);
+      }
+
+      if (result.result && !result.isError) {
+        try {
+          const { verifyCitations } = require('../grounding');
+          const citationCheck = verifyCitations(result.result);
+          result.result = citationCheck.text;
+        } catch { /* ignore grounding error */ }
       }
 
       const s4Duration = Date.now() - s4Start;

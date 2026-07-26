@@ -34,7 +34,7 @@ class PromptPipeline {
   }
 
   /**
-   * Get cached core static system prompt block (Core identity + Safety + Grounding)
+   * Get cached core static system prompt block (Core identity + Policies + Formatting)
    * @private
    */
   _getStaticCore() {
@@ -46,10 +46,32 @@ class PromptPipeline {
     const safetyPolicy = this._loadModule('safety-policy');
     const permPolicy = this._loadModule('permission-policy');
     const groundingPolicy = this._loadModule('grounding-policy');
+    const responsePolicy = this._loadModule('response-policy');
+    const conversationPolicy = this._loadModule('conversation-policy');
+    const formattingPolicy = this._loadModule('formatting-policy');
 
-    const coreParts = [baseSystem, behaviorPolicy, safetyPolicy, permPolicy, groundingPolicy].filter(Boolean);
+    const coreParts = [
+      baseSystem,
+      behaviorPolicy,
+      safetyPolicy,
+      permPolicy,
+      groundingPolicy,
+      responsePolicy,
+      conversationPolicy,
+      formattingPolicy
+    ].filter(Boolean);
     this._cachedStaticCore = coreParts.join('\n\n---\n\n');
     return this._cachedStaticCore;
+  }
+
+  /**
+   * Clear in-memory prompt cache and static core cache
+   */
+  clearPromptCache() {
+    this._cachedStaticCore = null;
+    this.moduleCache.clear();
+    this.loader.clearCache();
+    log.info('PromptPipeline cache cleared.');
   }
 
   /**
@@ -69,27 +91,19 @@ class PromptPipeline {
     const activeCategory = options.category || 'Workspace Search';
     const caps = options.capabilities || options.manifest?.capabilities || {};
 
-    // 1. Core Foundational Policies (Always Included - Cached Static Block)
+    // Stage 1. Core Foundational Policies (Always Included - Cached Static Block)
     const staticCore = this._getStaticCore();
     if (staticCore) {
       pipelineStages.push(staticCore);
     }
 
-    // 2. Conditional Modular Policies
-    // Formatting & Visual Policy: Included when diagram, code, or formatting is requested, or by default for general search
-    const needsFormatting = caps.needsDiagram || caps.needsCode || caps.needsCreative || !options.capabilities;
-    if (needsFormatting) {
-      const formattingPolicy = this._loadModule('formatting-policy');
-      if (formattingPolicy) pipelineStages.push(formattingPolicy);
-    }
-
-    // Planning Policy: Included for task queries, workspace search, or planning
+    // Stage 2. Planning & Orchestration Policy (Included for task, search, planning, or graph queries)
     if (['Task Query', 'Workspace Search', 'Planning', 'Graph Exploration'].includes(activeCategory) || caps.needsTasks) {
       const planningPolicy = this._loadModule('planning-policy');
       if (planningPolicy) pipelineStages.push(planningPolicy);
     }
 
-    // Stage 8: Active Persona
+    // Stage 3. Active Persona Role
     let personaContent = '';
     const personaInput = options.persona || 'general';
 
@@ -102,16 +116,16 @@ class PromptPipeline {
         personaContent = `ACTIVE PERSONA ROLE (${loadedPersona.metadata.name || personaInput}):\n${metaStr}\n\n${loadedPersona.body}`;
       }
     } else if (typeof personaInput === 'object' && personaInput !== null) {
-      const name = personaInput.name || personaInput.id || 'Custom Persona';
-      const instructions = personaInput.systemInstructions || personaInput.prompt || personaInput.body || '';
-      personaContent = `ACTIVE PERSONA ROLE (${name}):\n${instructions}`;
+      const { PersonaStandard } = require('../personas/PersonaStandard');
+      const normalized = PersonaStandard.normalize(personaInput);
+      personaContent = `ACTIVE PERSONA ROLE (${normalized.name}):\n${PersonaStandard.formatPersonaMarkdown(normalized)}`;
     }
 
     if (personaContent) {
       pipelineStages.push(`---\n${personaContent}`);
     }
 
-    // Stage 9: Workspace Context Injection (Only inject when active file or non-trivial context is present)
+    // Stage 4. Workspace Context Injection (Only inject when active file or non-trivial context is present)
     const hasActiveWorkspaceContext = options.workspaceContext && (
       (options.workspaceContext.activeNotePath && options.workspaceContext.activeNotePath !== 'none') ||
       Boolean(options.workspaceContext.activeNoteContent) ||
@@ -128,29 +142,31 @@ class PromptPipeline {
       if (wsBlock) pipelineStages.push(wsBlock);
     }
 
-    // Stage 10: Conversation Memory Injection (Bypassed - conversation history is supplied strictly via messages array to prevent prompt transmission duplication)
+    // Note: Conversation history is supplied strictly via the messages array to prevent prompt transmission duplication.
 
-    // Stage 11: Retrieved Evidence Injection (Budget-capped at 4,000 chars)
+    // Stage 5. Retrieved Evidence Injection (Budget-capped at 4,000 chars, trimmed cleanly at newline boundary)
     if (options.retrievedEvidence) {
       let evText = typeof options.retrievedEvidence === 'string'
         ? options.retrievedEvidence
         : JSON.stringify(options.retrievedEvidence);
       if (evText.length > EVIDENCE_BUDGET_CHARS) {
-        evText = evText.slice(0, EVIDENCE_BUDGET_CHARS) + `\n... [retrieved evidence capped at ${EVIDENCE_BUDGET_CHARS} chars context limit]`;
+        const lastNL = evText.lastIndexOf('\n', EVIDENCE_BUDGET_CHARS);
+        const cutPoint = lastNL > 0 ? lastNL : EVIDENCE_BUDGET_CHARS;
+        evText = evText.slice(0, cutPoint) + `\n\n... [retrieved evidence capped at ${EVIDENCE_BUDGET_CHARS} chars context limit]`;
       }
       const rawEvTemplate = this.loader.loadTemplate('retrieved-context');
       const evBlock = TemplateEngine.renderRetrievedContext(rawEvTemplate, evText);
       if (evBlock) pipelineStages.push(evBlock);
     }
 
-    // Stage 12: Current UI Context Injection
+    // Stage 6. Current UI Context Injection
     if (options.uiContext) {
       const rawUiTemplate = this.loader.loadTemplate('ui-context');
       const uiBlock = TemplateEngine.renderUIContext(rawUiTemplate, options.uiContext);
       if (uiBlock) pipelineStages.push(uiBlock);
     }
 
-    // Stage 13: Final Assembly Join
+    // Stage 7. Final Assembly Join
     const finalPrompt = pipelineStages.join('\n\n---\n\n');
     log.info(`Assembled system prompt (${finalPrompt.length} chars across ${pipelineStages.length} stages)`);
 

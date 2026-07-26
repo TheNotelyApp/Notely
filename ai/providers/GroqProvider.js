@@ -53,7 +53,13 @@ class GroqProvider extends OpenAICompatibleProvider {
       supportsEmbeddings: false,
       supportsChatCompletion: true,
       supportsCaching: false,
+
+      // GROQ WORKAROUND: Groq's streaming path is less reliable for multi-step
+      // tool calls — routing through generateText() (execute) is more stable.
+      // The root format issue (double-encoded args) is fixed via the
+      // wrapLanguageModel middleware in OpenAICompatibleProvider.getModelInstance().
       supportsStreaming: false,
+
       // llama-3.3-70b-versatile has a 128k context window on Groq.
       maxTokens: 128000,
     };

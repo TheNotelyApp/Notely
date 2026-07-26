@@ -21,7 +21,12 @@ class GroundingEngine {
    */
   static cleanMarkdownLinkEscaping(text) {
     if (!text || typeof text !== 'string') return text || '';
-    return text.replace(/\]\\\(file:\/\/\//g, '](file:///').replace(/(file:\/\/\/[^)]+)\\\)/g, '$1)');
+    return text
+      .replace(/\[\s*\[([^\]]+)\]\(file:\/\/\/([^)]+)\)\s*\]\(file:\/\/\/[^)]+\)/gi, '[$1](file:///$2)')
+      .replace(/\[\s*\[([^\]]+)\]\s*\]\(file:\/\/\/([^)]+)\)/gi, '[$1](file:///$2)')
+      .replace(/\]\\\(file:/gi, '](file:')
+      .replace(/\]\\\(/gi, '](')
+      .replace(/(file:[^)]+)\\\)/gi, '$1)');
   }
 
   /**

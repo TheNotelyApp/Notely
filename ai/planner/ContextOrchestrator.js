@@ -403,18 +403,35 @@ class ContextOrchestrator {
     const deterministicTools = ['markdown_task_parser', 'get_tasks', 'read_note', 'list_notes', 'recent_activity', 'get_people', 'get_current_date'];
     const isDeterministic = deterministicTools.includes(toolName);
 
+    const isErrorOrUnavailable = (str) => {
+      if (typeof str !== 'string') return false;
+      const lower = str.toLowerCase().trim();
+      return (
+        lower.startsWith('requested capability is not available') ||
+        lower.startsWith('error:') ||
+        lower.startsWith('no results') ||
+        lower.startsWith('note not found') ||
+        lower.startsWith('no notes found')
+      );
+    };
+
     if (typeof result === 'string') {
-      targetArray.push({ toolName, content: result, score: isDeterministic ? 0.95 : 0.75, retrievalType: isDeterministic ? 'deterministic' : 'semantic' });
+      if (!isErrorOrUnavailable(result)) {
+        targetArray.push({ toolName, content: result, score: isDeterministic ? 0.95 : 0.75, retrievalType: isDeterministic ? 'deterministic' : 'semantic' });
+      }
     } else if (Array.isArray(result)) {
       for (const item of result) {
         if (typeof item === 'string') {
-          targetArray.push({ toolName, content: item, score: isDeterministic ? 0.95 : 0.8, retrievalType: isDeterministic ? 'deterministic' : 'semantic' });
+          if (!isErrorOrUnavailable(item)) {
+            targetArray.push({ toolName, content: item, score: isDeterministic ? 0.95 : 0.8, retrievalType: isDeterministic ? 'deterministic' : 'semantic' });
+          }
         } else if (typeof item === 'object' && item !== null) {
           const filePath = item.filePath || item.path || item.note_path || item.file || '';
           let text = item.snippet || item.content || item.text || item.evidence;
           if (!text && Array.isArray(item.graph_triples) && item.graph_triples.length > 0) {
             text = item.graph_triples.join('; ');
           }
+          if (isErrorOrUnavailable(text)) continue;
           if (!text) {
             text = JSON.stringify(item);
           }

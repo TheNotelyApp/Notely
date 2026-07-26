@@ -343,7 +343,10 @@ export function useAIAssistant({
         setAiChatMessages((currentMessages) =>
           currentMessages.map((msg) =>
             msg.queryId === queryId
-              ? { ...msg, text: msg.text + chunk.content }
+              ? {
+                  ...msg,
+                  text: chunk.type === 'replace' ? chunk.content : msg.text + chunk.content
+                }
               : msg
           )
         );

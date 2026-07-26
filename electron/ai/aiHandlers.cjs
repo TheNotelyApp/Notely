@@ -923,7 +923,9 @@ async function handleSetAPIKey(event, payload) {
           await hfProvider.initialize();
           aiService.agent.setEmbeddingProvider(hfProvider);
         } else {
-          const savedModel = config.getProviderModel(provider);
+          const AIConfig = require('../../ai/core/AIConfig');
+          const aiConfig = aiService.config || new AIConfig();
+          const savedModel = aiConfig.getProviderModel(provider);
           await aiService.agent.llmRegistry.activateProvider(provider, { apiKey, model: savedModel });
         }
       } catch (activationError) {
@@ -1073,8 +1075,10 @@ async function handleSetPreferences(event, payload) {
     // Apply the active LLM provider choice immediately
     if (aiService.agent) {
       const activeProviderName = preferences.aiProvider || 'gemini';
-      const apiKey = config.getAPIKey(activeProviderName);
-      const savedModel = config.getProviderModel(activeProviderName);
+      const AIConfig = require('../../ai/core/AIConfig');
+      const aiConfig = aiService.config || new AIConfig();
+      const apiKey = aiConfig.getAPIKey(activeProviderName);
+      const savedModel = aiConfig.getProviderModel(activeProviderName);
       const { PROVIDER_REGISTRY } = require('../../ai/providers');
       const modelId = savedModel || PROVIDER_REGISTRY[activeProviderName]?.defaultModel;
       

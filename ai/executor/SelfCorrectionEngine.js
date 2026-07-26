@@ -51,6 +51,8 @@ class SelfCorrectionEngine {
       /I invoked tool \w+/gi,
       // Generic pattern for any XML tag enclosing JSON object parameters
       /<[a-zA-Z0-9_-]+>[^<]*\{[\s\S]*?\}[\s\S]*?<\/[a-zA-Z0-9_-]+>/gi,
+      // Catch tool error strings that leak from tool result payloads into LLM responses.
+      /\bError\s*\[[A-Z_]+\]:\s*[^\n.]+[.\n]?/gi,
       // Dynamic pattern generated from ApplicationToolRegistry
       this._getDynamicToolTagPattern()
     ];

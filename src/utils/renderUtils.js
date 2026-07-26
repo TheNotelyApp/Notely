@@ -149,8 +149,14 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
 export function normalizeMarkdownLinks(content) {
   if (!content) return content;
 
-  // 1. Process explicit markdown links: [alt](url)
-  let normalized = content.replace(/\[([^\]]+)\]\((<[^>]+>|[^)]+)\)/g, (match, text, rawUrl) => {
+  // 1. Clean LLM backslash-escaped markdown link delimiters
+  let text = String(content)
+    .replace(/\]\\\(file:/gi, '](file:')
+    .replace(/\]\\\(/gi, '](')
+    .replace(/(file:[^)]+)\\\)/gi, '$1)');
+
+  // 2. Process explicit markdown links: [alt](url) or [alt](<url>)
+  let normalized = text.replace(/\[([^\]]+)\]\((<[^>]+>|[^)]+)\)/g, (_match, linkText, rawUrl) => {
     const trimmed = (rawUrl || "").trim();
     const isAngleWrapped = trimmed.startsWith("<") && trimmed.endsWith(">");
     let url = isAngleWrapped ? trimmed.slice(1, -1) : trimmed;
@@ -174,7 +180,7 @@ export function normalizeMarkdownLinks(content) {
     }
 
     const safeUrl = encodeURI(decoded);
-    return `[${text}](${safeUrl})`;
+    return `[${linkText}](${safeUrl})`;
   });
 
   return normalized;

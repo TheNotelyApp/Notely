@@ -101,6 +101,30 @@ class QueryExecutor {
 
     let toolChoice = 'auto';
 
+    // Allow callers (e.g. tool-call error retry) to force plain text generation.
+    if (context._skipTools) {
+      return { model, systemPrompt, messages, mergedTools: {}, llm, toolChoice: undefined, orchestratorTrace };
+    }
+
+    // Honor provider capability: if the provider cannot reliably execute tool
+    // calls (schema validation failures, malformed JSON generation, etc.),
+    // strip all tools from the request. Retrieved context from
+    // ContextOrchestrator is already injected into systemPrompt above, so the
+    // response stays grounded without needing live tool calls.
+    // See getCapabilities().supportsToolCalling in the active provider.
+    const providerCapabilities = typeof llm.getCapabilities === 'function' ? llm.getCapabilities() : {};
+    let activeTools = providerCapabilities.supportsToolCalling === false ? {} : mergedTools;
+
+    // When retrieved evidence is already provided programmatically by ContextOrchestrator,
+    // disable live LLM tool calls to prevent empty re-invocations (e.g. search_notes({})).
+    if (retrievedEvidence && typeof retrievedEvidence === 'string' && retrievedEvidence.trim().length > 0) {
+      activeTools = {};
+    }
+
+    if (Object.keys(activeTools).length === 0) {
+      toolChoice = undefined;
+    }
+
     // Build messages array strictly (history + current user query)
     const historyMsgs = (Array.isArray(ceMessages) && ceMessages.length > 0)
       ? ceMessages
@@ -119,7 +143,7 @@ class QueryExecutor {
       messages = [{ role: 'user', content: query }];
     }
 
-    return { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace };
+    return { model, systemPrompt, messages, mergedTools: activeTools, llm, toolChoice, orchestratorTrace };
   }
 
   /**
@@ -179,13 +203,18 @@ class QueryExecutor {
       const traceSession = context.trace || context.traceSession;
       const cachedWrappedTools = this._wrapTools(mergedTools, jsonSchema, traceSession);
 
+      // Honor provider capability: some providers cap parallel tool steps.
+      // See getCapabilities().maxParallelToolCalls in the active provider.
+      const capabilities = typeof llm.getCapabilities === 'function' ? llm.getCapabilities() : {};
+      const maxSteps = capabilities.maxParallelToolCalls ?? 5;
+
       const result = await generateText({
         model,
         system: systemPrompt,
         messages,
         tools: cachedWrappedTools,
         toolChoice,
-        maxSteps: 5 // Allow multi-step tool calls
+        maxSteps
       });
 
       const usageObj = result.usage || {};
@@ -317,17 +346,74 @@ class QueryExecutor {
           isError: true
         };
       }
+
+      // Catch Vercel AI SDK / provider tool-calling failures.
+      // e.g. Groq returns HTTP 400 when Llama generates a malformed function
+      // call ("failed_generation":"<function=search_notes{}>"). The tool never
+      // ran, but the systemPrompt already contains workspace context from
+      // ContextOrchestrator — so retry without tools to get a real answer.
+      const isToolCallError = (error.name && /AI_/.test(error.name)) ||
+        error.message.includes('Failed to call a function') ||
+        error.message.includes('failed_generation') ||
+        error.message.includes('tool_call') ||
+        error.message.includes('Invalid tool');
+      if (isToolCallError) {
+        console.warn('[QueryExecutor] Tool-call failed, retrying without tools:', error.message);
+        try {
+          const { generateText: generateTextNoTools } = await import('ai');
+          const { model: retryModel, systemPrompt: retryPrompt, messages: retryMessages } =
+            await this._prepareConfig(query, context);
+          const retryResult = await generateTextNoTools({
+            model: retryModel,
+            system: retryPrompt,
+            messages: retryMessages
+            // No tools — forces plain text generation using context already in systemPrompt
+          });
+          if (retryResult.text) {
+            return {
+              type: 'query',
+              result: retryResult.text,
+              tokensUsed: retryResult.usage?.totalTokens || 0,
+              tokensDetail: normalizeTokensDetail(retryResult.usage || {}),
+              trace: [],
+              toolCallFallback: true
+            };
+          }
+        } catch (retryErr) {
+          console.error('[QueryExecutor] Tool-call retry also failed:', retryErr.message);
+        }
+        return {
+          type: 'query',
+          result: 'I was unable to search your workspace right now. Please try again.',
+          tokensUsed: 0,
+          tokensDetail: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          trace: [],
+          isError: true,
+          error: error.message
+        };
+      }
+
       throw error;
     }
   }
 
   /**
-   * Stream a query using Vercel AI SDK streamText
+   * Stream a query using Vercel AI SDK streamText.
+   * Falls back to execute() if the active provider declares supportsStreaming: false.
+   * See getCapabilities() in the active provider for provider-specific flags.
    */
   async stream(query, context = {}, onChunk, abortSignal) {
     try {
       const { streamText } = await import('ai');
       const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace, _retrievedEvidence } = await this._prepareConfig(query, context);
+
+      // Check provider capability before attempting streaming.
+      // Providers that set supportsStreaming: false (e.g. those with known
+      // streaming tool-call reliability issues) are routed to execute() instead.
+      const capabilities = typeof llm.getCapabilities === 'function' ? llm.getCapabilities() : {};
+      if (capabilities.supportsStreaming === false) {
+        return this.execute(query, context);
+      }
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
@@ -340,13 +426,20 @@ class QueryExecutor {
         });
       }
 
+      const { jsonSchema } = await import('ai');
+      const traceSession = context.trace || context.traceSession;
+      const wrappedStreamTools = this._wrapTools(mergedTools, jsonSchema, traceSession);
+
+      // Honor provider capability: cap multi-step tool calls per provider limit.
+      const maxSteps = capabilities.maxParallelToolCalls ?? 5;
+
       const result = await streamText({
         model,
         system: systemPrompt,
         messages,
-        tools: mergedTools,
+        tools: wrappedStreamTools,
         toolChoice,
-        maxSteps: 5,
+        maxSteps,
         abortSignal
       });
 
@@ -381,7 +474,9 @@ class QueryExecutor {
       }
 
       const steps = await result.steps;
-      const traceSession = context.trace;
+      if (!traceSession && context.trace) {
+        traceSession = context.trace;
+      }
       const trace = Array.isArray(orchestratorTrace)
         ? orchestratorTrace.map(t => ({
             name: t.name || t.toolName || 'tool',
@@ -504,6 +599,49 @@ class QueryExecutor {
           isError: true
         };
       }
+
+      // Catch Vercel AI SDK tool-calling failures — retry without tools.
+      // See execute() catch block above for full explanation.
+      const isToolCallError = (error.name && /AI_/.test(error.name)) ||
+        error.message.includes('Failed to call a function') ||
+        error.message.includes('failed_generation') ||
+        error.message.includes('tool_call') ||
+        error.message.includes('Invalid tool');
+      if (isToolCallError) {
+        console.warn('[QueryExecutor] Stream tool-call failed, retrying without tools:', error.message);
+        try {
+          const retryResult = await this.execute(query, { ...context, _skipTools: true });
+          if (retryResult.result && !retryResult.isError) {
+            if (onChunk) onChunk({ type: 'replace', content: retryResult.result });
+            return { ...retryResult, toolCallFallback: true };
+          }
+        } catch (retryErr) {
+          const isRateLimit = /\b(429|rate limit|quota|exceeded)\b/i.test(retryErr.message);
+          const safeMsg = isRateLimit
+            ? `⚠️ **AI Provider Rate Limit**: Rate limit reached for active provider. Please wait a moment or switch provider in Settings.`
+            : 'I was unable to search your workspace right now. Please try again.';
+          if (onChunk) onChunk({ type: 'replace', content: safeMsg });
+          return {
+            type: 'query',
+            result: safeMsg,
+            tokensUsed: 0,
+            trace: [],
+            isError: true,
+            error: retryErr.message
+          };
+        }
+        const safeMsg = 'I was unable to search your workspace right now. Please try again.';
+        if (onChunk) onChunk({ type: 'replace', content: safeMsg });
+        return {
+          type: 'query',
+          result: safeMsg,
+          tokensUsed: 0,
+          trace: [],
+          isError: true,
+          error: error.message
+        };
+      }
+
       throw error;
     }
   }

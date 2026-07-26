@@ -45,12 +45,17 @@ class IntentAnalyzer {
     // Conversational Follow-up Detection (e.g. "Which shall we take first", "What should we start with")
     const isConversationalFollowup = /\b(which (one|shall we|should we|to|can we|first)|what next|which first|where to start|what should we|tell me more|go on|continue)\b/i.test(q) && (_context.historyCount > 0 || Array.isArray(_context.conversationMemory) && _context.conversationMemory.length > 0);
 
+    const prevHadTasks = Array.isArray(_context.conversationMemory) && _context.conversationMemory.some(m => /\btask|\btodos?\b|\baction item/i.test(m.content || ''));
+
     if (isTaskQuery) {
       informationNeeds.add('action_items');
       informationNeeds.add('tasks');
       subIntents.push('tasks:extract');
     } else if (isConversationalFollowup) {
       informationNeeds.add('conversation_memory');
+      if (prevHadTasks) {
+        informationNeeds.add('tasks');
+      }
       subIntents.push('memory:resolve');
     }
     if (isTimelineQuery) {

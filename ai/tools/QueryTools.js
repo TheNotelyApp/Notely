@@ -160,11 +160,11 @@ const runTool = async (agent, name, args) => {
     try {
       const fs = require('fs');
       if (!filePath || !fs.existsSync(filePath)) {
-        return `Error: Note file at path "${filePath}" does not exist.`;
+        return `Note not found: the file "${filePath}" does not exist in this workspace.`;
       }
       return fs.readFileSync(filePath, 'utf8');
     } catch (err) {
-      return `Error reading file: ${err.message}`;
+      return 'Could not read note file — it may be locked or inaccessible.';
     }
   }
   if (name === 'search_notes') {
@@ -199,7 +199,7 @@ const runTool = async (agent, name, args) => {
       }
       return JSON.stringify(results.slice(0, 10), null, 2);
     } catch (err) {
-      return `Error searching: ${err.message}`;
+      return 'Search encountered an issue — no results available.';
     }
   }
   if (name === 'get_tasks') {
@@ -238,7 +238,7 @@ const runTool = async (agent, name, args) => {
       }
       return JSON.stringify(tasksList.slice(0, 50), null, 2);
     } catch (err) {
-      return `Error listing tasks: ${err.message}`;
+      return 'Could not retrieve tasks from workspace.';
     }
   }
   if (name === 'list_notes') {
@@ -256,7 +256,7 @@ const runTool = async (agent, name, args) => {
         filePath
       })).slice(0, 100), null, 2);
     } catch (err) {
-      return `Error listing notes: ${err.message}`;
+      return 'Could not list notes in workspace.';
     }
   }
   if (name === 'get_current_date') {
@@ -299,7 +299,7 @@ const runTool = async (agent, name, args) => {
         return JSON.stringify(matched, null, 2);
       }
       return JSON.stringify(personMap, null, 2);
-    } catch (err) { return `Error getting people: ${err.message}`; }
+    } catch (err) { return 'Could not retrieve people from workspace notes.'; }
   }
   if (name === 'semantic_search') {
     try {
@@ -308,7 +308,7 @@ const runTool = async (agent, name, args) => {
       const results = await agent.contextEngine.semanticRetriever.search(queryStr, args.topK || 5);
       if (!results.length) return 'No semantically similar notes found.';
       return results.map((r, i) => `[${i+1}] ${r.note_path} (score: ${r.score.toFixed(3)})\n${r.content}`).join('\n\n');
-    } catch (err) { return `Semantic search error: ${err.message}`; }
+    } catch (err) { return 'Semantic search is currently unavailable.'; }
   }
   if (name === 'explore_graph') {
     const target = args.identifier || args.notePath || '';
@@ -327,7 +327,7 @@ const runTool = async (agent, name, args) => {
         }
         return line;
       }).join('\n');
-    } catch (err) { return `Graph traversal error: ${err.message}`; }
+    } catch (err) { return 'Knowledge graph traversal is currently unavailable.'; }
   }
   if (name === 'create_note') {
     try {
@@ -351,10 +351,10 @@ const runTool = async (agent, name, args) => {
       }
       return `Created new note: [${fileName}](file:///${fullPath.replace(/\\/g, '/')})`;
     } catch (err) {
-      return `Error creating note: ${err.message}`;
+      return `Could not create note: ${err.message.replace(/[<>]/g, '')}`;
     }
   }
-  return `Error: Tool ${name} not found`;
+  return 'Requested capability is not available.';
 };
 
 module.exports = {

@@ -2,7 +2,7 @@ const { createLogger } = require('../core/logger');
 
 const log = createLogger('ContextEngine');
 
-const DEFAULT_PERSONA_ID = 'default';
+const DEFAULT_PERSONA_ID = 'general';
 // Max chars of note content to include in system context (rough token budget guard)
 const NOTE_CONTEXT_LIMIT = 4000;
 
@@ -62,18 +62,18 @@ class ContextEngine {
       content: m.content
     }));
 
-    // Tool definitions for the LLM to call dynamically
+    // Tool definitions for the LLM to call dynamically.
+    // NOTE: search_notes / searchNotes are intentionally omitted here — they are
+    // already registered in ApplicationToolRegistry and merged in QueryExecutor.
+    // Duplicating them here caused the LLM to call a weaker camelCase alias with
+    // empty args, leaking internal error strings into user responses.
     const tools = {
-      searchNotes: this.semanticRetriever.toTool(),
       exploreGraph: this.graphRetriever.toTool()
     };
 
-    if (this.hybridRetriever) {
-      tools.hybridSearchNotes = this.hybridRetriever.toTool();
-    }
-
-    // Unified alias for search_notes
-    tools.search_notes = this.hybridRetriever ? this.hybridRetriever.toTool() : this.semanticRetriever.toTool();
+    // hybridSearchNotes intentionally omitted — hybrid_search is already registered
+    // in ApplicationToolRegistry and merged in QueryExecutor. Duplicate camelCase
+    // aliases cause the LLM to call the weaker in-process path with malformed args.
 
     log.info(`Context built for conversation=${conversationId} persona=${personaId} msgs=${messages.length}`);
 
