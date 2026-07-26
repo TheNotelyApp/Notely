@@ -301,7 +301,7 @@ class TelemetryDB {
     }
   }
 
-  clearTelemetry(conversationId = null) {
+  clearTelemetry(conversationId = null, beforeTimestamp = null) {
     if (!this.db) return;
     try {
       if (conversationId) {
@@ -309,6 +309,9 @@ class TelemetryDB {
         stmt.run(conversationId);
         const stmtEvt = this.db.prepare('DELETE FROM telemetry_events WHERE conversation_id = ?');
         stmtEvt.run(conversationId);
+      } else if (beforeTimestamp) {
+        this.db.prepare('DELETE FROM telemetry_logs WHERE timestamp <= ?').run(beforeTimestamp);
+        this.db.prepare('DELETE FROM telemetry_events WHERE timestamp <= ?').run(beforeTimestamp);
       } else {
         this.db.prepare('DELETE FROM telemetry_logs').run();
         this.db.prepare('DELETE FROM telemetry_events').run();

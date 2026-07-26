@@ -124,7 +124,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiGetConversation: (p) => ipcRenderer.invoke("ai:conversation:get", p),
   aiCreateConversation: (p) => ipcRenderer.invoke("ai:conversation:create", p),
   aiDeleteConversation: (p) => ipcRenderer.invoke("ai:conversation:delete", p),
-  aiClearConversations: () => ipcRenderer.invoke("ai:conversation:clear"),
+  aiClearConversations: (payload) => ipcRenderer.invoke("ai:conversation:clear", payload),
   aiSetConversationPersona: (p) => ipcRenderer.invoke("ai:conversation:set-persona", p),
   aiGetMessages: (p) => ipcRenderer.invoke("ai:conversation:get-messages", p),
   aiAddMessage: (p) => ipcRenderer.invoke("ai:conversation:add-message", p),

@@ -27,7 +27,8 @@ import {
   Bot,
   Filter
 } from 'lucide-react';
-import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs, onTelemetryEvent } from '../services/electronService';
+import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs, aiClearConversations, onTelemetryEvent } from '../services/electronService';
+import { useConfirm } from '../hooks/useConfirm';
 import { renderMarkdown } from '../utils/renderUtils';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
@@ -792,6 +793,7 @@ function ConversationPane({ conv, onBack }) {
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function AIHealthPage({ onBack }) {
+  const { confirm } = useConfirm();
   const [health, setHealth] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
@@ -912,15 +914,6 @@ export default function AIHealthPage({ onBack }) {
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <select
-                id="ahp-log-cleanup-target"
-                defaultValue="FlowTracker"
-                className="select-input"
-                style={{ flex: 1, minWidth: '130px', fontSize: '11px', height: '26px' }}
-              >
-                <option value="FlowTracker">Telemetry DB (FlowTracker)</option>
-                <option value="all">All Logs & Telemetry DBs</option>
-              </select>
-              <select
                 id="ahp-log-cleanup-select"
                 defaultValue="now"
                 className="select-input"
@@ -934,25 +927,35 @@ export default function AIHealthPage({ onBack }) {
               <button
                 type="button"
                 onClick={async () => {
-                  const target = document.getElementById('ahp-log-cleanup-target')?.value || 'FlowTracker';
                   const sel = document.getElementById('ahp-log-cleanup-select')?.value || 'now';
-                  const sub = target === 'all' ? null : target;
                   let beforeTs = null;
                   const now = Date.now();
                   if (sel === 'now') beforeTs = new Date(now).toISOString();
                   else if (sel === '1h') beforeTs = new Date(now - 3600 * 1000).toISOString();
                   else if (sel === '24h') beforeTs = new Date(now - 86400 * 1000).toISOString();
                   else if (sel === '7d') beforeTs = new Date(now - 7 * 86400 * 1000).toISOString();
-                  const targetLabel = target === 'FlowTracker' ? 'Telemetry DB' : 'All Logs & Telemetry DBs';
-                  if (!window.confirm(`Clear ${targetLabel} logs up to ${sel === 'now' ? 'now' : sel}?`)) return;
-                  await aiClearLogs(sub, beforeTs);
-                  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `${targetLabel} logs cleared`, type: 'info' } }));
+
+                  const timeLabel = sel === 'now' ? 'now' : sel;
+                  const ok = await confirm({
+                    title: 'Clear AI Data & Telemetry',
+                    message: `Are you sure you want to clear AI conversations, telemetry, and logs up to ${timeLabel}? This action cannot be undone.`,
+                    confirmText: 'Clear Data',
+                    cancelText: 'Cancel',
+                    isDanger: true,
+                  });
+                  if (!ok) return;
+
+                  await aiClearLogs(null, beforeTs);
+                  await aiClearConversations(beforeTs).catch(() => {});
+
+                  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `Conversations & telemetry cleared (${sel})`, type: 'info' } }));
+                  setSelectedConv(null);
                   load();
                 }}
                 className="btn btn-secondary"
                 style={{ fontSize: '11px', height: '26px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--status-danger-text, #ef4444)' }}
               >
-                <Trash2 size={12} /> Clear Logs
+                <Trash2 size={12} /> Clear Data
               </button>
             </div>
           </div>

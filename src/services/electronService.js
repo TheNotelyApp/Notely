@@ -1246,10 +1246,10 @@ export async function aiDeleteConversation(id) {
   return api.aiDeleteConversation({ id });
 }
 
-export async function aiClearConversations() {
+export async function aiClearConversations(beforeTimestamp = null) {
   const api = getNotesApi();
   if (typeof api.aiClearConversations !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiClearConversations();
+  return api.aiClearConversations({ beforeTimestamp });
 }
 
 export async function aiSetConversationPersona(conversationId, personaId) {

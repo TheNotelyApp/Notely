@@ -43,8 +43,12 @@ class ConversationStore {
     this.db.prepare('DELETE FROM conversations WHERE id = ?').run(id);
   }
 
-  clearAll() {
-    this.db.exec('DELETE FROM conversations');
+  clearAll(beforeTimestamp = null) {
+    if (beforeTimestamp) {
+      this.db.prepare('DELETE FROM conversations WHERE updated_at <= ? OR created_at <= ?').run(beforeTimestamp, beforeTimestamp);
+    } else {
+      this.db.exec('DELETE FROM conversations');
+    }
   }
 
   // --- Messages ------------------------------------------------

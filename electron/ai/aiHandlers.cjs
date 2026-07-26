@@ -1328,11 +1328,12 @@ async function handleConversationDelete(_event, payload) {
   }
 }
 
-async function handleConversationClear(_event, _payload) {
+async function handleConversationClear(_event, payload) {
   try {
-    _getStore().clearAll();
+    const beforeTimestamp = payload?.beforeTimestamp || null;
+    _getStore().clearAll(beforeTimestamp);
     const telDb = getTelemetryDbInstance();
-    if (telDb) telDb.clearTelemetry();
+    if (telDb) telDb.clearTelemetry(null, beforeTimestamp);
     return new AIQueryResponse(true, { cleared: true });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
@@ -1535,6 +1536,14 @@ async function handleClearLogs(_event, payload) {
       const telDb = getTelemetryDbInstance();
       if (telDb) {
         telDb.clearTelemetry(payload?.conversationId || null);
+      }
+    }
+
+    if (!subsystem) {
+      try {
+        _getStore().clearAll();
+      } catch (err) {
+        console.warn('[AI IPC] Note: Failed clearing conversation store during clearLogs:', err.message);
       }
     }
 
