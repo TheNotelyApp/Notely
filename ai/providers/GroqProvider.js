@@ -34,10 +34,16 @@ class GroqProvider extends OpenAICompatibleProvider {
    * @param {number} [config.maxRetries]
    */
   constructor(apiKey, config = {}) {
+    let selectedModel = config.model || GROQ_MODELS.default;
+    // Auto-fallback decommissioned models (gemma2-9b-it, gemma-7b-it, etc.)
+    if (typeof selectedModel === 'string' && (selectedModel.includes('gemma') || selectedModel.includes('llama2') || selectedModel.includes('mixtral-8x7b'))) {
+      selectedModel = GROQ_MODELS.default;
+    }
+
     super(apiKey, {
       ...config,
       baseUrl: 'https://api.groq.com/openai/v1',
-      model: config.model || GROQ_MODELS.default,
+      model: selectedModel,
     });
     this.name = 'Groq';
   }

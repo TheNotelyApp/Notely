@@ -139,7 +139,16 @@ class AIConfig {
   savePreferences(preferences) {
     try {
       const prefsPath = path.join(this.configDir, 'ai-preferences.json');
-      fs.writeFileSync(prefsPath, JSON.stringify(preferences, null, 2));
+      const existing = this.loadPreferences();
+      const merged = {
+        ...existing,
+        ...preferences,
+        providerModels: {
+          ...(existing.providerModels || {}),
+          ...(preferences.providerModels || {})
+        }
+      };
+      fs.writeFileSync(prefsPath, JSON.stringify(merged, null, 2));
       return true;
     } catch (error) {
       console.error('[AIConfig] Failed to save preferences:', error.message);

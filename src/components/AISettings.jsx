@@ -666,6 +666,13 @@ export const AISettingsContent = ({ _onClose }) => {
                             onChange={async (e) => {
                               const model = e.target.value;
                               setSelectedModel(model);
+                              setPreferences(prev => ({
+                                ...prev,
+                                providerModels: {
+                                  ...(prev.providerModels || {}),
+                                  [selectedProvider]: model
+                                }
+                              }));
                               await aiSetProviderModel(selectedProvider, model);
                             }}
                             disabled={loading}
