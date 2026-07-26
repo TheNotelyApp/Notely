@@ -137,12 +137,25 @@ flowchart LR
 
 ---
 
-## 3. Static Prompt Assembly Caching (`PromptPipeline.js`)
+## 3. Persona Registry & Markdown Source of Truth
+
+Notely treats **Markdown (`.md`) files as the single source of truth for both system prompts and personas**:
+
+- **Markdown Storage**: Builtin personas reside in `resources/prompts/personas/*.md` and custom user personas reside in `appData/personas/*.md`.
+- **Frontmatter & Body**: Personas use YAML frontmatter for metadata (`id`, `name`, `tone`, `verbosity`, `responseStructure`) and Markdown body for role definitions & instructions.
+- **SQLite Indexing**: SQLite (`personas.db`) acts purely as a fast metadata index registry (without redundant prompt body columns). Frontmatter metadata and prompt body are hydrated dynamically from `.md` files at runtime.
+- **Automatic Migration**: Persona DB migrations automatically drop obsolete string columns (`ALTER TABLE personas DROP COLUMN prompt`) during startup.
+
+---
+
+## 4. Static Prompt Assembly Caching (`PromptPipeline.js`)
 
 To optimize prompt construction latency and prevent redundant byte joins, `PromptPipeline` splits system prompts into static and dynamic blocks:
 
-- **Static Block (Pre-compiled & Cached)**: Core foundational policies (`base-system`, `behavior-policy`, `safety-policy`, `formatting-policy`, `permission-policy`, `grounding-policy`).
+- **Static Block (Pre-compiled & Cached)**: Core foundational policies (`base-system`, `behavior-policy`, `safety-policy`, `response-policy`, `conversation-policy`, `formatting-policy`, `permission-policy`, `grounding-policy`) and Tool Calling Discipline in `planning-policy.md`.
 - **Dynamic Block**: Runtime context (`persona`, `workspaceContext`, `retrievedEvidence`, `uiContext`).
+- **Clean Evidence Truncation**: Evidence payloads are capped at 4,000 characters with newline-aware truncation (`lastIndexOf('\n')`) to avoid slicing words mid-sentence.
+- **Evidence Sanitation**: Tool execution errors, missing capability messages, and duplicate error strings are stripped prior to prompt injection.
 
 ---
 

@@ -39,11 +39,12 @@ Refactor or rewrite text inside the editor:
 
 ---
 
-## 3. Persona Customization & Preset Avatars
+## 3. Persona Customization & Markdown Source of Truth
 
 Customize how the AI talks to you:
 - Open **AI Settings** and click **Manage Personas**.
-- Select or create custom personas, and change their system prompt instructions.
+- **Markdown Source of Truth**: All personas (builtin and custom) are authored as Markdown files (`.md`) with YAML frontmatter. Custom personas created in the UI are persisted as formatted `.md` files to disk (`appData/personas/*.md`), while SQLite acts strictly as an index.
+- Select or edit custom personas, modify frontmatter metadata (tone, verbosity, structure), and update prompt instructions.
 - Select a preset emoji avatar (🤖, 💻, 🧠, etc.) next to the custom avatar field to represent them in the chat panel.
 
 ---

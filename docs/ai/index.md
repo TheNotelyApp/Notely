@@ -28,9 +28,10 @@ Notely features a 13-domain modular, local-first AI platform designed around pri
 - Runs entirely offline using a local ONNX runtime for `BGE-small-en-v1.5` embeddings, or falls back to HuggingFace APIs.
 - Background Index Worker priority queues processing note changes debounced.
 
-### 5. Custom Persona Registry
-- Customize instructions, descriptions, and preset avatar icons (🤖, 💻, 🧠, etc.).
-- Import and export personas as Markdown templates.
+### 5. Persona Registry (Markdown Source of Truth)
+- All personas (builtin and custom) use `.md` files with YAML frontmatter as their authoritative Source of Truth.
+- SQLite (`personas.db`) acts strictly as an index registry. Custom personas persist as formatted `.md` files to disk (`appData/personas/*.md`).
+- Customize instructions, descriptions, metadata, and preset avatar icons (🤖, 💻, 🧠, etc.).
 
 ### 6. Diagnostics, Flow Telemetry & Trace Logs
 - Professional **AI Health** panel to verify subsystem initialization.
