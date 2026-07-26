@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const LogDB = require('../../ai/logs/LogDB');
 const Agent = require('../../ai/core/Agent');
-const QueryExecutor = require('../../ai/core/QueryExecutor');
+const QueryExecutor = require('../../ai/executor/QueryExecutor');
 
 describe('Prompt Tracking Option A Tests', () => {
   let tmpDir;

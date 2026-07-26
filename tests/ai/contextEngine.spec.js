@@ -25,8 +25,9 @@ describe('ContextEngine Tests', () => {
     assert.ok(context.system.includes('CURRENT NOTE (note.md)'));
     assert.strictEqual(context.messages.length, 2);
     assert.strictEqual(context.messages[0].role, 'user');
-    assert.ok(context.tools.searchNotes);
     assert.ok(context.tools.exploreGraph);
+    // searchNotes intentionally removed from ContextEngine — it duplicated
+    // ApplicationToolRegistry's search_notes and caused empty-args tool calls.
   });
 });
 

@@ -113,12 +113,18 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiGetNoteStats: (notePath) => ipcRenderer.invoke("ai:note:stats", { notePath }),
   aiGetLogs: (payload) => ipcRenderer.invoke("ai:logs:get", payload),
   aiClearLogs: (payload) => ipcRenderer.invoke("ai:logs:clear", payload),
+  onTelemetryEvent: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('ai:telemetry:event', listener);
+    return () => ipcRenderer.removeListener('ai:telemetry:event', listener);
+  },
   // Phase 5 — Conversations
   aiListConversations: () => ipcRenderer.invoke("ai:conversation:list"),
   aiGetConversation: (p) => ipcRenderer.invoke("ai:conversation:get", p),
   aiCreateConversation: (p) => ipcRenderer.invoke("ai:conversation:create", p),
   aiDeleteConversation: (p) => ipcRenderer.invoke("ai:conversation:delete", p),
-  aiClearConversations: () => ipcRenderer.invoke("ai:conversation:clear"),
+  aiClearConversations: (payload) => ipcRenderer.invoke("ai:conversation:clear", payload),
   aiSetConversationPersona: (p) => ipcRenderer.invoke("ai:conversation:set-persona", p),
   aiGetMessages: (p) => ipcRenderer.invoke("ai:conversation:get-messages", p),
   aiAddMessage: (p) => ipcRenderer.invoke("ai:conversation:add-message", p),

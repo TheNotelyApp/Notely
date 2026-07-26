@@ -181,7 +181,11 @@ class ApplicationToolRegistry {
         execute: async (args) => {
           const res = await this.executeTool(fullName, args, context);
           if (!res.success) {
-            return `Error [${res.error?.code || 'FAILURE'}]: ${res.error?.message}`;
+            const msg = res.error?.message || 'Tool execution failed.';
+            const isUserSafe = msg && !msg.includes('Input validation failed') && !msg.includes('is not registered');
+            return isUserSafe
+              ? `No results found. ${msg}`
+              : 'No results available for this query.';
           }
           if (res.data && typeof res.data.content === 'string') {
             return res.data.content;
@@ -334,7 +338,12 @@ class ApplicationToolRegistry {
         },
         required: ['query']
       },
-      execute: async (args) => this.knowledgeService.searchNotes(args)
+      execute: async (args = {}) => {
+        if (!args?.query || typeof args.query !== 'string' || !args.query.trim()) {
+          throw new Error('Search query parameter is required and cannot be empty.');
+        }
+        return this.knowledgeService.searchNotes({ ...args, query: args.query });
+      }
     });
 
     // 6. search.similar

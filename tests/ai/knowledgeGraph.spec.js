@@ -129,7 +129,7 @@ describe('Knowledge Graph Architecture Tests', () => {
       evidence_id: evId
     });
 
-    const queryTools = require('../../ai/core/QueryTools');
+    const queryTools = require('../../ai/tools/QueryTools');
     const result = await queryTools.runTool({ graphDb }, 'explore_graph', { identifier: 'Bikash Panda' });
 
     assert.ok(result.includes('Bikash Panda'), 'Should include searched entity name');

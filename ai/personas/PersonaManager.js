@@ -31,7 +31,8 @@ class PersonaManager {
   }
 
   /**
-   * Load and validate a persona by ID strictly from designated app locations
+   * Load and validate a persona by ID strictly from designated app locations.
+   * Markdown files are the primary source of truth.
    * @param {string} personaId
    * @returns {object}
    */
@@ -40,7 +41,25 @@ class PersonaManager {
       return this.registeredPersonas.get(personaId);
     }
 
-    // 1. Try loading from PersonaDB if connected
+    // 1. PRIMARY SOURCE OF TRUTH: Load from PromptLoader (.md files in user dir or built-in resources)
+    const userDir = this.userPersonasDir || this.personaDB?.personasDir || null;
+    const loaded = this.loader.loadPersona(personaId, userDir);
+    if (loaded) {
+      const normalized = PersonaStandard.normalize({
+        id: loaded.id,
+        name: loaded.metadata.name || loaded.id,
+        description: loaded.metadata.description || '',
+        tone: loaded.metadata.tone || 'direct, clear, warm',
+        verbosity: loaded.metadata.verbosity || 'balanced',
+        responseStructure: loaded.metadata.responseStructure || '',
+        systemInstructions: loaded.body,
+        ...loaded.metadata
+      });
+      this.registeredPersonas.set(personaId, normalized);
+      return normalized;
+    }
+
+    // 2. SECONDARY INDEX/FALLBACK: Try loading from PersonaDB if connected
     if (this.personaDB) {
       try {
         const dbRow = this.personaDB.get(personaId);
@@ -62,39 +81,38 @@ class PersonaManager {
       }
     }
 
-    // 2. Load from PromptLoader (restricted strictly to user app personas directory and packaged built-ins)
-    const userDir = this.userPersonasDir || this.personaDB?.personasDir || null;
-    const loaded = this.loader.loadPersona(personaId, userDir);
-    if (loaded) {
-      const normalized = PersonaStandard.normalize({
-        id: loaded.id,
-        name: loaded.metadata.name || loaded.id,
-        description: loaded.metadata.description || '',
-        tone: loaded.metadata.tone || 'direct, clear, warm',
-        verbosity: loaded.metadata.verbosity || 'balanced',
-        responseStructure: loaded.metadata.responseStructure || '',
-        systemInstructions: loaded.body,
-        ...loaded.metadata
-      });
-      this.registeredPersonas.set(personaId, normalized);
-      return normalized;
-    }
-
-    // 3. Fallback to default persona standard
+    // 3. TERTIARY FALLBACK: Default persona standard
     const defaults = PersonaStandard.getDefaultPersonas();
     const fallback = defaults.find(p => p.id === personaId) || defaults[0];
     return PersonaStandard.normalize(fallback);
   }
 
   /**
-   * Create and register a custom persona using the standard deterministic template form
+   * Create and register a custom persona using the standard deterministic template form.
+   * Writes .md file to userPersonasDir as primary source of truth.
    * @param {object} personaData
    * @param {object} [targetPersonaDB]
    * @returns {object}
    */
   createCustomPersona(personaData, targetPersonaDB = null) {
+    const fs = require('fs');
     const db = targetPersonaDB || this.personaDB;
     const normalized = PersonaStandard.normalize(personaData);
+
+    // Save .md file as primary source of truth
+    if (this.userPersonasDir) {
+      try {
+        if (!fs.existsSync(this.userPersonasDir)) {
+          fs.mkdirSync(this.userPersonasDir, { recursive: true });
+        }
+        const mdContent = PersonaStandard.formatPersonaMarkdown(normalized);
+        const filePath = path.join(this.userPersonasDir, `${normalized.id}.md`);
+        fs.writeFileSync(filePath, mdContent, 'utf8');
+        log.info(`Wrote custom persona .md file: ${filePath}`);
+      } catch (err) {
+        log.warn(`Failed to write custom persona .md file:`, err.message);
+      }
+    }
 
     if (db) {
       db.save({

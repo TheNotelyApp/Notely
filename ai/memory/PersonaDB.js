@@ -57,8 +57,13 @@ class PersonaDB {
         updated_at TEXT NOT NULL
       );
     `);
-    
-    // Migration: Add content_hash column if it does not exist (older databases)
+
+    try {
+      this.db.exec("ALTER TABLE personas DROP COLUMN prompt");
+    } catch {
+      // Column does not exist or already dropped, ignore
+    }
+
     try {
       this.db.exec("ALTER TABLE personas ADD COLUMN content_hash TEXT");
     } catch {
@@ -73,11 +78,11 @@ class PersonaDB {
   _seedBuiltins() {
     const now = new Date().toISOString();
     let templatesDir = path.join(__dirname, '..', '..', 'resources', 'prompts', 'personas');
-    
+
     if (!fs.existsSync(templatesDir)) {
       templatesDir = path.join(__dirname, '..', 'personas');
     }
-    
+
     if (!fs.existsSync(templatesDir)) {
       log.warn(`Packaged personas templates directory not found at: ${templatesDir}`);
       return;
@@ -104,6 +109,7 @@ class PersonaDB {
         const rawContent = fs.readFileSync(destPath, 'utf8');
         const contentHash = PersonaDB.computeHash(rawContent);
         const { meta } = PersonaDB.parsePersonaFile(destPath);
+
         insert.run(
           id,
           meta.name || id,

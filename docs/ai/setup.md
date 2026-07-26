@@ -43,6 +43,7 @@ Relationship extraction and entity graph generation:
 All AI databases are workspace-scoped and stored inside the hidden `{workspace}/.notes-app/` folder to keep your data local and portable:
 1. `ai-embeddings.db`: Stores chunk text, line mappings, content hashes, and indexing queues.
 2. `ai-graph.db`: Stores extracted entity nodes and relationships.
-3. `ai-memory.db`: Stores conversation sessions, message logs, and pattern analysis.
+3. `ai-memory.db`: Stores conversation sessions, message logs, and persona configurations.
+4. `ai-logs.db`: Stores 5-stage execution traces, flow telemetry logs (`FlowTracker`), and prompt tracking payloads (`LogDB`).
 
 PRAGMA `journal_mode = WAL` and `synchronous = NORMAL` are enabled across all databases for high performance without write blocks.

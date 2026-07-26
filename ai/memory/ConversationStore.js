@@ -24,7 +24,7 @@ class ConversationStore {
     return this.db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) || null;
   }
 
-  createConversation(title = 'New Chat', persona = 'default') {
+  createConversation(title = 'New Chat', persona = 'general') {
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.prepare(
@@ -43,8 +43,12 @@ class ConversationStore {
     this.db.prepare('DELETE FROM conversations WHERE id = ?').run(id);
   }
 
-  clearAll() {
-    this.db.exec('DELETE FROM conversations');
+  clearAll(beforeTimestamp = null) {
+    if (beforeTimestamp) {
+      this.db.prepare('DELETE FROM conversations WHERE COALESCE(updated_at, created_at) <= ?').run(beforeTimestamp);
+    } else {
+      this.db.exec('DELETE FROM conversations');
+    }
   }
 
   // --- Messages ------------------------------------------------
@@ -60,6 +64,7 @@ class ConversationStore {
   }
 
   addMessage(conversationId, role, content, metadata = null) {
+    if (!conversationId || !role || !content) return null;
     const id = randomUUID();
     const now = new Date().toISOString();
     const metadataStr = metadata ? JSON.stringify(metadata) : null;

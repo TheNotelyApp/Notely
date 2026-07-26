@@ -20,16 +20,9 @@ if (process.parentPort) {
       if (type === 'start') {
         const { workspaceRoot, appDataDir } = payload;
 
-        const EmbeddingDB = require('../../ai/embeddings/EmbeddingDB');
-        const IndexQueue = require('../../ai/queue/IndexQueue');
-        const IndexWorker = require('../../ai/queue/IndexWorker');
-        const EmbeddingService = require('../../ai/embeddings/EmbeddingService');
-        const ONNXEmbedder = require('../../ai/embeddings/ONNXEmbedder');
-
-        const GraphDB = require('../../ai/graph/GraphDB');
-        const GraphQueue = require('../../ai/queue/GraphQueue');
-        const GraphWorker = require('../../ai/queue/GraphWorker');
-        const GraphService = require('../../ai/graph/GraphService');
+        const { EmbeddingDB, EmbeddingService, ONNXEmbedder } = require('../../ai/embeddings');
+        const { IndexQueue, IndexWorker, GraphQueue, GraphWorker } = require('../../ai/queue');
+        const { GraphDB, GraphService } = require('../../ai/graph');
 
         // 1. Initialize Embeddings Engine & Worker
         embeddingDb = new EmbeddingDB(workspaceRoot);
@@ -86,7 +79,7 @@ if (process.parentPort) {
           graphQueue.enqueue(notePath);
         }
 
-        const LogDB = require('../../ai/logs/LogDB');
+        const { LogDB } = require('../../ai/logs');
         const logDb = new LogDB(workspaceRoot);
         logDb.initialize();
 

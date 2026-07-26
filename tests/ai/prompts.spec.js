@@ -5,7 +5,7 @@ import TemplateEngine from '../../ai/prompts/TemplateEngine';
 import PromptPipeline from '../../ai/prompts/PromptPipeline';
 import PersonaManager from '../../ai/personas/PersonaManager';
 import PromptTester from '../../ai/testing/PromptTester';
-import PromptLibrary from '../../ai/core/PromptLibrary';
+import PromptLibrary from '../../ai/prompts/PromptLibrary';
 
 describe('Prompt Architecture Infrastructure', () => {
   let loader;

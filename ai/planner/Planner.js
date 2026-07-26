@@ -8,7 +8,8 @@
 
 const IntentAnalyzer = require('./IntentAnalyzer');
 const CapabilityResolver = require('./CapabilityResolver');
-const { createLogger } = require('./logger');
+const { createLogger } = require('../core/logger');
+const { normalizeSearchQuery } = require('../utils/SearchQueryUtils');
 const log = createLogger('Planner');
 
 class Planner {
@@ -28,18 +29,84 @@ class Planner {
     const intentManifest = this.intentAnalyzer.analyze(query, context);
     const resolvedCapabilities = this.capabilityResolver.resolveCapabilities(intentManifest.informationNeeds);
 
-    const steps = resolvedCapabilities.map(cap => ({
-      capability: cap.capability,
-      toolName: cap.toolName,
-      args: { query, limit: 5, notePath: query, status: 'open', ...context }
-    }));
+    let steps = [];
+    const seenTools = new Set();
+    for (const cap of resolvedCapabilities) {
+      if (!seenTools.has(cap.toolName)) {
+        seenTools.add(cap.toolName);
+        steps.push({
+          capability: cap.capability,
+          toolName: cap.toolName,
+          args: this._buildStepArgs(cap.toolName, query, context, cap.capability)
+        });
+      }
+    }
 
-    log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, stepsCount: steps.length });
+    if (intentManifest.goal === 'workspace_task_summary' && !intentManifest.capabilities.needsGraph) {
+      steps = steps.filter(s => s.capability !== 'graph:traverse');
+    }
+
+    const selectedStrategy = intentManifest.goal === 'workspace_task_summary'
+      ? 'task_pipeline'
+      : (intentManifest.capabilities.needsGraph ? 'graph_search' : 'semantic_search');
+
+    const rejectedStrategies = [];
+    if (selectedStrategy !== 'graph_search' && !intentManifest.capabilities.needsGraph) {
+      rejectedStrategies.push('graph_search');
+    }
+    if (selectedStrategy !== 'task_pipeline' && !intentManifest.capabilities.needsTasks) {
+      rejectedStrategies.push('task_pipeline');
+    }
+
+    const plannerDecision = {
+      intent: intentManifest.goal,
+      confidence: intentManifest.confidence || 0.90,
+      selectedStrategy,
+      rejectedStrategies
+    };
+
+    const trace = context.trace || context.traceSession;
+    if (trace && typeof trace.recordEvent === 'function') {
+      trace.recordEvent('Planner', 'planner:plan_created', 'Execution Plan Created', {
+        intent: intentManifest.goal,
+        plannerDecision,
+        manifest: intentManifest,
+        stepsCount: steps.length,
+        steps
+      });
+    }
+
+    log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, plannerDecision, stepsCount: steps.length });
     return {
       intent: intentManifest.goal,
       manifest: intentManifest,
+      plannerDecision,
       steps
     };
+  }
+
+  /**
+   * Helper to construct appropriate arguments per tool
+   * @private
+   */
+  _buildStepArgs(toolName, query, context, capability = '') {
+    if (capability === 'tasks:extract' || toolName === 'get_tasks' || toolName === 'notes.extract_tasks') {
+      return { status: 'open' };
+    }
+    if (capability === 'notes:read' || toolName === 'read_note' || toolName === 'notes.read') {
+      return context.currentFile ? { filePath: context.currentFile } : {};
+    }
+    if (capability === 'graph:traverse' || toolName === 'explore_topic_graph') {
+      return { topic: query, maxHops: 2 };
+    }
+    if (capability === 'timeline:recent' || toolName === 'recent_activity') {
+      return { limit: 5 };
+    }
+    if (capability === 'notes:search' || toolName === 'search_notes' || toolName === 'search.notes' || toolName === 'semantic_search' || toolName === 'search.similar') {
+      const normalized = normalizeSearchQuery(query);
+      return { query: normalized || query, limit: 5 };
+    }
+    return { query, limit: 5 };
   }
 
   /**

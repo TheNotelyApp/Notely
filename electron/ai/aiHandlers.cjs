@@ -187,13 +187,13 @@ function initializeAIHandlers(electronApp, agent) {
   }
 
   // Application Tool Registry Handlers
-  registerHandler('tool:execute', async (event, payload) => {
+  registerHandler(IPC_EVENTS.TOOL_EXECUTE, async (event, payload) => {
     const { toolName, args = {}, context = {} } = payload || {};
     const workspaceRoot = agent?.workspaceRoot || context.workspaceRoot || null;
     return applicationToolRegistry.executeTool(toolName, args, { ...context, workspaceRoot, caller: 'ipc_client' });
   });
 
-  registerHandler('tool:list', async () => {
+  registerHandler(IPC_EVENTS.TOOL_LIST, async () => {
     return {
       success: true,
       data: applicationToolRegistry.toMcpSchemas()
@@ -205,8 +205,8 @@ function initializeAIHandlers(electronApp, agent) {
 
   // AI Query
   registerHandler(IPC_EVENTS.AI_QUERY, handleQuery);
-  registerHandler('ai:query:stream', handleQueryStream);
-  registerHandler('ai:query:abort', handleQueryAbort);
+  registerHandler(IPC_EVENTS.AI_QUERY_STREAM, handleQueryStream);
+  registerHandler(IPC_EVENTS.AI_QUERY_ABORT, handleQueryAbort);
 
   // Status
   registerHandler(IPC_EVENTS.AI_STATUS, handleStatus);
@@ -216,71 +216,71 @@ function initializeAIHandlers(electronApp, agent) {
 
   // Relationship graph
   registerHandler(IPC_EVENTS.AI_BUILD_GRAPH, handleBuildGraph);
-  registerHandler('ai:graph:get', handleGetGraph);
-  registerHandler('ai:graph:status', handleGetGraphStatus);
-  registerHandler('ai:graph:pause', handlePauseGraphWorker);
-  registerHandler('ai:graph:resume', handleResumeGraphWorker);
+  registerHandler(IPC_EVENTS.AI_GRAPH_GET, handleGetGraph);
+  registerHandler(IPC_EVENTS.AI_GRAPH_STATUS, handleGetGraphStatus);
+  registerHandler(IPC_EVENTS.AI_GRAPH_PAUSE, handlePauseGraphWorker);
+  registerHandler(IPC_EVENTS.AI_GRAPH_RESUME, handleResumeGraphWorker);
 
   // Embeddings Engine Subsystem
-  registerHandler('ai:embeddings:rebuild', handleRebuildEmbeddings);
-  registerHandler('ai:embeddings:clear-data', handleClearEmbeddingsData);
-  registerHandler('ai:embeddings:status', handleGetEmbeddingsStatus);
-  registerHandler('ai:graph:clear-data', handleClearGraphData);
-  registerHandler('ai:worker:pause', handlePauseWorker);
-  registerHandler('ai:worker:resume', handleResumeWorker);
-  registerHandler('ai:model:download', handleDownloadModel);
-  registerHandler('ai:model:delete', handleDeleteModel);
-  registerHandler('ai:model:status', handleGetModelStatus);
-  registerHandler('ai:graph-model:download', handleDownloadGraphModel);
-  registerHandler('ai:graph-model:delete', handleDeleteGraphModel);
-  registerHandler('ai:graph-model:status', handleGetGraphModelStatus);
+  registerHandler(IPC_EVENTS.AI_EMBEDDINGS_REBUILD, handleRebuildEmbeddings);
+  registerHandler(IPC_EVENTS.AI_EMBEDDINGS_CLEAR, handleClearEmbeddingsData);
+  registerHandler(IPC_EVENTS.AI_EMBEDDINGS_STATUS, handleGetEmbeddingsStatus);
+  registerHandler(IPC_EVENTS.AI_GRAPH_CLEAR, handleClearGraphData);
+  registerHandler(IPC_EVENTS.AI_WORKER_PAUSE, handlePauseWorker);
+  registerHandler(IPC_EVENTS.AI_WORKER_RESUME, handleResumeWorker);
+  registerHandler(IPC_EVENTS.AI_MODEL_DOWNLOAD, handleDownloadModel);
+  registerHandler(IPC_EVENTS.AI_MODEL_DELETE, handleDeleteModel);
+  registerHandler(IPC_EVENTS.AI_MODEL_STATUS, handleGetModelStatus);
+  registerHandler(IPC_EVENTS.AI_GRAPH_MODEL_DOWNLOAD, handleDownloadGraphModel);
+  registerHandler(IPC_EVENTS.AI_GRAPH_MODEL_DELETE, handleDeleteGraphModel);
+  registerHandler(IPC_EVENTS.AI_GRAPH_MODEL_STATUS, handleGetGraphModelStatus);
 
   // Pattern detection
   registerHandler(IPC_EVENTS.AI_DETECT_PATTERNS, handleDetectPatterns);
 
   // Persistent Log Store
-  registerHandler('ai:logs:get', handleGetLogs);
-  registerHandler('ai:logs:clear', handleClearLogs);
+  registerHandler(IPC_EVENTS.AI_LOGS_GET, handleGetLogs);
+  registerHandler(IPC_EVENTS.AI_LOGS_CLEAR, handleClearLogs);
 
   // Note stats
-  registerHandler('ai:note:stats', handleNoteStats);
+  registerHandler(IPC_EVENTS.AI_NOTE_STATS, handleNoteStats);
 
   // Configuration
   registerHandler(IPC_EVENTS.AI_SET_API_KEY, handleSetAPIKey);
   registerHandler(IPC_EVENTS.AI_GET_API_KEY, handleGetAPIKey);
-  registerHandler('ai:config:get-preferences', handleGetPreferences);
-  registerHandler('ai:config:set-preferences', handleSetPreferences);
-  registerHandler('ai:config:get-provider-model', handleGetProviderModel);
-  registerHandler('ai:config:set-provider-model', handleSetProviderModel);
-  registerHandler('ai:config:test-connection', handleTestConnection);
-  registerHandler('ai:config:clear-data', handleClearData);
-  registerHandler('ai:config:get-provider-list', handleGetProviderList);
-  registerHandler('ai:enable', handleEnableAI);
-  registerHandler('ai:disable', handleDisableAI);
-  registerHandler('ai:health:get', handleGetAIHealth);
+  registerHandler(IPC_EVENTS.AI_GET_PREFERENCES, handleGetPreferences);
+  registerHandler(IPC_EVENTS.AI_SET_PREFERENCES, handleSetPreferences);
+  registerHandler(IPC_EVENTS.AI_GET_PROVIDER_MODEL, handleGetProviderModel);
+  registerHandler(IPC_EVENTS.AI_SET_PROVIDER_MODEL, handleSetProviderModel);
+  registerHandler(IPC_EVENTS.AI_TEST_CONNECTION, handleTestConnection);
+  registerHandler(IPC_EVENTS.AI_CLEAR_DATA, handleClearData);
+  registerHandler(IPC_EVENTS.AI_GET_PROVIDER_LIST, handleGetProviderList);
+  registerHandler(IPC_EVENTS.AI_ENABLE, handleEnableAI);
+  registerHandler(IPC_EVENTS.AI_DISABLE, handleDisableAI);
+  registerHandler(IPC_EVENTS.AI_HEALTH_GET, handleGetAIHealth);
 
   // Phase 5 — Conversations
-  registerHandler('ai:conversation:list', handleConversationList);
-  registerHandler('ai:conversation:get', handleConversationGet);
-  registerHandler('ai:conversation:create', handleConversationCreate);
-  registerHandler('ai:conversation:delete', handleConversationDelete);
-  registerHandler('ai:conversation:clear', handleConversationClear);
-  registerHandler('ai:conversation:set-persona', handleConversationSetPersona);
-  registerHandler('ai:conversation:get-messages', handleConversationGetMessages);
-  registerHandler('ai:conversation:add-message', handleConversationAddMessage);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_LIST, handleConversationList);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_GET, handleConversationGet);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_CREATE, handleConversationCreate);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_DELETE, handleConversationDelete);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_CLEAR, handleConversationClear);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_SET_PERSONA, handleConversationSetPersona);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_GET_MESSAGES, handleConversationGetMessages);
+  registerHandler(IPC_EVENTS.AI_CONVERSATION_ADD_MESSAGE, handleConversationAddMessage);
 
   // Phase 5 — Personas
-  registerHandler('ai:persona:list', handlePersonaList);
-  registerHandler('ai:persona:get', handlePersonaGet);
-  registerHandler('ai:persona:save', handlePersonaSave);
-  registerHandler('ai:persona:delete', handlePersonaDelete);
-  registerHandler('ai:persona:import', handlePersonaImport);
-  registerHandler('ai:persona:export', handlePersonaExport);
+  registerHandler(IPC_EVENTS.AI_PERSONA_LIST, handlePersonaList);
+  registerHandler(IPC_EVENTS.AI_PERSONA_GET, handlePersonaGet);
+  registerHandler(IPC_EVENTS.AI_PERSONA_SAVE, handlePersonaSave);
+  registerHandler(IPC_EVENTS.AI_PERSONA_DELETE, handlePersonaDelete);
+  registerHandler(IPC_EVENTS.AI_PERSONA_IMPORT, handlePersonaImport);
+  registerHandler(IPC_EVENTS.AI_PERSONA_EXPORT, handlePersonaExport);
 
   // Phase 5 — Candidate Knowledge
-  registerHandler('ai:knowledge:list-pending', handleKnowledgeListPending);
-  registerHandler('ai:knowledge:approve', handleKnowledgeApprove);
-  registerHandler('ai:knowledge:reject', handleKnowledgeReject);
+  registerHandler(IPC_EVENTS.AI_KNOWLEDGE_LIST_PENDING, handleKnowledgeListPending);
+  registerHandler(IPC_EVENTS.AI_KNOWLEDGE_APPROVE, handleKnowledgeApprove);
+  registerHandler(IPC_EVENTS.AI_KNOWLEDGE_REJECT, handleKnowledgeReject);
 
   // Shutdown
   registerHandler(IPC_EVENTS.AI_SHUTDOWN, handleShutdown);
@@ -481,7 +481,7 @@ async function handleRebuildEmbeddings(_event, _payload) {
       throw new Error('AI agent or EmbeddingDB is not initialized');
     }
 
-    const LogDB = require('../../ai/logs/LogDB');
+    const { LogDB } = require('../../ai/logs');
     const logDb = new LogDB(aiService.agent.workspaceRoot);
     logDb.initialize();
     logDb.addLog('embeddings', 'Starting complete Embeddings DB rebuild...', 'info');
@@ -519,7 +519,7 @@ async function handleClearEmbeddingsData(_event, _payload) {
       throw new Error('AI agent or EmbeddingDB is not initialized');
     }
     aiService.agent.embeddingDb.clearAllData();
-    const LogDB = require('../../ai/logs/LogDB');
+    const { LogDB } = require('../../ai/logs');
     const logDb = new LogDB(aiService.agent.workspaceRoot);
     logDb.initialize();
     logDb.addLog('embeddings', 'Cleared all vector embeddings data from cache', 'info');
@@ -537,7 +537,7 @@ async function handleClearGraphData(_event, _payload) {
       throw new Error('AI agent or GraphDB is not initialized');
     }
     aiService.agent.graphDb.clearAllData();
-    const LogDB = require('../../ai/logs/LogDB');
+    const { LogDB } = require('../../ai/logs');
     const logDb = new LogDB(aiService.agent.workspaceRoot);
     logDb.initialize();
     logDb.addLog('graph', 'Cleared all Knowledge Graph entities and relationships from cache', 'info');
@@ -918,12 +918,15 @@ async function handleSetAPIKey(event, payload) {
       try {
         if (provider === 'huggingface') {
           // HuggingFace is an embedding-only provider — wire it directly.
-          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers/HuggingFaceEmbeddingProvider');
+          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers');
           const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
           await hfProvider.initialize();
           aiService.agent.setEmbeddingProvider(hfProvider);
         } else {
-          await aiService.agent.llmRegistry.activateProvider(provider, { apiKey });
+          const AIConfig = require('../../ai/core/AIConfig');
+          const aiConfig = aiService.config || new AIConfig();
+          const savedModel = aiConfig.getProviderModel(provider);
+          await aiService.agent.llmRegistry.activateProvider(provider, { apiKey, model: savedModel });
         }
       } catch (activationError) {
         console.warn('[AI IPC] Provider activation after key save failed:', activationError.message);
@@ -968,7 +971,7 @@ async function handleGetAPIKey(event, payload) {
  */
 async function handleGetProviderList(_event, _payload) {
   try {
-    const { PROVIDER_REGISTRY } = require('../../ai/providers/ProviderRegistry');
+    const { PROVIDER_REGISTRY } = require('../../ai/providers');
     const serializableProviders = Object.values(PROVIDER_REGISTRY).map(p => {
       const { factory: _factory, ...rest } = p;
       return rest;
@@ -1014,7 +1017,7 @@ async function handleSetPreferences(event, payload) {
       if (activeEmbProvider === 'huggingface') {
         const hfToken = config.getAPIKey("huggingface");
         if (hfToken) {
-          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers/HuggingFaceEmbeddingProvider');
+          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers');
           const hfProvider = new HuggingFaceEmbeddingProvider(hfToken);
           await hfProvider.initialize();
           aiService.agent.setEmbeddingProvider(hfProvider);
@@ -1025,7 +1028,7 @@ async function handleSetPreferences(event, payload) {
         try {
           const { app } = require('electron');
           const appDataDir = path.join(app.getPath('appData'), 'Notely');
-          const ONNXEmbedder = require('../../ai/embeddings/ONNXEmbedder');
+          const { ONNXEmbedder } = require('../../ai/embeddings');
           const onnxProvider = new ONNXEmbedder(appDataDir);
           const fs = require('fs');
           const modelPath = path.join(appDataDir, 'notely', 'ai-model', 'model.onnx');
@@ -1055,7 +1058,7 @@ async function handleSetPreferences(event, payload) {
           const ModelDownloader = require('../../ai/embeddings/ModelDownloader');
           const modelDownloader = new ModelDownloader(appDataDir);
           if (modelDownloader.isGraphModelDownloaded()) {
-            const LocalONNXProvider = require('../../ai/providers/LocalONNXProvider');
+            const { LocalONNXProvider } = require('../../ai/providers');
             const localLlm = new LocalONNXProvider({ appDataDir });
             await localLlm.initialize();
             aiService.agent.llmRegistry.register('local', localLlm);
@@ -1072,9 +1075,11 @@ async function handleSetPreferences(event, payload) {
     // Apply the active LLM provider choice immediately
     if (aiService.agent) {
       const activeProviderName = preferences.aiProvider || 'gemini';
-      const apiKey = config.getAPIKey(activeProviderName);
-      const savedModel = config.getProviderModel(activeProviderName);
-      const { PROVIDER_REGISTRY } = require('../../ai/providers/ProviderRegistry');
+      const AIConfig = require('../../ai/core/AIConfig');
+      const aiConfig = aiService.config || new AIConfig();
+      const apiKey = aiConfig.getAPIKey(activeProviderName);
+      const savedModel = aiConfig.getProviderModel(activeProviderName);
+      const { PROVIDER_REGISTRY } = require('../../ai/providers');
       const modelId = savedModel || PROVIDER_REGISTRY[activeProviderName]?.defaultModel;
       
       if (activeProviderName === 'local') {
@@ -1084,7 +1089,7 @@ async function handleSetPreferences(event, payload) {
           const ModelDownloader = require('../../ai/embeddings/ModelDownloader');
           const modelDownloader = new ModelDownloader(appDataDir);
           if (modelDownloader.isGraphModelDownloaded()) {
-            const LocalONNXProvider = require('../../ai/providers/LocalONNXProvider');
+            const { LocalONNXProvider } = require('../../ai/providers');
             const localLlm = new LocalONNXProvider({ appDataDir });
             await localLlm.initialize();
             aiService.agent.llmRegistry.register('local', localLlm);
@@ -1132,7 +1137,7 @@ async function handleSetProviderModel(_event, payload) {
     const provider = assertProvider(payload?.provider);
     let modelId = typeof payload?.model === 'string' ? payload.model.trim() : '';
     if (!modelId) {
-      const { PROVIDER_REGISTRY } = require('../../ai/providers/ProviderRegistry');
+      const { PROVIDER_REGISTRY } = require('../../ai/providers');
       modelId = PROVIDER_REGISTRY[provider]?.defaultModel || '';
     }
     if (!modelId) throw new Error('Model id is required.');
@@ -1216,15 +1221,16 @@ async function handleClearData(_event, _payload) {
     }
 
     // Clear session memory
-    aiService.agent.memoryManager.clearSession();
+    aiService.agent.memoryManager?.clearSession?.();
 
     // Clear caches
-    aiService.agent.contextManager.clearCache();
-    aiService.agent.embeddingService.clearCache();
-    aiService.agent.relationshipService.clearCache();
+    aiService.agent.contextManager?.clearCache?.();
+    aiService.agent.embeddingService?.clearCache?.();
 
     // Clean database
-    aiService.agent.db.cleanExpiredCache();
+    if (aiService.agent.db?.cleanExpiredCache) {
+      aiService.agent.db.cleanExpiredCache();
+    }
 
     return new AIQueryResponse(true, { message: 'All AI data cleared' });
   } catch (error) {
@@ -1268,7 +1274,7 @@ async function handleDisableAI(_event, _payload) {
 
 async function handleGetAIHealth(_event, _payload) {
   try {
-    const { getSubsystemHealth } = require('../../ai/diagnostics/AIHealth');
+    const { getSubsystemHealth } = require('../../ai/diagnostics');
     const health = getSubsystemHealth();
     return new AIQueryResponse(true, health);
   } catch (error) {
@@ -1316,16 +1322,24 @@ async function handleConversationCreate(_event, payload) {
 
 async function handleConversationDelete(_event, payload) {
   try {
-    _getStore().deleteConversation(payload?.id);
-    return new AIQueryResponse(true, { deleted: payload?.id });
+    const convId = payload?.id;
+    _getStore().deleteConversation(convId);
+    if (convId) {
+      const telDb = getTelemetryDbInstance();
+      if (telDb) telDb.clearTelemetry(convId);
+    }
+    return new AIQueryResponse(true, { deleted: convId });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
   }
 }
 
-async function handleConversationClear(_event, _payload) {
+async function handleConversationClear(_event, payload) {
   try {
-    _getStore().clearAll();
+    const beforeTimestamp = payload?.beforeTimestamp || null;
+    _getStore().clearAll(beforeTimestamp);
+    const telDb = getTelemetryDbInstance();
+    if (telDb) telDb.clearTelemetry(null, beforeTimestamp);
     return new AIQueryResponse(true, { cleared: true });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
@@ -1444,26 +1458,74 @@ async function handleKnowledgeReject(_event, payload) {
 
 let _logDbInstance = null;
 function getLogDbInstance() {
+  // Prefer the agent's already-initialized LogDB — same file, no duplicate connection.
+  const agentLogDb = aiService?.agent?.logDb;
+  if (agentLogDb?.isInitialized) return agentLogDb;
+
+  // Fallback: standalone instance (covers cases where agent isn't up yet but workspaceRoot is known).
   const workspaceRoot = aiService.workspaceRoot;
   if (!workspaceRoot) return null;
   if (!_logDbInstance || _logDbInstance.workspaceRoot !== workspaceRoot) {
     if (_logDbInstance) try { _logDbInstance.close(); } catch { /* ignore */ }
-    const LogDB = require('../../ai/logs/LogDB');
+    const { LogDB } = require('../../ai/logs');
     _logDbInstance = new LogDB(workspaceRoot);
     _logDbInstance.initialize();
   }
   return _logDbInstance;
 }
 
+let _telemetryDbInstance = null;
+function getTelemetryDbInstance() {
+  const agentTelDb = aiService?.agent?.telemetryDb;
+  if (agentTelDb?.isInitialized) return agentTelDb;
+
+  const workspaceRoot = aiService.workspaceRoot;
+  if (!workspaceRoot) return null;
+  if (!_telemetryDbInstance || _telemetryDbInstance.workspaceRoot !== workspaceRoot) {
+    if (_telemetryDbInstance) try { _telemetryDbInstance.close(); } catch { /* ignore */ }
+    const { TelemetryDB } = require('../../ai/telemetry');
+    _telemetryDbInstance = new TelemetryDB(workspaceRoot);
+    _telemetryDbInstance.initialize();
+  }
+  return _telemetryDbInstance;
+}
+
+try {
+  const { eventBus } = require('../../ai/telemetry');
+  if (eventBus) {
+    eventBus.subscribe((evt) => {
+      try {
+        const windows = BrowserWindow.getAllWindows();
+        for (const win of windows) {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('ai:telemetry:event', evt);
+          }
+        }
+      } catch { /* ignore */ }
+    });
+  }
+} catch { /* ignore */ }
+
 async function handleGetLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;
-    const limit = payload?.limit || 100;
-    const logDb = getLogDbInstance();
-    if (!logDb) {
+    const limit = payload?.limit || 200;
+    const conversationId = payload?.conversationId || null;
+
+    if (subsystem === 'FlowTracker' || conversationId) {
+      const telDb = getTelemetryDbInstance();
+      if (telDb) {
+        const telLogs = conversationId 
+          ? telDb.getTelemetryByConversation(conversationId, limit)
+          : telDb.getLatestTelemetry(limit);
+        return new AIQueryResponse(true, telLogs);
+      }
       return new AIQueryResponse(true, []);
     }
-    const logs = logDb.getLogs(subsystem, limit);
+
+    const logDb = getLogDbInstance();
+    if (!logDb) return new AIQueryResponse(true, []);
+    const logs = logDb.getLogs(subsystem, limit, conversationId);
     return new AIQueryResponse(true, logs);
   } catch (err) {
     console.error('[AI IPC] Failed to fetch logs:', err);
@@ -1474,11 +1536,27 @@ async function handleGetLogs(_event, payload) {
 async function handleClearLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;
-    const logDb = getLogDbInstance();
-    if (!logDb) {
-      return new AIQueryResponse(true, { ok: true });
+    const beforeTimestamp = payload?.beforeTimestamp || null;
+
+    if (!subsystem || subsystem === 'FlowTracker') {
+      const telDb = getTelemetryDbInstance();
+      if (telDb) {
+        telDb.clearTelemetry(payload?.conversationId || null, beforeTimestamp);
+      }
     }
-    logDb.clearLogs(subsystem);
+
+    if (!subsystem) {
+      try {
+        _getStore().clearAll(beforeTimestamp);
+      } catch (err) {
+        console.warn('[AI IPC] Note: Failed clearing conversation store during clearLogs:', err.message);
+      }
+    }
+
+    const logDb = getLogDbInstance();
+    if (logDb) {
+      logDb.clearLogs(subsystem, beforeTimestamp);
+    }
     return new AIQueryResponse(true, { ok: true });
   } catch (err) {
     console.error('[AI IPC] Failed to clear logs:', err);

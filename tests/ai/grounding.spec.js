@@ -2,8 +2,8 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 const { PersonaStandard } = require('../../ai/personas/PersonaStandard');
-const PromptLibrary = require('../../ai/core/PromptLibrary');
-const GroundingEngine = require('../../ai/core/GroundingEngine');
+const PromptLibrary = require('../../ai/prompts/PromptLibrary');
+const GroundingEngine = require('../../ai/grounding/GroundingEngine');
 
 describe('PersonaStandard, PromptLibrary & GroundingEngine Tests (Phases 4 & 5)', () => {
   let tempDir;

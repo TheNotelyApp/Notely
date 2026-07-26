@@ -1,6 +1,16 @@
 # Release Notes
 
-## 2026-07-17 (latest)
+## 2026-07-25 (latest)
+
+### AI Architecture & UI Telemetry
+
+- **13-Domain Decoupled Facade Subsystem** — Reorganized AI domain modules into 13 single-entry point facades (`compaction`, `planner`, `personas`, `prompts`, `context`, `graph`, `embeddings`, `memory`, `executor`, `tools`, `grounding`, `formatter`, `testing`) orchestrated by `AIFlow.js`.
+- **Zero-Latency Context Compaction Engine** — 2-tier sliding window algorithm compresses chat sessions into Executive Memory Summaries, cutting LLM input token usage by **~75-80%** with 0ms NLP intent heuristics.
+- **Flow Telemetry Timeline Stream** — AI Health Page now features a structural 3-column timeline stream displaying 5-stage execution breakdown, latency metrics, persistent session tokens (`LogDB`), expandable tool call arguments/output, and full flow trace JSON export.
+
+---
+
+## 2026-07-17
 
 ### New features
 

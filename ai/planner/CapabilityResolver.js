@@ -6,8 +6,10 @@
  * into semantic capability contracts without maintaining static internal hardcoded tool maps.
  */
 
-const { createLogger } = require('./logger');
+const { createLogger } = require('../core/logger');
 const log = createLogger('CapabilityResolver');
+
+const { getRegisteredTools } = require('./registryUtils');
 
 class CapabilityResolver {
   /**
@@ -15,20 +17,7 @@ class CapabilityResolver {
    * @returns {Array}
    */
   getRegisteredTools() {
-    try {
-      const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
-      return Array.from(applicationToolRegistry.tools.values()).map(t => ({
-        name: t.sdkName || t.aliases?.[0] || t.name,
-        fullName: t.name,
-        aliases: t.aliases || [],
-        capability: t.capability || 'generic',
-        informationNeeds: Array.isArray(t.informationNeeds) ? t.informationNeeds : [],
-        description: t.description || ''
-      }));
-    } catch (err) {
-      log.warn('Failed to resolve ApplicationToolRegistry in CapabilityResolver:', err.message);
-      return [];
-    }
+    return getRegisteredTools();
   }
 
   /**
@@ -48,10 +37,10 @@ class CapabilityResolver {
       // Match tools in ApplicationToolRegistry that advertise this informationNeed or matching capability/alias
       const matchingTool = registeredTools.find(t =>
         t.informationNeeds.includes(need) ||
+        t.capability.toLowerCase().includes(need.toLowerCase()) ||
         t.name.toLowerCase().includes(need.toLowerCase()) ||
-        t.aliases.some(a => a.toLowerCase().includes(need.toLowerCase())) ||
-        t.description.toLowerCase().includes(need.toLowerCase())
-      );
+        t.aliases.some(a => a.toLowerCase().includes(need.toLowerCase()))
+      ) || registeredTools.find(t => t.description.toLowerCase().includes(need.toLowerCase()));
 
       if (matchingTool) {
         resolved.push({

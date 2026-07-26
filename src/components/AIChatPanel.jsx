@@ -379,18 +379,21 @@ export default function AIChatPanel({
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(cleanText) }}
                       onClick={(event) => {
                         const link = event.target.closest('a');
-                        if (link && link.href && link.href.startsWith('file://')) {
-                          event.preventDefault();
-                          let rawPath = decodeURIComponent(link.href.replace('file:///', ''));
-                          rawPath = rawPath.replace(/\//g, '\\');
-                          
-                          let lineNum = null;
-                          const hashMatch = rawPath.match(/#L(\d+)/i);
-                          if (hashMatch) {
-                            lineNum = parseInt(hashMatch[1], 10);
-                            rawPath = rawPath.replace(/#L\d+/i, '');
+                        if (link) {
+                          const rawHref = link.getAttribute('href') || link.href || '';
+                          if (rawHref.startsWith('file:') || /^[a-zA-Z]:[\\/]/.test(rawHref)) {
+                            event.preventDefault();
+                            let rawPath = decodeURIComponent(rawHref.replace(/^file:\/\/\/?/i, ''));
+                            rawPath = rawPath.replace(/\//g, '\\');
+                            
+                            let lineNum = null;
+                            const hashMatch = rawPath.match(/#L(\d+)/i);
+                            if (hashMatch) {
+                              lineNum = parseInt(hashMatch[1], 10);
+                              rawPath = rawPath.replace(/#L\d+/i, '');
+                            }
+                            handlePreviewLink(rawPath, lineNum);
                           }
-                          handlePreviewLink(rawPath, lineNum);
                         }
                       }}
                     />

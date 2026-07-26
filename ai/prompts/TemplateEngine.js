@@ -61,11 +61,20 @@ class TemplateEngine {
       evidenceText = evidence.trim();
     } else if (Array.isArray(evidence) && evidence.length > 0) {
       evidenceText = evidence
-        .map(item => (typeof item === 'string' ? item : item.content || JSON.stringify(item)))
+        .map(item => {
+          if (typeof item === 'string') return item;
+          const label = item.filename || item.title || (item.path ? String(item.path).split(/[\\/]/).pop() : 'note.md');
+          const path = item.path || item.filePath || '';
+          const normPath = String(path).replace(/\\/g, '/');
+          const fileUri = normPath ? (normPath.startsWith('/') ? normPath : '/' + normPath) : '';
+          const header = fileUri ? `[${label}](file://${fileUri})` : label;
+          const content = item.content || item.text || item.snippet || JSON.stringify(item);
+          return `### File: ${header}\n${content}`;
+        })
         .join('\n\n');
     }
-    if (evidenceText.length > 16000) {
-      evidenceText = evidenceText.slice(0, 16000) + '\n\n... [Retrieved evidence truncated for prompt length context limit]';
+    if (evidenceText.length > 4000) {
+      evidenceText = evidenceText.slice(0, 4000) + '\n\n... [Retrieved evidence truncated for prompt length context limit]';
     }
     return this.render(rawTemplate, { retrievedEvidence: evidenceText });
   }

@@ -329,6 +329,14 @@ export default function KnowledgeGraph({ onBack }) {
         await aiResumeGraphWorker();
         setGraphStatus(prev => ({ ...prev, isPaused: false }));
       } else {
+        const confirmed = await confirm({
+          title: 'Pause Knowledge Graph Worker?',
+          message: 'Are you sure you want to pause background Knowledge Graph extraction?',
+          confirmLabel: 'Pause Worker',
+          cancelLabel: 'Cancel',
+          variant: 'warning'
+        });
+        if (!confirmed) return;
         await aiPauseGraphWorker();
         setGraphStatus(prev => ({ ...prev, isPaused: true }));
       }
@@ -341,7 +349,7 @@ export default function KnowledgeGraph({ onBack }) {
     const confirmed = await confirm({
       title: 'Rebuild Knowledge Graph?',
       message: 'Are you sure you want to rebuild the Knowledge Graph from scratch? This will re-parse all notes and extract entities in the background.',
-      confirmLabel: 'Rebuild Graph',
+      confirmLabel: 'Rebuild',
       cancelLabel: 'Cancel',
       variant: 'primary'
     });
@@ -514,25 +522,59 @@ export default function KnowledgeGraph({ onBack }) {
             <span>Nodes: {graphStatus.nodeCount} | Edges: {graphStatus.edgeCount}</span>
           </div>
 
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handlePauseResume}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 10px', fontSize: '11px' }}
-          >
-            {graphStatus.isPaused ? <Play size={12} /> : <Pause size={12} />}
-            <span>{graphStatus.isPaused ? 'Resume Worker' : 'Pause Worker'}</span>
-          </button>
+          <div style={{ height: '20px', width: '1px', background: 'var(--border-soft)', margin: '0 4px', flexShrink: 0 }} />
 
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={loadGraphData}
-            disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 10px', fontSize: '11px' }}
-            title="Reload Knowledge Graph data from cache"
-          >
-            <RotateCw size={12} className={loading ? 'spin' : ''} />
-            <span>Reload Data</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={loadGraphData}
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+              data-tooltip="Reload Data"
+            >
+              <RotateCw size={14} className={loading ? 'spin' : ''} />
+            </button>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handlePauseResume}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+              data-tooltip={graphStatus.isPaused ? 'Resume Worker' : 'Pause Worker'}
+            >
+              {graphStatus.isPaused ? <Play size={14} /> : <Pause size={14} />}
+            </button>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleRebuild}
+              disabled={loading || graphStatus.isBuilding}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+              data-tooltip="Rebuild Knowledge Graph"
+            >
+              <RefreshCw size={14} className={graphStatus.isBuilding ? 'spin' : ''} />
+            </button>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={async () => {
+                const confirmed = await confirm({
+                  title: 'Clear Knowledge Graph Cache?',
+                  message: 'Are you sure you want to clear all Knowledge Graph entities and relationships from cache?',
+                  confirmLabel: 'Clear Cache',
+                  cancelLabel: 'Cancel',
+                  variant: 'danger'
+                });
+                if (confirmed) {
+                  await aiClearGraphData();
+                  loadGraphData();
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, color: 'var(--text-danger)' }}
+              data-tooltip="Clear Data"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
 
         {/* Main Body */}
@@ -697,40 +739,6 @@ export default function KnowledgeGraph({ onBack }) {
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Actions Panel - Rebuild & Clear on single row */}
-            <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: '6px' }}>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={handleRebuild}
-                disabled={loading || graphStatus.isBuilding}
-                style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
-              >
-                <RefreshCw size={12} className={graphStatus.isBuilding ? 'spin' : ''} />
-                <span>{graphStatus.isBuilding ? 'Building...' : 'Rebuild'}</span>
-              </button>
-
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={async () => {
-                  const confirmed = await confirm({
-                    title: 'Clear Knowledge Graph Cache?',
-                    message: 'Are you sure you want to clear all Knowledge Graph entities and relationships from cache?',
-                    confirmLabel: 'Clear Cache',
-                    cancelLabel: 'Cancel',
-                    variant: 'danger'
-                  });
-                  if (confirmed) {
-                    await aiClearGraphData();
-                    loadGraphData();
-                  }
-                }}
-                style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', color: 'var(--text-danger)', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
-              >
-                <Trash2 size={12} />
-                <span>Clear Data</span>
-              </button>
             </div>
 
             {/* Selected Node Inspector */}

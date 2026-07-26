@@ -17,7 +17,7 @@ describe('Semantic & Graph Retrievers Tests', () => {
     assert.ok(tool.parameters.properties.query);
 
     const response = await tool.execute({ query: 'testing' });
-    assert.strictEqual(response, 'No relevant note content found.');
+    assert.strictEqual(response, 'No note content matching "testing" found in workspace.');
   });
 
   it('should format graph traversal tool output properly', async () => {

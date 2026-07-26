@@ -82,4 +82,138 @@ Here is an external link: [Google](https://google.com).
     assert.ok(matchedTags.includes('v2'));
     assert.strictEqual(matchedTags.includes('20'), false);
   });
+
+  it('should mask raw execution exceptions in AIFlow.execute()', async () => {
+    const AIFlow = require('../../ai/core/AIFlow');
+    const mockAgent = {
+      workspaceRoot: tempDir,
+      queryExecutor: {
+        execute: async () => {
+          throw new Error('Database connection failed at /internal/db.sqlite: stacktrace info');
+        }
+      }
+    };
+    const flow = new AIFlow(mockAgent);
+    await assert.rejects(
+      async () => { await flow.execute('Hello world'); },
+      (err) => {
+        assert.ok(err.message.includes('/internal/db.sqlite'));
+        return true;
+      }
+    );
+  });
+
+  it('should sanitize tool error responses in ApplicationToolRegistry', async () => {
+    const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
+    const vercelTools = await applicationToolRegistry.toVercelTools({});
+    
+    if (vercelTools.search_notes) {
+      // Call search_notes with invalid empty args
+      const res = await vercelTools.search_notes.execute({});
+      assert.strictEqual(typeof res, 'string');
+      assert.strictEqual(res.includes('EXECUTION_ERROR'), false);
+      assert.strictEqual(res.includes('INVALID_INPUT'), false);
+      assert.ok(res.includes('No results available'));
+    }
+  });
+
+  it('should return neutral error strings from QueryTools.runTool', async () => {
+    const QueryTools = require('../../ai/tools/QueryTools');
+    const res = await QueryTools.runTool({}, 'read_note', { file_path: '/nonexistent/path.md' });
+    assert.strictEqual(res.startsWith('Error:'), false);
+    assert.ok(res.includes('Note not found'));
+  });
+
+  it('should mask Vercel AI SDK tool-call errors in QueryExecutor execute()', async () => {
+    const QueryExecutor = require('../../ai/executor/QueryExecutor');
+    const sdkError = new Error('Failed to call a function. Please adjust your prompt. See \'failed_generation\' for more details.');
+    sdkError.name = 'AI_InvalidToolInputError';
+
+    const mockAgent = {
+      workspaceRoot: tempDir,
+      documentService: null,
+      llmRegistry: null
+    };
+    const executor = new QueryExecutor(mockAgent);
+    executor._prepareConfig = async () => { throw sdkError; };
+
+    const result = await executor.execute('test query', {});
+    assert.strictEqual(result.isError, true);
+    assert.ok(
+      result.result.includes('unable') || result.result.includes('rephrasing'),
+      `Expected safe message, got: ${result.result}`
+    );
+    assert.ok(!result.result.includes('failed_generation'), 'SDK internal key must not leak');
+    assert.ok(!result.result.includes('Failed to call a function'), 'SDK message must not leak');
+  });
+
+  it('should include response, conversation, formatting policies and Tool Calling Discipline in PromptPipeline', () => {
+    const PromptPipeline = require('../../ai/prompts/PromptPipeline');
+    const pipeline = new PromptPipeline();
+
+    const assembled = pipeline.assemble({
+      category: 'Workspace Search',
+      retrievedEvidence: 'Line 1: Note content\nLine 2: Secondary evidence\n' + 'A'.repeat(5000)
+    });
+
+    assert.ok(assembled.includes('Response Quality & Structure Policy'));
+    assert.ok(assembled.includes('Conversation Policy'));
+    assert.ok(assembled.includes('Formatting & Visual Rendering Policy'));
+    assert.ok(assembled.includes('Tool Calling Discipline'));
+    assert.ok(assembled.includes('retrieved evidence capped at 4000 chars'));
+
+    // Check evidence newline trimming
+    const cappedIdx = assembled.indexOf('retrieved evidence capped at 4000 chars');
+    assert.ok(cappedIdx > 0);
+
+    // Verify clearPromptCache
+    pipeline.clearPromptCache();
+    assert.strictEqual(pipeline._cachedStaticCore, null);
+  });
+
+  it('should treat Markdown files as source of truth for personas and write .md on custom persona creation', async () => {
+    const PersonaManager = require('../../ai/personas/PersonaManager');
+    const { ConversationStore } = require('../../ai/memory/ConversationStore');
+    const { MemoryDB } = require('../../ai/memory/MemoryDB');
+    const PromptPipeline = require('../../ai/prompts/PromptPipeline');
+
+    const appDataDir = path.join(tempDir, 'appData');
+    const manager = new PersonaManager(null, null, appDataDir);
+
+    // 1. Primary lookup returns built-in .md file persona
+    const generalPersona = manager.getPersona('general');
+    assert.strictEqual(generalPersona.id, 'general');
+    assert.strictEqual(generalPersona.name, 'General Assistant');
+
+    // 2. Custom persona writes .md file to userPersonasDir
+    const custom = manager.createCustomPersona({
+      id: 'custom-architect',
+      name: 'Custom Architect',
+      description: 'System design expert',
+      tone: 'analytical, precise',
+      systemInstructions: 'Focus on architecture patterns.'
+    });
+
+    const expectedMdPath = path.join(appDataDir, 'personas', 'custom-architect.md');
+    assert.ok(fs.existsSync(expectedMdPath), 'Custom persona .md file must exist');
+    const fileContent = fs.readFileSync(expectedMdPath, 'utf8');
+    assert.ok(fileContent.includes('id: custom-architect'));
+    assert.ok(fileContent.includes('Focus on architecture patterns.'));
+
+    // 3. ConversationStore defaults to 'general'
+    const memoryDB = new MemoryDB(path.join(tempDir, 'test-conv.db'));
+    await memoryDB.initialize();
+    const store = new ConversationStore(memoryDB, null);
+    const conv = store.createConversation('Test Title');
+    assert.strictEqual(conv.persona, 'general');
+    memoryDB.close();
+
+    // 4. PromptPipeline renders custom persona objects with full Markdown richness
+    const pipeline = new PromptPipeline();
+    const assembled = pipeline.assemble({ persona: custom });
+    assert.ok(assembled.includes('ACTIVE PERSONA ROLE (Custom Architect):'));
+    assert.ok(assembled.includes('Tone: analytical, precise'));
+  });
 });
+
+

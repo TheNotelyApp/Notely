@@ -20,9 +20,9 @@ const GROQ_MODELS = {
   // Default — fast, capable, large context.
   default: 'llama-3.3-70b-versatile',
   // Lighter option for lower latency / higher throughput.
-  fast: 'llama3-8b-8192',
-  // Google's open model via Groq.
-  gemma: 'gemma2-9b-it',
+  fast: 'llama-3.1-8b-instant',
+  // Open model via Groq.
+  gemma: 'llama-3.3-70b-versatile',
 };
 
 class GroqProvider extends OpenAICompatibleProvider {
@@ -34,10 +34,16 @@ class GroqProvider extends OpenAICompatibleProvider {
    * @param {number} [config.maxRetries]
    */
   constructor(apiKey, config = {}) {
+    let selectedModel = config.model || GROQ_MODELS.default;
+    // Auto-fallback decommissioned models (gemma2-9b-it, gemma-7b-it, etc.)
+    if (typeof selectedModel === 'string' && (selectedModel.includes('gemma') || selectedModel.includes('llama2') || selectedModel.includes('mixtral-8x7b'))) {
+      selectedModel = GROQ_MODELS.default;
+    }
+
     super(apiKey, {
       ...config,
       baseUrl: 'https://api.groq.com/openai/v1',
-      model: config.model || GROQ_MODELS.default,
+      model: selectedModel,
     });
     this.name = 'Groq';
   }
@@ -47,7 +53,13 @@ class GroqProvider extends OpenAICompatibleProvider {
       supportsEmbeddings: false,
       supportsChatCompletion: true,
       supportsCaching: false,
+
+      // GROQ WORKAROUND: Groq's streaming path is less reliable for multi-step
+      // tool calls — routing through generateText() (execute) is more stable.
+      // The root format issue (double-encoded args) is fixed via the
+      // wrapLanguageModel middleware in OpenAICompatibleProvider.getModelInstance().
       supportsStreaming: false,
+
       // llama-3.3-70b-versatile has a 128k context window on Groq.
       maxTokens: 128000,
     };

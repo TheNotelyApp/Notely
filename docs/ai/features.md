@@ -39,20 +39,21 @@ Refactor or rewrite text inside the editor:
 
 ---
 
-## 3. Persona Customization & Preset Avatars
+## 3. Persona Customization & Markdown Source of Truth
 
 Customize how the AI talks to you:
 - Open **AI Settings** and click **Manage Personas**.
-- Select or create custom personas, and change their system prompt instructions.
+- **Markdown Source of Truth**: All personas (builtin and custom) are authored as Markdown files (`.md`) with YAML frontmatter. Custom personas created in the UI are persisted as formatted `.md` files to disk (`appData/personas/*.md`), while SQLite acts strictly as an index.
+- Select or edit custom personas, modify frontmatter metadata (tone, verbosity, structure), and update prompt instructions.
 - Select a preset emoji avatar (🤖, 💻, 🧠, etc.) next to the custom avatar field to represent them in the chat panel.
 
 ---
 
-## 4. Diagnostics, Tool Trace & Prompt Tracker Log
+## 4. Diagnostics, Flow Telemetry & Prompt Tracker Log
 
 If you want to inspect how the AI retrieves data, what system prompts are assembled, or what tools it invokes:
 1. Go to **AI Diagnostics** / **AI Health** page.
 2. Select a conversation session from the list.
 3. Use the dual-tab inspector pane:
-   - **Messages**: View chat bubbles with collapsible **Tool calls** detailing arguments and raw outputs.
-   - **Prompt Tracker**: View complete assembled 13-stage system prompts, character counts, active persona guidelines, model parameters, and raw payload data stored persistently in `.notes-app/ai-logs.db` (`PromptTracker` subsystem).
+   - **Messages**: View clean chat conversation transcript (technical tool execution boxes separated for clutter-free reading).
+   - **Flow Telemetry**: View a 3-column continuous timeline stream connecting 5-stage execution breakdown (`AIFlow.js`), latency metrics, persistent session tokens (`LogDB`), expandable tool call arguments/outputs, zero-latency Context Compaction stats (`ai/compaction/`), system prompt inspector (with Copy/Expand), and full flow trace JSON export.

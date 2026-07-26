@@ -10,7 +10,6 @@ import {
   aiGenerateEmbeddings,
   aiGetHealth,
   aiCreateConversation,
-  aiAddMessage,
   aiListConversations,
   aiGetMessages,
   aiDeleteConversation,
@@ -344,7 +343,10 @@ export function useAIAssistant({
         setAiChatMessages((currentMessages) =>
           currentMessages.map((msg) =>
             msg.queryId === queryId
-              ? { ...msg, text: msg.text + chunk.content }
+              ? {
+                  ...msg,
+                  text: chunk.type === 'replace' ? chunk.content : msg.text + chunk.content
+                }
               : msg
           )
         );
@@ -388,17 +390,14 @@ export function useAIAssistant({
             draftTitle,
             activePersona?.id || "default"
           );
-          if (convResp?.success) {
-            currentConversationIdRef.current = convResp.data?.id;
+          if (convResp?.success && convResp.data?.id) {
+            currentConversationIdRef.current = convResp.data.id;
+          } else {
+            currentConversationIdRef.current = `conv-${Date.now()}`;
           }
         } catch {
-          // Non-fatal — chat still works, just not persisted
+          currentConversationIdRef.current = `conv-${Date.now()}`;
         }
-      }
-
-      // Persist user message
-      if (currentConversationIdRef.current) {
-        aiAddMessage(currentConversationIdRef.current, "user", message).catch(() => {});
       }
     }
 
@@ -472,24 +471,13 @@ export function useAIAssistant({
           msg.queryId === queryId
             ? {
                 ...msg,
-                text: finalResult?.result || msg.text || "AI query completed.",
+                text: (msg.text && msg.text.trim()) ? msg.text : (finalResult?.result || "AI query completed."),
                 references: extractReferences(finalResult?.trace),
                 tools: (finalResult?.trace || []).map(t => t.name).filter(Boolean),
               }
             : msg
         )
       );
-
-      // Persist assistant message with trace metadata
-      if (currentConversationIdRef.current) {
-        const trace = finalResult?.trace || [];
-        aiAddMessage(
-          currentConversationIdRef.current,
-          "assistant",
-          finalResult?.result || "",
-          trace.length > 0 ? { trace } : null
-        ).catch(() => {});
-      }
     } catch (err) {
       const message = err?.message || "AI query failed.";
       setAiQueryError(message);

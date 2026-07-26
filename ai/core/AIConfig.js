@@ -6,6 +6,8 @@ const path = require('path');
 const fs = require('fs');
 const { app, safeStorage } = require('electron');
 
+const APP_SUBDIR = 'notely';
+
 class AIConfig {
   constructor(customAppDataDir = null) {
     if (customAppDataDir) {
@@ -17,7 +19,7 @@ class AIConfig {
         this.appDataDir = path.join(process.env.APPDATA || process.env.HOME || '', 'Notely');
       }
     }
-    this.configDir = path.join(this.appDataDir, 'notely');
+    this.configDir = path.join(this.appDataDir, APP_SUBDIR);
     this.configPath = path.join(this.configDir, 'ai-config.json');
     this.ensureConfigDir();
   }
@@ -137,7 +139,16 @@ class AIConfig {
   savePreferences(preferences) {
     try {
       const prefsPath = path.join(this.configDir, 'ai-preferences.json');
-      fs.writeFileSync(prefsPath, JSON.stringify(preferences, null, 2));
+      const existing = this.loadPreferences();
+      const merged = {
+        ...existing,
+        ...preferences,
+        providerModels: {
+          ...(existing.providerModels || {}),
+          ...(preferences.providerModels || {})
+        }
+      };
+      fs.writeFileSync(prefsPath, JSON.stringify(merged, null, 2));
       return true;
     } catch (error) {
       console.error('[AIConfig] Failed to save preferences:', error.message);

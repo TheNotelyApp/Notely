@@ -43,7 +43,12 @@ class AIService {
       const result = await initializeAISystem(appDataDir, workspaceRoot, llmProvider, embeddingConfig);
       const { getAIAgent } = require('../index.js');
       this.agent = getAIAgent();
-      log.info('AI Service successfully initialized');
+
+      const AIFlow = require('./AIFlow');
+      this.aiFlow = new AIFlow(this.agent);
+      this.agent.aiFlow = this.aiFlow;
+
+      log.info('AI Service & AIFlow Orchestrator successfully initialized');
       return result;
     } catch (error) {
       log.error('Failed to initialize AI Service:', error.message);
@@ -115,12 +120,14 @@ class AIService {
     const { shutdownAISystem } = require('../index.js');
     shutdownAISystem();
     this.agent = null;
+    this.aiFlow = null;
   }
 
   shutdown() {
     const { shutdownAISystem } = require('../index.js');
     shutdownAISystem();
     this.agent = null;
+    this.aiFlow = null;
     log.info('AI Service shut down');
   }
 
@@ -224,9 +231,12 @@ class AIService {
     if (!this.enabled || !this.agent) {
       throw new Error('AI is currently disabled or uninitialized.');
     }
-    
-    // Wire call directly into current Agent orchestrator
-    return this.agent.query(message, context);
+    if (!this.aiFlow) {
+      const AIFlow = require('./AIFlow');
+      this.aiFlow = new AIFlow(this.agent);
+      this.agent.aiFlow = this.aiFlow;
+    }
+    return this.aiFlow.execute(message, context);
   }
 
   /**
@@ -236,8 +246,58 @@ class AIService {
     if (!this.enabled || !this.agent) {
       throw new Error('AI is currently disabled or uninitialized.');
     }
-    
-    return this.agent.queryExecutor.stream(message, context, onChunk, abortSignal);
+    if (!this.aiFlow) {
+      const AIFlow = require('./AIFlow');
+      this.aiFlow = new AIFlow(this.agent);
+      this.agent.aiFlow = this.aiFlow;
+    }
+    return this.aiFlow.stream(message, context, onChunk, abortSignal);
+  }
+
+  // --- Facade API Methods for Subsystem Modules ---
+
+  getGraphStatus() {
+    return this.agent?.graphDb ? this.agent.graphDb.getStatus() : null;
+  }
+
+  getGraphData() {
+    return this.agent?.graphDb ? this.agent.graphDb.getAll() : null;
+  }
+
+  clearGraphData() {
+    if (this.agent?.graphDb) {
+      this.agent.graphDb.clearAllData();
+    }
+  }
+
+  async buildGraph(onProgress) {
+    return this.agent ? this.agent.buildRelationshipGraph(onProgress) : { success: false, error: 'Agent not initialized' };
+  }
+
+  getEmbeddingStats() {
+    return this.agent?.embeddingDb ? this.agent.embeddingDb.getStats() : null;
+  }
+
+  clearEmbeddingData() {
+    if (this.agent?.embeddingDb) {
+      this.agent.embeddingDb.clearAllData();
+    }
+  }
+
+  async generateEmbeddings(forceRefresh = false) {
+    return this.agent ? this.agent.generateEmbeddings(forceRefresh) : { success: false, error: 'Agent not initialized' };
+  }
+
+  detectPatterns() {
+    return this.agent ? this.agent.detectPatterns() : { success: false, error: 'Agent not initialized' };
+  }
+
+  getConversationStore() {
+    return this.agent?.conversationStore || null;
+  }
+
+  getPersonaManager() {
+    return this.agent?.personaManager || null;
   }
 }
 

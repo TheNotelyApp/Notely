@@ -10,9 +10,36 @@ const log = createLogger('PromptLoader');
 
 class PromptLoader {
   constructor(promptsDir = null) {
-    this.promptsDir = promptsDir || path.resolve(__dirname, '../../resources/prompts');
+    this.promptsDir = this._resolvePromptsDir(promptsDir);
     this.cache = new Map();
     this.templateCache = new Map();
+  }
+
+  _resolvePromptsDir(customDir) {
+    if (customDir && fs.existsSync(customDir)) {
+      return customDir;
+    }
+    const candidates = [
+      path.resolve(__dirname, '../../resources/prompts'),
+      path.resolve(process.cwd(), 'resources/prompts'),
+      path.resolve(__dirname, '../resources/prompts'),
+      path.resolve(__dirname, '../../../resources/prompts')
+    ];
+
+    if (process.resourcesPath) {
+      candidates.push(path.join(process.resourcesPath, 'resources', 'prompts'));
+      candidates.push(path.join(process.resourcesPath, 'prompts'));
+    }
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        log.info(`Resolved prompts directory at: ${candidate}`);
+        return candidate;
+      }
+    }
+
+    log.warn('Could not locate valid prompts directory in candidates:', candidates);
+    return path.resolve(__dirname, '../../resources/prompts');
   }
 
   /**

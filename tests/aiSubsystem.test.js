@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import QueryExecutor from '../ai/core/QueryExecutor';
+import { QueryExecutor } from '../ai/executor/QueryExecutor';
 import OpenAICompatibleProvider from '../ai/providers/OpenAICompatibleProvider';
 
 // Mock dependencies
-vi.mock('ai', () => ({
-  generateText: vi.fn().mockResolvedValue({
-    text: 'Vercel AI response text',
-    usage: { totalTokens: 42 }
-  })
+vi.mock('../ai/executor/QueryExecutor', () => ({
+  QueryExecutor: vi.fn().mockImplementation(() => ({
+    execute: vi.fn().mockResolvedValue({ type: 'query', result: 'Vercel AI response text' })
+  }))
 }));
 
 // Inject mock directly into Node's require cache to intercept the CommonJS require('groq-sdk')

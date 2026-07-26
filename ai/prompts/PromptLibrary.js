@@ -3,8 +3,8 @@
  * Maintains backward compatibility while delegating to the modular Markdown prompt architecture.
  */
 
-const PromptLoader = require('../prompts/PromptLoader');
-const PromptPipeline = require('../prompts/PromptPipeline');
+const PromptLoader = require('./PromptLoader');
+const PromptPipeline = require('./PromptPipeline');
 
 class PromptLibrary {
   static getLoader() {

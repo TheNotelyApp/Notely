@@ -339,16 +339,22 @@ export async function aiGetGraphStatus() {
   return api.aiGetGraphStatus({});
 }
 
-export async function aiGetLogs(subsystem = null, limit = 100) {
+export async function aiGetLogs(subsystem = null, limit = 100, conversationId = null) {
   const api = getNotesApi();
   if (typeof api.aiGetLogs !== "function") return { success: false, data: [] };
-  return api.aiGetLogs({ subsystem, limit });
+  return api.aiGetLogs({ subsystem, limit, conversationId });
 }
 
-export async function aiClearLogs(subsystem = null) {
+export function onTelemetryEvent(callback) {
+  const api = getNotesApi();
+  if (typeof api.onTelemetryEvent !== 'function') return () => {};
+  return api.onTelemetryEvent(callback);
+}
+
+export async function aiClearLogs(subsystem = null, beforeTimestamp = null) {
   const api = getNotesApi();
   if (typeof api.aiClearLogs !== "function") return { success: false };
-  return api.aiClearLogs({ subsystem });
+  return api.aiClearLogs({ subsystem, beforeTimestamp });
 }
 
 export async function aiClearEmbeddingsData() {
@@ -1240,10 +1246,10 @@ export async function aiDeleteConversation(id) {
   return api.aiDeleteConversation({ id });
 }
 
-export async function aiClearConversations() {
+export async function aiClearConversations(beforeTimestamp = null) {
   const api = getNotesApi();
   if (typeof api.aiClearConversations !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiClearConversations();
+  return api.aiClearConversations({ beforeTimestamp });
 }
 
 export async function aiSetConversationPersona(conversationId, personaId) {
@@ -1339,4 +1345,5 @@ export async function listTools() {
   }
   return api.listTools();
 }
+
 

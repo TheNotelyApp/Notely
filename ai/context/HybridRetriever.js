@@ -6,9 +6,21 @@ class HybridRetriever {
   constructor(semanticRetriever, graphRetriever) {
     this.semanticRetriever = semanticRetriever;
     this.graphRetriever = graphRetriever;
+    this._cache = new Map(); // cacheKey -> { timestamp, results }
+    this._cacheTTL = 60000;  // 60s cache TTL
   }
 
   async search(query, activeNotePath = null, topK = 5) {
+    const cacheKey = `${String(query).toLowerCase().trim()}_${activeNotePath || ''}_${topK}`;
+    const now = Date.now();
+    if (this._cache.has(cacheKey)) {
+      const cached = this._cache.get(cacheKey);
+      if (now - cached.timestamp < this._cacheTTL) {
+        log.debug(`[HybridRetriever] Cache HIT for query: "${query.slice(0, 30)}"`);
+        return cached.results;
+      }
+    }
+
     const startTime = performance.now();
     
     // 1. Run semantic search
@@ -123,6 +135,7 @@ class HybridRetriever {
 
     const duration = performance.now() - startTime;
     log.info(`Hybrid search completed in ${duration.toFixed(2)}ms. Merged ${results.length} documents.`);
+    this._cache.set(cacheKey, { timestamp: Date.now(), results });
     return results;
   }
 
@@ -138,11 +151,20 @@ class HybridRetriever {
         },
         required: ['query']
       },
-      execute: async ({ query, activeNotePath = null, topK = 5 }) => {
-        const results = await this.search(query, activeNotePath, topK);
-        if (!results.length) return 'No relevant note content found.';
+      execute: async (args = {}) => {
+        let q = String(args?.query || '').trim();
+        if (!q) {
+          return 'No search query provided — no results.';
+        }
+
+        const activeNotePath = args?.activeNotePath || null;
+        const topK = args?.topK || 5;
+        const results = await this.search(q, activeNotePath, topK);
+        if (!results.length) return `No note content matching "${q}" found in workspace.`;
         return results.map((r, i) => {
-          let output = `[${i + 1}] ${r.note_path} (RRF score: ${r.score.toFixed(4)})\n${r.content}`;
+          const normPath = String(r.note_path).replace(/\\/g, '/');
+          const fileUri = normPath.startsWith('/') ? normPath : '/' + normPath;
+          let output = `[${i + 1}] [${r.note_path}](file://${fileUri}) (RRF score: ${r.score.toFixed(4)})\n${r.content}`;
           if (r.graph_triples && r.graph_triples.length) {
             output += `\n\nKnowledge Graph Connections:\n  * ` + r.graph_triples.slice(0, 10).join('\n  * ');
           }
