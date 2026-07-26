@@ -111,6 +111,20 @@ class PromptPipeline {
     const finalPrompt = pipelineStages.join('\n\n---\n\n');
     log.info(`Assembled system prompt (${finalPrompt.length} chars across ${pipelineStages.length} stages)`);
 
+    const trace = options.trace || options.traceSession;
+    if (trace && typeof trace.recordEvent === 'function') {
+      trace.recordEvent('Prompt', 'prompt:assembled', 'System Prompt Assembled', {
+        systemPromptLength: finalPrompt.length,
+        stagesCount: pipelineStages.length,
+        hasPersona: Boolean(personaContent),
+        hasWorkspaceContext: Boolean(options.workspaceContext),
+        hasMemory: Boolean(options.conversationMemory),
+        hasRetrievedEvidence: Boolean(options.retrievedEvidence),
+        hasUiContext: Boolean(options.uiContext),
+        systemPromptSnippet: finalPrompt.slice(0, 500)
+      });
+    }
+
     return finalPrompt;
   }
 }

@@ -27,7 +27,7 @@ import {
   Bot,
   Filter
 } from 'lucide-react';
-import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs } from '../services/electronService';
+import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs, onTelemetryEvent } from '../services/electronService';
 import { renderMarkdown } from '../utils/renderUtils';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
@@ -69,9 +69,15 @@ function copyToClipboard(text, label) {
 
 const EVENT_CONFIG = {
   conversation_loaded: { icon: Brain, color: '#a78bfa', label: 'Context & Persona', bg: 'rgba(167,139,250,0.12)' },
+  compaction: { icon: Database, color: '#a78bfa', label: 'History Compaction', bg: 'rgba(167,139,250,0.12)' },
   planner: { icon: Activity, color: '#60a5fa', label: 'Intent Planning', bg: 'rgba(96,165,250,0.12)' },
+  intent_analyzed: { icon: Activity, color: '#60a5fa', label: 'Intent Analysis', bg: 'rgba(96,165,250,0.12)' },
   context_building: { icon: Database, color: '#34d399', label: 'Context Building', bg: 'rgba(52,211,153,0.12)' },
+  retrieval_completed: { icon: Database, color: '#34d399', label: 'Context Aggregation', bg: 'rgba(52,211,153,0.12)' },
+  vector_search: { icon: Search, color: '#34d399', label: 'Vector Search', bg: 'rgba(52,211,153,0.12)' },
+  graph_traverse: { icon: Database, color: '#34d399', label: 'Graph Traversal', bg: 'rgba(52,211,153,0.12)' },
   prompt_construction: { icon: FileText, color: '#fbbf24', label: 'Prompt Construction', bg: 'rgba(251,191,36,0.12)' },
+  'prompt:assembled': { icon: FileText, color: '#fbbf24', label: 'Prompt Assembly', bg: 'rgba(251,191,36,0.12)' },
   llm_execution: { icon: Bot, color: '#e879f9', label: 'LLM Execution', bg: 'rgba(232,121,249,0.12)' },
   llm_request: { icon: Bot, color: '#f472b6', label: 'LLM Request', bg: 'rgba(244,114,182,0.12)' },
   tool_execution: { icon: Wrench, color: '#fb923c', label: 'Tool Execution', bg: 'rgba(251,146,60,0.12)' },
@@ -80,11 +86,17 @@ const EVENT_CONFIG = {
   llm_response: { icon: Bot, color: '#e879f9', label: 'LLM Response', bg: 'rgba(232,121,249,0.12)' },
   final_response: { icon: CheckCircle, color: '#10b981', label: 'Final Response', bg: 'rgba(16,185,129,0.12)' },
   trace_completed: { icon: CheckCircle, color: '#10b981', label: 'Trace Complete', bg: 'rgba(16,185,129,0.12)' },
+  warning: { icon: AlertCircle, color: '#f59e0b', label: 'Warning', bg: 'rgba(245,158,11,0.12)' },
   error: { icon: AlertCircle, color: '#f87171', label: 'Error', bg: 'rgba(248,113,113,0.12)' },
 };
 
 function getEventCfg(type) {
-  return EVENT_CONFIG[type] || { icon: Activity, color: '#94a3b8', label: type, bg: 'rgba(148,163,184,0.1)' };
+  if (EVENT_CONFIG[type]) return EVENT_CONFIG[type];
+  if (type && type.includes('compaction')) return EVENT_CONFIG.compaction;
+  if (type && type.includes('retrieval')) return EVENT_CONFIG.retrieval_completed;
+  if (type && type.includes('warn')) return EVENT_CONFIG.warning;
+  if (type && type.includes('error')) return EVENT_CONFIG.error;
+  return { icon: Activity, color: '#94a3b8', label: type, bg: 'rgba(148,163,184,0.1)' };
 }
 
 // ─── Small reusable components ───────────────────────────────────────────────
@@ -344,19 +356,14 @@ function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
   const open = forceOpen || localOpen;
   const cfg = getEventCfg(event.type);
   const Icon = cfg.icon;
-  const isSystemDriven = event.type === 'conversation_loaded' ||
-    event.type === 'planner' ||
-    event.type === 'prompt_construction' ||
-    event.type === 'llm_request' ||
-    event.toolType === 'programmatic' ||
-    event.toolType === 'pre-retrieval' ||
-    (event.type === 'tool_execution' && (
+  const isSystemDriven = event.callerType === 'system' ||
+    (event.callerType !== 'llm' && (
+      event.type === 'conversation_loaded' ||
+      event.type === 'planner' ||
+      event.type === 'prompt_construction' ||
+      event.type === 'llm_request' ||
       event.toolType === 'programmatic' ||
-      event.toolType === 'pre-retrieval' ||
-      event.toolName === 'read_note' ||
-      event.toolName === 'search_notes' ||
-      event.toolName === 'get_note_graph' ||
-      event.toolName === 'get_note_stats'
+      event.toolType === 'pre-retrieval'
     ));
 
   const DriverIcon = isSystemDriven ? Zap : Bot;
@@ -420,6 +427,27 @@ function EventRowControlled({ event, isLast, forceOpen, turnSystemPrompt }) {
       </div>
     </div>
   );
+}
+
+function exportTraceAsMarkdown(meta, turnNumber) {
+  const query = meta.query || '(no query)';
+  const events = meta.events || [];
+  let md = `# AI Execution Trace Report - Turn #${turnNumber}\n\n`;
+  md += `- **Query:** "${query}"\n`;
+  md += `- **Persona:** ${formatPersonaName(meta.persona)}\n`;
+  md += `- **Total Latency:** ${fmtMs(meta.totalDurationMs || 0)}\n`;
+  md += `- **Tokens:** ${meta.tokensUsed || 0} (${meta.tokensDetail ? `${meta.tokensDetail.promptTokens || 0} prompt / ${meta.tokensDetail.completionTokens || 0} completion` : 'n/a'})\n\n`;
+  md += `## Timeline Spans & Events (${events.length})\n\n`;
+  events.forEach((e, i) => {
+    md += `### ${i + 1}. [${(e.callerType || 'system').toUpperCase()}] ${e.label || e.type}\n`;
+    if (e.startedAt) md += `- **Timestamp:** \`${e.startedAt}\`\n`;
+    if (e.durationMs) md += `- **Latency:** ${fmtMs(e.durationMs)}\n`;
+    if (e.toolName) md += `- **Tool Name:** \`${e.toolName}\`\n`;
+    if (e.input) md += `\n**Input Payload:**\n\`\`\`json\n${typeof e.input === 'string' ? e.input : JSON.stringify(e.input, null, 2)}\n\`\`\`\n`;
+    if (e.output) md += `\n**Output Result:**\n\`\`\`json\n${typeof e.output === 'string' ? e.output : JSON.stringify(e.output, null, 2)}\n\`\`\`\n`;
+    md += `\n---\n\n`;
+  });
+  copyToClipboard(md, `Turn #${turnNumber} Markdown Report`);
 }
 
 // ─── Flow Telemetry tab: Unified Single Thread View (Latest on Top) ─────────
@@ -600,6 +628,18 @@ function FlowTelemetryPane({ conv, flowLogs }) {
                     >
                       <Copy size={12} /> Turn JSON
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '9.5px', height: '20px', padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportTraceAsMarkdown(meta, turnNumber);
+                      }}
+                      title={`Export Turn #${turnNumber} Markdown Report`}
+                    >
+                      <FileText size={12} /> Report
+                    </button>
                   </div>
                 </div>
                 <div className="atv-turn-divider-line" />
@@ -672,7 +712,29 @@ function ConversationPane({ conv, onBack }) {
       }
     }
     load();
-    return () => { cancelled = true; };
+
+    // Subscribe to live telemetry events for live updates
+    let unsub = () => {};
+    try {
+      if (typeof onTelemetryEvent === 'function') {
+        unsub = onTelemetryEvent((evt) => {
+          if (!evt || evt.conversationId !== conv.id) return;
+          aiGetLogs('FlowTracker', 200, conv.id).then(res => {
+            if (!cancelled && res?.success) {
+              const rawFlow = res.data || [];
+              const matched = rawFlow.filter(item => item.metadata?.conversationId === conv.id);
+              matched.sort((a, b) => (new Date(b.timestamp).getTime() || 0) - (new Date(a.timestamp).getTime() || 0));
+              setFlowLogs(matched);
+            }
+          }).catch(() => {});
+        });
+      }
+    } catch { /* ignore subscription error */ }
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [conv.id]);
 
   return (

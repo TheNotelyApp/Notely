@@ -103,14 +103,7 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
 
       tools.forEach((tool, i) => {
         const toolName = tool.name || tool.toolName || 'tool';
-        const isProgrammatic = tool.type === 'programmatic' ||
-          tool.type === 'pre-retrieval' ||
-          tool.toolType === 'programmatic' ||
-          tool.toolType === 'pre-retrieval' ||
-          toolName === 'read_note' ||
-          toolName === 'search_notes' ||
-          toolName === 'get_note_graph' ||
-          toolName === 'get_note_stats';
+        const isLlmDriven = tool.type === 'llm' || tool.toolType === 'llm-driven';
 
         const toolStartIso = tool.startedAt || new Date(s4EpochStart + Math.round(perToolOffset * i * 0.6)).toISOString();
         const toolDuration = tool.durationMs || Math.round(perToolOffset * 0.8);
@@ -133,14 +126,14 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
 
         events.push({
           type: 'tool_execution',
-          callerType: isProgrammatic ? 'system' : 'llm',
+          callerType: isLlmDriven ? 'llm' : 'system',
           label: `Tool: ${toolName}`,
           startedAt: toolStartIso,
           endedAt: toolEndIso,
           durationMs: toolDuration,
           tokensUsed: null,
           toolName,
-          toolType: isProgrammatic ? 'pre-retrieval' : 'llm-driven',
+          toolType: isLlmDriven ? 'llm-driven' : 'pre-retrieval',
           args: argsPayload,
           input: argsPayload,
           output: processedOutput
@@ -207,4 +200,73 @@ function buildEvents(stagesWithTs = [], toolTrace = [], totalDurationMs = 0, sta
   return events;
 }
 
-module.exports = { buildEvents };
+function normalizeEventType(raw) {
+  if (!raw) return 'action';
+  if (raw === 'conversation:started' || raw === 'conversation:completed' || raw === 'conversation_loaded') return 'conversation_loaded';
+  if (raw === 'planner:started' || raw === 'planner:completed' || raw === 'intent_analyzed' || raw === 'planner:plan_created') return 'planner';
+  if (raw === 'prompt:started' || raw === 'prompt:completed' || raw === 'prompt:assembled' || raw === 'prompt_construction') return 'prompt_construction';
+  if (raw === 'llm_execution' || raw === 'llm:execution') return 'llm_execution';
+  if (raw === 'llm:started' || raw === 'llm:request') return 'llm_request';
+  if (raw === 'llm:completed' || raw === 'llm:response') return 'llm_response';
+  if (raw === 'tool_execution' || raw === 'tool:execution') return 'tool_execution';
+  if (raw === 'tool:started') return 'tool_invocation';
+  if (raw === 'tool:completed') return 'tool_response';
+  if (raw === 'memory:compaction_started' || raw === 'memory:compaction_completed') return 'compaction';
+  if (raw.startsWith('retrieval:')) return 'retrieval_completed';
+  return raw;
+}
+
+/**
+ * Normalizes live TraceSession events into UI-ready event list
+ */
+function buildEventsFromTrace(traceEvents = []) {
+  if (!Array.isArray(traceEvents)) return [];
+  const events = traceEvents.map(evt => {
+    const rawType = evt.eventType || evt.type || 'action';
+    const canonicalType = normalizeEventType(rawType);
+    return {
+      type: canonicalType,
+      eventType: rawType,
+      callerType: evt.callerType || 'system',
+      label: evt.label || canonicalType || 'Event',
+      startedAt: evt.timestamp || evt.startedAt || new Date().toISOString(),
+      endedAt: evt.endedAt || evt.timestamp || new Date().toISOString(),
+      durationMs: typeof evt.durationMs === 'number' ? evt.durationMs : 0,
+      spanId: evt.spanId,
+      parentSpanId: evt.parentSpanId,
+      traceId: evt.traceId,
+      category: evt.category,
+      status: evt.status,
+      severity: evt.severity,
+      error: evt.error || evt.payload?.error || null,
+      diagnostics: evt.diagnostics || evt.payload?.diagnostics || null,
+      warningMessage: evt.payload?.warningMessage || null,
+      input: evt.payload?.input || evt.payload?.query || evt.payload?.args || null,
+      output: evt.payload?.output || evt.payload?.result || evt.payload?.text || null,
+      ...evt.payload
+    };
+  });
+
+  // Ensure trace_completed event exists at the end
+  if (!events.some(e => e.type === 'trace_completed')) {
+    const lastEvt = events[events.length - 1];
+    const completedAt = lastEvt?.startedAt || new Date().toISOString();
+    events.push({
+      type: 'trace_completed',
+      eventType: 'trace_completed',
+      callerType: 'system',
+      label: 'Trace Complete',
+      startedAt: completedAt,
+      endedAt: completedAt,
+      durationMs: 0,
+      status: 'ok',
+      input: '',
+      output: ''
+    });
+  }
+
+  return events;
+}
+
+module.exports = { buildEvents, buildEventsFromTrace };
+

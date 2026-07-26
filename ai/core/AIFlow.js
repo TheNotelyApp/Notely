@@ -11,7 +11,8 @@
 
 const { randomUUID } = require('crypto');
 const { createLogger } = require('./logger');
-const { buildEvents } = require('../telemetry/eventBuilder');
+const { buildEvents, buildEventsFromTrace } = require('../telemetry/eventBuilder');
+const { createTraceSession } = require('../telemetry/TraceContext');
 
 const log = createLogger('AIFlow');
 
@@ -29,20 +30,31 @@ class AIFlow {
     const flowId = randomUUID();
     const stages = [];
     let orchestratorTrace = [];
-    let conversationId = context.conversationId || context.conversation_id;
+    let conversationId = context.conversationId || context.conversation_id || 'default';
+
+    const traceSession = createTraceSession({
+      workspaceId: this.agent?.workspaceRoot || 'default',
+      conversationId,
+      traceId: `trc_${flowId.replace(/-/g, '').slice(0, 16)}`,
+      query: userQuery
+    });
 
     try {
       log.info(`[Flow:${flowId}] Starting master execution flow for query: "${String(userQuery).slice(0, 60)}..."`);
 
       // ── Stage 1: Context & Persona Resolution ──────────────────────────────
       const s1Start = Date.now();
-      if (!conversationId) {
+      const s1SpanId = traceSession.startSpan('Context & Persona Resolution', 'Conversation', traceSession.rootSpanId, { component: 'ConversationStore' });
+
+      if (!conversationId || conversationId === 'default') {
         if (this.agent.conversationStore) {
           const title = String(userQuery || 'New Chat').slice(0, 30);
           const newConv = this.agent.conversationStore.createConversation(title, context.persona || 'general');
           conversationId = newConv?.id || `conv-${Date.now()}`;
+          traceSession.conversationId = conversationId;
         } else {
           conversationId = `conv-${Date.now()}`;
+          traceSession.conversationId = conversationId;
         }
       }
       let personaId = context.persona || 'general';
@@ -66,17 +78,18 @@ class AIFlow {
       }
 
       const compaction = require('../compaction');
-      const compactionRes = compaction.compactHistory(rawHistory, { maxVerbatimCount: 4 });
+      const compactionRes = compaction.compactHistory(rawHistory, { maxVerbatimCount: 4, trace: traceSession });
       const historyMessages = compactionRes.compactedMessages;
 
       const activeNotePath = context.currentFile || null;
       const activeNoteContent = context.activeNoteContent || null;
 
+      const s1Duration = Date.now() - s1Start;
       stages.push({
         stage: 1,
         name: 'Context & Persona Resolution',
         startedAt: new Date(s1Start).toISOString(),
-        durationMs: Date.now() - s1Start,
+        durationMs: s1Duration,
         personaId,
         personaName: personaObj?.name || personaId,
         activeNotePath,
@@ -85,8 +98,23 @@ class AIFlow {
         isCompacted: compactionRes.isCompacted
       });
 
+      traceSession.endSpan(s1SpanId, {
+        status: 'completed',
+        payload: {
+          personaId,
+          personaName: personaObj?.name || personaId,
+          historyCount: rawHistory.length,
+          activeNotePath,
+          isCompacted: compactionRes.isCompacted,
+          compactedTurnsCount: compactionRes.turnsCompacted,
+          input: { personaId, activeNotePath },
+          output: { historyMessagesCount: rawHistory.length, isCompacted: compactionRes.isCompacted }
+        }
+      });
+
       // ── Stage 2: Intent Planning & Hybrid Retrieval ────────────────────────
       const s2Start = Date.now();
+      const s2SpanId = traceSession.startSpan('Intent Planning & Hybrid Retrieval', 'Planner', traceSession.rootSpanId, { component: 'ContextOrchestrator' });
       let retrievedEvidence = '';
       let orchestratorTrace = [];
       let confidenceScore = 0.0;
@@ -95,7 +123,8 @@ class AIFlow {
         try {
           const orchRes = await this.agent.contextOrchestrator.orchestrate(userQuery, {
             ...context,
-            activeNotePath
+            activeNotePath,
+            trace: traceSession
           });
           if (orchRes.aggregatedContext) {
             retrievedEvidence = orchRes.aggregatedContext;
@@ -106,21 +135,35 @@ class AIFlow {
           confidenceScore = orchRes.confidence || 0.0;
         } catch (orchErr) {
           log.warn(`[Flow:${flowId}] ContextOrchestrator fallback:`, orchErr.message);
+          traceSession.recordWarning('Planner', 'ContextOrchestrator Fallback', orchErr.message);
         }
       }
 
+      const s2Duration = Date.now() - s2Start;
       stages.push({
         stage: 2,
         name: 'Intent Planning & Hybrid Retrieval',
         startedAt: new Date(s2Start).toISOString(),
-        durationMs: Date.now() - s2Start,
+        durationMs: s2Duration,
         confidenceScore,
         evidenceLength: retrievedEvidence.length,
         preRetrievalTrace: orchestratorTrace
       });
 
+      traceSession.endSpan(s2SpanId, {
+        status: 'completed',
+        payload: {
+          confidenceScore,
+          evidenceLength: retrievedEvidence.length,
+          preRetrievalTraceCount: orchestratorTrace.length,
+          input: userQuery,
+          output: orchestratorTrace
+        }
+      });
+
       // ── Stage 3: System Prompt Assembly & Harness Audit ────────────────────
       const s3Start = Date.now();
+      const s3SpanId = traceSession.startSpan('System Prompt Assembly & Harness Audit', 'Prompt', traceSession.rootSpanId, { component: 'PromptPipeline' });
       let personaInput = personaObj ? {
         id: personaObj.id || personaId,
         name: personaObj.name || personaId,
@@ -138,7 +181,8 @@ class AIFlow {
         },
         conversationMemory: historyMessages.length > 0 ? historyMessages : null,
         retrievedEvidence: retrievedEvidence || (context.relatedDocuments ? context.relatedDocuments.map(d => d.path).join('\n') : null),
-        uiContext: context.uiContext || null
+        uiContext: context.uiContext || null,
+        trace: traceSession
       });
 
       let harnessValid = true;
@@ -149,26 +193,40 @@ class AIFlow {
         harnessValid = check.valid;
       } catch { /* ignore audit error */ }
 
+      const s3Duration = Date.now() - s3Start;
       stages.push({
         stage: 3,
         name: 'System Prompt Assembly & Harness Audit',
         startedAt: new Date(s3Start).toISOString(),
-        durationMs: Date.now() - s3Start,
+        durationMs: s3Duration,
         systemPromptLength: systemPrompt.length,
         systemPromptSnippet: systemPrompt.slice(0, 500),
         systemPrompt,
         harnessValid
       });
 
+      traceSession.endSpan(s3SpanId, {
+        status: 'completed',
+        payload: {
+          systemPromptLength: systemPrompt.length,
+          harnessValid,
+          systemPromptSnippet: systemPrompt.slice(0, 500),
+          input: `System Prompt Config (${systemPrompt.length} chars)`,
+          output: systemPrompt.slice(0, 500)
+        }
+      });
+
       // ── Stage 4: Runtime Dynamic Execution Strategy & Grounding ────────────
       const s4Start = Date.now();
+      const s4SpanId = traceSession.startSpan('Runtime Strategy Execution & Grounding', 'LLM', traceSession.rootSpanId, { component: 'QueryExecutor' });
       const queryContext = {
         ...context,
         conversationId,
         persona: personaInput,
         activeNoteContent,
         systemPrompt,
-        orchestratorTrace
+        orchestratorTrace,
+        trace: traceSession
       };
 
       const result = await this.agent.queryExecutor.execute(userQuery, queryContext);
@@ -192,18 +250,21 @@ class AIFlow {
           result.result = citationCheck.text;
           groundingInfo.verifiedCitations = citationCheck.verifiedCitations;
           groundingInfo.brokenCitations = citationCheck.brokenCitations;
+
+          traceSession.recordEvent('Validation', 'grounding:validated', 'Citation Grounding Verified', groundingInfo);
         } catch (err) {
           log.warn(`[Flow:${flowId}] Grounding check warning:`, err.message);
         }
       }
       const s4End = Date.now();
+      const s4Duration = s4End - s4Start;
 
       stages.push({
         stage: 4,
         name: 'Runtime Execution Strategy & Grounding',
         startedAt: new Date(s4Start).toISOString(),
         endedAt: new Date(s4End).toISOString(),
-        durationMs: s4End - s4Start,
+        durationMs: s4Duration,
         strategy: 'DirectExecutorStrategy',
         tokensUsed: result.tokensUsed || 0,
         tokensDetail: result.tokensDetail || null,
@@ -217,8 +278,25 @@ class AIFlow {
         corrected: Boolean(result.corrected)
       });
 
+      traceSession.endSpan(s4SpanId, {
+        status: result.isError ? 'failed' : 'completed',
+        payload: {
+          strategy: 'DirectExecutorStrategy',
+          tokensUsed: result.tokensUsed || 0,
+          tokensDetail: result.tokensDetail || null,
+          toolCallsCount: result.trace ? result.trace.length : 0,
+          userQuery,
+          resultText: result.result || '',
+          grounding: groundingInfo,
+          corrected: Boolean(result.corrected)
+        },
+        error: result.isError ? result.result : null
+      });
+
       // ── Stage 5: Memory Persistence & Telemetry Logging ───────────────────
       const s5Start = Date.now();
+      const s5SpanId = traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
+
       if (this.agent.conversationStore && result.result) {
         try {
           this.agent.conversationStore.addMessage(conversationId, 'user', userQuery);
@@ -243,15 +321,42 @@ class AIFlow {
         saved: true
       });
 
+      if (Array.isArray(result?.trace)) {
+        for (const tool of result.trace) {
+          const toolName = tool.name || tool.toolName || 'tool';
+          const exists = traceSession.events.some(e => e.payload?.toolName === toolName || e.label === `Tool: ${toolName}`);
+          if (!exists) {
+            traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
+              toolName,
+              toolType: tool.type === 'llm' ? 'llm-driven' : 'pre-retrieval',
+              args: tool.args || {},
+              input: tool.args || {},
+              output: tool.output !== undefined ? tool.output : tool.result,
+              durationMs: tool.durationMs || 0,
+              callerType: tool.type === 'llm' ? 'llm' : 'system'
+            });
+          }
+        }
+      }
+
+      const traceFinalized = traceSession.finish({
+        status: result.isError ? 'failed' : 'completed',
+        metadata: { flowId, totalDurationMs, tokensUsed: result.tokensUsed || 0 }
+      });
+
       const combinedToolTrace = [
         ...(orchestratorTrace || []).map(t => ({ ...t, type: 'pre-retrieval' })),
         ...(result?.trace || [])
       ];
 
-      const events = buildEvents(stages, combinedToolTrace, totalDurationMs, startTime);
+      const builtEvents = buildEvents(stages, combinedToolTrace, totalDurationMs, startTime);
+      const events = traceFinalized.events && traceFinalized.events.length > 0
+        ? buildEventsFromTrace(traceFinalized.events)
+        : builtEvents;
 
       this._logFlowTelemetry({
         flowId,
+        traceId: traceSession.traceId,
         conversationId,
         query: userQuery,
         persona: personaId,
@@ -310,20 +415,31 @@ class AIFlow {
     const flowId = randomUUID();
     const stages = [];
     let orchestratorTrace = [];
-    let conversationId = context.conversationId || context.conversation_id;
+    let conversationId = context.conversationId || context.conversation_id || 'default';
+
+    const traceSession = createTraceSession({
+      workspaceId: this.agent?.workspaceRoot || 'default',
+      conversationId,
+      traceId: `trc_${flowId.replace(/-/g, '').slice(0, 16)}`,
+      query: userQuery
+    });
 
     try {
       log.info(`[Flow:${flowId}] Starting master streaming flow for query: "${String(userQuery).slice(0, 60)}..."`);
 
-      // Stage 1
+      // Stage 1: Context & Persona Resolution
       const s1Start = Date.now();
-      if (!conversationId) {
+      const s1SpanId = traceSession.startSpan('Context & Persona Resolution', 'Conversation', traceSession.rootSpanId, { component: 'ConversationStore' });
+
+      if (!conversationId || conversationId === 'default') {
         if (this.agent.conversationStore) {
           const title = String(userQuery || 'New Chat').slice(0, 30);
           const newConv = this.agent.conversationStore.createConversation(title, context.persona || 'general');
           conversationId = newConv?.id || `conv-${Date.now()}`;
+          traceSession.conversationId = conversationId;
         } else {
           conversationId = `conv-${Date.now()}`;
+          traceSession.conversationId = conversationId;
         }
       }
       let personaId = context.persona || 'general';
@@ -347,17 +463,18 @@ class AIFlow {
       }
 
       const compaction = require('../compaction');
-      const compactionRes = compaction.compactHistory(rawHistory, { maxVerbatimCount: 4 });
+      const compactionRes = compaction.compactHistory(rawHistory, { maxVerbatimCount: 4, trace: traceSession });
       const historyMessages = compactionRes.compactedMessages;
 
       const activeNotePath = context.currentFile || null;
       const activeNoteContent = context.activeNoteContent || null;
 
+      const s1Duration = Date.now() - s1Start;
       stages.push({
         stage: 1,
         name: 'Context & Persona Resolution',
         startedAt: new Date(s1Start).toISOString(),
-        durationMs: Date.now() - s1Start,
+        durationMs: s1Duration,
         personaId,
         personaName: personaObj?.name || personaId,
         activeNotePath,
@@ -366,17 +483,30 @@ class AIFlow {
         isCompacted: compactionRes.isCompacted
       });
 
-      // Stage 2
+      traceSession.endSpan(s1SpanId, {
+        status: 'completed',
+        payload: {
+          personaId,
+          personaName: personaObj?.name || personaId,
+          historyCount: rawHistory.length,
+          activeNotePath,
+          isCompacted: compactionRes.isCompacted,
+          compactedTurnsCount: compactionRes.turnsCompacted
+        }
+      });
+
+      // Stage 2: Intent Planning & Hybrid Retrieval
       const s2Start = Date.now();
+      const s2SpanId = traceSession.startSpan('Intent Planning & Hybrid Retrieval', 'Planner', traceSession.rootSpanId, { component: 'ContextOrchestrator' });
       let retrievedEvidence = '';
-      let orchestratorTrace = [];
       let confidenceScore = 0.0;
 
       if (this.agent.contextOrchestrator) {
         try {
           const orchRes = await this.agent.contextOrchestrator.orchestrate(userQuery, {
             ...context,
-            activeNotePath
+            activeNotePath,
+            trace: traceSession
           });
           if (orchRes.aggregatedContext) {
             retrievedEvidence = orchRes.aggregatedContext;
@@ -387,21 +517,33 @@ class AIFlow {
           confidenceScore = orchRes.confidence || 0.0;
         } catch (orchErr) {
           log.warn(`[Flow:${flowId}] Streaming ContextOrchestrator fallback:`, orchErr.message);
+          traceSession.recordWarning('Planner', 'Streaming ContextOrchestrator Fallback', orchErr.message);
         }
       }
 
+      const s2Duration = Date.now() - s2Start;
       stages.push({
         stage: 2,
         name: 'Intent Planning & Hybrid Retrieval',
         startedAt: new Date(s2Start).toISOString(),
-        durationMs: Date.now() - s2Start,
+        durationMs: s2Duration,
         confidenceScore,
         evidenceLength: retrievedEvidence.length,
         preRetrievalTrace: orchestratorTrace
       });
 
-      // Stage 3
+      traceSession.endSpan(s2SpanId, {
+        status: 'completed',
+        payload: {
+          confidenceScore,
+          evidenceLength: retrievedEvidence.length,
+          preRetrievalTraceCount: orchestratorTrace.length
+        }
+      });
+
+      // Stage 3: Prompt Assembly
       const s3Start = Date.now();
+      const s3SpanId = traceSession.startSpan('System Prompt Assembly & Harness Audit', 'Prompt', traceSession.rootSpanId, { component: 'PromptPipeline' });
       let personaInput = personaObj ? {
         id: personaObj.id || personaId,
         name: personaObj.name || personaId,
@@ -419,37 +561,50 @@ class AIFlow {
         },
         conversationMemory: historyMessages.length > 0 ? historyMessages : null,
         retrievedEvidence: retrievedEvidence || (context.relatedDocuments ? context.relatedDocuments.map(d => d.path).join('\n') : null),
-        uiContext: context.uiContext || null
+        uiContext: context.uiContext || null,
+        trace: traceSession
       });
 
+      const s3Duration = Date.now() - s3Start;
       stages.push({
         stage: 3,
         name: 'System Prompt Assembly & Harness Audit',
         startedAt: new Date(s3Start).toISOString(),
-        durationMs: Date.now() - s3Start,
+        durationMs: s3Duration,
         systemPromptLength: systemPrompt.length,
         systemPrompt: systemPrompt,
         harnessValid: true
       });
 
-      // Stage 4
+      traceSession.endSpan(s3SpanId, {
+        status: 'completed',
+        payload: {
+          systemPromptLength: systemPrompt.length,
+          harnessValid: true
+        }
+      });
+
+      // Stage 4: Execution Strategy & Grounding
       const s4Start = Date.now();
+      const s4SpanId = traceSession.startSpan('Runtime Dynamic Strategy Execution & Grounding', 'LLM', traceSession.rootSpanId, { component: 'QueryExecutor' });
       const queryContext = {
         ...context,
         conversationId,
         persona: personaInput,
         activeNoteContent,
         systemPrompt,
-        orchestratorTrace
+        orchestratorTrace,
+        trace: traceSession
       };
 
       const result = await this.agent.queryExecutor.stream(userQuery, queryContext, onChunk, abortSignal);
 
+      const s4Duration = Date.now() - s4Start;
       stages.push({
         stage: 4,
         name: 'Runtime Dynamic Strategy Execution & Grounding',
         startedAt: new Date(s4Start).toISOString(),
-        durationMs: Date.now() - s4Start,
+        durationMs: s4Duration,
         strategy: 'StreamingStrategy',
         tokensUsed: result.tokensUsed || 0,
         tokensDetail: result.tokensDetail || null,
@@ -461,8 +616,22 @@ class AIFlow {
         error: result.isError ? result.result : null
       });
 
-      // Stage 5
+      traceSession.endSpan(s4SpanId, {
+        status: result.isError ? 'failed' : 'completed',
+        payload: {
+          strategy: 'StreamingStrategy',
+          tokensUsed: result.tokensUsed || 0,
+          tokensDetail: result.tokensDetail || null,
+          toolCallsCount: result.trace ? result.trace.length : 0,
+          resultText: result.result || ''
+        },
+        error: result.isError ? result.result : null
+      });
+
+      // Stage 5: Persistence
       const s5Start = Date.now();
+      const s5SpanId = traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
+
       if (this.agent.conversationStore && result.result && result.type !== 'aborted') {
         try {
           this.agent.conversationStore.addMessage(conversationId, 'user', userQuery);
@@ -486,15 +655,42 @@ class AIFlow {
         saved: true
       });
 
+      if (Array.isArray(result?.trace)) {
+        for (const tool of result.trace) {
+          const toolName = tool.name || tool.toolName || 'tool';
+          const exists = traceSession.events.some(e => e.payload?.toolName === toolName || e.label === `Tool: ${toolName}`);
+          if (!exists) {
+            traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
+              toolName,
+              toolType: tool.type === 'llm' ? 'llm-driven' : 'pre-retrieval',
+              args: tool.args || {},
+              input: tool.args || {},
+              output: tool.output !== undefined ? tool.output : tool.result,
+              durationMs: tool.durationMs || 0,
+              callerType: tool.type === 'llm' ? 'llm' : 'system'
+            });
+          }
+        }
+      }
+
+      const traceFinalized = traceSession.finish({
+        status: result.isError ? 'failed' : 'completed',
+        metadata: { flowId, totalDurationMs, tokensUsed: result.tokensUsed || 0 }
+      });
+
       const combinedToolTrace = [
         ...(orchestratorTrace || []).map(t => ({ ...t, type: 'pre-retrieval' })),
         ...(result?.trace || [])
       ];
 
-      const events = buildEvents(stages, combinedToolTrace, totalDurationMs, startTime);
+      const builtEvents = buildEvents(stages, combinedToolTrace, totalDurationMs, startTime);
+      const events = traceFinalized.events && traceFinalized.events.length > 0
+        ? buildEventsFromTrace(traceFinalized.events)
+        : builtEvents;
 
       this._logFlowTelemetry({
         flowId,
+        traceId: traceSession.traceId,
         conversationId,
         query: userQuery,
         persona: personaId,

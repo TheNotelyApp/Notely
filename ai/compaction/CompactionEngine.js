@@ -90,8 +90,15 @@ class CompactionEngine {
    */
   static compactHistory(messages = [], options = {}) {
     const maxVerbatimCount = options.maxVerbatimCount || 4;
+    const trace = options.trace || options.traceSession;
 
     if (!Array.isArray(messages) || messages.length <= maxVerbatimCount) {
+      if (trace && typeof trace.recordEvent === 'function') {
+        trace.recordEvent('Memory', 'memory:compaction_skipped', 'Context Compaction Skipped', {
+          messageCount: messages?.length || 0,
+          reason: 'Under max verbatim threshold'
+        });
+      }
       return {
         compactedMessages: messages || [],
         isCompacted: false,
@@ -128,6 +135,15 @@ class CompactionEngine {
     }
 
     compactedMessages.push(...recentMessages);
+
+    if (trace && typeof trace.recordEvent === 'function') {
+      trace.recordEvent('Memory', 'memory:compaction_completed', 'Context History Compacted', {
+        originalMessagesCount: messages.length,
+        compactedMessagesCount: compactedMessages.length,
+        turnsCompacted: turnSummaries.length,
+        summarySnippet: summaryText.slice(0, 300)
+      });
+    }
 
     return {
       compactedMessages,

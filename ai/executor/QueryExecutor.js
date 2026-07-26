@@ -119,7 +119,7 @@ class QueryExecutor {
   async execute(query, context = {}) {
     try {
       const { generateText } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace: _orchestratorTrace } = await this._prepareConfig(query, context);
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
@@ -213,18 +213,9 @@ class QueryExecutor {
         }
       }
 
-      // Construct the trace array of executed tools and outputs with timestamps
-      const trace = Array.isArray(orchestratorTrace)
-        ? orchestratorTrace.map(t => ({
-            name: t.name || t.toolName || 'tool',
-            args: t.args || t.parameters || {},
-            type: t.type || 'programmatic',
-            startedAt: t.startedAt || new Date().toISOString(),
-            endedAt: t.endedAt || new Date().toISOString(),
-            durationMs: t.durationMs || 0,
-            output: t.output !== undefined ? t.output : (t.result !== undefined ? t.result : null)
-          }))
-        : [];
+      // Construct the trace array of LLM-driven executed tools
+      const trace = [];
+      const traceSession = context.trace;
 
       if (result.steps) {
         for (const step of result.steps) {
@@ -233,17 +224,43 @@ class QueryExecutor {
           for (const call of toolCalls) {
             const toolRes = toolResults.find(r => r.toolCallId === call.toolCallId);
             const rawOutput = toolRes ? (toolRes.output !== undefined ? toolRes.output : (toolRes.result !== undefined ? toolRes.result : null)) : null;
+            const toolName = call.toolName || call.name || 'tool';
+            const toolArgs = call.args || call.parameters || {};
+            const toolDur = toolRes?.durationMs || 0;
+
             trace.push({
-              name: call.toolName || call.name || 'tool',
-              args: call.args || call.parameters || {},
+              name: toolName,
+              args: toolArgs,
               type: 'llm',
               startedAt: toolRes?.startedAt || new Date().toISOString(),
               endedAt: toolRes?.endedAt || new Date().toISOString(),
-              durationMs: toolRes?.durationMs || 0,
+              durationMs: toolDur,
               output: rawOutput
             });
+
+            if (traceSession && typeof traceSession.recordEvent === 'function') {
+              traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
+                toolName,
+                toolType: 'llm-driven',
+                args: toolArgs,
+                input: toolArgs,
+                output: rawOutput,
+                durationMs: toolDur,
+                callerType: 'llm'
+              });
+            }
           }
         }
+      }
+
+      if (traceSession && typeof traceSession.recordEvent === 'function') {
+        traceSession.recordEvent('LLM', 'llm_execution', 'LLM Execution Completed', {
+          tokensUsed,
+          tokensDetail,
+          toolCallsCount: trace.length,
+          input: query,
+          output: textResult || ''
+        });
       }
 
       const workspaceFiles = this.agent.documentService ? this.agent.documentService._collectMarkdownFiles(this.agent.workspaceRoot) : [];
@@ -337,6 +354,7 @@ class QueryExecutor {
       }
 
       const steps = await result.steps;
+      const traceSession = context.trace;
       const trace = Array.isArray(orchestratorTrace)
         ? orchestratorTrace.map(t => ({
             name: t.name || t.toolName || 'tool',
@@ -356,17 +374,43 @@ class QueryExecutor {
           for (const call of toolCalls) {
             const toolRes = toolResults.find(r => r.toolCallId === call.toolCallId);
             const rawOutput = toolRes ? (toolRes.output !== undefined ? toolRes.output : (toolRes.result !== undefined ? toolRes.result : null)) : null;
+            const toolName = call.toolName || call.name || 'tool';
+            const toolArgs = call.args || call.parameters || {};
+            const toolDur = toolRes?.durationMs || 0;
+
             trace.push({
-              name: call.toolName || call.name || 'tool',
-              args: call.args || call.parameters || {},
+              name: toolName,
+              args: toolArgs,
               type: 'llm',
               startedAt: toolRes?.startedAt || new Date().toISOString(),
               endedAt: toolRes?.endedAt || new Date().toISOString(),
-              durationMs: toolRes?.durationMs || 0,
+              durationMs: toolDur,
               output: rawOutput
             });
+
+            if (traceSession && typeof traceSession.recordEvent === 'function') {
+              traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${toolName}`, {
+                toolName,
+                toolType: 'llm-driven',
+                args: toolArgs,
+                input: toolArgs,
+                output: rawOutput,
+                durationMs: toolDur,
+                callerType: 'llm'
+              });
+            }
           }
         }
+      }
+
+      if (traceSession && typeof traceSession.recordEvent === 'function') {
+        traceSession.recordEvent('LLM', 'llm_execution', 'Streaming LLM Execution Completed', {
+          tokensUsed,
+          tokensDetail,
+          toolCallsCount: trace.length,
+          input: query,
+          output: fullText
+        });
       }
 
       return {

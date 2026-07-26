@@ -30,10 +30,19 @@ class ContextOrchestrator {
   async orchestrate(query, context = {}, options = {}) {
     const targetConfidence = options.targetConfidence || 0.70;
     const maxIterations = options.maxIterations || 3;
+    const traceSession = context.trace || options.trace;
 
     // 1. Understand Intent & Build Internal Execution Plan via 4-Layer Decoupled Planning Architecture
     const plan = await this.planner.createPlanAsync(query, context);
     log.debug('Internal execution plan generated', { intent: plan.intent, stepsCount: plan.steps.length });
+
+    if (traceSession && typeof traceSession.recordEvent === 'function') {
+      traceSession.recordEvent('Planner', 'intent_analyzed', 'Intent Planning Completed', {
+        intent: plan.intent,
+        stepsCount: plan.steps?.length || 0,
+        steps: plan.steps || []
+      });
+    }
 
     let collectedEvidence = [];
     let executionTrace = [];
@@ -54,25 +63,53 @@ class ContextOrchestrator {
       // Parallel tool execution for independent tools
       const toolPromises = currentSteps.map(step => {
         return (async () => {
+          const tStart = Date.now();
           try {
             const runner = SemanticTools.getToolRunner(step.toolName, this.agent);
             if (runner) {
               const res = await runner(step.args);
+              const tDur = Date.now() - tStart;
+              const outputStr = typeof res === 'object' ? JSON.stringify(res).slice(0, 500) : String(res).slice(0, 500);
+
               executionTrace.push({
                 name: step.toolName,
                 args: step.args,
                 type: 'programmatic',
-                output: typeof res === 'object' ? JSON.stringify(res).slice(0, 500) : String(res).slice(0, 500)
+                durationMs: tDur,
+                output: outputStr
               });
+
+              if (traceSession && typeof traceSession.recordEvent === 'function') {
+                traceSession.recordEvent('Tool', 'tool_execution', `Tool: ${step.toolName}`, {
+                  toolName: step.toolName,
+                  toolType: 'pre-retrieval',
+                  args: step.args,
+                  input: step.args,
+                  output: outputStr,
+                  durationMs: tDur,
+                  callerType: 'system'
+                });
+              }
+
               return { toolName: step.toolName, result: res, error: null };
             }
           } catch (err) {
+            const tDur = Date.now() - tStart;
             executionTrace.push({
               name: step.toolName,
               args: step.args,
               type: 'programmatic',
+              durationMs: tDur,
               output: `Error: ${err.message}`
             });
+
+            if (traceSession && typeof traceSession.recordEvent === 'function') {
+              traceSession.recordError('Tool', `Tool Error: ${step.toolName}`, err.message, {
+                toolName: step.toolName,
+                args: step.args
+              });
+            }
+
             return { toolName: step.toolName, result: null, error: err.message };
           }
           return null;
@@ -124,6 +161,14 @@ class ContextOrchestrator {
 
     // Final consolidation
     const finalAggregated = this.aggregateContext(collectedEvidence);
+
+    if (traceSession && typeof traceSession.recordEvent === 'function') {
+      traceSession.recordEvent('Retrieval', 'retrieval_completed', 'Hybrid Context Aggregated', {
+        evidenceCount: finalAggregated.items.length,
+        confidence: finalAggregated.confidence,
+        iterations
+      });
+    }
 
     return {
       evidence: finalAggregated.items,

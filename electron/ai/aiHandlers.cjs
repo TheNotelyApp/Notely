@@ -1483,6 +1483,22 @@ function getTelemetryDbInstance() {
   return _telemetryDbInstance;
 }
 
+try {
+  const { eventBus } = require('../../ai/telemetry/AIEventBus.js');
+  if (eventBus) {
+    eventBus.subscribe((evt) => {
+      try {
+        const windows = BrowserWindow.getAllWindows();
+        for (const win of windows) {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('ai:telemetry:event', evt);
+          }
+        }
+      } catch { /* ignore */ }
+    });
+  }
+} catch { /* ignore */ }
+
 async function handleGetLogs(_event, payload) {
   try {
     const subsystem = payload?.subsystem || null;

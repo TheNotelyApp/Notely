@@ -34,6 +34,16 @@ class Planner {
       args: this._buildStepArgs(cap.toolName, query, context)
     }));
 
+    const trace = context.trace || context.traceSession;
+    if (trace && typeof trace.recordEvent === 'function') {
+      trace.recordEvent('Planner', 'planner:plan_created', 'Execution Plan Created', {
+        intent: intentManifest.goal,
+        manifest: intentManifest,
+        stepsCount: steps.length,
+        steps
+      });
+    }
+
     log.debug('Execution plan generated from capabilities', { intent: intentManifest.goal, stepsCount: steps.length });
     return {
       intent: intentManifest.goal,

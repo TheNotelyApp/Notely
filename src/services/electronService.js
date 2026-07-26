@@ -345,6 +345,12 @@ export async function aiGetLogs(subsystem = null, limit = 100, conversationId = 
   return api.aiGetLogs({ subsystem, limit, conversationId });
 }
 
+export function onTelemetryEvent(callback) {
+  const api = getNotesApi();
+  if (typeof api.onTelemetryEvent !== 'function') return () => {};
+  return api.onTelemetryEvent(callback);
+}
+
 export async function aiClearLogs(subsystem = null, beforeTimestamp = null) {
   const api = getNotesApi();
   if (typeof api.aiClearLogs !== "function") return { success: false };
@@ -1339,4 +1345,5 @@ export async function listTools() {
   }
   return api.listTools();
 }
+
 
