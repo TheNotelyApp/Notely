@@ -291,6 +291,13 @@ function normalizePathLikeList(entries) {
   return normalized;
 }
 
+function getCleanFilenameTitle(titleOrPath) {
+  const raw = String(titleOrPath || "").trim();
+  if (!raw) return "Untitled";
+  const baseName = raw.split(/[\\/]/).pop() || raw;
+  return baseName.replace(/\.(md|markdown)$/i, "");
+}
+
 function getFavoriteDashboardNotes(favorites, recentNotes, continueNotes) {
   const favoriteSet = new Set(Array.isArray(favorites) ? favorites : []);
   const metadataMap = new Map(
@@ -303,9 +310,10 @@ function getFavoriteDashboardNotes(favorites, recentNotes, continueNotes) {
     .map((filePath) => {
       const key = String(filePath || "").toLowerCase();
       const item = metadataMap.get(key) || { filePath, title: filePath, entryType: "file" };
+      const rawTitle = item.title || filePath;
       return {
         ...item,
-        displayName: item.title || filePath,
+        displayName: getCleanFilenameTitle(rawTitle),
       };
     })
     .filter((item) => item?.filePath)
@@ -450,6 +458,7 @@ export default function App() {
     handleCreateFolder,
     handleOpenWorkspacePicker,
     handleOpenRecentWorkspace,
+    handleRestartApp,
     handleGoHome,
     handleOpenCurrentInEditor,
     handleOpenWebsiteFromLanding,
@@ -605,13 +614,45 @@ export default function App() {
     normalize: normalizeDensityMode,
     fallbackKey: "notes:density-mode",
   });
-  const [favoriteNotes, setFavoriteNotes] = useWorkspaceScopedStorage({
-    workspaceScope: workspaceStorageScope,
-    key: "notes:favorites",
-    defaultValue: EMPTY_ARRAY,
-    normalize: normalizeFavoriteNotes,
-    fallbackKey: "notes:favorites",
-  });
+  const [favoriteNotes, setFavoriteNotesState] = useState(EMPTY_ARRAY);
+
+  const loadWorkspaceFavorites = useCallback(async () => {
+    try {
+      const api = window.electronAPI || window.notesApi;
+      if (api?.getFavorites) {
+        const favs = await api.getFavorites();
+        setFavoriteNotesState(normalizeFavoriteNotes(favs));
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  const setFavoriteNotes = useCallback((nextValueOrFn) => {
+    setFavoriteNotesState((current) => {
+      const next = typeof nextValueOrFn === "function" ? nextValueOrFn(current) : nextValueOrFn;
+      const normalized = normalizeFavoriteNotes(next);
+      const api = window.electronAPI || window.notesApi;
+      if (api?.setFavorites) {
+        api.setFavorites(normalized).catch(() => {});
+      }
+      return normalized;
+    });
+  }, []);
+
+  useEffect(() => {
+    void loadWorkspaceFavorites();
+  }, [workspaceStorageScope, notesFolderPath, loadWorkspaceFavorites]);
+
+  useEffect(() => {
+    const api = window.electronAPI || window.notesApi;
+    if (!api?.onFavoritesChanged) return undefined;
+    return api.onFavoritesChanged((favs) => {
+      setFavoriteNotesState(normalizeFavoriteNotes(favs));
+    });
+  }, []);
+
   const [showTerminal, setShowTerminal] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
     key: "notes:terminal-open",
@@ -1010,6 +1051,26 @@ export default function App() {
   useEffect(() => {
     void refreshGitWorkspaceMeta();
   }, [notesFolderPath, currentFilePath, dirty, refreshGitWorkspaceMeta]);
+
+  useEffect(() => {
+    const api = window.electronAPI || window.notesApi;
+    const subscribe = api?.onMenuAction || api?.onAppMenuAction;
+    if (!subscribe) return undefined;
+    return subscribe((action) => {
+      if (action === "restart-app") {
+        void handleRestartApp();
+      }
+    });
+  }, [handleRestartApp]);
+
+  useEffect(() => {
+    const api = window.electronAPI || window.notesApi;
+    if (!api?.onWorkspaceChanged) return undefined;
+    return api.onWorkspaceChanged(() => {
+      void refreshGitWorkspaceMeta();
+      void loadDocumentsData();
+    });
+  }, [refreshGitWorkspaceMeta, loadDocumentsData]);
 
   useEffect(() => {
     function onGlobalKeyDown(event) {
@@ -1982,6 +2043,7 @@ export default function App() {
   }
 
   const paletteCommandsBase = [
+    { id: "restart-app", label: "Restart Notely", group: "App", aliases: "restart relaunch reboot app application" },
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document write jot capture" },
     { id: "open-ai-palette", label: "Open AI Palette", group: "AI", shortcut: "Ctrl/Cmd+Shift+I", aliases: "assistant ask ai prompt summarize rewrite" },
     { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
@@ -2331,6 +2393,11 @@ export default function App() {
 
     if (resolvedCommandId === "new-folder") {
       setFolderDialogOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "restart-app") {
+      await handleRestartApp();
       return;
     }
 

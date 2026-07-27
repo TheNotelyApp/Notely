@@ -7,6 +7,13 @@ function getIcon(type) {
   return type === "favorites" ? <Star size={16} /> : <Clock3 size={16} />;
 }
 
+function formatNoteTitle(note) {
+  const raw = String(note?.displayName || note?.title || note?.filePath || "").trim();
+  if (!raw) return "Untitled";
+  const baseName = raw.split(/[\\/]/).pop() || raw;
+  return baseName.replace(/\.(md|markdown)$/i, "");
+}
+
 export function NoteListPanel({
   isOpen,
   title,
@@ -22,7 +29,7 @@ export function NoteListPanel({
     const needle = filter.trim().toLowerCase();
     if (!needle) return notes;
     return notes.filter((note) => {
-      const titleText = String(note?.displayName || note?.title || "").toLowerCase();
+      const titleText = formatNoteTitle(note).toLowerCase();
       const pathText = String(note?.filePath || "").toLowerCase();
       return titleText.includes(needle) || pathText.includes(needle);
     });
@@ -76,7 +83,7 @@ export function NoteListPanel({
                     onClose?.();
                   }}
                 >
-                  <span className="note-list-panel-title">{note.displayName || note.title}</span>
+                  <span className="note-list-panel-title">{formatNoteTitle(note)}</span>
                   <small>{formatDate(note.updatedAt)}</small>
                 </button>
               </li>

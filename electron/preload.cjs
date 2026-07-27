@@ -10,6 +10,15 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("app-menu:action", listener);
     return () => ipcRenderer.removeListener("app-menu:action", listener);
   },
+  onAppMenuAction: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, action) => callback(action);
+    ipcRenderer.on("app-menu:action", listener);
+    return () => ipcRenderer.removeListener("app-menu:action", listener);
+  },
   notifyBootReady: () => ipcRenderer.send("app:boot-ready"),
   notifyBootProgress: (payload) => ipcRenderer.send("app:boot-progress", payload),
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
@@ -312,6 +321,21 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("workspace-metadata:changed", listener);
     return () => ipcRenderer.removeListener("workspace-metadata:changed", listener);
   },
+  getFavorites: () => ipcRenderer.invoke("workspace-metadata:get-favorites"),
+  setFavorites: (favorites) => ipcRenderer.invoke("workspace-metadata:set-favorites", { favorites }),
+  onFavoritesChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("workspace-metadata:favorites-changed", listener);
+    return () => ipcRenderer.removeListener("workspace-metadata:favorites-changed", listener);
+  },
+  onWorkspaceChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("workspace:changed", listener);
+    return () => ipcRenderer.removeListener("workspace:changed", listener);
+  },
+  restartApp: () => ipcRenderer.invoke("app:restart"),
   exportNotePackage: (payload) => ipcRenderer.invoke("note-package:export", payload),
   importNotePackage: (payload) => ipcRenderer.invoke("note-package:import", payload),
   browseExportDestination: (payload) => ipcRenderer.invoke("note-package:browse-export-destination", payload),

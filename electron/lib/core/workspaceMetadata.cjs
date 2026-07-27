@@ -26,11 +26,13 @@ class WorkspaceMetadata {
       if (this.fs.existsSync(p)) {
         this.state = JSON.parse(this.fs.readFileSync(p, "utf8"));
       } else {
-        this.state = { items: {} };
+        this.state = { items: {}, favorites: [] };
       }
     } catch {
-      this.state = { items: {} };
+      this.state = { items: {}, favorites: [] };
     }
+    if (!this.state.items) this.state.items = {};
+    if (!Array.isArray(this.state.favorites)) this.state.favorites = [];
   }
 
   _save() {
@@ -65,6 +67,18 @@ class WorkspaceMetadata {
   getAllMetadata() {
     this._load();
     return this.state?.items || {};
+  }
+
+  getFavorites() {
+    this._load();
+    return Array.isArray(this.state?.favorites) ? this.state.favorites : [];
+  }
+
+  setFavorites(favoritesList) {
+    this._load();
+    this.state.favorites = Array.isArray(favoritesList) ? favoritesList : [];
+    this._save();
+    return this.state.favorites;
   }
 
   updateMetadata(absolutePath, { icon, color }) {

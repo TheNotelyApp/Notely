@@ -536,6 +536,13 @@ export function useAIAssistant({
   }, [aiPanelVisible]);
 
   useEffect(() => {
+    setAiChatMessages([]);
+    currentConversationIdRef.current = null;
+    loadConversations();
+    refreshAIConfiguration();
+  }, [notesFolderPath, loadConversations]);
+
+  useEffect(() => {
     setInlineGhostSuggestion(null);
     // Clearing the chat messages array on document or tab switch guarantees
     // the main workspace chat remains separate from note-specific chats.

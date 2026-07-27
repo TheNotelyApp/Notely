@@ -27,7 +27,8 @@ export function useWorkspaceScopedStorage({
     try {
       const scopedKey = `${key}:${workspaceScope}`;
       const scopedRaw = window.localStorage.getItem(scopedKey);
-      const fallbackRaw = fallbackKey ? window.localStorage.getItem(fallbackKey) : null;
+      const allowFallback = Boolean(fallbackKey) && (!workspaceScope || workspaceScope === "default");
+      const fallbackRaw = allowFallback ? window.localStorage.getItem(fallbackKey) : null;
       const parsed = JSON.parse(scopedRaw ?? fallbackRaw ?? JSON.stringify(defaultValueRef.current));
       setValue(normalizeRef.current(parsed));
     } catch {

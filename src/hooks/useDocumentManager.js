@@ -784,7 +784,6 @@ export function useDocumentManager({ notify }) {
       const selectedPath = await pickFolder();
       if (!selectedPath) return;
       const normalizedSelectedPath = normalizePathValue(selectedPath);
-      setNotesFolderPath(normalizedSelectedPath);
       await handleSaveNotesFolder(normalizedSelectedPath);
     } catch (err) {
       notify(err?.message || "Unable to open folder picker.", "error");
@@ -796,6 +795,24 @@ export function useDocumentManager({ notify }) {
     if (!nextPath) {
       notify("Please provide a workspace path.", "warning");
       return;
+    }
+
+    const dirtyPaths = [];
+    for (const path of openTabs) {
+      const state = tabStatesRef.current[path];
+      if (state && state.doc && state.doc.savedHash !== state.savedHash) {
+        dirtyPaths.push(path);
+      }
+    }
+    if (dirtyPaths.length > 0) {
+      const confirmed = await confirm({
+        title: "Unsaved Changes",
+        message: `There are ${dirtyPaths.length} note(s) with unsaved changes. Switch workspace and discard changes?`,
+        confirmLabel: "Discard & Switch",
+        cancelLabel: "Cancel",
+        variant: "danger"
+      });
+      if (!confirmed) return;
     }
 
     setSavingNotesFolder(true);
@@ -816,6 +833,34 @@ export function useDocumentManager({ notify }) {
       notify(err?.message || "Unable to open workspace.", "error");
     } finally {
       setSavingNotesFolder(false);
+    }
+  }
+
+  async function handleRestartApp() {
+    const dirtyPaths = [];
+    for (const path of openTabs) {
+      const state = tabStatesRef.current[path];
+      if (state && state.doc && state.doc.savedHash !== state.savedHash) {
+        dirtyPaths.push(path);
+      }
+    }
+    if (dirtyPaths.length > 0) {
+      const confirmed = await confirm({
+        title: "Unsaved Changes",
+        message: `There are ${dirtyPaths.length} note(s) with unsaved changes. Restart Notely and discard changes?`,
+        confirmLabel: "Discard & Restart",
+        cancelLabel: "Cancel",
+        variant: "danger"
+      });
+      if (!confirmed) return;
+    }
+
+    if (window.electronAPI?.restartApp) {
+      await window.electronAPI.restartApp();
+    } else if (window.notesApi?.restartApp) {
+      await window.notesApi.restartApp();
+    } else {
+      window.location.reload();
     }
   }
 
@@ -1254,6 +1299,7 @@ export function useDocumentManager({ notify }) {
     handleOpenWorkspacePicker,
     handleSaveNotesFolder,
     handleOpenRecentWorkspace,
+    handleRestartApp,
     handleGoHome,
     handleOpenCurrentInEditor,
     handleOpenWebsiteFromLanding,

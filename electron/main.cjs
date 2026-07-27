@@ -469,11 +469,38 @@ function applyNotesRoot(nextRootPath) {
     console.warn("[startup] Unable to clean up legacy thumbnails folder:", error?.message || error);
   }
 
-  if (previousNotesRoot && previousNotesRoot !== notesRoot) {
-    console.log(`[Workspace Switch] Re-initializing AI subsystem for new workspace root: ${notesRoot}`);
-    initializeAIForWorkspace().catch((err) => {
+  if (previousNotesRoot) {
+    console.log(`[App Service Reset] Re-initializing AI subsystem for workspace root: ${notesRoot}`);
+    try {
+      const workerManager = require("./ai/workerManager.cjs");
+      workerManager.shutdownWorker();
+    } catch (e) {
+      console.warn("[Workspace Switch] Failed to shutdown AI worker manager:", e?.message || e);
+    }
+
+    initializeAIForWorkspace().then(() => {
+      try {
+        const workerManager = require("./ai/workerManager.cjs");
+        const AIConfig = require("../ai/core/AIConfig");
+        const config = new AIConfig();
+        const hfToken = config.getAPIKey("huggingface");
+        workerManager.startWorker(notesRoot, appDataDir, hfToken);
+      } catch (err) {
+        console.warn("[Workspace Switch] Failed to restart AI worker process:", err?.message || err);
+      }
+    }).catch((err) => {
       console.error("[Workspace Switch] Failed to re-initialize AI subsystem:", err?.message || err);
     });
+
+    try {
+      const { BrowserWindow } = require("electron");
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win || win.isDestroyed()) continue;
+        win.webContents.send("workspace:changed", { notesRoot });
+      }
+    } catch (e) {
+      console.warn("[Workspace Switch] Failed to broadcast workspace:changed:", e?.message || e);
+    }
   }
 
   metadataStore = createMetadataStore({

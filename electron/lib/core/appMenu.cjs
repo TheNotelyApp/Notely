@@ -127,6 +127,10 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "back-to-notes")
         },
         { type: "separator" },
+        {
+          label: "Restart Notely",
+          click: () => sendMenuAction(win, "restart-app")
+        },
         { role: "quit" }
       ]
     : [
@@ -162,6 +166,10 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "remove-folder")
         },
         { type: "separator" },
+        {
+          label: "Restart Notely",
+          click: () => sendMenuAction(win, "restart-app")
+        },
         { role: "quit" }
       ];
 

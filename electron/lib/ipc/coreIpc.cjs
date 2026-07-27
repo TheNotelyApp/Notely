@@ -542,6 +542,65 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return { success: false };
   });
 
+  registerTrustedHandler("app:restart", (event) => {
+    if (!app.isPackaged) {
+      console.log("\n=======================================================");
+      console.log("[Notely] Restarting Application & Re-initializing Services (Dev Mode)");
+      console.log("=======================================================\n");
+
+      if (typeof applyNotesRoot === "function" && typeof getNotesRoot === "function") {
+        const root = getNotesRoot();
+        if (root) {
+          try {
+            applyNotesRoot(root);
+          } catch (err) {
+            console.error("[Restart] Service re-initialization error:", err);
+          }
+        }
+      }
+
+      const win = event?.sender ? BrowserWindow.fromWebContents(event.sender) : null;
+      if (win && !win.isDestroyed()) {
+        win.webContents.reload();
+      } else {
+        const windows = BrowserWindow.getAllWindows();
+        for (const w of windows) {
+          if (w && !w.isDestroyed()) {
+            w.webContents.reload();
+          }
+        }
+      }
+    } else {
+      app.relaunch();
+      app.exit(0);
+    }
+    return { success: true };
+  });
+
+  registerTrustedHandler("workspace-metadata:get-favorites", () => {
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) return store.getFavorites();
+    }
+    return [];
+  });
+
+  registerTrustedHandler("workspace-metadata:set-favorites", (_event, payload) => {
+    const { favorites } = payload || {};
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) {
+        const nextFavorites = store.setFavorites(favorites);
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win || win.isDestroyed()) continue;
+          win.webContents.send("workspace-metadata:favorites-changed", nextFavorites);
+        }
+        return { success: true, favorites: nextFavorites };
+      }
+    }
+    return { success: false, favorites: [] };
+  });
+
   registerTrustedHandler("shell:open-external", async (_event, payload) => {
     if (typeof payload?.url === "string" && /^https?:\/\//i.test(payload.url)) {
       await shell.openExternal(payload.url);
