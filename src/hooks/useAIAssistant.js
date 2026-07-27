@@ -234,7 +234,7 @@ export function useAIAssistant({
     const summary = buildAIContextSummary(editorContext, current);
     setAiQueryError("");
     setAiContextSummary(summary);
-    setAiPaletteIntent(normalizePaletteIntent(options, summary));
+    setAiPaletteIntent(normalizePaletteIntent(options));
     setAiPanelVisible(true);
   }
 
