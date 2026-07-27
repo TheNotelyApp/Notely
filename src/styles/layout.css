@@ -2338,7 +2338,8 @@
 .landing-list-search {
   display: grid;
   gap: 4px;
-  flex: 1 1 220px;
+  flex: 0 1 220px;
+  max-width: 260px;
 }
 .landing-list-select {
   display: grid;

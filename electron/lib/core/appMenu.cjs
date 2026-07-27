@@ -69,9 +69,18 @@ function buildAppMenuTemplate(win, context = {}) {
   const fileSubmenu = screen === "document"
     ? [
         {
-          label: "New Note",
-          accelerator: "CmdOrCtrl+N",
-          click: () => sendMenuAction(win, "new-note")
+          label: "New",
+          submenu: [
+            {
+              label: "Note",
+              accelerator: "CmdOrCtrl+N",
+              click: () => sendMenuAction(win, "new-note")
+            },
+            {
+              label: "Folder",
+              click: () => sendMenuAction(win, "new-folder")
+            }
+          ]
         },
         {
           label: "Open Workspace",
@@ -135,9 +144,18 @@ function buildAppMenuTemplate(win, context = {}) {
       ]
     : [
         {
-          label: "New Note",
-          accelerator: "CmdOrCtrl+N",
-          click: () => sendMenuAction(win, "new-note")
+          label: "New",
+          submenu: [
+            {
+              label: "Note",
+              accelerator: "CmdOrCtrl+N",
+              click: () => sendMenuAction(win, "new-note")
+            },
+            {
+              label: "Folder",
+              click: () => sendMenuAction(win, "new-folder")
+            }
+          ]
         },
         {
           label: "Open Workspace",
@@ -516,6 +534,14 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")
+        },
+        {
+          label: "Assets Library",
+          click: () => sendMenuAction(win, "open-assets")
+        },
+        {
+          label: "Trash / Removed Items",
+          click: () => sendMenuAction(win, "open-trash")
         },
         {
           label: "Reload Workspace",

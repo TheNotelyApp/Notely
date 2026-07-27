@@ -1,6 +1,149 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Minus, Square, Copy, X, Check, ChevronRight, Globe } from "lucide-react";
+import {
+  Minus, Square, Copy, X, Check, ChevronRight, Globe,
+  FilePlus, FolderPlus, FolderOpen, Clock, Save, RefreshCw, Package, Edit2, Trash2, ArrowLeft, RotateCcw, Power,
+  Undo2, Redo2, Scissors, Clipboard, CheckSquare, Search, Replace, Camera, BookOpen, Command,
+  SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
+  Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
+  ArrowDownLeft, Network, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
+  HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon
+} from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
+
+const MENU_ICON_MAP = {
+  "new": FilePlus,
+  "new note": FilePlus,
+  "note": FileText,
+  "folder": FolderPlus,
+  "open workspace": FolderOpen,
+  "open recent": Clock,
+  "save": Save,
+  "save*": Save,
+  "auto save": RefreshCw,
+  "export pdf": FileText,
+  "export/import note package": Package,
+  "rename note": Edit2,
+  "reload from disk": RefreshCw,
+  "reload workspace from disk": RefreshCw,
+  "move note to removed": Trash2,
+  "back to notes": ArrowLeft,
+  "restart notely": RotateCcw,
+  "quit": Power,
+
+  "undo": Undo2,
+  "redo": Redo2,
+  "cut": Scissors,
+  "copy": Copy,
+  "paste": Clipboard,
+  "select all": CheckSquare,
+  "find": Search,
+  "find and replace": Replace,
+  "screen capture options": Camera,
+  "spelling dictionary": BookOpen,
+
+  "open command palette": Command,
+  "theme": SunMoon,
+  "enable typo check": SpellCheck,
+  "set icon & color": Palette,
+  "editor layout": Layout,
+  "show outline": Layout,
+  "split preview": Columns,
+  "focus mode": Maximize2,
+  "sync split scroll": RefreshCw,
+  "table click behavior": Table,
+  "preview options": Eye,
+  "zoom": ZoomIn,
+  "zoom in": ZoomIn,
+  "zoom out": ZoomOut,
+  "reset zoom": Minimize2,
+  "developer": Code,
+  "dashboard view": Layout,
+  "tile notes": Layout,
+  "table notes": Layout,
+
+  "assets library": ImageIcon,
+  "workspace activity": Activity,
+  "reload workspace": RefreshCw,
+  "open workspace in vs code": ExternalLink,
+  "reveal workspace in file explorer": FolderSearch,
+  "export workspace as zip": Package,
+  "open project website": Globe,
+  "open current note website view": Globe,
+
+  "open version control": GitBranch,
+  "commit…": GitCommit,
+  "history": History,
+  "diff current note": GitCompare,
+  "compare versions": GitCompare,
+  "push": ArrowUpRight,
+  "pull": ArrowDownLeft,
+  "fetch": RefreshCw,
+  "sync (pull then push)": RefreshCw,
+  "ignore app data in git": GitBranch,
+
+  "p2p status": Activity,
+  "run sync self-test": CheckSquare,
+  "conflict center": ShieldAlert,
+  "rotate workspace keys": KeyRound,
+  "how sync works": HelpCircle,
+
+  "open ai palette": Sparkles,
+  "ai settings": Bot,
+  "knowledge graph": Brain,
+  "embeddings": Cpu,
+  "personas": UserCheck,
+  "diagnostics": Stethoscope,
+
+  "help center": HelpCircle,
+  "markdown guide": Book,
+  "commit": GitCommit,
+  "keyboard shortcuts": Keyboard,
+  "report bug / feedback": MessageSquareWarning,
+  "system & application logs": FileTerminal,
+  "system application logs": FileTerminal,
+  "check for updates": RefreshCw,
+  "about notely": Info,
+};
+
+function getItemIcon(item) {
+  if (!item) return null;
+  const rawLabel = String(item.label || "").toLowerCase().replace(/&/g, " ").replace(/\s+/g, " ").trim();
+  const cleanLabel = rawLabel.replace(/…/g, "").replace(/\.\.\./g, "").trim();
+  const roleKey = String(item.role || "").toLowerCase().trim();
+
+  let IconComponent = MENU_ICON_MAP[cleanLabel] || MENU_ICON_MAP[rawLabel] || MENU_ICON_MAP[roleKey];
+
+  if (!IconComponent) {
+    if (rawLabel.includes("asset")) {
+      IconComponent = ImageIcon;
+    } else if (rawLabel.includes("log")) {
+      IconComponent = FileTerminal;
+    } else if (rawLabel.includes("move") && rawLabel.includes("removed")) {
+      IconComponent = Trash2;
+    } else if (rawLabel.includes("commit")) {
+      IconComponent = GitCommit;
+    } else if (rawLabel.includes("workspace") && (rawLabel.includes("remove") || rawLabel.includes("delete"))) {
+      IconComponent = Trash2;
+    } else if (rawLabel.includes("workspace")) {
+      IconComponent = FolderOpen;
+    } else if (rawLabel.includes("recent")) {
+      IconComponent = Clock;
+    } else if (rawLabel.includes("export") || rawLabel.includes("import")) {
+      IconComponent = Package;
+    } else if (rawLabel.includes("theme")) {
+      IconComponent = SunMoon;
+    } else if (rawLabel.includes("zoom")) {
+      IconComponent = ZoomIn;
+    } else if (rawLabel.includes("reload") || rawLabel.includes("refresh")) {
+      IconComponent = RefreshCw;
+    } else if (rawLabel.includes("remove") || rawLabel.includes("delete") || rawLabel.includes("trash")) {
+      IconComponent = Trash2;
+    }
+  }
+
+  if (!IconComponent) return null;
+  return <IconComponent size={12} className="titlebar-menu-item-icon" />;
+}
 
 export function TitleBar({ title = "Notely", onOpenWebsite }) {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -170,7 +313,7 @@ export function TitleBar({ title = "Notely", onOpenWebsite }) {
               }}
             >
               <div className="titlebar-menu-item-check">
-                {item.checked && <Check size={12} />}
+                {item.checked ? <Check size={12} /> : getItemIcon(item)}
               </div>
               <span className="titlebar-menu-item-label">
                 {getLabel(item)}

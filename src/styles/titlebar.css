@@ -133,6 +133,17 @@
   align-items: center;
   justify-content: center;
   color: var(--accent-solid);
+  flex-shrink: 0;
+}
+
+.titlebar-menu-item-icon {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.titlebar-menu-item:hover .titlebar-menu-item-icon {
+  color: var(--text-strong);
+  opacity: 1;
 }
 
 .titlebar-menu-item-label {

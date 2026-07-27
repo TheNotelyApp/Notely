@@ -1414,6 +1414,16 @@ export default function App() {
         return;
       }
 
+      if (action === "open-assets") {
+        setLandingAssetsOpen(true);
+        return;
+      }
+
+      if (action === "open-trash") {
+        setTrashDialogOpen(true);
+        return;
+      }
+
       if (action.startsWith("open-recent-workspace:")) {
         const encodedPath = String(action).slice("open-recent-workspace:".length);
         const workspacePath = decodeURIComponent(encodedPath || "");
@@ -2596,6 +2606,11 @@ export default function App() {
 
     if (action === "new-folder") {
       setFolderDialogOpen(true);
+      return;
+    }
+
+    if (action === "reload-workspace" || action === "refresh") {
+      void handleReloadWorkspace();
       return;
     }
 
