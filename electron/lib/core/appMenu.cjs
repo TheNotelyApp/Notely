@@ -1,4 +1,4 @@
-const { Menu } = require("electron");
+const { Menu, app } = require("electron");
 
 // Sends a menu-action signal to the renderer for the given window.
 function sendMenuAction(win, action) {
@@ -131,7 +131,7 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Restart Notely",
           click: () => sendMenuAction(win, "restart-app")
         },
-        { role: "quit" }
+        { role: "quit", click: () => app.quit() }
       ]
     : [
         {
@@ -170,7 +170,7 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Restart Notely",
           click: () => sendMenuAction(win, "restart-app")
         },
-        { role: "quit" }
+        { role: "quit", click: () => app.quit() }
       ];
 
   const editSubmenu = [

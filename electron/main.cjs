@@ -1117,7 +1117,9 @@ ipcMain.on("window:execute-menu-item", (event, { indexPath, role, action }) => {
   }
 
   if (role) {
-    if (role === "toggleDevTools") {
+    if (role === "quit") {
+      app.quit();
+    } else if (role === "toggleDevTools") {
       win.webContents.toggleDevTools();
     } else if (role === "reload") {
       win.webContents.reload();
