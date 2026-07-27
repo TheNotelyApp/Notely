@@ -598,7 +598,127 @@ function registerCoreIpcHandlers(ipcMain, deps) {
         return { success: true, favorites: nextFavorites };
       }
     }
-    return { success: false, favorites: [] };
+    return { success: false };
+  });
+
+  registerTrustedHandler("workspace:validate", (_event, payload) => {
+    const { dirPath } = payload || {};
+    const { validateIsWorkspace } = require("../core/workspaceMetadata.cjs");
+    return { isWorkspace: validateIsWorkspace(fs, path, dirPath) };
+  });
+
+  registerTrustedHandler("workspace-metadata:get-info", () => {
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) return store.getWorkspaceInfo();
+    }
+    return {};
+  });
+
+  registerTrustedHandler("workspace-metadata:update-info", (_event, payload) => {
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) {
+        const updated = store.updateWorkspaceInfo(payload || {});
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win || win.isDestroyed()) continue;
+          win.webContents.send("workspace-metadata:info-changed", updated);
+        }
+        return { success: true, info: updated };
+      }
+    }
+    return { success: false };
+  });
+
+  registerTrustedHandler("workspace:create-new", async (_event, payload) => {
+    const {
+      name,
+      parentLocation,
+      description = "",
+      domainTags = [],
+      projectType = "General",
+      primaryGoal = "",
+      icon = "",
+      color = "",
+      createWelcomeNote = true,
+      initGit = false,
+    } = payload || {};
+
+    if (!name || !name.trim()) {
+      throw new Error("Workspace name is required.");
+    }
+    if (!parentLocation || !parentLocation.trim()) {
+      throw new Error("Workspace parent location is required.");
+    }
+
+    const sanitizedName = name.trim().replace(/[\\/:*?"<>|]/g, "_");
+    const newWorkspacePath = path.join(parentLocation.trim(), sanitizedName);
+    const metaAppDir = path.join(newWorkspacePath, ".notes-app");
+
+    let isNestedWorkspace = false;
+    let parentWorkspacePath = null;
+    let curr = path.resolve(parentLocation.trim());
+    while (curr) {
+      const checkMeta = path.join(curr, ".notes-app");
+      try {
+        if (fs.existsSync(checkMeta) && fs.statSync(checkMeta).isDirectory()) {
+          isNestedWorkspace = true;
+          parentWorkspacePath = curr;
+          break;
+        }
+      } catch {}
+      const parentDir = path.dirname(curr);
+      if (parentDir === curr) break;
+      curr = parentDir;
+    }
+
+    ensureDir(newWorkspacePath);
+    ensureDir(metaAppDir);
+
+    const initialInfo = {
+      name: name.trim(),
+      description: description.trim(),
+      domainTags: Array.isArray(domainTags) ? domainTags : [],
+      projectType: projectType || "General",
+      primaryGoal: primaryGoal.trim(),
+      icon: icon || "",
+      color: color || "",
+    };
+
+    const initialMeta = {
+      items: {},
+      favorites: [],
+      info: initialInfo,
+    };
+
+    const metaJsonPath = path.join(metaAppDir, "metadata.json");
+    fs.writeFileSync(metaJsonPath, JSON.stringify(initialMeta, null, 2), "utf8");
+
+    if (initGit) {
+      try {
+        const simpleGit = require("simple-git");
+        const git = simpleGit(newWorkspacePath);
+        await git.init();
+      } catch (gitErr) {
+        console.warn("[Workspace Creation] Git init warning:", gitErr?.message || gitErr);
+      }
+    }
+
+    if (createWelcomeNote) {
+      const readmePath = path.join(newWorkspacePath, "README.md");
+      if (!fs.existsSync(readmePath)) {
+        const readmeContent = `# ${name.trim()}\n\nThis is your Notely workspace.\n\n- **Project Type**: ${initialInfo.projectType}\n- **Description**: ${initialInfo.description || "No description provided."}\n\nStart writing notes or organizing folders!`;
+        fs.writeFileSync(readmePath, readmeContent, "utf8");
+      }
+    }
+
+    return {
+      success: true,
+      workspacePath: newWorkspacePath,
+      info: initialInfo,
+      isNestedWorkspace,
+      parentWorkspacePath,
+    };
   });
 
   registerTrustedHandler("shell:open-external", async (_event, payload) => {

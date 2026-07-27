@@ -53,7 +53,7 @@ function normalizeWorkspacePathList(entries) {
   return normalized;
 }
 
-export function useDocumentManager({ notify }) {
+export function useDocumentManager({ notify, onRequireWorkspaceInitialization }) {
   const { confirm } = useConfirm();
   const [documents, setDocuments] = useState([]);
   const [current, setCurrent] = useState(null);
@@ -784,6 +784,25 @@ export function useDocumentManager({ notify }) {
       const selectedPath = await pickFolder();
       if (!selectedPath) return;
       const normalizedSelectedPath = normalizePathValue(selectedPath);
+
+      if (window.notesApi?.validateWorkspace) {
+        const validation = await window.notesApi.validateWorkspace(normalizedSelectedPath);
+        if (validation && !validation.isWorkspace) {
+          const confirmed = await confirm({
+            title: "Initialize Notely Workspace?",
+            message: `"${normalizedSelectedPath}" is not currently a Notely workspace (.notes-app missing). Would you like to configure metadata and initialize it as a Notely workspace?`,
+            confirmLabel: "Initialize",
+            cancelLabel: "Cancel",
+            variant: "primary"
+          });
+          if (!confirmed) return;
+          if (typeof onRequireWorkspaceInitialization === "function") {
+            onRequireWorkspaceInitialization(normalizedSelectedPath);
+            return;
+          }
+        }
+      }
+
       await handleSaveNotesFolder(normalizedSelectedPath);
     } catch (err) {
       notify(err?.message || "Unable to open folder picker.", "error");
@@ -1296,9 +1315,8 @@ export function useDocumentManager({ notify }) {
     handleRemoveListEntry,
     handleCreateNote,
     handleCreateFolder,
-    handleOpenWorkspacePicker,
-    handleSaveNotesFolder,
     handleOpenRecentWorkspace,
+    handleSaveNotesFolder,
     handleRestartApp,
     handleGoHome,
     handleOpenCurrentInEditor,

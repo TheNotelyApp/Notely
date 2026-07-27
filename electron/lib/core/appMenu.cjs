@@ -79,6 +79,11 @@ function buildAppMenuTemplate(win, context = {}) {
             {
               label: "Folder",
               click: () => sendMenuAction(win, "new-folder")
+            },
+            { type: "separator" },
+            {
+              label: "Workspace",
+              click: () => sendMenuAction(win, "new-workspace")
             }
           ]
         },
@@ -154,6 +159,11 @@ function buildAppMenuTemplate(win, context = {}) {
             {
               label: "Folder",
               click: () => sendMenuAction(win, "new-folder")
+            },
+            { type: "separator" },
+            {
+              label: "Workspace",
+              click: () => sendMenuAction(win, "new-workspace")
             }
           ]
         },
@@ -530,6 +540,10 @@ function buildAppMenuTemplate(win, context = {}) {
     {
       label: "Workspace",
       submenu: [
+        {
+          label: "Workspace Information",
+          click: () => sendMenuAction(win, "open-workspace-info")
+        },
         {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",

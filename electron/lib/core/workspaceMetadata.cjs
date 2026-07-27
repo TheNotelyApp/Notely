@@ -26,13 +26,26 @@ class WorkspaceMetadata {
       if (this.fs.existsSync(p)) {
         this.state = JSON.parse(this.fs.readFileSync(p, "utf8"));
       } else {
-        this.state = { items: {}, favorites: [] };
+        this.state = { items: {}, favorites: [], info: {} };
       }
     } catch {
-      this.state = { items: {}, favorites: [] };
+      this.state = { items: {}, favorites: [], info: {} };
     }
     if (!this.state.items) this.state.items = {};
     if (!Array.isArray(this.state.favorites)) this.state.favorites = [];
+    if (!this.state.info || typeof this.state.info !== "object") {
+      const root = this.getNotesRoot();
+      const defaultName = root ? this.path.basename(root) : "Workspace";
+      this.state.info = {
+        name: defaultName,
+        description: "",
+        domainTags: [],
+        projectType: "General",
+        primaryGoal: "",
+        icon: "",
+        color: "",
+      };
+    }
   }
 
   _save() {
@@ -81,6 +94,32 @@ class WorkspaceMetadata {
     return this.state.favorites;
   }
 
+  getWorkspaceInfo() {
+    this._load();
+    const root = this.getNotesRoot();
+    const defaultName = root ? this.path.basename(root) : "Workspace";
+    return {
+      name: this.state.info?.name || defaultName,
+      description: this.state.info?.description || "",
+      domainTags: Array.isArray(this.state.info?.domainTags) ? this.state.info.domainTags : [],
+      projectType: this.state.info?.projectType || "General",
+      primaryGoal: this.state.info?.primaryGoal || "",
+      icon: this.state.info?.icon || "",
+      color: this.state.info?.color || "",
+    };
+  }
+
+  updateWorkspaceInfo(infoPayload) {
+    this._load();
+    const current = this.getWorkspaceInfo();
+    this.state.info = {
+      ...current,
+      ...infoPayload,
+    };
+    this._save();
+    return this.state.info;
+  }
+
   updateMetadata(absolutePath, { icon, color }) {
     this._load();
     const relPath = this._getRelativePath(absolutePath);
@@ -103,8 +142,18 @@ class WorkspaceMetadata {
   }
 }
 
+function validateIsWorkspace(fs, path, dirPath) {
+  if (!dirPath || typeof dirPath !== "string") return false;
+  try {
+    const metaFolder = path.join(dirPath, ".notes-app");
+    return fs.existsSync(metaFolder) && fs.statSync(metaFolder).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 function createWorkspaceMetadata(deps) {
   return new WorkspaceMetadata(deps);
 }
 
-module.exports = { createWorkspaceMetadata };
+module.exports = { createWorkspaceMetadata, validateIsWorkspace };

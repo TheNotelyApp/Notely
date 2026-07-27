@@ -62,6 +62,8 @@ const MENU_ICON_MAP = {
   "table notes": Layout,
 
   "assets library": ImageIcon,
+  "workspace": FolderOpen,
+  "workspace information": Info,
   "workspace activity": Activity,
   "reload workspace": RefreshCw,
   "open workspace in vs code": ExternalLink,

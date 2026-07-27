@@ -335,6 +335,16 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("workspace:changed", listener);
     return () => ipcRenderer.removeListener("workspace:changed", listener);
   },
+  validateWorkspace: (dirPath) => ipcRenderer.invoke("workspace:validate", { dirPath }),
+  getWorkspaceInfo: () => ipcRenderer.invoke("workspace-metadata:get-info"),
+  updateWorkspaceInfo: (payload) => ipcRenderer.invoke("workspace-metadata:update-info", payload),
+  createNewWorkspace: (payload) => ipcRenderer.invoke("workspace:create-new", payload),
+  onWorkspaceInfoChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("workspace-metadata:info-changed", listener);
+    return () => ipcRenderer.removeListener("workspace-metadata:info-changed", listener);
+  },
   restartApp: () => ipcRenderer.invoke("app:restart"),
   exportNotePackage: (payload) => ipcRenderer.invoke("note-package:export", payload),
   importNotePackage: (payload) => ipcRenderer.invoke("note-package:import", payload),

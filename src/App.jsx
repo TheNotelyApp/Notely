@@ -26,6 +26,7 @@ const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
 const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
 
 import { SettingsModal } from "./components/SettingsModal";
+import { WorkspaceModal } from "./components/WorkspaceModal";
 import { LandingView } from "./components/layout/LandingView";
 import { TitleBar } from "./components/layout/TitleBar";
 import { TrashDialog } from "./components/TrashDialog";
@@ -411,6 +412,30 @@ export default function App() {
   const [updateStatus, setUpdateStatus] = useState(null);
   const [updateDetails, setUpdateDetails] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
+  const [workspaceModalMode, setWorkspaceModalMode] = useState("create");
+  const [workspaceInfoState, setWorkspaceInfoState] = useState({});
+
+  const handleRequireWorkspaceInitialization = useCallback((folderPath) => {
+    const normalized = String(folderPath || "").replace(/\\/g, "/").replace(/\/$/, "");
+    const lastSlash = normalized.lastIndexOf("/");
+    const name = lastSlash !== -1 ? normalized.slice(lastSlash + 1) : normalized || "Workspace";
+    const parentLocation = lastSlash !== -1 ? normalized.slice(0, lastSlash) : normalized;
+
+    setWorkspaceInfoState({
+      name,
+      parentLocation,
+      description: "",
+      domainTags: [],
+      projectType: "General",
+      icon: "📝",
+      color: "#3b82f6"
+    });
+    setWorkspaceModalMode("create");
+    setWorkspaceModalOpen(true);
+  }, []);
+
   const landingLayoutRef = useRef(null);
 
   const {
@@ -458,6 +483,7 @@ export default function App() {
     handleCreateFolder,
     handleOpenWorkspacePicker,
     handleOpenRecentWorkspace,
+    handleSaveNotesFolder,
     handleRestartApp,
     handleGoHome,
     handleOpenCurrentInEditor,
@@ -484,7 +510,7 @@ export default function App() {
     setSelectedParentFolder,
     initialLine,
     setInitialLine,
-  } = useDocumentManager({ notify });
+  } = useDocumentManager({ notify, onRequireWorkspaceInitialization: handleRequireWorkspaceInitialization });
 
   const handleCopyLinkPath = useCallback((target) => {
     const filePath = typeof target === "object" ? target?.filePath : target;
@@ -647,11 +673,76 @@ export default function App() {
 
   useEffect(() => {
     const api = window.electronAPI || window.notesApi;
-    if (!api?.onFavoritesChanged) return undefined;
-    return api.onFavoritesChanged((favs) => {
-      setFavoriteNotesState(normalizeFavoriteNotes(favs));
-    });
+    if (api?.onFavoritesChanged) {
+      const unsub = api.onFavoritesChanged((favs) => {
+        setFavoriteNotesState(normalizeFavoriteNotes(favs));
+      });
+      return () => unsub();
+    }
   }, []);
+
+  useEffect(() => {
+    if (window.notesApi?.getWorkspaceInfo) {
+      window.notesApi.getWorkspaceInfo().then((info) => {
+        if (info) setWorkspaceInfoState(info);
+      }).catch(() => {});
+    }
+    if (window.notesApi?.onWorkspaceInfoChanged) {
+      const unsub = window.notesApi.onWorkspaceInfoChanged((updated) => {
+        if (updated) setWorkspaceInfoState(updated);
+      });
+      return () => unsub();
+    }
+  }, [notesFolderPath]);
+
+  const handleOpenNewWorkspaceModal = () => {
+    setWorkspaceInfoState({});
+    setWorkspaceModalMode("create");
+    setWorkspaceModalOpen(true);
+  };
+
+  const handleOpenWorkspaceInfoModal = async () => {
+    if (window.notesApi?.getWorkspaceInfo) {
+      try {
+        const info = await window.notesApi.getWorkspaceInfo();
+        if (info) setWorkspaceInfoState(info);
+      } catch {}
+    }
+    setWorkspaceModalMode("info");
+    setWorkspaceModalOpen(true);
+  };
+
+  const handleWorkspaceModalSubmit = async (payload) => {
+    if (workspaceModalMode === "create") {
+      if (!window.notesApi?.createNewWorkspace) {
+        throw new Error("Workspace creation is not supported.");
+      }
+      const res = await window.notesApi.createNewWorkspace(payload);
+      if (res?.success && res?.workspacePath) {
+        notify(`Workspace "${res.info?.name || payload.name}" created successfully.`, "success");
+        if (res.isNestedWorkspace) {
+          notify(`Note: Created inside an existing parent workspace folder. Nested workspaces operate independently.`, "info");
+        }
+        await handleSaveNotesFolder(res.workspacePath);
+      }
+    } else {
+      if (!window.notesApi?.updateWorkspaceInfo) {
+        throw new Error("Workspace info update is not supported.");
+      }
+      const res = await window.notesApi.updateWorkspaceInfo(payload);
+      if (res?.success) {
+        notify("Workspace information updated.", "success");
+        setWorkspaceInfoState(res.info);
+      }
+    }
+  };
+
+  const handlePickWorkspaceParentLocation = async () => {
+    if (window.notesApi?.pickFolder) {
+      return await window.notesApi.pickFolder();
+    }
+    return "";
+  };
 
   const [showTerminal, setShowTerminal] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
@@ -1390,6 +1481,16 @@ export default function App() {
 
       if (action === "new-folder") {
         setFolderDialogOpen(true);
+        return;
+      }
+
+      if (action === "new-workspace") {
+        handleOpenNewWorkspaceModal();
+        return;
+      }
+
+      if (action === "open-workspace-info") {
+        void handleOpenWorkspaceInfoModal();
         return;
       }
 
@@ -2406,6 +2507,16 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "new-workspace") {
+      handleOpenNewWorkspaceModal();
+      return;
+    }
+
+    if (resolvedCommandId === "open-workspace-info") {
+      await handleOpenWorkspaceInfoModal();
+      return;
+    }
+
     if (resolvedCommandId === "restart-app") {
       await handleRestartApp();
       return;
@@ -3279,6 +3390,18 @@ export default function App() {
             onExport={handleRunWorkspaceExport}
           />
         </Suspense>
+      ) : null}
+
+      {workspaceModalOpen ? (
+        <WorkspaceModal
+          isOpen={workspaceModalOpen}
+          mode={workspaceModalMode}
+          initialInfo={workspaceInfoState}
+          defaultParentLocation={notesFolderPath}
+          onClose={() => setWorkspaceModalOpen(false)}
+          onSubmit={handleWorkspaceModalSubmit}
+          onPickParentLocation={handlePickWorkspaceParentLocation}
+        />
       ) : null}
 
       {settingsOpen ? (

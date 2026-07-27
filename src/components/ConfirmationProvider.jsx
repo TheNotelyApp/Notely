@@ -1,7 +1,7 @@
 import { createContext, useState, useCallback, useRef } from "react";
 import OverlayDialog from "./OverlayDialog";
 import AppButton from "./AppButton";
-import { Check, X, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { Check, X, AlertTriangle, AlertCircle, Info, ArrowLeft } from "lucide-react";
 
 export const ConfirmationContext = createContext(null);
 
@@ -79,10 +79,10 @@ export function ConfirmationProvider({ children }) {
           </div>
           <div className="confirmation-dialog__actions">
             <AppButton
-              variant="small"
+              variant="secondary"
               onClick={handleCancel}
             >
-              <X size={16} />
+              {/back/i.test(confirmState.cancelLabel) ? <ArrowLeft size={16} /> : <X size={16} />}
               <span>{confirmState.cancelLabel}</span>
             </AppButton>
             <AppButton

@@ -2879,7 +2879,8 @@
   color: var(--text-muted) !important;
 }
 /* â”€â”€ Dashboard Panel Text Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-:root[data-theme="dark"] .dashboard-panel-head h2 {
+:root[data-theme="dark"] .dashboard-panel-head h2,
+:root[data-theme="dark"] .dashboard-panel-head h3 {
   color: var(--text-strong) !important;
 }
 
