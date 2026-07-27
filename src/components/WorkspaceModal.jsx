@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, Sparkles, Tag, Layers, Check, Info, Palette, Smile, X, FolderPlus, Save } from "lucide-react";
+import { Folder, Sparkles, Check, Info, X, FolderPlus, Save } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import useConfirm from "../hooks/useConfirm";
 import AppButton from "./AppButton";
@@ -247,7 +247,7 @@ export function WorkspaceModal({
                 placeholder="Select parent folder path..."
                 required
               />
-              <AppButton type="button" variant="secondary" onClick={handleBrowseLocation}>
+              <AppButton type="button" variant="small" onClick={handleBrowseLocation}>
                 Browse...
               </AppButton>
             </div>
@@ -288,7 +288,7 @@ export function WorkspaceModal({
                     onClick={() => removeTag(idx)}
                     aria-label={`Remove tag ${tag}`}
                   >
-                    <X size={10} />
+                    <X size={12} />
                   </button>
                 </span>
               ))}
@@ -376,7 +376,7 @@ export function WorkspaceModal({
         )}
 
         <div className="workspace-modal-actions">
-          <AppButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>
+          <AppButton type="button" variant="small" onClick={onClose} disabled={submitting}>
             <X size={14} />
             <span>Cancel</span>
           </AppButton>

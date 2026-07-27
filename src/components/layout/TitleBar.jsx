@@ -5,7 +5,7 @@ import {
   Undo2, Redo2, Scissors, Clipboard, CheckSquare, Search, Replace, Camera, BookOpen, Command,
   SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
-  ArrowDownLeft, Network, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
+  ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";

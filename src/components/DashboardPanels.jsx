@@ -1,4 +1,4 @@
-import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search, Trash2, FileText, Star, Sparkles, RefreshCw } from "lucide-react";
+import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search, Trash2, FileText, Star, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 import { formatDate } from "../utils/dateUtils";
 import { extractOpenTasksFromDocuments, getTaskCountsFromDocuments } from "../utils/taskUtils";

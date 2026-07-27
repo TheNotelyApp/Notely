@@ -666,7 +666,9 @@ function registerCoreIpcHandlers(ipcMain, deps) {
           parentWorkspacePath = curr;
           break;
         }
-      } catch {}
+      } catch {
+        /* ignore */
+      }
       const parentDir = path.dirname(curr);
       if (parentDir === curr) break;
       curr = parentDir;

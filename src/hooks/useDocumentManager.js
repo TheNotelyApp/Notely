@@ -1315,6 +1315,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     handleRemoveListEntry,
     handleCreateNote,
     handleCreateFolder,
+    handleOpenWorkspacePicker,
     handleOpenRecentWorkspace,
     handleSaveNotesFolder,
     handleRestartApp,

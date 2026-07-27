@@ -14,8 +14,6 @@ export function LandingListControls({
   totalFolderCount,
   visibleNoteCount,
   totalNoteCount,
-  onCreateNote,
-  onReloadWorkspace,
 }) {
   return (
     <div className="landing-list-controls" aria-label="List controls">

@@ -41,7 +41,7 @@ async function createTestWorkspace(payload) {
   const metaJsonPath = path.join(metaAppDir, "metadata.json");
   fs.writeFileSync(metaJsonPath, JSON.stringify({ info: initialInfo }, null, 2), "utf8");
 
-  if (Boolean(initGit)) {
+  if (initGit) {
     try {
       const simpleGit = (await import("simple-git")).default;
       const git = simpleGit(newWorkspacePath);
@@ -51,7 +51,7 @@ async function createTestWorkspace(payload) {
     }
   }
 
-  if (Boolean(createWelcomeNote)) {
+  if (createWelcomeNote) {
     const readmePath = path.join(newWorkspacePath, "README.md");
     if (!fs.existsSync(readmePath)) {
       const readmeContent = `# ${name.trim()}\n\nThis is your Notely workspace.`;

@@ -706,7 +706,9 @@ export default function App() {
       try {
         const info = await window.notesApi.getWorkspaceInfo();
         if (info) setWorkspaceInfoState(info);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }
     setWorkspaceModalMode("info");
     setWorkspaceModalOpen(true);
