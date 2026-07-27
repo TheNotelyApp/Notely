@@ -63,7 +63,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("raw");
   const [error, setError] = useState("");
-  const [_projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProjectState] = useState(null);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [creatingNote, setCreatingNote] = useState(false);
@@ -1280,6 +1280,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     setActiveTab,
     error,
     setError,
+    projects,
     activeProject,
     newNoteTitle,
     setNewNoteTitle,

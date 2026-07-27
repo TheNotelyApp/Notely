@@ -51,7 +51,7 @@ export function extractEditableAIText(value) {
   return fenceMatch ? fenceMatch[1].trim() : text;
 }
 
-export function normalizePaletteIntent(options = {}, _contextSummary = null) {
+export function normalizePaletteIntent(options = {}) {
   const requestedTarget = options?.target || null;
   const defaultTarget = "auto";
 

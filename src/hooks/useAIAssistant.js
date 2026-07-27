@@ -75,7 +75,7 @@ export function useAIAssistant({
   notify,
 }) {
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const [_aiLoading, setAiLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryLoading, setAiQueryLoading] = useState(false);
   const [aiQueryError, setAiQueryError] = useState("");
   const [aiContextSummary, setAiContextSummary] = useState({
@@ -573,6 +573,7 @@ export function useAIAssistant({
   return {
     aiSettingsOpen,
     setAiSettingsOpen,
+    aiLoading,
     aiQueryLoading,
     aiQueryError,
     aiContextSummary,

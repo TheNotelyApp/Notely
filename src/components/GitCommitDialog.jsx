@@ -23,7 +23,6 @@ export function GitCommitDialog({
   onClose,
   onCommit,
   stagedFiles = [],
-  _workspacePath,
   currentFilePath = null,
 }) {
   const [message, setMessage] = useState("");
