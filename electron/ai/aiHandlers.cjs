@@ -342,7 +342,7 @@ async function handleInitialize(event, payload) {
 
     const result = await aiService.initialize(appDataDir, workspaceRoot, llmProvider, embeddingConfig);
 
-    // Apply saved graphProvider preference (gliner-glirel ONNX vs text-provider Cloud LLM)
+    // Apply saved graphProvider preference (gliner2-relex ONNX vs text-provider Cloud LLM)
     if (aiService.agent) {
       if (prefs.graphProvider === 'text-provider') {
         const activeProvider = aiService.agent.llmRegistry?.getActiveProvider();
@@ -352,12 +352,12 @@ async function handleInitialize(event, payload) {
           const GraphModelDownloader = require('../../ai/graph/GraphModelDownloader');
           const modelDownloader = new GraphModelDownloader(appDataDir);
           if (modelDownloader.isModelDownloaded()) {
-            aiService.agent.setGraphProvider('gliner-glirel');
+            aiService.agent.setGraphProvider('gliner2-relex');
           } else {
             aiService.agent.setGraphProvider(null);
           }
         } catch (graphErr) {
-          console.warn('[AI IPC] Local GLiNER/GLiREL ONNX graph provider init notice:', graphErr.message);
+          console.warn('[AI IPC] Local GLiNER2-Relex ONNX graph provider init notice:', graphErr.message);
         }
       }
     }

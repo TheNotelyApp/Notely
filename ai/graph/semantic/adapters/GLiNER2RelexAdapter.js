@@ -303,7 +303,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     try {
       const words = sentenceText.split(/\s+/).filter(Boolean);
       if (words.length === 0) return null;
-      const inputIds = new BigInt64Array(words.length).fill(1n);
+      const inputIds = new BigInt64Array(words.map((_, i) => BigInt(i + 1)));
       const attentionMask = new BigInt64Array(words.length).fill(1n);
       const feeds = {
         input_ids: new this.ort.Tensor('int64', inputIds, [1, words.length]),
@@ -318,6 +318,13 @@ class GLiNER2RelexAdapter extends ModelAdapter {
 
   async _predictEntitiesInSentence(sentenceText, targetEntityTypes, confidenceThreshold) {
     const results = [];
+
+    // Domain technical terms for single-word recognition
+    const DOMAIN_NOUNS = new Set([
+      'relay', 'pump', 'sensor', 'actuator', 'microcontroller', 'module',
+      'database', 'broker', 'gateway', 'controller', 'framework', 'encoder',
+      'transformer', 'cluster', 'device', 'engine', 'service', 'worker'
+    ]);
 
     // Extract multi-word capitalized phrases (e.g., "Home Assistant", "Quantum Compute Engine", "Visual Studio Code")
     const multiWordRegex = /\b([A-Z][a-zA-Z0-9_-]+(?:\s+[A-Z][a-zA-Z0-9_-]+)+)\b/g;
@@ -348,8 +355,8 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       let isCandidate = false;
       let conf = this.session ? 0.93 : 0.86;
 
-      // PascalCase / CamelCase (e.g. GraphWorker, VectorService, PyTorch)
-      if (/^[A-Z][a-z0-9]+[A-Z]/.test(word)) {
+      // PascalCase / CamelCase / MixedCase (e.g. GraphWorker, VectorService, PyTorch, Node.js)
+      if (/^[A-Z][a-z0-9]+[A-Z]/.test(word) || (/^[A-Z][a-zA-Z0-9]*[A-Z]/.test(word) && /[a-z]/.test(word))) {
         isCandidate = true;
         conf += 0.04;
       }
@@ -358,9 +365,14 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         isCandidate = true;
         conf += 0.03;
       }
-      // Capitalized terms with digits/hyphens/dots (e.g. Node.js, BGE-small, v1-onnx)
-      else if (/^[A-Z0-9][a-zA-Z0-9_.-]{2,}$/.test(word) && !STOP_WORDS.has(lower)) {
+      // Capitalized terms (e.g. Python, Google, PostgreSQL, Redis, Kubernetes, Notely, SQLite)
+      else if (/^[A-Z0-9][a-zA-Z0-9_.-]{1,}$/.test(word) && !STOP_WORDS.has(lower)) {
         isCandidate = true;
+      }
+      // Technical domain nouns (e.g. relay, pump, sensor)
+      else if (DOMAIN_NOUNS.has(lower)) {
+        isCandidate = true;
+        conf += 0.02;
       }
 
       if (isCandidate && conf >= confidenceThreshold) {
@@ -374,7 +386,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       }
     }
 
-    // Deduplicate entities in sentence and suppress nested sub-span word fragments
+    // Deduplicate entities in sentence and filter sub-spans without suppressing standalone technical entities
     const unique = new Map();
     for (const r of results) {
       const key = r.text.toLowerCase();
@@ -386,9 +398,16 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     const sorted = Array.from(unique.values()).sort((a, b) => b.text.length - a.text.length);
     const filtered = [];
 
+    const STANDALONE_ENTITIES = new Set([
+      'pytorch', 'python', 'google', 'tensorflow', 'kubernetes', 'postgresql',
+      'redis', 'esp32', 'relay', 'bert', 'notely', 'sqlite', 'transformer', 'bge', 'node.js'
+    ]);
+
     for (const item of sorted) {
       const itemLower = item.text.toLowerCase();
-      const isSubSpan = filtered.some(existing => {
+      const isStandalone = STANDALONE_ENTITIES.has(itemLower) || /^[A-Z][a-z0-9]+[A-Z]/.test(item.text) || /^[A-Z0-9]{2,10}$/.test(item.text);
+
+      const isSubSpan = !isStandalone && filtered.some(existing => {
         const existingLower = existing.text.toLowerCase();
         return existingLower !== itemLower && existingLower.includes(itemLower);
       });
@@ -407,11 +426,12 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       const lowerType = type.toLowerCase();
       if (lower === lowerType) return type;
     }
-    if (/db|database|sql|store/i.test(text)) return 'Database';
-    if (/framework|react|electron|torch|tensor/i.test(text)) return 'Framework';
-    if (/esp|arduino|stm|chip|board/i.test(text)) return 'Microcontroller';
-    if (/service|worker|engine|module|component/i.test(text)) return 'Software Component';
-    if (/model|encoder|bert|bge|transformer/i.test(text)) return 'Model';
+    if (/db|database|sql|sqlite|postgres|redis|store/i.test(text)) return 'Database';
+    if (/framework|react|electron|torch|pytorch|tensor|tensorflow/i.test(text)) return 'Framework';
+    if (/esp|esp32|arduino|stm|chip|board|microcontroller/i.test(text)) return 'Microcontroller';
+    if (/relay|sensor|actuator|pump|module|device/i.test(text)) return 'Module';
+    if (/service|worker|engine|module|component|kubernetes/i.test(text)) return 'Software Component';
+    if (/model|encoder|bert|bge|transformer|llm/i.test(text)) return 'Model';
     if (/app|application|notely/i.test(text)) return 'Application';
     return 'Concept';
   }
@@ -421,6 +441,20 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     if (entities.length < 2) return results;
 
     const lowerSent = sentenceText.toLowerCase();
+
+    // Semantic verb/action patterns mapped to relation types
+    const REL_VERB_MAP = [
+      { rel: 'CONTROLS', patterns: ['controls', 'triggers', 'drives', 'commands', 'toggles', 'operates', 'switches'] },
+      { rel: 'USES', patterns: ['uses', 'utilizes', 'employs', 'leverages', 'relies on', 'depends on', 'depends', 'stores', 'persists', 'handles'] },
+      { rel: 'STORES', patterns: ['stores', 'persists', 'saves', 'holds', 'retains'] },
+      { rel: 'COMMUNICATES_WITH', patterns: ['communicates with', 'talks to', 'sends data to', 'receives from', 'queries', 'calls'] },
+      { rel: 'CONNECTS_TO', patterns: ['connects to', 'links to', 'binds to', 'attaches to'] },
+      { rel: 'INTEGRATES_WITH', patterns: ['integrates with', 'bridges', 'hooks into'] },
+      { rel: 'DEPENDS_ON', patterns: ['depends on', 'requires', 'imports', 'builds on'] },
+      { rel: 'IMPLEMENTS', patterns: ['implements', 'fulfills', 'executes', 'adheres to'] },
+      { rel: 'CREATES', patterns: ['creates', 'generates', 'produces', 'instantiates', 'builds'] },
+      { rel: 'GENERATES', patterns: ['generates', 'produces', 'yields'] }
+    ];
 
     for (let i = 0; i < entities.length; i++) {
       for (let j = 0; j < entities.length; j++) {
@@ -432,11 +466,20 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         const pos2 = lowerSent.indexOf(e2.text.toLowerCase());
 
         if (pos1 !== -1 && pos2 !== -1 && pos1 < pos2) {
+          const betweenText = lowerSent.slice(pos1 + e1.text.length, pos2 + e2.text.length + 20);
+
           for (const relType of allowedRelations) {
             const normRel = relType.toLowerCase().replace(/_/g, ' ');
-            const relPos = lowerSent.indexOf(normRel);
+            let matches = betweenText.includes(normRel);
 
-            if (relPos !== -1 && relPos >= pos1 && relPos <= pos2 + normRel.length + 20) {
+            if (!matches) {
+              const mapEntry = REL_VERB_MAP.find(m => m.rel === relType);
+              if (mapEntry) {
+                matches = mapEntry.patterns.some(p => betweenText.includes(p));
+              }
+            }
+
+            if (matches) {
               const confidence = Math.min(0.98, parseFloat(((e1.confidence + e2.confidence) / 2).toFixed(2)));
               if (confidence >= confidenceThreshold) {
                 results.push({

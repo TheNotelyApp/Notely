@@ -55,7 +55,7 @@ class GraphValidationEngine {
       const evidenceless = db.prepare(`
         SELECT r.id FROM relationships r
         LEFT JOIN relationship_evidence re ON r.id = re.relationship_id
-        WHERE re.relationship_id IS NULL AND r.extractor IN ('glirel', 'glirel_onnx')
+        WHERE re.relationship_id IS NULL AND r.extractor IN ('gliner2-relex', 'glirel', 'glirel_onnx')
       `).all();
       results.evidencelessEdges = evidenceless.length;
 
