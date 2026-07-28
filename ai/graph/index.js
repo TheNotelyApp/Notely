@@ -9,6 +9,8 @@ const GraphBuilder = require('./GraphBuilder');
 const MarkdownASTParser = require('./MarkdownASTParser');
 const EntityResolver = require('./EntityResolver');
 const EvidenceStore = require('./EvidenceStore');
+const EvidenceFusionEngine = require('./EvidenceFusionEngine');
+const KnowledgeSourceRegistry = require('./KnowledgeSourceRegistry');
 
 module.exports = {
   GraphDB,
@@ -17,6 +19,8 @@ module.exports = {
   MarkdownASTParser,
   EntityResolver,
   EvidenceStore,
+  EvidenceFusionEngine,
+  KnowledgeSourceRegistry,
 
   createGraphDB: (workspaceRoot) => new GraphDB(workspaceRoot),
   createGraphService: (agent, graphDb) => new GraphService(agent, graphDb),

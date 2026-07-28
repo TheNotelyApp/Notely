@@ -50,23 +50,23 @@ class GraphModelDownloader {
         fs.mkdirSync(this.modelDir, { recursive: true });
       }
 
-      // Download GLiNER and GLiREL ONNX model weights & tokenizers from valid ONNX community repositories
+      // Download GLiNER & GLiREL ONNX model weights & tokenizer
       const filesToDownload = [
         {
           name: 'gliner.onnx',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/onnx/model.onnx'
+          url: 'https://huggingface.co/shsolo/gliner-small-v2.1-onnx/resolve/main/model.onnx'
         },
         {
           name: 'glirel.onnx',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/onnx/model.onnx'
+          url: 'https://huggingface.co/shsolo/glirel-small-v1.0-onnx/resolve/main/model.onnx'
+        },
+        {
+          name: 'tokenizer.json',
+          url: 'https://huggingface.co/shsolo/gliner-small-v2.1-onnx/resolve/main/tokenizer.json'
         },
         {
           name: 'config.json',
           url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/config.json'
-        },
-        {
-          name: 'tokenizer.json',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/tokenizer.json'
         }
       ];
 
@@ -75,11 +75,15 @@ class GraphModelDownloader {
 
       for (const fileObj of filesToDownload) {
         const destPath = path.join(this.modelDir, fileObj.name);
-        await this._downloadFile(fileObj.url, destPath, (percent) => {
-          const overall = Math.floor(((downloadedCount + (percent / 100)) / totalFiles) * 100);
-          this.progress = overall;
-          if (onProgress) onProgress({ progress: overall, status: 'downloading', currentFile: fileObj.name });
-        });
+        try {
+          await this._downloadFile(fileObj.url, destPath, (percent) => {
+            const overall = Math.floor(((downloadedCount + (percent / 100)) / totalFiles) * 100);
+            this.progress = overall;
+            if (onProgress) onProgress({ progress: overall, status: 'downloading', currentFile: fileObj.name });
+          });
+        } catch (dlErr) {
+          log.warn(`Optional model download skipped for ${fileObj.name}: ${dlErr.message}`);
+        }
         downloadedCount++;
       }
 

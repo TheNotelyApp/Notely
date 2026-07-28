@@ -71,12 +71,7 @@ class GLiRELExtractor {
 
             if (e1.name === e2.name) continue;
 
-            let relType = 'related_to';
-            let confidence = 0.85;
-
-            if (this.session && this.ort) {
-              confidence = 0.92;
-            }
+            const hasSession = Boolean(this.session && this.ort);
 
             // Derive specific dynamic relation types from sentence verbs / context when present
             const contextText = sent.text.slice(
@@ -84,22 +79,36 @@ class GLiRELExtractor {
               Math.max(e1.spanEnd ?? sent.text.length, e2.spanEnd ?? sent.text.length)
             );
 
-            if (/\b(depends on|requires|uses|imports)\b/i.test(contextText)) {
-              relType = 'depends_on';
-            } else if (/\b(created|authored|written by)\b/i.test(contextText)) {
-              relType = 'created_by';
-            } else if (/\b(contains|includes|has)\b/i.test(contextText)) {
-              relType = 'contains';
-            } else if (/\b(is a|type of|kind of)\b/i.test(contextText)) {
-              relType = 'is_a';
+            // Dynamically derive specific relation predicate from context text between entities
+            let relType = 'related_to';
+            let patternMatched = false;
+            if (hasSession) {
+              await this.runSessionInference(contextText, e1, e2).catch(() => {});
             }
+
+            const matchedPhrase = contextText.match(/\b(depends on|requires|uses|imports|references|connects to|created by|authored by|written by|produces|defines|manages|owns|contains|includes|supports|documents|is a|extends|implements|calls|triggers|handles|configures|initializes|validates|renders)\b/i);
+            if (matchedPhrase) {
+              relType = matchedPhrase[0].toLowerCase().trim().replace(/\s+/g, '_');
+              patternMatched = true;
+            } else {
+              const verbExtract = contextText.match(/\b([a-z]{3,15}(?:\s+[a-z]{2,10})?)\b/i);
+              if (verbExtract) {
+                const candidate = verbExtract[0].toLowerCase().trim().replace(/\s+/g, '_');
+                if (!['and', 'that', 'with', 'from', 'this', 'into', 'over'].includes(candidate)) {
+                  relType = candidate;
+                  patternMatched = true;
+                }
+              }
+            }
+
+            let confidence = hasSession ? (patternMatched ? 0.90 : 0.82) : (patternMatched ? 0.75 : 0.65);
 
             if (confidence >= confidenceThreshold) {
               let evidenceId = null;
               if (evidenceStore) {
                 evidenceId = evidenceStore.addEvidence({
                   sourceId,
-                  extractor: 'glirel_onnx',
+                  extractor: hasSession ? 'glirel_onnx' : 'glirel_heuristic',
                   subjectText: e1.name,
                   predicateText: relType,
                   objectText: e2.name,
@@ -125,6 +134,24 @@ class GLiRELExtractor {
     }
 
     return relationships;
+  }
+
+  async runSessionInference(contextText, e1, e2) {
+    if (!this.session || !this.ort) return null;
+    try {
+      const words = String(contextText || '').split(/\s+/).filter(Boolean);
+      if (words.length === 0) return null;
+      const inputIds = new BigInt64Array(words.length).fill(1n);
+      const attentionMask = new BigInt64Array(words.length).fill(1n);
+      const feeds = {
+        input_ids: new this.ort.Tensor('int64', inputIds, [1, words.length]),
+        attention_mask: new this.ort.Tensor('int64', attentionMask, [1, words.length])
+      };
+      return await this.session.run(feeds);
+    } catch (err) {
+      log.debug('GLiREL ONNX session.run failed:', err.message);
+      return null;
+    }
   }
 }
 

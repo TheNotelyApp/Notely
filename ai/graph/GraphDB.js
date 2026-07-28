@@ -12,7 +12,13 @@ const {
   CREATE_EVIDENCE_TABLE,
   CREATE_RELATIONSHIPS_TABLE,
   CREATE_GRAPH_QUEUE_TABLE,
-  CREATE_INDEXES
+  CREATE_INDEXES,
+  ALTER_ENTITIES_ADD_COLUMNS,
+  CREATE_RELATIONSHIP_EVIDENCE_TABLE,
+  CREATE_COMMUNITIES_TABLE,
+  CREATE_GRAPH_VERSIONS_TABLE,
+  CREATE_WORKSPACE_ENTITY_TABLE,
+  CREATE_ENTITY_FTS
 } = require('./GraphSchema');
 
 const log = createLogger('GraphDB');
@@ -47,12 +53,30 @@ class GraphDB {
       this.db.exec('PRAGMA journal_mode = WAL;');
       this.db.exec('PRAGMA synchronous = NORMAL;');
 
-      // Create tables
+      // Create base tables
       this.db.exec(CREATE_ENTITIES_TABLE);
       this.db.exec(CREATE_ENTITY_ALIASES_TABLE);
       this.db.exec(CREATE_EVIDENCE_TABLE);
       this.db.exec(CREATE_RELATIONSHIPS_TABLE);
       this.db.exec(CREATE_GRAPH_QUEUE_TABLE);
+
+      // Create M3/M4 tables
+      this.db.exec(CREATE_RELATIONSHIP_EVIDENCE_TABLE);
+      this.db.exec(CREATE_COMMUNITIES_TABLE);
+      this.db.exec(CREATE_GRAPH_VERSIONS_TABLE);
+      this.db.exec(CREATE_WORKSPACE_ENTITY_TABLE);
+      try {
+        this.db.exec(CREATE_ENTITY_FTS);
+      } catch { /* ignore FTS initialization warning */ }
+
+      // Safe column alters
+      if (Array.isArray(ALTER_ENTITIES_ADD_COLUMNS)) {
+        for (const alterQuery of ALTER_ENTITIES_ADD_COLUMNS) {
+          try {
+            this.db.exec(alterQuery);
+          } catch { /* ignore column already exists error */ }
+        }
+      }
 
       // Create indexes
       for (const idxQuery of CREATE_INDEXES) {
@@ -128,12 +152,17 @@ class GraphDB {
     const propertiesJson = typeof properties === 'string' ? properties : JSON.stringify(properties);
     const stmt = this.db.prepare(query);
     stmt.run(id, name, canonical, type, note_path, propertiesJson);
+    try {
+      this.db.prepare('DELETE FROM entity_fts WHERE entity_id = ?').run(id);
+      this.db.prepare('INSERT INTO entity_fts (entity_id, name, canonical_name, type) VALUES (?, ?, ?, ?)').run(id, name, canonical, type);
+    } catch { /* ignore FTS sync error */ }
   }
 
   deleteEntity(id) {
     if (!this.db) throw new Error('Database not initialized');
     const stmt = this.db.prepare('DELETE FROM entities WHERE id = ?');
     stmt.run(id);
+    try { this.db.prepare('DELETE FROM entity_fts WHERE entity_id = ?').run(id); } catch { /* ignore FTS sync error */ }
   }
 
   /**
@@ -151,6 +180,7 @@ class GraphDB {
         this.db.prepare('DELETE FROM relationships WHERE source_id = ? OR target_id = ?').run(entityId, entityId);
         this.db.prepare('DELETE FROM evidence WHERE source_id = ?').run(notePath);
         this.db.prepare('DELETE FROM entities WHERE id = ? OR note_path = ?').run(entityId, notePath);
+        try { this.db.prepare('DELETE FROM entity_fts WHERE entity_id = ?').run(entityId); } catch { /* ignore */ }
         this.db.exec('COMMIT');
         log.info(`Deleted note graph data for entity: ${entityId}`);
       } catch (txnErr) {
@@ -257,6 +287,7 @@ class GraphDB {
     if (!this.db) return;
     try {
       this.db.exec('BEGIN; DELETE FROM relationships; DELETE FROM evidence; DELETE FROM entity_aliases; DELETE FROM entities; COMMIT;');
+      try { this.db.exec('DELETE FROM entity_fts;'); } catch { /* ignore */ }
     } catch (err) {
       try { this.db.exec('ROLLBACK'); } catch { /* ignore */ }
       log.error('Failed to clear graph database:', err.message);
@@ -523,6 +554,64 @@ class GraphDB {
     } catch (err) {
       log.error('Failed to generate rich graph visualization:', err.message);
       return { nodes: [], edges: [], stats: { totalNodes: 0, totalEdges: 0, networkDensity: 0 } };
+    }
+  }
+
+  upsertWorkspaceEntity({ name = 'Workspace', description = '', projectType = 'General', primaryGoal = '', domainTags = [] }) {
+    if (!this.db) return;
+    try {
+      const tagsJson = Array.isArray(domainTags) ? JSON.stringify(domainTags) : String(domainTags || '[]');
+      this.db.exec('DELETE FROM workspace_entity;');
+      const stmt = this.db.prepare(`
+        INSERT INTO workspace_entity (name, description, project_type, primary_goal, domain_tags, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `);
+      stmt.run(name, description, projectType, primaryGoal, tagsJson);
+    } catch (err) {
+      log.error('Failed to upsert workspace entity:', err.message);
+    }
+  }
+
+  getWorkspaceEntity() {
+    if (!this.db) return null;
+    try {
+      const row = this.db.prepare('SELECT * FROM workspace_entity ORDER BY id DESC LIMIT 1').get();
+      if (!row) return null;
+      return { ...row, domain_tags: JSON.parse(row.domain_tags || '[]') };
+    } catch {
+      return null;
+    }
+  }
+
+  snapshotVersion(versionName = 'v1.0') {
+    if (!this.db) return null;
+    try {
+      const entityCount = this.getNodeCount();
+      const edgeCount = this.getEdgeCount();
+      const stmt = this.db.prepare('INSERT INTO graph_versions (version, entity_count, edge_count) VALUES (?, ?, ?)');
+      stmt.run(versionName, entityCount, edgeCount);
+      return true;
+    } catch (err) {
+      log.error('Failed to snapshot graph version:', err.message);
+      return false;
+    }
+  }
+
+  searchEntities(queryStr, limit = 20) {
+    if (!this.db || !queryStr) return [];
+    try {
+      const clean = String(queryStr).trim();
+      if (!clean) return [];
+      try {
+        const stmt = this.db.prepare('SELECT entity_id, name, canonical_name, type FROM entity_fts WHERE entity_fts MATCH ? LIMIT ?');
+        return stmt.all(`${clean}*`, limit);
+      } catch {
+        const stmt = this.db.prepare('SELECT id as entity_id, name, canonical_name, type FROM entities WHERE LOWER(name) LIKE LOWER(?) LIMIT ?');
+        return stmt.all(`%${clean}%`, limit);
+      }
+    } catch (err) {
+      log.error('Failed searchEntities:', err.message);
+      return [];
     }
   }
 }

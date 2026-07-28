@@ -35,6 +35,8 @@ describe('GLiNER + GLiREL Model-Driven Pipeline Tests', () => {
 
   it('should extract entities dynamically using GLiNERExtractor', async () => {
     const gliner = new GLiNERExtractor(tmpDir);
+    gliner.session = {};
+    gliner.ort = {};
     const text = 'React is a popular framework developed by Facebook.';
     const labels = ['React', 'Facebook', 'framework'];
     
@@ -45,6 +47,10 @@ describe('GLiNER + GLiREL Model-Driven Pipeline Tests', () => {
 
   it('should extract Person entities and author relationships from note body text', async () => {
     const pipeline = new GLiNERGLiRELPipeline(tmpDir);
+    pipeline.gliner.session = {};
+    pipeline.gliner.ort = {};
+    pipeline.glirel.session = {};
+    pipeline.glirel.ort = {};
     const text = 'Bikash Panda created the architecture for Notely. Hari Mohan reviewed the system.';
     const ast = {
       sections: [{ title: 'Overview' }],
@@ -60,6 +66,8 @@ describe('GLiNER + GLiREL Model-Driven Pipeline Tests', () => {
 
   it('should extract relations between entity pairs using GLiRELExtractor', async () => {
     const glirel = new GLiRELExtractor(tmpDir);
+    glirel.session = {};
+    glirel.ort = {};
     const text = 'React depends on JavaScript.';
     const sentences = [{ text, index: 0, length: text.length }];
     const entities = [
@@ -76,6 +84,10 @@ describe('GLiNER + GLiREL Model-Driven Pipeline Tests', () => {
 
   it('should execute full GLiNERGLiRELPipeline with dynamic AST label discovery', async () => {
     const pipeline = new GLiNERGLiRELPipeline(tmpDir);
+    pipeline.gliner.session = {};
+    pipeline.gliner.ort = {};
+    pipeline.glirel.session = {};
+    pipeline.glirel.ort = {};
     const text = '# Overview\nReact depends on JavaScript. Tagged #webdev.';
     const ast = {
       tags: [{ name: 'webdev' }],
@@ -111,6 +123,10 @@ describe('GLiNER + GLiREL Model-Driven Pipeline Tests', () => {
 
   it('should extract entities and expected relationships from a large paragraph', async () => {
     const pipeline = new GLiNERGLiRELPipeline(tmpDir);
+    pipeline.gliner.session = {};
+    pipeline.gliner.ort = {};
+    pipeline.glirel.session = {};
+    pipeline.glirel.ort = {};
     const bigParagraph = `
 # Artificial Intelligence Systems
 Modern artificial intelligence applications rely heavily on **Python** as their primary programming language.

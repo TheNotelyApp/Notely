@@ -105,6 +105,121 @@ class GraphRetriever {
   }
 
   /**
+   * Find entities by ontology type
+   */
+  findEntitiesByType(type, limit = 20) {
+    if (!this.graphDB) return [];
+    try {
+      const db = this.graphDB.db || this.graphDB;
+      if (!db || typeof db.prepare !== 'function') return [];
+      const stmt = db.prepare('SELECT id, name, canonical_name, type, note_path FROM entities WHERE LOWER(type) = LOWER(?) OR LOWER(ontology_class) = LOWER(?) LIMIT ?');
+      return stmt.all(type, type, limit);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Explain path between two entities
+   */
+  explainPath(entityAName, entityBName) {
+    if (!this.graphDB) return null;
+    try {
+      const db = this.graphDB.db || this.graphDB;
+      if (!db || typeof db.prepare !== 'function') return null;
+
+      const entA = db.prepare('SELECT id, name FROM entities WHERE LOWER(name) = LOWER(?) OR note_path = ? LIMIT 1').get(entityAName, entityAName);
+      const entB = db.prepare('SELECT id, name FROM entities WHERE LOWER(name) = LOWER(?) OR note_path = ? LIMIT 1').get(entityBName, entityBName);
+
+      if (!entA || !entB) return null;
+
+      let pathIds = null;
+      if (typeof this.graphDB.findPath === 'function') {
+        pathIds = this.graphDB.findPath(entA.id, entB.id);
+      }
+      if (!pathIds || pathIds.length < 2) return `${entA.name} and ${entB.name} are not connected in the graph.`;
+
+      const names = pathIds.map(id => {
+        const row = db.prepare('SELECT name FROM entities WHERE id = ?').get(id);
+        return row?.name || id;
+      });
+
+      return names.join(' --> ');
+    } catch (err) {
+      log.warn('Failed explainPath:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Get workspace summary
+   */
+  getWorkspaceSummary() {
+    if (!this.graphDB) return null;
+    try {
+      let workspaceEntity = null;
+      if (typeof this.graphDB.getWorkspaceEntity === 'function') {
+        workspaceEntity = this.graphDB.getWorkspaceEntity();
+      }
+      const nodeCount = typeof this.graphDB.getNodeCount === 'function' ? this.graphDB.getNodeCount() : 0;
+      const edgeCount = typeof this.graphDB.getEdgeCount === 'function' ? this.graphDB.getEdgeCount() : 0;
+
+      return {
+        workspace: workspaceEntity || { name: 'Workspace' },
+        stats: { nodeCount, edgeCount }
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get dependencies for an entity
+   */
+  getDependencies(entityName, direction = 'both') {
+    if (!this.graphDB) return [];
+    try {
+      const db = this.graphDB.db || this.graphDB;
+      if (!db || typeof db.prepare !== 'function') return [];
+
+      const ent = db.prepare('SELECT id, name FROM entities WHERE LOWER(name) = LOWER(?) OR note_path = ? LIMIT 1').get(entityName, entityName);
+      if (!ent) return [];
+
+      let query = '';
+      if (direction === 'outgoing') {
+        query = "SELECT e.name as target, r.type FROM relationships r JOIN entities e ON r.target_id = e.id WHERE r.source_id = ? AND r.type IN ('depends_on', 'uses', 'imports', 'connects_to')";
+      } else if (direction === 'incoming') {
+        query = "SELECT e.name as source, r.type FROM relationships r JOIN entities e ON r.source_id = e.id WHERE r.target_id = ? AND r.type IN ('depends_on', 'uses', 'imports', 'connects_to')";
+      } else {
+        query = "SELECT e_src.name as source, r.type, e_tgt.name as target FROM relationships r JOIN entities e_src ON r.source_id = e_src.id JOIN entities e_tgt ON r.target_id = e_tgt.id WHERE (r.source_id = ? OR r.target_id = ?) AND r.type IN ('depends_on', 'uses', 'imports', 'connects_to')";
+      }
+
+      const stmt = db.prepare(query);
+      return direction === 'both' ? stmt.all(ent.id, ent.id) : stmt.all(ent.id);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get related documents for an entity
+   */
+  getRelatedDocuments(entityName) {
+    if (!this.graphDB) return [];
+    try {
+      const rows = this.traverse(entityName, 2);
+      const paths = new Set();
+      rows.forEach(r => {
+        if (r.from_path && r.from_path.endsWith('.md')) paths.add(r.from_path);
+        if (r.to_path && r.to_path.endsWith('.md')) paths.add(r.to_path);
+      });
+      return Array.from(paths);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Vercel AI SDK tool definition for this retriever.
    */
   toTool() {

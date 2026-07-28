@@ -72,7 +72,7 @@ class GraphMaintenance {
   }
 
   /**
-   * Find candidate duplicate entities using Levenshtein distance and merge aliases
+   * Find candidate duplicate entities using similarity metrics and perform active entity merge
    */
   deduplicateAliases() {
     if (!this.graphDb?.db || !this.entityResolver) return 0;
@@ -85,13 +85,30 @@ class GraphMaintenance {
         for (let j = i + 1; j < entities.length; j++) {
           const e1 = entities[i];
           const e2 = entities[j];
-          if (e1.id === e2.id || e1.type !== e2.type) continue;
+          if (!e1 || !e2 || e1.id === e2.id || e1.type !== e2.type) continue;
 
           const sim = this.entityResolver.calculateSimilarity(e1.name, e2.name);
           if (sim >= 0.88) {
-            // Register alias pointing e2's name to e1.id
-            this.entityResolver.addAlias(e1.id, e2.name, sim);
-            mergedCount++;
+            // Determine survivor (canonical) and deprecated entity based on degree count
+            const deg1 = this._getEntityDegree(e1.id);
+            const deg2 = this._getEntityDegree(e2.id);
+            const survivor = deg1 >= deg2 ? e1 : e2;
+            const deprecated = deg1 >= deg2 ? e2 : e1;
+
+            db.exec('BEGIN');
+            try {
+              db.prepare('UPDATE relationships SET source_id = ? WHERE source_id = ?').run(survivor.id, deprecated.id);
+              db.prepare('UPDATE relationships SET target_id = ? WHERE target_id = ?').run(survivor.id, deprecated.id);
+              db.prepare('UPDATE entities SET merged_into = ? WHERE id = ?').run(survivor.id, deprecated.id);
+              db.prepare('DELETE FROM entities WHERE id = ?').run(deprecated.id);
+              db.exec('COMMIT');
+
+              this.entityResolver.addAlias(survivor.id, deprecated.name, sim);
+              mergedCount++;
+            } catch (mergeErr) {
+              try { db.exec('ROLLBACK'); } catch { /* ignore */ }
+              log.debug(`Failed merging entity ${deprecated.id} into ${survivor.id}: ${mergeErr.message}`);
+            }
           }
         }
       }
@@ -99,6 +116,16 @@ class GraphMaintenance {
       log.error('Failed alias deduplication pass:', err.message);
     }
     return mergedCount;
+  }
+
+  _getEntityDegree(entityId) {
+    if (!this.graphDb?.db) return 0;
+    try {
+      const row = this.graphDb.db.prepare('SELECT COUNT(*) as count FROM relationships WHERE source_id = ? OR target_id = ?').get(entityId, entityId);
+      return row?.count || 0;
+    } catch {
+      return 0;
+    }
   }
 }
 

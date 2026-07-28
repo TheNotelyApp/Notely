@@ -9,7 +9,13 @@ class GLiNERGLiRELPipeline {
     this.appDataDir = appDataDir;
     this.gliner = new GLiNERExtractor(appDataDir);
     this.glirel = new GLiRELExtractor(appDataDir);
-    this.isInitialized = false;
+    this.ontologyLabels = [];
+  }
+
+  setOntologyLabels(labels = []) {
+    if (Array.isArray(labels)) {
+      this.ontologyLabels = labels;
+    }
   }
 
   isAvailable() {
@@ -42,9 +48,9 @@ class GLiNERGLiRELPipeline {
       await this.load().catch(() => {});
     }
 
-    // 1. Dynamic Model-Driven Label Discovery from Note Content
+    // 1. Dynamic Model-Driven Label Discovery from Note Content & Ontology
     const SYSTEM_SECTIONS = new Set(['rawnotes', 'raw notes', 'raw note', 'raw', 'cleansed', 'cleansed notes', 'cleansed note']);
-    const dynamicLabels = new Set();
+    const dynamicLabels = new Set(this.ontologyLabels || []);
 
     if (ast) {
       if (ast.tags) ast.tags.forEach(t => dynamicLabels.add(t.name || t.tagName));

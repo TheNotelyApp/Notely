@@ -8,22 +8,30 @@ const MarkdownASTParser = require('./MarkdownASTParser');
 const EvidenceStore = require('./EvidenceStore');
 const EntityResolver = require('./EntityResolver');
 const GLiNERGLiRELPipeline = require('./GLiNERGLiRELPipeline');
+const EvidenceFusionEngine = require('./EvidenceFusionEngine');
 
 const log = createLogger('GraphService');
 
+const OntologyBuilder = require('./OntologyBuilder');
+
 class GraphService {
-  constructor(agent, graphDb) {
+  constructor(agent, graphDb, ontologyBuilder = null) {
     this.agent = agent;
     this.graphDb = graphDb;
     this.astParser = new MarkdownASTParser();
     this.evidenceStore = new EvidenceStore(graphDb);
     this.entityResolver = new EntityResolver(graphDb);
+    this.fusionEngine = new EvidenceFusionEngine(graphDb, this.evidenceStore);
+    this.ontologyBuilder = ontologyBuilder || new OntologyBuilder('general');
     this.pipeline = null;
   }
 
   getPipeline() {
     if (!this.pipeline && this.agent?.appDataDir) {
       this.pipeline = new GLiNERGLiRELPipeline(this.agent.appDataDir);
+      if (this.ontologyBuilder) {
+        this.pipeline.setOntologyLabels(this.ontologyBuilder.getGLiNERLabels());
+      }
     }
     return this.pipeline;
   }
@@ -332,21 +340,35 @@ class GraphService {
         });
       }
 
-      // 2. Cross-Note Plain Text Mention Mining
+      // 2. Cross-Note Plain Text Mention Mining via Inverted Index
       if (this.graphDb?.db) {
         try {
-          const otherNotes = this.graphDb.db.prepare("SELECT id, name, note_path FROM entities WHERE type = 'Note' AND id != ?").all(rootEntityId);
-          for (const other of otherNotes) {
-            if (other.name && other.name.length >= 3 && content.toLowerCase().includes(other.name.toLowerCase())) {
-              this.graphDb.upsertRelationship({
-                source_id: rootEntityId,
-                target_id: other.id,
-                type: 'mentions_note',
-                weight: 0.85,
-                confidence: 0.85
-              });
+          if (!this._mentionIndex || Date.now() - (this._mentionIndexTime || 0) > 30000) {
+            const allNotes = this.graphDb.db.prepare("SELECT id, name FROM entities WHERE type = 'Note'").all();
+            this._mentionIndex = new Map();
+            for (const n of allNotes) {
+              if (n.name && n.name.length >= 5) {
+                this._mentionIndex.set(n.name.toLowerCase(), n.id);
+              }
             }
+            this._mentionIndexTime = Date.now();
           }
+
+          this._mentionIndex.forEach((otherId, otherName) => {
+            if (otherId !== rootEntityId && otherName.length >= 5) {
+              const esc = otherName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const re = new RegExp(`\\b${esc}\\b`, 'i');
+              if (re.test(content)) {
+                this.fusionEngine.fuseTriple({
+                  source_id: rootEntityId,
+                  target_id: otherId,
+                  type: 'mentions_note',
+                  weight: 0.85,
+                  confidence: 0.85
+                });
+              }
+            }
+          });
         } catch { /* ignore fallback extraction errors */ }
       }
 
