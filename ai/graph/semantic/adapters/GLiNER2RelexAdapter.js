@@ -27,7 +27,9 @@ const STOP_WORDS = new Set([
   'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
   'january', 'february', 'march', 'april', 'june', 'july', 'august', 'september',
   'october', 'november', 'december', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun',
-  'tags', 'tag', 'time', 'date', 'location', 'venue', 'place', 'rawnotes', 'cleansednotes'
+  'tags', 'tag', 'time', 'date', 'location', 'venue', 'place', 'rawnotes', 'cleansednotes',
+  'you', 'we', 'i', 'he', 'she', 'they', 'me', 'us', 'him', 'her', 'them',
+  'untitled', 'td', 'pdf', 'doc', 'docx', 'txt', 'begin', 'writing', 'start'
 ]);
 
 class GLiNER2RelexAdapter extends ModelAdapter {
@@ -427,12 +429,13 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       if (lower === lowerType) return type;
     }
     if (/db|database|sql|sqlite|postgres|redis|store/i.test(text)) return 'Database';
-    if (/framework|react|electron|torch|pytorch|tensor|tensorflow/i.test(text)) return 'Framework';
+    if (/framework|react|electron|torch|pytorch|tensor|tensorflow|pandas|numpy|scikit|scipy/i.test(text)) return 'Framework';
     if (/esp|esp32|arduino|stm|chip|board|microcontroller/i.test(text)) return 'Microcontroller';
     if (/relay|sensor|actuator|pump|module|device/i.test(text)) return 'Module';
     if (/service|worker|engine|module|component|kubernetes/i.test(text)) return 'Software Component';
     if (/model|encoder|bert|bge|transformer|llm/i.test(text)) return 'Model';
     if (/app|application|notely/i.test(text)) return 'Application';
+    if (/^[A-Z][a-z]+$/.test(text) && !/^(System|Server|Database|Framework|Service|Model|Engine|Module|Application)$/i.test(text)) return 'Person';
     return 'Concept';
   }
 

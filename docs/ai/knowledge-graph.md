@@ -76,9 +76,9 @@ sequenceDiagram
 
 ## Key Components & Concepts
 
-### 1. Markdown AST Parser (Structure, Images & Metadata)
+### 1. Markdown AST Parser & 23-Stage Cleansing Engine
 
-The structural parser converts Markdown text, embedded media, and workspace configuration into structural graph elements:
+The structural parser converts Markdown text, embedded media, and workspace configuration into structural graph elements, while cleansing prose for neural extraction:
 
 - **Root Note Entity**: Uniquely identifies the document by path hash.
 - **Workspace Metadata (`.notes-app/metadata.json`)**: Automatically extracts workspace info, project types, and domain tags (`categorized_by`, `has_project_type`).
@@ -92,6 +92,8 @@ The structural parser converts Markdown text, embedded media, and workspace conf
 - **Tags (`#tag`)**: Categorizes concepts (`tagged`).
 - **Attachments & External URLs**: Captures external web links (`references_url`) and attached documents (`attaches_file`).
 - **Tasks (`- [ ]`, `- [x]`)**: Extracts open (`has_open_task`) and completed (`has_completed_task`) task items.
+- **23-Stage Prose Cleansing Engine (`cleanse()`)**:
+  Strips frontmatter, code blocks, multiline/inline math, HTML tags, callout headers, blockquotes, heading hashes, list prefixes, checkboxes, table pipes, footnotes, and markdown formatting (`**`, `*`, `~~`, `` ` ``). Passes 100% clean natural language prose to the neural extraction engine without syntax noise.
 
 ---
 
@@ -102,20 +104,20 @@ Semantic extraction uses an offline **GLiNER2-Relex FP16 ONNX model** (`dx111ge/
 ```mermaid
 graph LR
     subgraph Model-Agnostic Engine Architecture
-        A[Input Document / Sentence] --> B[Semantic Extraction Engine]
-        B --> C[GLiNER2-Relex ONNX Adapter]
-        C --> D[FP16 Encoder & Span Classifier Tensors]
+        A[Input Document / Sentence] --> B[23-Stage AST Cleansing]
+        B --> C[Semantic Extraction Engine]
+        C --> D[GLiNER2-Relex ONNX Adapter]
         D --> E[Zero-Shot Entity & Relation Candidates]
         E --> F[Extraction Validator]
     end
 ```
 
 1. **Zero-Shot Named Entity Recognition**:
-   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER2 ONNX sessions to extract domain entity candidates (`Application`, `Framework`, `Database`, `Microcontroller`, `Software Component`, `Model`, `Person`, `Concept`) with confidence scores $\ge 0.50$. It avoids hardcoded taxonomies or fixed keyword dictionaries, adapting dynamically to any domain.
-2. **Zero-Shot Relation Extraction**:
-   Evaluates entity pair candidates within sentence windows, running zero-shot relation classification tensors to score relationship edge connections (`USES`, `STORES`, `GENERATES`, `CREATES`, `COMMUNICATES_WITH`, `CONTROLS`, `DEPENDS_ON`, `IMPLEMENTS`).
-3. **Sub-Span Overlap Suppression**:
-   Automatically suppresses nested single-word sub-span fragments when larger multi-word entity mentions exist (e.g. suppresses `Home` or `Assistant` if `Home Assistant` is extracted).
+   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER2 ONNX sessions to extract domain entity candidates (`Application`, `Framework`, `Database`, `Microcontroller`, `Module`, `Software Component`, `Model`, `Person`, `Concept`) with confidence scores $\ge 0.50$.
+2. **Domain Candidate Resolution & Sub-Span Protection**:
+   Automatically recognizes single-word domain technical entities (`relay`, `pump`, `sensor`, `microcontroller`, `module`, `broker`, `gateway`) alongside PascalCase/CamelCase entities (`PyTorch`, `GraphWorker`, `Node.js`, `ESP32`). Standalone technical terms are protected from sub-span suppression when contained within larger phrase matches.
+3. **Zero-Shot Relation Extraction & Semantic Verb Mapping**:
+   Evaluates entity pairs in sentence windows, mapping transitive action verbs (`controls`, `uses`, `depends on`, `communicates with`, `connects to`, `stores`, `implements`, `creates`, `generates`) to structured relationship types (`CONTROLS`, `USES`, `STORES`, `GENERATES`, `CREATES`, `COMMUNICATES_WITH`, `CONNECTS_TO`, `INTEGRATES_WITH`, `DEPENDS_ON`, `IMPLEMENTS`).
 
 ---
 

@@ -40,6 +40,25 @@ class EntityResolver {
       };
     }
 
+    // Reuse existing canonical entity ID if present in database to prevent type fragmentation
+    if (this.graphDb?.db) {
+      try {
+        const existing = this.graphDb.db.prepare(
+          'SELECT id, name, canonical_name, type FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(canonical_name) = LOWER(?) LIMIT 1'
+        ).get(clean, clean);
+        if (existing) {
+          const resolvedType = (existing.type && existing.type !== 'Concept') ? existing.type : type;
+          return {
+            id: existing.id,
+            name: existing.name || clean,
+            canonical_name: existing.canonical_name || clean,
+            type: resolvedType,
+            isAlias: true
+          };
+        }
+      } catch { /* ignore DB lookup error */ }
+    }
+
     const defaultId = this.generateEntityId(clean, type);
     return {
       id: defaultId,

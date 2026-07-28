@@ -357,10 +357,11 @@ class GraphService {
       if (semanticEngine) {
         const prefs = this.agent?.config ? this.agent.config.loadPreferences() : {};
         const confidenceThreshold = prefs.graphConfidence || 0.50;
+        const cleansedContent = this.astParser.cleanse(content);
 
         const extractionResult = await semanticEngine.extract({
           id: filePath,
-          content,
+          content: cleansedContent || content,
           sourceType: 'markdown',
           metadata: { sourceFile: filePath }
         }, { confidenceThreshold });
