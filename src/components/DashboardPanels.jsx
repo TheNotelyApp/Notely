@@ -15,14 +15,15 @@ function getRecentNotes(documents) {
     });
 }
 
+function getCleanFilename(filePathOrTitle) {
+  if (!filePathOrTitle) return "Untitled";
+  const raw = String(filePathOrTitle).replace(/\\/g, "/").trim();
+  const fileName = raw.split("/").filter(Boolean).pop() || raw;
+  return fileName.replace(/\.(md|markdown)$/i, "");
+}
+
 function getDisplayName(filePath) {
-  if (!filePath) return "Untitled";
-  const normalizedPath = String(filePath).replace(/\\/g, "/");
-  const parts = normalizedPath.split("/").filter(Boolean);
-  if (parts.length === 1) {
-    return parts[0];
-  }
-  return parts.slice(-2).join("/");
+  return getCleanFilename(filePath);
 }
 
 export function DashboardPanels({ documents, taskDocuments = documents, loading, onOpen, onOpenTask, onOpenAllTasks, onOpenRecentNotes, onOpenFavorites, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
@@ -103,12 +104,6 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
             <button type="button" onClick={() => onAction("ai")} data-tooltip="AI Assistant" aria-label="AI Assistant">
               <Sparkles size={14} />
             </button>
-            <button type="button" onClick={() => onAction("assets")} data-tooltip="Assets" aria-label="Assets">
-              <ImageIcon size={14} />
-            </button>
-            <button type="button" onClick={() => onAction("trash")} data-tooltip="Trash" aria-label="Trash">
-              <Trash2 size={14} />
-            </button>
           </div>
         </article>
 
@@ -178,7 +173,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
                     data-tooltip={`Last edited: ${formatDate(note.updatedAt)}`}
                   >
                     <Star size={12} style={{ flexShrink: 0, color: "#f5a623", opacity: 0.9 }} />
-                    <span>{note.displayName}</span>
+                    <span>{getCleanFilename(note.displayName || note.title || note.filePath)}</span>
                     <em className="dashboard-item-open-indicator">
                       <ArrowRight size={12} />
                     </em>
@@ -323,7 +318,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
               {visibleFavorites.map((note) => (
                 <li key={note.filePath}>
                   <button type="button" onClick={() => onOpen(note)}>
-                    <span>{note.displayName}</span>
+                    <span>{getCleanFilename(note.displayName || note.title || note.filePath)}</span>
                     <small>{formatDate(note.updatedAt)}</small>
                   </button>
                 </li>

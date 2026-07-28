@@ -53,7 +53,7 @@ function normalizeWorkspacePathList(entries) {
   return normalized;
 }
 
-export function useDocumentManager({ notify }) {
+export function useDocumentManager({ notify, onRequireWorkspaceInitialization }) {
   const { confirm } = useConfirm();
   const [documents, setDocuments] = useState([]);
   const [current, setCurrent] = useState(null);
@@ -63,7 +63,7 @@ export function useDocumentManager({ notify }) {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("raw");
   const [error, setError] = useState("");
-  const [_projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProjectState] = useState(null);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [creatingNote, setCreatingNote] = useState(false);
@@ -784,7 +784,25 @@ export function useDocumentManager({ notify }) {
       const selectedPath = await pickFolder();
       if (!selectedPath) return;
       const normalizedSelectedPath = normalizePathValue(selectedPath);
-      setNotesFolderPath(normalizedSelectedPath);
+
+      if (window.notesApi?.validateWorkspace) {
+        const validation = await window.notesApi.validateWorkspace(normalizedSelectedPath);
+        if (validation && !validation.isWorkspace) {
+          const confirmed = await confirm({
+            title: "Initialize Notely Workspace?",
+            message: `"${normalizedSelectedPath}" is not currently a Notely workspace (.notes-app missing). Would you like to configure metadata and initialize it as a Notely workspace?`,
+            confirmLabel: "Initialize",
+            cancelLabel: "Cancel",
+            variant: "primary"
+          });
+          if (!confirmed) return;
+          if (typeof onRequireWorkspaceInitialization === "function") {
+            onRequireWorkspaceInitialization(normalizedSelectedPath);
+            return;
+          }
+        }
+      }
+
       await handleSaveNotesFolder(normalizedSelectedPath);
     } catch (err) {
       notify(err?.message || "Unable to open folder picker.", "error");
@@ -796,6 +814,24 @@ export function useDocumentManager({ notify }) {
     if (!nextPath) {
       notify("Please provide a workspace path.", "warning");
       return;
+    }
+
+    const dirtyPaths = [];
+    for (const path of openTabs) {
+      const state = tabStatesRef.current[path];
+      if (state && state.doc && state.doc.savedHash !== state.savedHash) {
+        dirtyPaths.push(path);
+      }
+    }
+    if (dirtyPaths.length > 0) {
+      const confirmed = await confirm({
+        title: "Unsaved Changes",
+        message: `There are ${dirtyPaths.length} note(s) with unsaved changes. Switch workspace and discard changes?`,
+        confirmLabel: "Discard & Switch",
+        cancelLabel: "Cancel",
+        variant: "danger"
+      });
+      if (!confirmed) return;
     }
 
     setSavingNotesFolder(true);
@@ -816,6 +852,34 @@ export function useDocumentManager({ notify }) {
       notify(err?.message || "Unable to open workspace.", "error");
     } finally {
       setSavingNotesFolder(false);
+    }
+  }
+
+  async function handleRestartApp() {
+    const dirtyPaths = [];
+    for (const path of openTabs) {
+      const state = tabStatesRef.current[path];
+      if (state && state.doc && state.doc.savedHash !== state.savedHash) {
+        dirtyPaths.push(path);
+      }
+    }
+    if (dirtyPaths.length > 0) {
+      const confirmed = await confirm({
+        title: "Unsaved Changes",
+        message: `There are ${dirtyPaths.length} note(s) with unsaved changes. Restart Notely and discard changes?`,
+        confirmLabel: "Discard & Restart",
+        cancelLabel: "Cancel",
+        variant: "danger"
+      });
+      if (!confirmed) return;
+    }
+
+    if (window.electronAPI?.restartApp) {
+      await window.electronAPI.restartApp();
+    } else if (window.notesApi?.restartApp) {
+      await window.notesApi.restartApp();
+    } else {
+      window.location.reload();
     }
   }
 
@@ -1216,6 +1280,7 @@ export function useDocumentManager({ notify }) {
     setActiveTab,
     error,
     setError,
+    projects,
     activeProject,
     newNoteTitle,
     setNewNoteTitle,
@@ -1252,8 +1317,9 @@ export function useDocumentManager({ notify }) {
     handleCreateNote,
     handleCreateFolder,
     handleOpenWorkspacePicker,
-    handleSaveNotesFolder,
     handleOpenRecentWorkspace,
+    handleSaveNotesFolder,
+    handleRestartApp,
     handleGoHome,
     handleOpenCurrentInEditor,
     handleOpenWebsiteFromLanding,

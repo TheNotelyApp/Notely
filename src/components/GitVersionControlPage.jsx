@@ -67,7 +67,7 @@ const TABS = [
 
 // ── Empty states ──────────────────────────────────────────────────────────────
 
-function NoGitState({ _onInstallLink }) {
+function NoGitState() {
   return (
     <div className="git-vc-empty">
       <AlertTriangle size={20} className="git-vc-empty__icon git-vc-empty__icon--warn" aria-hidden="true" />
@@ -88,7 +88,7 @@ function NoGitState({ _onInstallLink }) {
   );
 }
 
-function NoRepoState({ _workspacePath, onInit, initializing }) {
+function NoRepoState({ onInit, initializing }) {
   return (
     <div className="git-vc-empty">
       <GitBranch size={20} className="git-vc-empty__icon" aria-hidden="true" />
@@ -208,8 +208,8 @@ function StatusTab({ status, workspacePath, onRefresh, onNotify, onCommitSuccess
 
 // ── History Tab ───────────────────────────────────────────────────────────────
 
-function HistoryTab({ commits, loading, error, _workspacePath, onNotify, _onRefresh, onCreateTag }) {
-  async function handleCompare(_commit) {
+function HistoryTab({ commits, loading, error, onNotify, onCreateTag }) {
+  async function handleCompare() {
     onNotify?.("Switch to the Compare tab to compare commits.", "info");
   }
 

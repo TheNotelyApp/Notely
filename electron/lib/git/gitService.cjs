@@ -111,17 +111,6 @@ async function initRepo(workspacePath) {
 
     await g.init();
 
-    // README
-    const readmePath = path.join(workspacePath, "README.md");
-    if (!fs.existsSync(readmePath)) {
-      const name = path.basename(workspacePath);
-      fs.writeFileSync(
-        readmePath,
-        `# ${name}\n\nNotes workspace managed by [Notely](https://github.com/WGLabz/notely).\n`,
-        "utf8"
-      );
-    }
-
     // .gitignore
     const gitignorePath = path.join(workspacePath, ".gitignore");
     if (!fs.existsSync(gitignorePath)) {
@@ -1049,13 +1038,10 @@ async function migrateFromLegacy(workspacePath, metadataStore = null) {
       return ok({ alreadyMigrated: false, migrated: 0, skipped: 0 });
     }
 
-    // Ensure we have a git repo to commit into
+    // Check if workspace is a git repository
     const repoInfo = await getRepoInfo(workspacePath);
-    if (!repoInfo.ok) return repoInfo;
-
-    if (!repoInfo.data.isRepo) {
-      const initResult = await initRepo(workspacePath);
-      if (!initResult.ok) return initResult;
+    if (!repoInfo.ok || !repoInfo.data.isRepo) {
+      return ok({ alreadyMigrated: false, migrated: 0, skipped: 0 });
     }
 
     const repoRoot = repoInfo.data.repoRoot || (await findRepoRoot(workspacePath));

@@ -75,7 +75,7 @@ export function useAIAssistant({
   notify,
 }) {
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const [_aiLoading, setAiLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryLoading, setAiQueryLoading] = useState(false);
   const [aiQueryError, setAiQueryError] = useState("");
   const [aiContextSummary, setAiContextSummary] = useState({
@@ -234,7 +234,7 @@ export function useAIAssistant({
     const summary = buildAIContextSummary(editorContext, current);
     setAiQueryError("");
     setAiContextSummary(summary);
-    setAiPaletteIntent(normalizePaletteIntent(options, summary));
+    setAiPaletteIntent(normalizePaletteIntent(options));
     setAiPanelVisible(true);
   }
 
@@ -536,6 +536,13 @@ export function useAIAssistant({
   }, [aiPanelVisible]);
 
   useEffect(() => {
+    setAiChatMessages([]);
+    currentConversationIdRef.current = null;
+    loadConversations();
+    refreshAIConfiguration();
+  }, [notesFolderPath, loadConversations]);
+
+  useEffect(() => {
     setInlineGhostSuggestion(null);
     // Clearing the chat messages array on document or tab switch guarantees
     // the main workspace chat remains separate from note-specific chats.
@@ -566,6 +573,7 @@ export function useAIAssistant({
   return {
     aiSettingsOpen,
     setAiSettingsOpen,
+    aiLoading,
     aiQueryLoading,
     aiQueryError,
     aiContextSummary,

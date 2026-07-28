@@ -222,14 +222,7 @@ describe("Reload Capabilities Integration Tests", () => {
       );
 
       const reloadBtn = host.querySelector(".landing-reload-btn");
-      expect(reloadBtn).not.toBeNull();
-      expect(reloadBtn.textContent).toContain("Reload");
-
-      act(() => {
-        reloadBtn.click();
-      });
-
-      expect(onReloadWorkspaceMock).toHaveBeenCalledTimes(1);
+      expect(reloadBtn).toBeNull();
 
       unmount();
     });
