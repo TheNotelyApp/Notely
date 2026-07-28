@@ -1,31 +1,35 @@
 # Knowledge Graph Generation Engine
 
-Notely features an offline, local-first, AI-powered **Knowledge Graph Generation Engine**. It operates without any cloud dependencies, transforming raw Markdown notes into an interconnected Property Graph using local ONNX neural models, SQLite storage, and hybrid GraphRAG retrieval.
+Notely features an offline, local-first, AI-powered **Knowledge Graph Generation Engine**. It operates without any cloud dependencies, transforming raw Markdown notes, image annotations, and workspace metadata into an interconnected Property Graph using local FP16 ONNX neural models, SQLite storage, and hybrid GraphRAG retrieval.
 
 ---
 
 ## Architecture Overview
 
-The system uses a multi-tier pipeline separating document structure parsing from neural semantic understanding.
+The system uses a multi-tier pipeline separating document structure parsing from model-agnostic neural semantic extraction.
 
 ```mermaid
 flowchart TD
     MD[Markdown Note .md] --> AST[Markdown AST Parser]
-    AST -->|Structure| EV[Evidence Store SQLite]
-    MD --> SEG[Sentence Segmenter Intl.Segmenter]
+    META[.notes-app/metadata.json] --> METASRC[Workspace Metadata Knowledge Source]
+    IMG[Image Annotations media.alt] --> AST
     
-    subgraph Local Neural AI Pipeline
-        SEG --> NER[GLiNER Zero-Shot NER ONNX Session]
-        NER -->|Entities & Spans| RES[Entity & Alias Resolver]
-        RES --> RE[GLiREL Zero-Shot RE ONNX Session]
-        RE -->|Scored Relations| EV
+    AST -->|Structural Nodes & Evidence| EV[Evidence Store SQLite]
+    METASRC -->|Workspace & Tag Entities| DB[(SQLite Property Graph ai-graph.db)]
+    
+    subgraph Model-Agnostic Neural Extraction Layer
+        MD --> SEE[Semantic Extraction Engine]
+        SEE --> ADAP[GLiNER2-Relex ONNX Adapter]
+        ADAP -->|Zero-Shot Entities & Relations| VAL[Extraction Validator]
+        VAL -->|Validated Candidates & Provenance| EV
     end
     
-    EV --> DB[(SQLite Property Graph ai-graph.db)]
+    EV --> FUSE[Evidence Fusion Engine]
+    FUSE --> DB
     
     subgraph Retrieval & Maintenance
         DB --> CTE[Recursive CTE Graph Walk]
-        DB --> MAINT[Background Graph Maintenance]
+        DB --> MAINT[Self-Healing Background Maintenance]
         CTE --> HYB[Hybrid Retriever RRF]
         HYB --> LLM[LLM Context Builder]
         MAINT --> DB
@@ -44,25 +48,27 @@ sequenceDiagram
     participant UI as Electron Renderer
     participant Worker as Background UtilityProcess
     participant AST as Markdown AST Parser
-    participant NER as GLiNER Zero-Shot NER (ONNX)
-    participant RE as GLiREL Zero-Shot RE (ONNX)
-    participant EV as Evidence Store
+    participant SEE as Semantic Extraction Engine
+    participant ADAP as GLiNER2-Relex ONNX Adapter
+    participant VAL as Extraction Validator
+    participant EV as Evidence Store & Fusion Engine
     participant DB as SQLite GraphDB
 
     UI->>Worker: Enqueue Note (Path, Content)
-    Worker->>AST: Parse Markdown AST Structure
-    AST-->>Worker: Return Structural Tokens (Headings, Links, Code)
+    Worker->>AST: Parse Markdown AST Structure & Image Annotations
+    AST-->>Worker: Return Structural Tokens (Links, Tags, Images, URLs, Documents)
     Worker->>DB: Upsert Root Note & Structural Entities
     Worker->>EV: Register Baseline Structural Evidence
     
-    Worker->>NER: Segment Sentences & Classify Tokens (Pass 1)
-    NER-->>Worker: Return Extracted Entities & Character Spans
+    Worker->>SEE: Execute extract(document) via Model Adapter
+    SEE->>ADAP: Run GLiNER2-Relex FP16 ONNX Inference Session
+    ADAP-->>SEE: Return Zero-Shot Entities, Relations & Character Spans
     
-    Worker->>RE: Neural Pair Scoring across Co-occurring Entities (Pass 2)
-    RE-->>Worker: Return Relations & Confidence Scores
+    SEE->>VAL: Validate Candidates (Duplicates, Low Conf, Sub-spans, Graph Explosion)
+    VAL-->>SEE: Return Validation Telemetry & Approved Candidates
     
-    Worker->>EV: Insert Neural Provenance Records
-    Worker->>DB: Upsert Generic Entities & Relationship Edges
+    SEE->>EV: Fuse Triples & Insert Provenance Records
+    EV->>DB: Upsert Resolved Entities & Relationship Edges
     Worker-->>UI: Broadcast IPC Progress (ai:graph:progress)
 ```
 
@@ -70,50 +76,46 @@ sequenceDiagram
 
 ## Key Components & Concepts
 
-### 1. Markdown AST Parser (Structure & Metadata)
+### 1. Markdown AST Parser (Structure, Images & Metadata)
 
-The structural parser converts raw Markdown text into a structural AST tree without imposing domain semantics.
+The structural parser converts Markdown text, embedded media, and workspace configuration into structural graph elements:
 
 - **Root Note Entity**: Uniquely identifies the document by path hash.
-- **Frontmatter & Header Key-Value Metadata**: Automatically extracts YAML block frontmatter and top key-value lines (`Tags:`, `Name:`, `Location:`, `Time:`):
+- **Workspace Metadata (`.notes-app/metadata.json`)**: Automatically extracts workspace info, project types, and domain tags (`categorized_by`, `has_project_type`).
+- **Image Annotations (`![alt](path)`)**: Captures local and remote image links (`contains_media`), extracting semantic captions (`media.alt`) into `Annotation` nodes (`annotated_with`).
+- **Frontmatter & Key-Value Metadata**: Automatically extracts YAML block frontmatter and top key-value lines (`Tags:`, `Name:`, `Location:`, `Time:`):
   - `Tags:` / `- tag` $\rightarrow$ Generates `#tag` (`Tag`) nodes linked to Note.
-  - `Name: Person A, Person B` $\rightarrow$ Generates `Person` entities linked via `has_person`.
+  - `Name: Person A` $\rightarrow$ Generates `Person` entities linked via `has_person`.
   - `Location: City` $\rightarrow$ Generates `Location` entities linked via `located_in`.
-  - `Time: DateRange` $\rightarrow$ Preserved in `Note.properties.metadata`.
 - **Wikilinks (`[[Target]]`)**: Links documents to target notes with bidirectional edge weights.
-- **Section Headings (`# Heading`)**: Captures document hierarchy (`contains_section`) with level-attenuated weights ($H_1 = 1.4, H_2 = 1.3, \dots, H_6 = 0.9$). Built-in Notely system sections (`# RawNotes`, `# Cleansed`) are automatically excluded from becoming section nodes.
+- **Section Headings (`# Heading`)**: Captures document hierarchy (`contains_section`) with level-attenuated weights ($H_1 = 1.4, H_2 = 1.3, \dots, H_6 = 0.9$). Built-in Notely system sections (`# RawNotes`, `# Cleansed`) are excluded.
 - **Tags (`#tag`)**: Categorizes concepts (`tagged`).
-- **Code Blocks & Snippets**: Identifies code snippets and languages (`contains_code`, `references_code`).
+- **Attachments & External URLs**: Captures external web links (`references_url`) and attached documents (`attaches_file`).
 - **Tasks (`- [ ]`, `- [x]`)**: Extracts open (`has_open_task`) and completed (`has_completed_task`) task items.
-- **Callouts & Math Formulas**: Preserves structural metadata for callout blocks and math syntax ($math$).
-
-> [!TIP] **Global Single-Node Deduplication**
-> Entities and structural nodes (e.g. `CodeBlock: JS`, `Tag: #research`, AI-extracted entities) use deterministic SHA-256 ID resolution. If **Note A** and **Note B** both reference `JS`, the engine creates **only one single global block/node** for `JS`, linking both notes to that shared node as hubs in the graph network.
 
 ---
 
-### 2. Specialist Neural Extraction Pipeline
+### 2. GLiNER2-Relex ONNX Model Engine
 
-Semantic extraction uses two offline ONNX models (~70MB each) executing via local ONNX runtime (`onnxruntime-node`).
+Semantic extraction uses an offline **GLiNER2-Relex FP16 ONNX model** (`dx111ge/gliner2-multi-v1-onnx`) executed via local ONNX runtime (`onnxruntime-node`).
 
 ```mermaid
 graph LR
-    subgraph Pass 1: GLiNER NER
-        A[Raw Sentence] --> B[GLiNER ONNX Session]
-        B --> C[Zero-Shot Entity Spans & Scores]
-    end
-    
-    subgraph Pass 2: GLiREL RE
-        C --> D[Co-occurring Entity Pair Matrix]
-        D --> E[GLiREL ONNX Session]
-        E --> F[Typed Relationships & Confidence]
+    subgraph Model-Agnostic Engine Architecture
+        A[Input Document / Sentence] --> B[Semantic Extraction Engine]
+        B --> C[GLiNER2-Relex ONNX Adapter]
+        C --> D[FP16 Encoder & Span Classifier Tensors]
+        D --> E[Zero-Shot Entity & Relation Candidates]
+        E --> F[Extraction Validator]
     end
 ```
 
-1. **Pass 1 — Named Entity Recognition (NER)**:
-   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER ONNX session to locate entities with confidence scores $\ge 0.50$. Dynamically maps candidates to standard entity categories (`Person`, `Organization`, `Technology`, `Location`, `Concept`, `Product`, `Event`, `Document`, `Diagram`, `Task`) without hardcoded taxonomies or word lists, preserving complete domain independence across engineering, medicine, finance, and law.
-2. **Pass 2 — Relation Extraction (RE)**:
-   Evaluates co-occurring entity pairs within sentence windows, running zero-shot GLiREL ONNX relation classification tensors to score edge connection strength (`depends_on`, `uses`, `created_by`, `contains`, `is_a`, `related_to`).
+1. **Zero-Shot Named Entity Recognition**:
+   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER2 ONNX sessions to extract domain entity candidates (`Application`, `Framework`, `Database`, `Microcontroller`, `Software Component`, `Model`, `Person`, `Concept`) with confidence scores $\ge 0.50$. It avoids hardcoded taxonomies or fixed keyword dictionaries, adapting dynamically to any domain.
+2. **Zero-Shot Relation Extraction**:
+   Evaluates entity pair candidates within sentence windows, running zero-shot relation classification tensors to score relationship edge connections (`USES`, `STORES`, `GENERATES`, `CREATES`, `COMMUNICATES_WITH`, `CONTROLS`, `DEPENDS_ON`, `IMPLEMENTS`).
+3. **Sub-Span Overlap Suppression**:
+   Automatically suppresses nested single-word sub-span fragments when larger multi-word entity mentions exist (e.g. suppresses `Home` or `Assistant` if `Home Assistant` is extracted).
 
 ---
 
@@ -168,13 +170,14 @@ erDiagram
 
 ---
 
-### 4. Entity Resolution & Canonicalization
+### 4. Graph Quality Validation & Entity Resolution
 
-Entity names and variations are resolved using a hybrid distance calculation:
-
-$$\text{Similarity}(s_1, s_2) = \max\left( \text{LevenshteinSim}(s_1, s_2), \text{JaccardTokenSim}(s_1, s_2) \right)$$
-
-Candidate matches above threshold $\ge 0.88$ are automatically mapped in `entity_aliases` table without mutating source entity IDs.
+- **Pre-Persistence Validation (`ExtractionValidator.js`)**:
+  Inspects candidate entities and relationships before saving to DB, filtering out duplicate nodes, duplicate edges, missing evidence, invalid references, low-confidence edges, and enforcing graph explosion limits ($\le 500$ candidates per pass).
+- **Canonical Entity Resolution (`EntityResolver.js`)**:
+  Resolves entity name variations using hybrid string similarity:
+  $$\text{Similarity}(s_1, s_2) = \max\left( \text{LevenshteinSim}(s_1, s_2), \text{JaccardTokenSim}(s_1, s_2) \right)$$
+  Candidate matches above threshold $\ge 0.88$ are automatically mapped in `entity_aliases` table.
 
 ---
 
