@@ -12,7 +12,7 @@ import {
 
 export default function KnowledgeGraphSettings() {
   const [loading, setLoading] = useState(false);
-  const [preferences, setPreferences] = useState({ graphProvider: 'gliner-glirel', graphConfidence: 0.60 });
+  const [preferences, setPreferences] = useState({ graphProvider: 'gliner2-relex', graphConfidence: 0.60 });
   const [modelStatus, setModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
 
   useEffect(() => {
@@ -87,13 +87,13 @@ export default function KnowledgeGraphSettings() {
   };
 
   const handleDeleteModel = async () => {
-    if (!window.confirm('Delete local GLiNER and GLiREL ONNX model weights from disk? You can redownload anytime.')) return;
+    if (!window.confirm('Delete local GLiNER2-Relex ONNX model weights from disk? You can redownload anytime from AI Settings.')) return;
     try {
       setLoading(true);
       await aiDeleteGraphModel();
       setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
       window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Local GLiNER & GLiREL ONNX model weights deleted successfully.', type: 'info' }
+        detail: { message: 'Local GLiNER2-Relex ONNX model weights deleted successfully.', type: 'info' }
       }));
     } catch (err) {
       console.error(err);
@@ -105,7 +105,7 @@ export default function KnowledgeGraphSettings() {
     }
   };
 
-  const activeProvider = (preferences.graphProvider === 'text-provider') ? 'text-provider' : 'gliner-glirel';
+  const activeProvider = (preferences.graphProvider === 'text-provider') ? 'text-provider' : 'gliner2-relex';
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
@@ -126,13 +126,13 @@ export default function KnowledgeGraphSettings() {
                 setPreferences(updated);
                 await aiSetPreferences(updated);
                 window.dispatchEvent(new CustomEvent('app:toast', {
-                  detail: { message: `Graph extraction engine set to ${newProvider === 'gliner-glirel' ? 'GLiNER + GLiREL Model-Driven Pipeline' : 'Cloud AI Provider'}.`, type: 'success' }
+                  detail: { message: `Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model Engine'}.`, type: 'success' }
                 }));
               }}
               disabled={loading}
               style={{ flex: 1 }}
             >
-              <option value="gliner-glirel">GLiNER + GLiREL Model-Driven Pipeline (Zero-Shot ONNX - Recommended)</option>
+              <option value="gliner2-relex">GLiNER2-Relex ONNX Model Engine (Zero-Shot - Recommended)</option>
               <option value="text-provider">Cloud LLM Text Provider (Configured Cloud AI)</option>
             </AppSelect>
             <button
@@ -147,7 +147,7 @@ export default function KnowledgeGraphSettings() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginTop: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--border-soft)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Active Extraction Engine</span>
             <strong style={{ color: 'var(--text-strong)' }}>
-              {activeProvider === 'gliner-glirel' ? 'GLiNER Zero-Shot NER + GLiREL Zero-Shot RE ONNX' : 'Cloud LLM Text Provider'}
+              {activeProvider === 'gliner2-relex' ? 'GLiNER2-Relex Zero-Shot Entity & Relationship ONNX Model' : 'Cloud LLM Text Provider'}
             </strong>
           </div>
         </div>
@@ -172,16 +172,16 @@ export default function KnowledgeGraphSettings() {
           </div>
         </div>
 
-        {activeProvider === 'gliner-glirel' && (
+        {activeProvider === 'gliner2-relex' && (
           <div style={{ padding: "12px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
             <h4 style={{ fontSize: "12px", fontWeight: "600", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Cpu size={14} /> Offline Model Status (GLiNER + GLiREL ONNX)
+              <Cpu size={14} /> Offline Model Status (dx111ge/gliner2-multi-v1-onnx)
             </h4>
             {modelStatus.downloaded ? (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
                   <Database size={12} />
-                  <span>GLiNER Zero-Shot NER & GLiREL Zero-Shot RE ONNX weights downloaded and ready offline.</span>
+                  <span>GLiNER2-Relex ONNX model weights (dx111ge/gliner2-multi-v1-onnx) downloaded and ready offline.</span>
                 </div>
                 <button
                   className="btn btn-secondary btn-sm"
@@ -191,13 +191,13 @@ export default function KnowledgeGraphSettings() {
                   title="Remove model weights from disk to free space or redownload"
                 >
                   <Trash2 size={12} />
-                  <span>Delete Models</span>
+                  <span>Delete Model</span>
                 </button>
               </div>
             ) : modelStatus.isDownloading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
-                  <span>Downloading GLiNER & GLiREL ONNX weights...</span>
+                  <span>Downloading GLiNER2-Relex ONNX weights...</span>
                   <span style={{ fontWeight: 600, color: 'var(--brand-primary)' }}>{modelStatus.progress}%</span>
                 </div>
                 <div style={{ width: '100%', height: '6px', background: 'var(--border-soft)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -208,7 +208,7 @@ export default function KnowledgeGraphSettings() {
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "11px" }}>
                   <AlertCircle size={12} />
-                  <span>GLiNER + GLiREL models not downloaded. (Downloads zero-shot ONNX models for offline knowledge graph extraction)</span>
+                  <span>GLiNER2-Relex ONNX model not downloaded. Click below to download offline model weights.</span>
                 </div>
                 <button
                   className="btn btn-secondary btn-sm"
@@ -217,7 +217,7 @@ export default function KnowledgeGraphSettings() {
                   style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", width: "fit-content" }}
                 >
                   <Download size={12} />
-                  <span>Download GLiNER & GLiREL Models</span>
+                  <span>Download GLiNER2-Relex Model</span>
                 </button>
               </div>
             )}

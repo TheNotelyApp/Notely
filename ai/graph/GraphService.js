@@ -7,12 +7,11 @@ const { createLogger } = require('../core/logger');
 const MarkdownASTParser = require('./MarkdownASTParser');
 const EvidenceStore = require('./EvidenceStore');
 const EntityResolver = require('./EntityResolver');
-const GLiNERGLiRELPipeline = require('./GLiNERGLiRELPipeline');
 const EvidenceFusionEngine = require('./EvidenceFusionEngine');
+const OntologyBuilder = require('./OntologyBuilder');
+const { SemanticExtractionEngine } = require('./semantic');
 
 const log = createLogger('GraphService');
-
-const OntologyBuilder = require('./OntologyBuilder');
 
 class GraphService {
   constructor(agent, graphDb, ontologyBuilder = null) {
@@ -23,20 +22,22 @@ class GraphService {
     this.entityResolver = new EntityResolver(graphDb);
     this.fusionEngine = new EvidenceFusionEngine(graphDb, this.evidenceStore);
     this.ontologyBuilder = ontologyBuilder || new OntologyBuilder('general');
-    this.pipeline = null;
+    this.semanticEngine = null;
+  }
+
+  getSemanticEngine() {
+    if (!this.semanticEngine && this.agent?.appDataDir) {
+      this.semanticEngine = new SemanticExtractionEngine(this.agent.appDataDir);
+    }
+    return this.semanticEngine;
   }
 
   getPipeline() {
-    if (!this.pipeline && this.agent?.appDataDir) {
-      this.pipeline = new GLiNERGLiRELPipeline(this.agent.appDataDir);
-      if (this.ontologyBuilder) {
-        this.pipeline.setOntologyLabels(this.ontologyBuilder.getGLiNERLabels());
-      }
-    }
-    return this.pipeline;
+    return this.getSemanticEngine();
   }
+
   getExtractor() {
-    return this.getPipeline();
+    return this.getSemanticEngine();
   }
 
   /**
@@ -117,7 +118,7 @@ class GraphService {
         });
       }
 
-      // 1c. Embedded Media
+      // 1c. Embedded Media & Image Annotations
       for (const media of ast.media) {
         const mediaId = this.entityResolver.generateEntityId(media.name, 'Image');
         this.graphDb.upsertEntity({
@@ -135,6 +136,25 @@ class GraphService {
           weight: 0.9,
           confidence: 1.0
         });
+
+        // Extract semantic knowledge from Image Annotations (media.alt)
+        if (media.alt && media.alt.length > 3 && media.alt.toLowerCase() !== 'image') {
+          const altId = this.entityResolver.generateEntityId(`${media.name}:${media.alt}`, 'Annotation');
+          this.graphDb.upsertEntity({
+            id: altId,
+            name: media.alt,
+            canonical_name: media.alt,
+            type: 'Annotation',
+            properties: { imagePath: media.path }
+          });
+          this.graphDb.upsertRelationship({
+            source_id: mediaId,
+            target_id: altId,
+            type: 'annotated_with',
+            weight: 0.95,
+            confidence: 1.0
+          });
+        }
       }
 
       // 1d. Attachments & URLs
@@ -196,12 +216,12 @@ class GraphService {
         });
       }
 
-      // 1f. Sections (Structural Headings) - filter system design sections like # RawNotes and # Cleansed
+      // 1f. Sections (Structural Headings) - filter system design sections
       const SYSTEM_SECTIONS = new Set(['rawnotes', 'raw notes', 'raw', 'cleansed', 'cleansed notes', 'cleansed note']);
       for (const sec of ast.sections) {
         const normTitle = String(sec.title || '').trim().toLowerCase();
         if (SYSTEM_SECTIONS.has(normTitle)) {
-          continue; // Skip system design section headings
+          continue;
         }
 
         const secId = this.entityResolver.generateEntityId(`${filePath}:${sec.title}`, 'Section');
@@ -223,60 +243,20 @@ class GraphService {
         });
       }
 
-      // 1g. Bold Keyterms **Term**
-      for (const kt of (ast.keyTerms || [])) {
-        const ktId = this.entityResolver.generateEntityId(kt.term, 'KeyTerm');
+      // 1g. Note Metadata Entities (Person, Location from Frontmatter/AST)
+      for (const metaEnt of (ast.metadataEntities || [])) {
+        const metaId = this.entityResolver.generateEntityId(metaEnt.name, metaEnt.type || 'Concept');
         this.graphDb.upsertEntity({
-          id: ktId,
-          name: kt.term,
-          canonical_name: kt.term,
-          type: 'KeyTerm'
+          id: metaId,
+          name: metaEnt.name,
+          canonical_name: metaEnt.name,
+          type: metaEnt.type || 'Concept'
         });
 
         this.graphDb.upsertRelationship({
           source_id: rootEntityId,
-          target_id: ktId,
-          type: 'emphasizes',
-          weight: 1.0,
-          confidence: 1.0
-        });
-      }
-
-      // 1h. Inline Code `code`
-      for (const ic of (ast.inlineCodes || [])) {
-        const icId = this.entityResolver.generateEntityId(ic.code, 'CodeSnippet');
-        this.graphDb.upsertEntity({
-          id: icId,
-          name: ic.code,
-          canonical_name: ic.code,
-          type: 'CodeSnippet',
-          properties: { code: ic.code }
-        });
-
-        this.graphDb.upsertRelationship({
-          source_id: rootEntityId,
-          target_id: icId,
-          type: 'references_code',
-          weight: 0.85,
-          confidence: 1.0
-        });
-      }
-
-      // 1i. Callouts & Math Formulas
-      for (const co of (ast.callouts || [])) {
-        const coId = this.entityResolver.generateEntityId(`${filePath}:${co.type}:${co.title}`, 'Callout');
-        this.graphDb.upsertEntity({
-          id: coId,
-          name: `${co.type}: ${co.title}`,
-          canonical_name: co.title,
-          type: 'Callout',
-          properties: { calloutType: co.type }
-        });
-
-        this.graphDb.upsertRelationship({
-          source_id: rootEntityId,
-          target_id: coId,
-          type: 'has_callout',
+          target_id: metaId,
+          type: metaEnt.relation || 'relates_to',
           weight: 0.9,
           confidence: 1.0
         });
@@ -321,7 +301,7 @@ class GraphService {
         });
       }
 
-      // 1k. Header & Frontmatter Metadata Entities (Name: Person, Location: Place, etc.)
+      // 1k. Header & Frontmatter Metadata Entities
       for (const metaEnt of (ast.metadataEntities || [])) {
         const metaId = this.entityResolver.generateEntityId(metaEnt.name, metaEnt.type || 'Entity');
         this.graphDb.upsertEntity({
@@ -369,34 +349,48 @@ class GraphService {
               }
             }
           });
-        } catch { /* ignore fallback extraction errors */ }
+        } catch { /* ignore mention index errors */ }
       }
 
-      // 3. Neural AI Pipeline (GLiNER NER + GLiREL RE)
-      const pipeline = this.getPipeline();
-      if (pipeline && typeof pipeline.extractEntitiesAndRelations === 'function') {
+      // 3. Neural AI Pipeline via Model-Agnostic SemanticExtractionEngine
+      const semanticEngine = this.getSemanticEngine();
+      if (semanticEngine) {
         const prefs = this.agent?.config ? this.agent.config.loadPreferences() : {};
-        const confidenceThreshold = prefs.graphConfidence || 0.60;
-        const aiResults = await pipeline.extractEntitiesAndRelations(content, ast, {
-          confidenceThreshold,
-          evidenceStore: this.evidenceStore,
-          sourceId: filePath
-        });
+        const confidenceThreshold = prefs.graphConfidence || 0.50;
+
+        const extractionResult = await semanticEngine.extract({
+          id: filePath,
+          content,
+          sourceType: 'markdown',
+          metadata: { sourceFile: filePath }
+        }, { confidenceThreshold });
 
         const createdEntities = new Map();
 
         // Save AI extracted entities
-        for (const ent of aiResults.entities) {
-          const resolved = this.entityResolver.resolveMention(ent.name, ent.type || 'Entity');
+        for (const ent of extractionResult.entities) {
+          const resolved = this.entityResolver.resolveMention(ent.text || ent.canonicalName, ent.type || 'Entity');
           if (resolved) {
             this.graphDb.upsertEntity({
               id: resolved.id,
               name: resolved.name,
               canonical_name: resolved.canonical_name,
               type: resolved.type,
-              properties: ent.properties || {}
+              properties: { confidence: ent.confidence }
             });
-            createdEntities.set(ent.name, resolved.id);
+            createdEntities.set(ent.text, resolved.id);
+            if (ent.id) createdEntities.set(ent.id, resolved.id);
+
+            let evidenceId = null;
+            if (ent.sourceEvidence && this.evidenceStore) {
+              evidenceId = this.evidenceStore.addEvidence({
+                sourceId: filePath,
+                extractor: ent.sourceEvidence.extractionModel || 'gliner2-relex',
+                subjectText: resolved.name,
+                rawSentence: ent.sourceEvidence.rawSnippet || content,
+                confidence: ent.confidence
+              });
+            }
 
             // Connect root note to extracted entity
             this.graphDb.upsertRelationship({
@@ -405,24 +399,38 @@ class GraphService {
               type: 'mentions',
               weight: ent.confidence || 0.8,
               confidence: ent.confidence || 0.8,
-              evidence_id: ent.evidenceId
+              evidence_id: evidenceId
             });
           }
         }
 
         // Save AI extracted relationships
-        for (const rel of aiResults.relationships) {
-          const srcId = createdEntities.get(rel.source_name) || this.entityResolver.generateEntityId(rel.source_name, rel.source_type);
-          const tgtId = createdEntities.get(rel.target_name) || this.entityResolver.generateEntityId(rel.target_name, rel.target_type);
+        for (const rel of extractionResult.relations) {
+          const srcId = createdEntities.get(rel.sourceEntityId) || createdEntities.get(rel.sourceText) || this.entityResolver.generateEntityId(rel.sourceText, 'Entity');
+          const tgtId = createdEntities.get(rel.targetEntityId) || createdEntities.get(rel.targetText) || this.entityResolver.generateEntityId(rel.targetText, 'Entity');
 
           if (srcId && tgtId && srcId !== tgtId) {
-            this.graphDb.upsertRelationship({
+            let evidenceId = null;
+            if (rel.sourceEvidence && this.evidenceStore) {
+              evidenceId = this.evidenceStore.addEvidence({
+                sourceId: filePath,
+                extractor: rel.sourceEvidence.extractionModel || 'gliner2-relex',
+                subjectText: rel.sourceText,
+                predicateText: rel.relationType,
+                objectText: rel.targetText,
+                rawSentence: rel.sourceEvidence.rawSnippet || content,
+                confidence: rel.confidence
+              });
+            }
+
+            this.fusionEngine.fuseTriple({
               source_id: srcId,
               target_id: tgtId,
-              type: rel.type || 'related_to',
-              weight: rel.weight || 0.85,
+              type: rel.relationType || 'RELATED_TO',
+              weight: rel.confidence || 0.85,
               confidence: rel.confidence || 0.85,
-              evidence_id: rel.evidenceId
+              extractor: 'gliner2-relex',
+              evidenceId
             });
           }
         }

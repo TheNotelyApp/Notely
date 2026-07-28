@@ -56,7 +56,12 @@ if (process.parentPort) {
             const metaObj = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
             const WorkspaceMetadataKnowledgeSource = require('../../ai/graph/sources/WorkspaceMetadataKnowledgeSource');
             const metaSource = new WorkspaceMetadataKnowledgeSource(metaObj.info || {});
-            metaSource.extractEntities().then(entities => {
+            
+            Promise.all([
+              metaSource.extractEntities(),
+              metaSource.extractRelationships()
+            ]).then(([entities, relationships]) => {
+              const entityIdMap = new Map();
               for (const ent of entities) {
                 if (graphDb && typeof graphDb.upsertEntity === 'function') {
                   const entId = `ent-meta-${ent.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
@@ -66,6 +71,20 @@ if (process.parentPort) {
                     canonical_name: ent.name,
                     type: ent.type,
                     properties: ent.properties || {}
+                  });
+                  entityIdMap.set(ent.name.toLowerCase(), entId);
+                }
+              }
+              for (const rel of relationships) {
+                const srcId = entityIdMap.get(rel.source_name.toLowerCase());
+                const tgtId = entityIdMap.get(rel.target_name.toLowerCase());
+                if (srcId && tgtId && graphDb && typeof graphDb.upsertRelationship === 'function') {
+                  graphDb.upsertRelationship({
+                    source_id: srcId,
+                    target_id: tgtId,
+                    type: rel.type,
+                    weight: rel.weight || 1.0,
+                    confidence: rel.confidence || 0.95
                   });
                 }
               }
@@ -192,7 +211,14 @@ if (process.parentPort) {
           graphWorker.triggerNext();
         }
       } else if (type === 'rebuildGraph') {
-        const { workspaceFiles } = payload;
+        let { workspaceFiles } = payload;
+        if (!Array.isArray(workspaceFiles) || workspaceFiles.length === 0) {
+          if (graphDb && graphDb.workspaceRoot) {
+            workspaceFiles = scanMarkdownFiles(graphDb.workspaceRoot);
+          } else {
+            workspaceFiles = [];
+          }
+        }
         if (graphDb) {
           graphDb.clear();
         }

@@ -142,8 +142,8 @@ class MarkdownASTParser {
     while ((match = imageRegex.exec(content)) !== null) {
       const altText = match[1].trim() || 'Image';
       const imgPath = match[2].trim();
-      if (imgPath && !imgPath.startsWith('http://') && !imgPath.startsWith('https://')) {
-        const imgName = imgPath.split(/[\\/]/).pop();
+      if (imgPath) {
+        const imgName = imgPath.split(/[\\/]/).pop() || imgPath;
         media.push({
           name: imgName,
           path: imgPath,

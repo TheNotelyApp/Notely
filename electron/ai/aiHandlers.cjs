@@ -789,8 +789,36 @@ async function handleBuildGraph(_event, _payload) {
     logDb.addLog('graph', 'Starting Knowledge Graph rebuild...', 'info');
 
     const workerManager = require('./workerManager.cjs');
-    const docs = aiService.agent.documentService.getAllDocuments();
-    const workspaceFiles = docs.map(d => d.path || d.filePath).filter(Boolean);
+    let docs = [];
+    if (aiService.agent.documentService) {
+      try {
+        docs = aiService.agent.documentService.getAllDocuments() || [];
+      } catch { docs = []; }
+    }
+    let workspaceFiles = docs.map(d => d.path || d.filePath).filter(Boolean);
+
+    // Fallback: If documentService cache is empty, scan workspaceRoot directly for .md files
+    const workspaceRoot = aiService.agent.workspaceRoot;
+    if (workspaceFiles.length === 0 && workspaceRoot && fs.existsSync(workspaceRoot)) {
+      function scanMarkdownFiles(dir) {
+        let results = [];
+        try {
+          const list = fs.readdirSync(dir);
+          for (const file of list) {
+            if (file.startsWith('.') || file === 'node_modules' || file === 'dist' || file === 'build') continue;
+            const fullPath = path.join(dir, file);
+            const stat = fs.statSync(fullPath);
+            if (stat && stat.isDirectory()) {
+              results = results.concat(scanMarkdownFiles(fullPath));
+            } else if (file.endsWith('.md')) {
+              results.push(fullPath);
+            }
+          }
+        } catch { /* ignore scan error */ }
+        return results;
+      }
+      workspaceFiles = scanMarkdownFiles(workspaceRoot);
+    }
 
     logDb.addLog('graph', `Enqueued ${workspaceFiles.length} notes for entity extraction`, 'info');
     logDb.close();
@@ -802,12 +830,12 @@ async function handleBuildGraph(_event, _payload) {
         name: activeProvider ? activeProvider.name : null,
         apiKey: activeProvider ? activeProvider.apiKey : null,
         model: activeProvider ? activeProvider.model : null,
-        graphProvider: prefs.graphProvider || 'text-provider'
+        graphProvider: prefs.graphProvider || 'gliner2-relex'
       };
       workerManager.rebuildGraph(workspaceFiles, providerConfig);
     }
 
-    return new AIQueryResponse(true, { message: 'Graph rebuild started in background worker' });
+    return new AIQueryResponse(true, { message: `Graph rebuild started for ${workspaceFiles.length} notes in background worker` });
   } catch (error) {
     console.error('[AI IPC] Graph building failed:', error);
     return new AIQueryResponse(false, null, error.message);
