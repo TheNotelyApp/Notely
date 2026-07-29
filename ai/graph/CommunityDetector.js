@@ -93,7 +93,7 @@ class CommunityDetector {
         const updateEntStmt = db.prepare('UPDATE entities SET community_id = ? WHERE id = ?');
 
         let cIndex = 1;
-        communitiesMap.forEach((members, labelId) => {
+        communitiesMap.forEach((members) => {
           const commLabel = `Community ${cIndex}`;
           insertCommStmt.run(cIndex, commLabel, members.length);
           for (const entId of members) {

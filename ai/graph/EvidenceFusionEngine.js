@@ -12,7 +12,7 @@ class EvidenceFusionEngine {
     this.evidenceStore = evidenceStore;
   }
 
-  fuseTriple({ source_id, target_id, type, weight = 1.0, confidence = 1.0, extractor = 'fusion', evidenceId = null, metadata = {} }) {
+  fuseTriple({ source_id, target_id, type, weight = 1.0, confidence = 1.0, evidenceId = null, metadata = {} }) {
     if (!this.graphDb?.db) return null;
     const db = this.graphDb.db;
 

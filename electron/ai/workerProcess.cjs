@@ -5,6 +5,24 @@
 const path = require('path');
 const fs = require('fs');
 
+function scanMarkdownFiles(dir) {
+  let results = [];
+  try {
+    const list = fs.readdirSync(dir);
+    for (const file of list) {
+      if (file.startsWith('.') || file === 'node_modules') continue;
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat && stat.isDirectory()) {
+        results = results.concat(scanMarkdownFiles(fullPath));
+      } else if (file.endsWith('.md')) {
+        results.push(fullPath);
+      }
+    }
+  } catch { /* ignore scan error */ }
+  return results;
+}
+
 let embeddingDb = null;
 let indexWorker = null;
 let queue = null;
@@ -95,23 +113,6 @@ if (process.parentPort) {
         }
 
         // Auto-enqueue workspace markdown notes on startup
-        function scanMarkdownFiles(dir) {
-          let results = [];
-          try {
-            const list = fs.readdirSync(dir);
-            for (const file of list) {
-              if (file.startsWith('.') || file === 'node_modules') continue;
-              const fullPath = path.join(dir, file);
-              const stat = fs.statSync(fullPath);
-              if (stat && stat.isDirectory()) {
-                results = results.concat(scanMarkdownFiles(fullPath));
-              } else if (file.endsWith('.md')) {
-                results.push(fullPath);
-              }
-            }
-          } catch { /* ignore scan error */ }
-          return results;
-        }
 
         const workspaceNotes = scanMarkdownFiles(workspaceRoot);
         for (const notePath of workspaceNotes) {

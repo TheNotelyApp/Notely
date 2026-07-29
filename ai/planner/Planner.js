@@ -43,7 +43,7 @@ class Planner {
     }
 
     if (intentManifest.goal === 'workspace_task_summary' && !intentManifest.capabilities.needsGraph) {
-      steps = steps.filter(s => s.capability !== 'graph:traverse');
+      steps = steps.filter(s => s.capability === 'tasks:extract');
     }
 
     const selectedStrategy = intentManifest.goal === 'workspace_task_summary'

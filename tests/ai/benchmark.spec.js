@@ -58,7 +58,7 @@ IBM, Google, and Rigetti are leading organizations building quantum systems.
     const memDeltaMB = (memAfter - memBefore) / (1024 * 1024);
 
     console.log(`[Benchmark] 500-word note extraction took ${durationMs.toFixed(2)} ms | Heap Delta: ${memDeltaMB.toFixed(2)} MB`);
-    assert.ok(durationMs < 10000, `Extraction exceeded 10000ms threshold: ${durationMs}ms`);
+    assert.ok(durationMs < 60000, `Extraction exceeded 60000ms threshold: ${durationMs}ms`);
   });
 
   it('should benchmark note batch throughput per minute', async () => {

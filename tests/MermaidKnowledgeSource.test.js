@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import MermaidKnowledgeSource from '../../ai/graph/sources/MermaidKnowledgeSource';
+import MermaidKnowledgeSource from '../ai/graph/sources/MermaidKnowledgeSource';
 
 describe('MermaidKnowledgeSource', () => {
   it('should return correct sourceType and baseConfidence', () => {

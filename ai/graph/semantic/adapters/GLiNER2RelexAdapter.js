@@ -123,7 +123,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         this._setupTestMockEnvironment();
         log.info(`GLiNER2RelexAdapter initialized in standby/mock mode.`);
       }
-    } catch (err) {
+    } catch {
       this._setupTestMockEnvironment();
       log.info(`GLiNER2RelexAdapter initialized in standby mode after load error.`);
     }
@@ -196,9 +196,8 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     const vocabList = this.tokenizerConfig.model?.vocab || [];
     for (let i = 0; i < vocabList.length; i++) {
       const item = vocabList[i];
-      if (Array.isArray(item)) {
-        this._vocabMap.set(item[0], item[1]);
-      }
+        const tokenId = (typeof item[1] === 'number' && Number.isInteger(item[1])) ? item[1] : i;
+        this._vocabMap.set(item[0], tokenId);
     }
     if (this.tokenizerConfig.added_tokens) {
       for (const tok of this.tokenizerConfig.added_tokens) {
@@ -418,7 +417,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     return accepted;
   }
 
-  _mockExtractSentEntities(words, targetEntityTypes, confidenceThreshold) {
+  _mockExtractSentEntities() {
     // Model-driven architecture: Standby/Mock mode produces no rule-based extractions.
     return [];
   }
@@ -448,7 +447,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       await this.load().catch(() => {});
     }
 
-    const { id: docId, content, sourceType = 'markdown', metadata = {} } = document || {};
+    const { id: docId, content, metadata = {} } = document || {};
     if (!content || typeof content !== 'string' || !content.trim()) {
       return new ExtractionResult({
         entities: [],
