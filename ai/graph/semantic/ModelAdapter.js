@@ -21,6 +21,7 @@ class ModelAdapter {
    * @param {Object} options
    * @returns {Promise<ExtractionResult>}
    */
+  // eslint-disable-next-line no-unused-vars
   async extract(document, options = {}) {
     throw new Error('Method extract() must be implemented by concrete ModelAdapter subclass.');
   }

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /**
  * KnowledgeSource - Abstract base class for workspace knowledge sources
  */
