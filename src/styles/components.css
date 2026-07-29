@@ -999,9 +999,9 @@
 .detail-task-popover-item {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 4px 6px;
+  padding: 5px 8px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -1009,7 +1009,16 @@
   color: var(--text-strong);
   text-align: left;
   cursor: pointer;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
   transition: background var(--motion-fast);
+}
+
+.detail-task-popover-item > span:last-child {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .detail-task-popover-item:hover {
@@ -1023,9 +1032,11 @@
 }
 
 .detail-task-popover-marker {
+  flex-shrink: 0;
   font-family: ui-monospace, monospace;
   font-size: 11px;
   color: var(--text-subtle);
+  margin-top: 1px;
 }
 
 .detail-breadcrumb {
@@ -3204,6 +3215,7 @@
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
   background: var(--surface-muted);
+  margin-bottom: 6px;
 }
 
 .validation-banner {
