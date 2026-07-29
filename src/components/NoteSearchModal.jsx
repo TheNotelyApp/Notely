@@ -196,7 +196,7 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
   return (
     <OverlayDialog onClose={onClose} ariaLabel="Search Workspace Notes" cardClassName="note-search-modal-card">
       <AppIconButton className="note-search-close" onClick={onClose} aria-label="Close search">
-        <X size={15} />
+        <X size={16} />
       </AppIconButton>
       <div className="note-search-modal-header" onKeyDown={handleKeyDown}>
         <div className="note-search-modal-top-row">
@@ -204,7 +204,7 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
         </div>
         <div className="note-search-filters">
           <div className="note-search-input-wrapper">
-            <Search size={15} className="note-search-icon" />
+            <Search size={16} className="note-search-icon" />
             <input
               ref={inputRef}
               type="text"
