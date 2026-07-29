@@ -4699,7 +4699,7 @@
   justify-content: space-between;
   border: 1px solid var(--surface-border);
   border-bottom: 1px solid var(--surface-border);
-  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--surface-muted);
   padding: 6px 10px 0 10px;
   min-height: 38px;
@@ -4863,7 +4863,8 @@
 .note-tab-add-dropdown {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
+  right: auto;
   background: var(--surface-elevated);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-lg);
@@ -4872,7 +4873,23 @@
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  min-width: 180px;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - 32px));
+  box-sizing: border-box;
+}
+
+.note-tab-add-container.align-right .note-tab-add-dropdown {
+  left: auto;
+  right: 0;
+}
+
+.note-tab-add-dropdown::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  height: 12px;
 }
 
 :root[data-theme="dark"] .note-tab-add-dropdown {

@@ -4,7 +4,9 @@ import * as LucideIcons from "lucide-react";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { IconColorPickerModal } from "./IconColorPickerModal";
 import { getContrastColor } from "../utils/colorUtils";
-import OverlayDialog from "./OverlayDialog";
+import AppIconButton from "./AppIconButton";
+import NoteSearchModal from "./NoteSearchModal";
+import { listWorkspaceTaskDocuments, listDocuments } from "../services/electronService";
 
 function formatRelativeTime(timestamp) {
   if (!timestamp) return "";
@@ -21,121 +23,10 @@ function formatRelativeTime(timestamp) {
   return new Date(date).toLocaleDateString();
 }
 
-function NoteSearchModal({ isOpen, onClose, documents, getMetadata, onSelectNote }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef(null);
-
-  const allNotes = useMemo(() => {
-    return (documents || []).filter((doc) => doc.entryType === "file");
-  }, [documents]);
-
-  const filteredNotes = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return allNotes;
-    return allNotes.filter((doc) => {
-      const title = (doc.title || "").toLowerCase();
-      const path = (doc.filePath || "").toLowerCase();
-      return title.includes(q) || path.includes(q);
-    });
-  }, [allNotes, searchQuery]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [searchQuery]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSearchQuery("");
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [isOpen]);
-
-  const handleKeyDown = (e) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (filteredNotes.length ? (prev + 1) % filteredNotes.length : 0));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (filteredNotes.length ? (prev - 1 + filteredNotes.length) % filteredNotes.length : 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const selected = filteredNotes[selectedIndex];
-      if (selected) {
-        onSelectNote?.(selected.filePath);
-        onClose?.();
-      }
-    } else if (e.key === "Escape") {
-      onClose?.();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <OverlayDialog onClose={onClose} ariaLabel="Search All Notes" cardClassName="note-search-modal-card">
-      <div className="note-search-modal-header" onKeyDown={handleKeyDown}>
-        <div className="note-search-input-wrapper">
-          <Search size={16} className="note-search-icon" />
-          <input
-            ref={inputRef}
-            type="text"
-            className="note-search-input"
-            placeholder="Search all notes in workspace..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <AppIconButton className="note-search-close" onClick={onClose} aria-label="Close search">
-            <X size={16} />
-          </AppIconButton>
-        </div>
-      </div>
-      <div className="note-search-modal-body" onKeyDown={handleKeyDown}>
-        {filteredNotes.length > 0 ? (
-          <div className="note-search-results-list" role="listbox">
-            {filteredNotes.map((doc, idx) => {
-              const meta = getMetadata?.(doc.filePath) || {};
-              const ItemIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : FileText;
-              const title = doc.title || doc.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "");
-              const isSelected = idx === selectedIndex;
-              const relTime = formatRelativeTime(doc.mtime || doc.updatedAt || doc.lastModified);
-
-              return (
-                <button
-                  key={doc.filePath}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  className={`note-search-result-item ${isSelected ? "selected" : ""}`}
-                  onClick={() => {
-                    onSelectNote?.(doc.filePath);
-                    onClose?.();
-                  }}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                >
-                  <ItemIcon size={16} className="note-search-item-icon" />
-                  <div className="note-search-item-details">
-                    <span className="note-search-item-title">{title}</span>
-                    <span className="note-search-item-path">{doc.filePath}</span>
-                  </div>
-                  {relTime && <span className="note-search-item-time">{relTime}</span>}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="note-search-empty">No notes match "{searchQuery}"</div>
-        )}
-      </div>
-    </OverlayDialog>
-  );
-}
-
 export function NoteTabBar({
   openTabs = [],
   onReorderTabs,
-  activeTabPath = null,
+  activeTabPath = "",
   tabStates = {},
   documents = [],
   onSelectTab,
@@ -152,13 +43,35 @@ export function NoteTabBar({
   onReloadFromDisk,
 }) {
   const barRef = useRef(null);
-  const [containerWidth, setContainerWidth] = useState(800);
-  const [contextMenu, setContextMenu] = useState(null); // { x, y, filePath }
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, filePath }
   const [pickerState, setPickerState] = useState({ isOpen: false, entry: null });
+
+  const [containerWidth, setContainerWidth] = useState(1000);
+  const [fetchedWorkspaceDocs, setFetchedWorkspaceDocs] = useState([]);
   const { getMetadata, updateMetadata } = useWorkspaceMetadata();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        let docs = await listWorkspaceTaskDocuments();
+        if (!docs || !docs.length) {
+          docs = await listDocuments("");
+        }
+        if (Array.isArray(docs) && docs.length > 0) {
+          setFetchedWorkspaceDocs(docs);
+        }
+      } catch (err) {
+        // Fallback
+      }
+    })();
+  }, [documents]);
+
+  const activeDocuments = useMemo(() => {
+    return fetchedWorkspaceDocs.length > 0 ? fetchedWorkspaceDocs : (documents || []);
+  }, [fetchedWorkspaceDocs, documents]);
 
   // Measure container width
   useEffect(() => {
@@ -191,15 +104,49 @@ export function NoteTabBar({
     return new Map((documents || []).map((doc) => [doc.filePath, doc]));
   }, [documents]);
 
-  const closedNotes = useMemo(() => {
-    return (documents || [])
-      .filter((doc) => doc.entryType === "file" && !openTabs.includes(doc.filePath))
+  const hoverTimeoutRef = useRef(null);
+  const addContainerRef = useRef(null);
+  const [popoverAlignRight, setPopoverAlignRight] = useState(false);
+
+  const handleAddMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    if (addContainerRef.current) {
+      const rect = addContainerRef.current.getBoundingClientRect();
+      const spaceOnRight = window.innerWidth - rect.left;
+      setPopoverAlignRight(spaceOnRight < 270);
+    }
+    setAddDropdownOpen(true);
+    setContextMenu(null);
+    setDropdownOpen(false);
+  }, []);
+
+  const handleAddMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setAddDropdownOpen(false);
+    }, 280);
+  }, []);
+
+  const recentWorkspaceNotes = useMemo(() => {
+    return (activeDocuments || [])
+      .filter((doc) => doc.entryType === "file")
       .sort((a, b) => {
         const timeA = a.mtime || a.updatedAt || a.lastModified || 0;
         const timeB = b.mtime || b.updatedAt || b.lastModified || 0;
         return timeB - timeA;
       });
-  }, [documents, openTabs]);
+  }, [activeDocuments]);
+
+  const visiblePopoverNotes = useMemo(() => {
+    return recentWorkspaceNotes.slice(0, 5);
+  }, [recentWorkspaceNotes]);
+
+  const remainingClosedCount = Math.max(0, recentWorkspaceNotes.length - 5);
 
   const getTabTitle = useCallback((filePath) => {
     const cachedDoc = tabStates[filePath]?.doc;
@@ -304,9 +251,6 @@ export function NoteTabBar({
 
   if (!openTabs.length) return null;
 
-  const visibleClosedNotes = closedNotes.slice(0, 8);
-  const remainingClosedCount = closedNotes.length - 8;
-
   return (
     <div className="note-tab-bar" ref={barRef} role="tablist" aria-label="Open notes">
       <div className="note-tab-list">
@@ -364,15 +308,10 @@ export function NoteTabBar({
 
         {/* "+" New Tab Button immediately after last tab chip */}
         <div
-          className="note-tab-add-container"
-          onMouseEnter={() => {
-            setAddDropdownOpen(true);
-            setContextMenu(null);
-            setDropdownOpen(false);
-          }}
-          onMouseLeave={() => {
-            setAddDropdownOpen(false);
-          }}
+          ref={addContainerRef}
+          className={`note-tab-add-container${popoverAlignRight ? " align-right" : ""}`}
+          onMouseEnter={handleAddMouseEnter}
+          onMouseLeave={handleAddMouseLeave}
         >
           <button
             className="note-tab-add-btn"
@@ -380,6 +319,7 @@ export function NoteTabBar({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              setAddDropdownOpen((prev) => !prev);
             }}
             title="Create or open note"
             data-tooltip="Create or open note"
@@ -391,7 +331,13 @@ export function NoteTabBar({
           </button>
 
           {addDropdownOpen && (
-            <div className="note-tab-add-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="note-tab-add-dropdown"
+              role="menu"
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={handleAddMouseEnter}
+              onMouseLeave={handleAddMouseLeave}
+            >
               <div className="note-tab-add-section">
                 <button
                   type="button"
@@ -407,12 +353,12 @@ export function NoteTabBar({
                 </button>
               </div>
 
-              {closedNotes.length > 0 && (
+              {visiblePopoverNotes.length > 0 && (
                 <>
                   <div className="note-tab-add-dropdown-separator" />
-                  <div className="note-tab-add-dropdown-header">Recently Edited Notes</div>
+                  <div className="note-tab-add-dropdown-header">Recent Workspace Notes</div>
                   <div className="note-tab-add-dropdown-scroll">
-                    {visibleClosedNotes.map((note) => {
+                    {visiblePopoverNotes.map((note) => {
                       const meta = getMetadata?.(note.filePath) || {};
                       const ItemIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : FileText;
                       const title = note.title || note.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "");
@@ -735,6 +681,16 @@ export function NoteTabBar({
           onSave={(updates) => updateMetadata(pickerState.entry?.filePath, updates)}
         />
       )}
+      <NoteSearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+        documents={activeDocuments}
+        getMetadata={getMetadata}
+        onSelectNote={(filePath) => {
+          onSelectTab?.(filePath);
+          setSearchModalOpen(false);
+        }}
+      />
     </div>
   );
 }
