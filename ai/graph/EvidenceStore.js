@@ -31,9 +31,11 @@ class EvidenceStore {
 
     try {
       const crypto = require('crypto');
-      const id = 'ev-' + crypto.randomUUID();
+      const hashKey = `${sourceId}:${extractor}:${subjectText}:${subjectSpanStart ?? 0}:${predicateText ?? ''}:${objectText ?? ''}`;
+      const id = 'ev-' + crypto.createHash('sha256').update(hashKey).digest('hex').slice(0, 24);
+
       const stmt = this.graphDb.db.prepare(`
-        INSERT INTO evidence (
+        INSERT OR IGNORE INTO evidence (
           id, source_id, extractor, subject_text, subject_span_start, subject_span_end,
           predicate_text, object_text, object_span_start, object_span_end,
           raw_sentence, confidence, created_at

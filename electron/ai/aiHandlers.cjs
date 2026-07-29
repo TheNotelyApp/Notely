@@ -342,7 +342,7 @@ async function handleInitialize(event, payload) {
 
     const result = await aiService.initialize(appDataDir, workspaceRoot, llmProvider, embeddingConfig);
 
-    // Apply saved graphProvider preference (gliner-glirel ONNX vs text-provider Cloud LLM)
+    // Apply saved graphProvider preference (gliner2-relex ONNX vs text-provider Cloud LLM)
     if (aiService.agent) {
       if (prefs.graphProvider === 'text-provider') {
         const activeProvider = aiService.agent.llmRegistry?.getActiveProvider();
@@ -352,12 +352,12 @@ async function handleInitialize(event, payload) {
           const GraphModelDownloader = require('../../ai/graph/GraphModelDownloader');
           const modelDownloader = new GraphModelDownloader(appDataDir);
           if (modelDownloader.isModelDownloaded()) {
-            aiService.agent.setGraphProvider('gliner-glirel');
+            aiService.agent.setGraphProvider('gliner2-relex');
           } else {
             aiService.agent.setGraphProvider(null);
           }
         } catch (graphErr) {
-          console.warn('[AI IPC] Local GLiNER/GLiREL ONNX graph provider init notice:', graphErr.message);
+          console.warn('[AI IPC] Local GLiNER2-Relex ONNX graph provider init notice:', graphErr.message);
         }
       }
     }
@@ -789,8 +789,36 @@ async function handleBuildGraph(_event, _payload) {
     logDb.addLog('graph', 'Starting Knowledge Graph rebuild...', 'info');
 
     const workerManager = require('./workerManager.cjs');
-    const docs = aiService.agent.documentService.getAllDocuments();
-    const workspaceFiles = docs.map(d => d.path || d.filePath).filter(Boolean);
+    let docs = [];
+    if (aiService.agent.documentService) {
+      try {
+        docs = aiService.agent.documentService.getAllDocuments() || [];
+      } catch { docs = []; }
+    }
+    let workspaceFiles = docs.map(d => d.path || d.filePath).filter(Boolean);
+
+    // Fallback: If documentService cache is empty, scan workspaceRoot directly for .md files
+    const workspaceRoot = aiService.agent.workspaceRoot;
+    if (workspaceFiles.length === 0 && workspaceRoot && fs.existsSync(workspaceRoot)) {
+      function scanMarkdownFiles(dir) {
+        let results = [];
+        try {
+          const list = fs.readdirSync(dir);
+          for (const file of list) {
+            if (file.startsWith('.') || file === 'node_modules' || file === 'dist' || file === 'build') continue;
+            const fullPath = path.join(dir, file);
+            const stat = fs.statSync(fullPath);
+            if (stat && stat.isDirectory()) {
+              results = results.concat(scanMarkdownFiles(fullPath));
+            } else if (file.endsWith('.md')) {
+              results.push(fullPath);
+            }
+          }
+        } catch { /* ignore scan error */ }
+        return results;
+      }
+      workspaceFiles = scanMarkdownFiles(workspaceRoot);
+    }
 
     logDb.addLog('graph', `Enqueued ${workspaceFiles.length} notes for entity extraction`, 'info');
     logDb.close();
@@ -802,12 +830,12 @@ async function handleBuildGraph(_event, _payload) {
         name: activeProvider ? activeProvider.name : null,
         apiKey: activeProvider ? activeProvider.apiKey : null,
         model: activeProvider ? activeProvider.model : null,
-        graphProvider: prefs.graphProvider || 'text-provider'
+        graphProvider: prefs.graphProvider || 'gliner2-relex'
       };
       workerManager.rebuildGraph(workspaceFiles, providerConfig);
     }
 
-    return new AIQueryResponse(true, { message: 'Graph rebuild started in background worker' });
+    return new AIQueryResponse(true, { message: `Graph rebuild started for ${workspaceFiles.length} notes in background worker` });
   } catch (error) {
     console.error('[AI IPC] Graph building failed:', error);
     return new AIQueryResponse(false, null, error.message);
@@ -817,12 +845,17 @@ async function handleBuildGraph(_event, _payload) {
 /**
  * Handle fetching graph entities and relationships
  */
-async function handleGetGraph(_event, _payload) {
+async function handleGetGraph(_event, payload) {
   try {
     if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
       throw new Error('AI agent or GraphDB is not initialized');
     }
-    const result = aiService.agent.graphDb.getAll();
+    const AIConfig = require('../../ai/core/AIConfig');
+    const config = new AIConfig();
+    const prefs = config.loadPreferences();
+    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60);
+
+    const result = aiService.agent.graphDb.getAll(minConfidence);
     return new AIQueryResponse(true, result);
   } catch (error) {
     console.error('[AI IPC] Get graph failed:', error);
@@ -833,7 +866,7 @@ async function handleGetGraph(_event, _payload) {
 /**
  * Handle fetching graph status metrics
  */
-async function handleGetGraphStatus(_event, _payload) {
+async function handleGetGraphStatus(_event, payload) {
   try {
     if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
       return new AIQueryResponse(true, {
@@ -846,7 +879,12 @@ async function handleGetGraphStatus(_event, _payload) {
         noteName: ''
       });
     }
-    const result = aiService.agent.graphDb.getStatus();
+    const AIConfig = require('../../ai/core/AIConfig');
+    const config = new AIConfig();
+    const prefs = config.loadPreferences();
+    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60);
+
+    const result = aiService.agent.graphDb.getStatus(minConfidence);
     const workerManager = require('./workerManager.cjs');
     const graphProgress = workerManager.getGraphProgressState();
     return new AIQueryResponse(true, {

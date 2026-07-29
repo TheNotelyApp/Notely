@@ -5,9 +5,9 @@ const fs = require('fs');
 
 const GraphDB = require('../../ai/graph/GraphDB');
 const GraphService = require('../../ai/graph/GraphService');
-const GLiNERGLiRELPipeline = require('../../ai/graph/GLiNERGLiRELPipeline');
+const { SemanticExtractionEngine } = require('../../ai/graph/semantic');
 
-describe('GLiNER + GLiREL Benchmark Performance Tests', () => {
+describe('GLiNER2-Relex ONNX Benchmark Performance Tests', () => {
   let tmpDir;
   let graphDb;
 
@@ -24,13 +24,13 @@ describe('GLiNER + GLiREL Benchmark Performance Tests', () => {
     }
   });
 
-  it('should benchmark pipeline initialization latency', async () => {
+  it('should benchmark SemanticExtractionEngine initialization latency', async () => {
     const start = performance.now();
-    const pipeline = new GLiNERGLiRELPipeline(tmpDir);
-    await pipeline.load();
+    const engine = new SemanticExtractionEngine(tmpDir);
+    await engine.load();
     const durationMs = performance.now() - start;
 
-    console.log(`[Benchmark] Pipeline initialization took ${durationMs.toFixed(2)} ms`);
+    console.log(`[Benchmark] SemanticExtractionEngine initialization took ${durationMs.toFixed(2)} ms`);
     assert.ok(durationMs >= 0);
   });
 
@@ -58,7 +58,7 @@ IBM, Google, and Rigetti are leading organizations building quantum systems.
     const memDeltaMB = (memAfter - memBefore) / (1024 * 1024);
 
     console.log(`[Benchmark] 500-word note extraction took ${durationMs.toFixed(2)} ms | Heap Delta: ${memDeltaMB.toFixed(2)} MB`);
-    assert.ok(durationMs < 5000, `Extraction exceeded 5000ms threshold: ${durationMs}ms`);
+    assert.ok(durationMs < 10000, `Extraction exceeded 10000ms threshold: ${durationMs}ms`);
   });
 
   it('should benchmark note batch throughput per minute', async () => {

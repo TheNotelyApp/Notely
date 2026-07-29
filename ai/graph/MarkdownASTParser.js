@@ -142,8 +142,8 @@ class MarkdownASTParser {
     while ((match = imageRegex.exec(content)) !== null) {
       const altText = match[1].trim() || 'Image';
       const imgPath = match[2].trim();
-      if (imgPath && !imgPath.startsWith('http://') && !imgPath.startsWith('https://')) {
-        const imgName = imgPath.split(/[\\/]/).pop();
+      if (imgPath) {
+        const imgName = imgPath.split(/[\\/]/).pop() || imgPath;
         media.push({
           name: imgName,
           path: imgPath,
@@ -304,6 +304,41 @@ class MarkdownASTParser {
       metadataEntities,
       frontmatter
     };
+  }
+
+  /**
+   * Intensive 23-stage Markdown AST Cleansing Engine
+   * Strips all structural syntax, frontmatter, code blocks, HTML, tables, lists, footnotes, blockquotes,
+   * emphasis syntax, and math formulas to yield pure natural prose for neural extraction.
+   */
+  cleanse(content = '') {
+    if (!content || typeof content !== 'string') return '';
+    return content
+      .replace(/^\s*#{1,6}\s*(?:rawnotes|raw notes|cleansednotes|cleansed notes|cleansed|raw)\s*$/gmi, '') // 0. System template section headers
+      .replace(/^---\r?\n[\s\S]*?\r?\n---/g, '')             // 1. Frontmatter
+      .replace(/```[\s\S]*?```/g, '')                         // 2. Code blocks
+      .replace(/\$\$[\s\S]*?\$\$/g, '')                       // 3. Multiline math
+      .replace(/\$[^$\n]+\$/g, '')                            // 4. Inline math
+      .replace(/<[^>]*>/g, '')                                // 5. HTML tags
+      .replace(/^>\s*\[!.*?\]\s*(.*)$/gm, '$1')               // 6. Callout headers
+      .replace(/^>\s*/gm, '')                                 // 7. Blockquotes
+      .replace(/!\[(.*?)\]\((.*?)\)/g, '$1')                  // 8. Images -> alt text
+      .replace(/\[(.*?)\]\((.*?)\)/g, '$1')                   // 9. Links -> label
+      .replace(/\[\[(.*?)\]\]/g, (m, inner) => inner.includes('|') ? inner.split('|')[1].trim() : inner.trim()) // 10. Wikilinks
+      .replace(/^\s*#{1,6}\s+/gm, '')                         // 11. Headings
+      .replace(/^\s*[-*+]?\s*\[[ xX]\]\s+/gm, '')              // 12. Checkboxes
+      .replace(/^\s*[-*+]\s+/gm, '')                          // 13. Bullet lists
+      .replace(/^\s*\d+\.\s+/gm, '')                          // 14. Numbered lists
+      .replace(/\|.*\|/g, (m) => m.replace(/\|/g, ' '))       // 15. Markdown table pipes -> spaces
+      .replace(/^[-\s:|]{3,}$/gm, '')                         // 16. Table separator lines
+      .replace(/\[\^\d+\]:?/g, '')                            // 17. Footnotes
+      .replace(/\*{1,3}(.*?)\*{1,3}/g, '$1')                  // 18. Bold/Italic asterisks
+      .replace(/_{1,3}(.*?)_{1,3}/g, '$1')                    // 19. Bold/Italic underscores
+      .replace(/~~(.*?)~~/g, '$1')                            // 20. Strikethrough
+      .replace(/`([^`]+)`/g, '$1')                            // 21. Inline code
+      .replace(/\r?\n/g, ' ')                                 // 22. Line breaks -> space
+      .replace(/\s+/g, ' ')                                   // 23. Collapse whitespace
+      .trim();
   }
 }
 

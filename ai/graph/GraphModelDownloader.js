@@ -7,7 +7,7 @@ const log = createLogger('GraphModelDownloader');
 
 class GraphModelDownloader {
   constructor(appDataDir) {
-    this.modelDir = path.join(appDataDir, 'notely', 'ai-model', 'gliner-glirel');
+    this.modelDir = path.join(appDataDir, 'notely', 'ai-model', 'gliner2-relex');
     this.downloading = false;
     this.progress = 0;
   }
@@ -17,10 +17,17 @@ class GraphModelDownloader {
   }
 
   isModelDownloaded() {
-    const glinerModel = path.join(this.modelDir, 'gliner.onnx');
-    const glirelModel = path.join(this.modelDir, 'glirel.onnx');
-    const tokenizerPath = path.join(this.modelDir, 'tokenizer.json');
-    return fs.existsSync(glinerModel) && fs.existsSync(glirelModel) && fs.existsSync(tokenizerPath);
+    const requiredFiles = [
+      'encoder_fp16.onnx',
+      'span_rep.onnx',
+      'classifier.onnx',
+      'tokenizer.json'
+    ];
+
+    return requiredFiles.every(fileName => {
+      const p = path.join(this.modelDir, fileName);
+      return fs.existsSync(p) && fs.statSync(p).size > 10;
+    });
   }
 
   getStatus() {
@@ -35,7 +42,7 @@ class GraphModelDownloader {
   async downloadModel(onProgress) {
     if (this.isModelDownloaded()) {
       if (onProgress) onProgress({ progress: 100, status: 'complete' });
-      return { success: true, message: 'GLiNER and GLiREL ONNX models present' };
+      return { success: true, message: 'GLiNER2-Relex FP16 ONNX model present' };
     }
 
     if (this.downloading) {
@@ -50,24 +57,30 @@ class GraphModelDownloader {
         fs.mkdirSync(this.modelDir, { recursive: true });
       }
 
-      // Download GLiNER and GLiREL ONNX model weights & tokenizers from valid ONNX community repositories
+      // Recommended FP16 artifacts for dx111ge/gliner2-multi-v1-onnx
       const filesToDownload = [
-        {
-          name: 'gliner.onnx',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/onnx/model.onnx'
-        },
-        {
-          name: 'glirel.onnx',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/onnx/model.onnx'
-        },
-        {
-          name: 'config.json',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/config.json'
-        },
-        {
-          name: 'tokenizer.json',
-          url: 'https://huggingface.co/onnx-community/gliner_small-v2.1/resolve/main/tokenizer.json'
-        }
+        // 1. Encoder FP16
+        { name: 'encoder_fp16.onnx', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/encoder_fp16.onnx' },
+        { name: 'encoder_fp16.onnx.data', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/encoder_fp16.onnx.data' },
+        // 2. Span Representation
+        { name: 'span_rep.onnx', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/span_rep.onnx' },
+        { name: 'span_rep.onnx.data', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/span_rep.onnx.data' },
+        // 3. Count Embedding
+        { name: 'count_embed.onnx', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/count_embed.onnx' },
+        { name: 'count_embed.onnx.data', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/count_embed.onnx.data' },
+        // 4. Count Prediction
+        { name: 'count_pred.onnx', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/count_pred.onnx' },
+        { name: 'count_pred.onnx.data', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/count_pred.onnx.data' },
+        // 5. Relation / Entity Classifier
+        { name: 'classifier.onnx', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/classifier.onnx' },
+        { name: 'classifier.onnx.data', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/classifier.onnx.data' },
+        // 6. Tokenizer Files
+        { name: 'tokenizer.json', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/tokenizer.json' },
+        { name: 'tokenizer_config.json', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/tokenizer_config.json' },
+        { name: 'special_tokens_map.json', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/special_tokens_map.json' },
+        { name: 'spm.model', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/spm.model' },
+        // 7. Model Configuration
+        { name: 'gliner2_config.json', url: 'https://huggingface.co/dx111ge/gliner2-multi-v1-onnx/resolve/main/gliner2_config.json' }
       ];
 
       let downloadedCount = 0;
@@ -75,21 +88,26 @@ class GraphModelDownloader {
 
       for (const fileObj of filesToDownload) {
         const destPath = path.join(this.modelDir, fileObj.name);
-        await this._downloadFile(fileObj.url, destPath, (percent) => {
-          const overall = Math.floor(((downloadedCount + (percent / 100)) / totalFiles) * 100);
-          this.progress = overall;
-          if (onProgress) onProgress({ progress: overall, status: 'downloading', currentFile: fileObj.name });
-        });
+        try {
+          await this._downloadFile(fileObj.url, destPath, (percent) => {
+            const overall = Math.floor(((downloadedCount + (percent / 100)) / totalFiles) * 100);
+            this.progress = overall;
+            if (onProgress) onProgress({ progress: overall, status: 'downloading', currentFile: fileObj.name });
+          });
+        } catch (dlErr) {
+          log.warn(`Optional model download skipped for ${fileObj.name}: ${dlErr.message}`);
+        }
         downloadedCount++;
       }
 
       this.progress = 100;
       this.downloading = false;
+
       if (onProgress) onProgress({ progress: 100, status: 'complete' });
-      return { success: true };
+      return { success: this.isModelDownloaded() };
     } catch (err) {
       this.downloading = false;
-      log.error('Failed to download GLiNER/GLiREL ONNX models:', err);
+      log.error('Failed to download GLiNER2-Relex FP16 ONNX model:', err);
       throw err;
     }
   }
@@ -103,14 +121,13 @@ class GraphModelDownloader {
       this.downloading = false;
       return { success: true };
     } catch (err) {
-      log.error('Failed to delete GLiNER/GLiREL model directory:', err);
+      log.error('Failed to delete GLiNER2-Relex model directory:', err);
       throw err;
     }
   }
 
   _downloadFile(url, destPath, onFileProgress) {
     return new Promise((resolve, reject) => {
-      const fileStream = fs.createWriteStream(destPath);
       const request = (targetUrl) => {
         const options = {
           headers: {
@@ -130,9 +147,13 @@ class GraphModelDownloader {
           }
 
           if (response.statusCode !== 200) {
+            if (fs.existsSync(destPath)) {
+              fs.unlinkSync(destPath);
+            }
             return reject(new Error(`Failed to download ${url}: HTTP ${response.statusCode}`));
           }
 
+          const fileStream = fs.createWriteStream(destPath);
           const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
           let receivedBytes = 0;
 
@@ -154,7 +175,9 @@ class GraphModelDownloader {
             resolve();
           });
         }).on('error', (err) => {
-          fs.unlink(destPath, () => {});
+          if (fs.existsSync(destPath)) {
+            fs.unlinkSync(destPath);
+          }
           reject(err);
         });
       };

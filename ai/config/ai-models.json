@@ -1,0 +1,19 @@
+{
+  "semanticExtraction": {
+    "provider": "onnx",
+    "model": "gliner2-relex",
+    "version": "1.0",
+    "modelId": "dx111ge/gliner2-multi-v1-onnx",
+    "path": "models/gliner2-relex",
+    "confidenceThreshold": 0.60,
+    "defaultEntityTypes": [
+      "Database", "Framework", "Software Component", "Microcontroller",
+      "Device", "Module", "Integration", "Broker", "Architecture",
+      "Model", "Service", "Person", "Application", "Concept"
+    ],
+    "defaultRelationTypes": [
+      "USES", "STORES", "GENERATES", "CREATES", "COMMUNICATES_WITH",
+      "CONTROLS", "CONNECTS_TO", "INTEGRATES_WITH", "DEPENDS_ON", "IMPLEMENTS"
+    ]
+  }
+}

@@ -48,10 +48,12 @@ class Planner {
 
     const selectedStrategy = intentManifest.goal === 'workspace_task_summary'
       ? 'task_pipeline'
-      : (intentManifest.capabilities.needsGraph ? 'graph_search' : 'semantic_search');
+      : (intentManifest.capabilities.needsGraph
+          ? (intentManifest.informationNeeds.includes('workspace_content_search') ? 'hybrid_graph_search' : 'graph_search')
+          : 'semantic_search');
 
     const rejectedStrategies = [];
-    if (selectedStrategy !== 'graph_search' && !intentManifest.capabilities.needsGraph) {
+    if (!selectedStrategy.includes('graph') && !intentManifest.capabilities.needsGraph) {
       rejectedStrategies.push('graph_search');
     }
     if (selectedStrategy !== 'task_pipeline' && !intentManifest.capabilities.needsTasks) {

@@ -168,7 +168,7 @@ class AIConfig {
           enablePatternLearning: true,
           enableEmbeddings: true,
           enableRelationshipDiscovery: true,
-          graphProvider: 'gliner-glirel',
+          graphProvider: 'gliner2-relex',
           graphConfidence: 0.60,
           providerModels: {},
         };

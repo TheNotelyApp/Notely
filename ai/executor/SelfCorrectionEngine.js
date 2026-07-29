@@ -93,7 +93,19 @@ class SelfCorrectionEngine {
     }
 
     // 5. Contradictory Missing Note Disclaimer Correction
-    const hasEvidence = Boolean(options.retrievedEvidence || options.evidenceContext);
+    const isNegativeEvidence = (val) => {
+      if (!val) return false;
+      const str = typeof val === 'string' ? val : (typeof val === 'object' ? JSON.stringify(val) : '');
+      const lower = str.toLowerCase();
+      return lower.includes('no knowledge graph connections found') ||
+             lower.includes('no notes found') ||
+             lower.includes('no matching notes') ||
+             lower.includes('requested capability is not available');
+    };
+
+    const rawEvidence = options.retrievedEvidence || options.evidenceContext;
+    const hasEvidence = Boolean(rawEvidence) && !isNegativeEvidence(rawEvidence);
+
     if (hasEvidence) {
       const missingDisclaimerRegex = /(?:unfortunately,\s*)?i\s+searched\s+your\s+workspace\s+notes,\s+but\s+i\s+couldn['’]t\s+find\s+any\s+note\s+mentioning\s+[^.\n\r]+[.!]?/gi;
       if (missingDisclaimerRegex.test(currentText)) {

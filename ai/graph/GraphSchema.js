@@ -92,12 +92,75 @@ const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_queue_status_priority ON graph_queue(status, priority DESC);`
 ];
 
+const ALTER_ENTITIES_ADD_COLUMNS = [
+  `ALTER TABLE entities ADD COLUMN confidence REAL DEFAULT 1.0;`,
+  `ALTER TABLE entities ADD COLUMN community_id INTEGER;`,
+  `ALTER TABLE entities ADD COLUMN ontology_class TEXT;`,
+  `ALTER TABLE entities ADD COLUMN source_count INTEGER DEFAULT 1;`,
+  `ALTER TABLE entities ADD COLUMN first_seen_at TEXT DEFAULT (datetime('now'));`,
+  `ALTER TABLE entities ADD COLUMN is_retired INTEGER DEFAULT 0;`,
+  `ALTER TABLE entities ADD COLUMN merged_into TEXT;`
+];
+
+const CREATE_RELATIONSHIP_EVIDENCE_TABLE = `
+CREATE TABLE IF NOT EXISTS relationship_evidence (
+  relationship_id INTEGER NOT NULL REFERENCES relationships(id) ON DELETE CASCADE,
+  evidence_id     TEXT    NOT NULL REFERENCES evidence(id)     ON DELETE CASCADE,
+  PRIMARY KEY (relationship_id, evidence_id)
+);`;
+
+const CREATE_COMMUNITIES_TABLE = `
+CREATE TABLE IF NOT EXISTS communities (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  label       TEXT,
+  centroid_id TEXT REFERENCES entities(id),
+  node_count  INTEGER DEFAULT 0,
+  created_at  TEXT DEFAULT (datetime('now')),
+  updated_at  TEXT DEFAULT (datetime('now'))
+);`;
+
+const CREATE_GRAPH_VERSIONS_TABLE = `
+CREATE TABLE IF NOT EXISTS graph_versions (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  version      TEXT NOT NULL,
+  entity_count INTEGER,
+  edge_count   INTEGER,
+  created_at   TEXT DEFAULT (datetime('now'))
+);`;
+
+const CREATE_WORKSPACE_ENTITY_TABLE = `
+CREATE TABLE IF NOT EXISTS workspace_entity (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  name            TEXT NOT NULL,
+  description     TEXT,
+  project_type    TEXT,
+  primary_goal    TEXT,
+  domain_tags     TEXT,
+  properties      TEXT,
+  created_at      TEXT DEFAULT (datetime('now')),
+  updated_at      TEXT DEFAULT (datetime('now'))
+);`;
+
+const CREATE_ENTITY_FTS = `
+CREATE VIRTUAL TABLE IF NOT EXISTS entity_fts USING fts5(
+  entity_id UNINDEXED,
+  name,
+  canonical_name,
+  type UNINDEXED
+);`;
+
 module.exports = {
   CREATE_ENTITIES_TABLE,
   CREATE_ENTITY_ALIASES_TABLE,
   CREATE_EVIDENCE_TABLE,
   CREATE_RELATIONSHIPS_TABLE,
   CREATE_GRAPH_QUEUE_TABLE,
-  CREATE_INDEXES
+  CREATE_INDEXES,
+  ALTER_ENTITIES_ADD_COLUMNS,
+  CREATE_RELATIONSHIP_EVIDENCE_TABLE,
+  CREATE_COMMUNITIES_TABLE,
+  CREATE_GRAPH_VERSIONS_TABLE,
+  CREATE_WORKSPACE_ENTITY_TABLE,
+  CREATE_ENTITY_FTS
 };
 

@@ -3,6 +3,7 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 
 let embeddingDb = null;
 let indexWorker = null;
@@ -44,12 +45,56 @@ if (process.parentPort) {
         graphDb.initialize();
 
         graphQueue = new GraphQueue(graphDb);
-        const mockAgent = { appDataDir };
+        const AIConfig = require('../../ai/core/AIConfig');
+        const aiConfig = new AIConfig(appDataDir);
+        const mockAgent = { appDataDir, workspaceRoot, config: aiConfig };
         graphService = new GraphService(mockAgent, graphDb);
         graphWorker = new GraphWorker(graphDb, graphQueue, graphService);
 
+        // Load workspace metadata if present to seed graph
+        const metaPath = path.join(workspaceRoot, '.notes-app', 'metadata.json');
+        if (fs.existsSync(metaPath)) {
+          try {
+            const metaObj = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const WorkspaceMetadataKnowledgeSource = require('../../ai/graph/sources/WorkspaceMetadataKnowledgeSource');
+            const metaSource = new WorkspaceMetadataKnowledgeSource(metaObj.info || {});
+            
+            Promise.all([
+              metaSource.extractEntities(),
+              metaSource.extractRelationships()
+            ]).then(([entities, relationships]) => {
+              const entityIdMap = new Map();
+              for (const ent of entities) {
+                if (graphDb && typeof graphDb.upsertEntity === 'function') {
+                  const entId = `ent-meta-${ent.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                  graphDb.upsertEntity({
+                    id: entId,
+                    name: ent.name,
+                    canonical_name: ent.name,
+                    type: ent.type,
+                    properties: ent.properties || {}
+                  });
+                  entityIdMap.set(ent.name.toLowerCase(), entId);
+                }
+              }
+              for (const rel of relationships) {
+                const srcId = entityIdMap.get(rel.source_name.toLowerCase());
+                const tgtId = entityIdMap.get(rel.target_name.toLowerCase());
+                if (srcId && tgtId && graphDb && typeof graphDb.upsertRelationship === 'function') {
+                  graphDb.upsertRelationship({
+                    source_id: srcId,
+                    target_id: tgtId,
+                    type: rel.type,
+                    weight: rel.weight || 1.0,
+                    confidence: rel.confidence || 0.95
+                  });
+                }
+              }
+            }).catch(() => {});
+          } catch { /* ignore metadata parse error */ }
+        }
+
         // Auto-enqueue workspace markdown notes on startup
-        const fs = require('fs');
         function scanMarkdownFiles(dir) {
           let results = [];
           try {
@@ -111,6 +156,15 @@ if (process.parentPort) {
         indexWorker.start();
         graphWorker.start();
 
+        // WAL checkpoint scheduler (every 30 mins)
+        setInterval(() => {
+          try {
+            if (graphDb && graphDb.db) {
+              graphDb.db.exec('PRAGMA wal_checkpoint(PASSIVE);');
+            }
+          } catch { /* ignore */ }
+        }, 30 * 60 * 1000);
+
         process.parentPort.postMessage({ type: 'started' });
 
       } else if (type === 'enqueue') {
@@ -142,8 +196,31 @@ if (process.parentPort) {
             try { db.exec('ROLLBACK'); } catch { /* ignore rollback error */ }
           }
         }
+        if (graphDb && graphDb.db) {
+          try {
+            graphDb.db.exec('BEGIN');
+            graphDb.db.prepare('UPDATE entities SET note_path = ? WHERE note_path = ?').run(newPath, oldPath);
+            graphDb.db.prepare('UPDATE evidence SET source_id = ? WHERE source_id = ?').run(newPath, oldPath);
+            graphDb.db.exec('COMMIT');
+          } catch {
+            try { graphDb.db.exec('ROLLBACK'); } catch { /* ignore rollback error */ }
+          }
+        }
+        if (graphQueue) {
+          graphQueue.enqueue(newPath, 2);
+        }
+        if (graphWorker) {
+          graphWorker.triggerNext();
+        }
       } else if (type === 'rebuildGraph') {
-        const { workspaceFiles } = payload;
+        let { workspaceFiles } = payload;
+        if (!Array.isArray(workspaceFiles) || workspaceFiles.length === 0) {
+          if (graphDb && graphDb.workspaceRoot) {
+            workspaceFiles = scanMarkdownFiles(graphDb.workspaceRoot);
+          } else {
+            workspaceFiles = [];
+          }
+        }
         if (graphDb) {
           graphDb.clear();
         }
@@ -176,8 +253,11 @@ if (process.parentPort) {
       } else if (type === 'shutdown') {
         if (indexWorker) indexWorker.pause();
         if (graphWorker) graphWorker.pause();
+        if (graphDb && graphDb.db) {
+          try { graphDb.db.exec('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { /* ignore */ }
+          graphDb.close();
+        }
         if (embeddingDb) embeddingDb.close();
-        if (graphDb) graphDb.close();
         process.exit(0);
       }
     } catch (err) {

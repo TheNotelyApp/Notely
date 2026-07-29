@@ -36,10 +36,11 @@ class IntentAnalyzer {
     const subIntents = [];
     let requiresExternalData = false;
 
-    // Direct Intent Pattern Detection
     const isTaskQuery = /\b(task|tasks|todo|todos|action item|action items|checklist|checklists|pending|open items|things to do|summarize tasks)\b/i.test(q);
     const isTimelineQuery = /\b(recent|timeline|history|changelog|changes)\b/i.test(q);
-    const isGraphQuery = /\b(graph|relation|relations|relationship|topology|connect|connected|connection|connections|architecture)\b/i.test(q);
+    const isExplicitGraphQuery = /\b(graph|relation|relations|relationship|topology|connect|connected|connection|connections|architecture)\b/i.test(q);
+    const isIdentityOrEntityQuery = /\b(who is|who was|who are|who were|what is|what was|what are|tell me about|information on|details on|overview of)\b/i.test(q) || (/^[A-Z][a-zA-Z0-9\s.\-_]{1,30}$/.test(q.trim()) && !/\b(the|a|an|my|this|that|note|files?)\b/i.test(q.trim()));
+    const isGraphQuery = isExplicitGraphQuery || isIdentityOrEntityQuery;
     const isWebQuery = /\b(web|http|https|online|search web|fetch web)\b/i.test(q);
 
     // Conversational Follow-up Detection (e.g. "Which shall we take first", "What should we start with")
@@ -136,8 +137,11 @@ class IntentAnalyzer {
       category = 'Document QA';
     }
 
-    const zeroRetrievalCategories = new Set(['Knowledge Question', 'Creative Generation', 'Code Assistance']);
-    const requiresRetrieval = !zeroRetrievalCategories.has(category) || /\b(note|notes|workspace|file|files|my)\b/i.test(q);
+    // Always include workspace_content_search as baseline note-grounded capability
+    informationNeeds.add('workspace_content_search');
+
+    const isPureConversationalAck = /^(thanks|thank you|got it|ok|okay|cool|great|awesome|understood)\.?$/i.test(q.trim());
+    const requiresRetrieval = !isPureConversationalAck;
 
     if (!requiresRetrieval) {
       informationNeeds.clear();

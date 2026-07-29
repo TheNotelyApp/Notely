@@ -1,6 +1,6 @@
 /**
  * Graph Module Facade
- * Single entry point for Knowledge Graph DB, graph service, and AST entity processing.
+ * Single entry point for Knowledge Graph DB, graph service, AST entity processing, and Semantic Extraction Engine.
  */
 
 const GraphDB = require('./GraphDB');
@@ -9,6 +9,9 @@ const GraphBuilder = require('./GraphBuilder');
 const MarkdownASTParser = require('./MarkdownASTParser');
 const EntityResolver = require('./EntityResolver');
 const EvidenceStore = require('./EvidenceStore');
+const EvidenceFusionEngine = require('./EvidenceFusionEngine');
+const KnowledgeSourceRegistry = require('./KnowledgeSourceRegistry');
+const { SemanticExtractionEngine } = require('./semantic');
 
 module.exports = {
   GraphDB,
@@ -17,6 +20,9 @@ module.exports = {
   MarkdownASTParser,
   EntityResolver,
   EvidenceStore,
+  EvidenceFusionEngine,
+  KnowledgeSourceRegistry,
+  SemanticExtractionEngine,
 
   createGraphDB: (workspaceRoot) => new GraphDB(workspaceRoot),
   createGraphService: (agent, graphDb) => new GraphService(agent, graphDb),

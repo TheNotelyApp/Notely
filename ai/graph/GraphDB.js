@@ -12,7 +12,13 @@ const {
   CREATE_EVIDENCE_TABLE,
   CREATE_RELATIONSHIPS_TABLE,
   CREATE_GRAPH_QUEUE_TABLE,
-  CREATE_INDEXES
+  CREATE_INDEXES,
+  ALTER_ENTITIES_ADD_COLUMNS,
+  CREATE_RELATIONSHIP_EVIDENCE_TABLE,
+  CREATE_COMMUNITIES_TABLE,
+  CREATE_GRAPH_VERSIONS_TABLE,
+  CREATE_WORKSPACE_ENTITY_TABLE,
+  CREATE_ENTITY_FTS
 } = require('./GraphSchema');
 
 const log = createLogger('GraphDB');
@@ -47,12 +53,30 @@ class GraphDB {
       this.db.exec('PRAGMA journal_mode = WAL;');
       this.db.exec('PRAGMA synchronous = NORMAL;');
 
-      // Create tables
+      // Create base tables
       this.db.exec(CREATE_ENTITIES_TABLE);
       this.db.exec(CREATE_ENTITY_ALIASES_TABLE);
       this.db.exec(CREATE_EVIDENCE_TABLE);
       this.db.exec(CREATE_RELATIONSHIPS_TABLE);
       this.db.exec(CREATE_GRAPH_QUEUE_TABLE);
+
+      // Create M3/M4 tables
+      this.db.exec(CREATE_RELATIONSHIP_EVIDENCE_TABLE);
+      this.db.exec(CREATE_COMMUNITIES_TABLE);
+      this.db.exec(CREATE_GRAPH_VERSIONS_TABLE);
+      this.db.exec(CREATE_WORKSPACE_ENTITY_TABLE);
+      try {
+        this.db.exec(CREATE_ENTITY_FTS);
+      } catch { /* ignore FTS initialization warning */ }
+
+      // Safe column alters
+      if (Array.isArray(ALTER_ENTITIES_ADD_COLUMNS)) {
+        for (const alterQuery of ALTER_ENTITIES_ADD_COLUMNS) {
+          try {
+            this.db.exec(alterQuery);
+          } catch { /* ignore column already exists error */ }
+        }
+      }
 
       // Create indexes
       for (const idxQuery of CREATE_INDEXES) {
@@ -87,6 +111,9 @@ class GraphDB {
     this.db.exec('DELETE FROM evidence;');
     this.db.exec('DELETE FROM entity_aliases;');
     this.db.exec('DELETE FROM entities;');
+    try { this.db.exec('DELETE FROM communities;'); } catch { /* ignore */ }
+    try { this.db.exec('DELETE FROM graph_versions;'); } catch { /* ignore */ }
+    try { this.db.exec('DELETE FROM entity_fts;'); } catch { /* ignore */ }
     log.info('GraphDB cleared');
   }
 
@@ -109,31 +136,52 @@ class GraphDB {
   /**
    * Upsert an entity into property graph
    */
-  upsertEntity({ id, type = 'Entity', name, canonical_name = null, note_path = null, properties = {} }) {
+  upsertEntity({ id, type = 'Entity', name, canonical_name = null, note_path = null, properties = {}, confidence = 1.0 }) {
     if (!this.db) throw new Error('Database not initialized');
 
     const canonical = canonical_name || name;
-    const query = `
-      INSERT INTO entities (id, name, canonical_name, type, note_path, properties, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(id) DO UPDATE SET
-        name = excluded.name,
-        canonical_name = excluded.canonical_name,
-        type = excluded.type,
-        note_path = excluded.note_path,
-        properties = excluded.properties,
-        updated_at = datetime('now');
-    `;
-
     const propertiesJson = typeof properties === 'string' ? properties : JSON.stringify(properties);
-    const stmt = this.db.prepare(query);
-    stmt.run(id, name, canonical, type, note_path, propertiesJson);
+
+    try {
+      const query = `
+        INSERT INTO entities (id, name, canonical_name, type, note_path, properties, confidence, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          canonical_name = excluded.canonical_name,
+          type = excluded.type,
+          note_path = excluded.note_path,
+          properties = excluded.properties,
+          confidence = excluded.confidence,
+          updated_at = datetime('now');
+      `;
+      this.db.prepare(query).run(id, name, canonical, type, note_path, propertiesJson, confidence);
+    } catch {
+      const fallbackQuery = `
+        INSERT INTO entities (id, name, canonical_name, type, note_path, properties, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          canonical_name = excluded.canonical_name,
+          type = excluded.type,
+          note_path = excluded.note_path,
+          properties = excluded.properties,
+          updated_at = datetime('now');
+      `;
+      this.db.prepare(fallbackQuery).run(id, name, canonical, type, note_path, propertiesJson);
+    }
+
+    try {
+      this.db.prepare('DELETE FROM entity_fts WHERE entity_id = ?').run(id);
+      this.db.prepare('INSERT INTO entity_fts (entity_id, name, canonical_name, type) VALUES (?, ?, ?, ?)').run(id, name, canonical, type);
+    } catch { /* ignore FTS sync error */ }
   }
 
   deleteEntity(id) {
     if (!this.db) throw new Error('Database not initialized');
     const stmt = this.db.prepare('DELETE FROM entities WHERE id = ?');
     stmt.run(id);
+    try { this.db.prepare('DELETE FROM entity_fts WHERE entity_id = ?').run(id); } catch { /* ignore FTS sync error */ }
   }
 
   /**
@@ -151,6 +199,7 @@ class GraphDB {
         this.db.prepare('DELETE FROM relationships WHERE source_id = ? OR target_id = ?').run(entityId, entityId);
         this.db.prepare('DELETE FROM evidence WHERE source_id = ?').run(notePath);
         this.db.prepare('DELETE FROM entities WHERE id = ? OR note_path = ?').run(entityId, notePath);
+        try { this.db.prepare('DELETE FROM entity_fts WHERE entity_id = ?').run(entityId); } catch { /* ignore */ }
         this.db.exec('COMMIT');
         log.info(`Deleted note graph data for entity: ${entityId}`);
       } catch (txnErr) {
@@ -219,11 +268,11 @@ class GraphDB {
     }
   }
 
-  getStatus() {
+  getStatus(minConfidence = 0.0) {
     if (!this.db) return { nodeCount: 0, edgeCount: 0, sizeBytes: 0 };
 
-    const nodeCount = this.getNodeCount();
-    const edgeCount = this.getEdgeCount();
+    const nodeCount = this.getNodeCount(minConfidence);
+    const edgeCount = this.getEdgeCount(minConfidence);
 
     let sizeBytes = 0;
     try {
@@ -235,21 +284,21 @@ class GraphDB {
     return { nodeCount, edgeCount, sizeBytes };
   }
 
-  getNodeCount() {
+  getNodeCount(minConfidence = 0.0) {
     if (!this.db) return 0;
     try {
-      return this.db.prepare('SELECT COUNT(*) as count FROM entities').get()?.count || 0;
+      return this.db.prepare('SELECT COUNT(*) as count FROM entities WHERE confidence >= ?').get(minConfidence)?.count || 0;
     } catch {
-      return 0;
+      try { return this.db.prepare('SELECT COUNT(*) as count FROM entities').get()?.count || 0; } catch { return 0; }
     }
   }
 
-  getEdgeCount() {
+  getEdgeCount(minConfidence = 0.0) {
     if (!this.db) return 0;
     try {
-      return this.db.prepare('SELECT COUNT(*) as count FROM relationships').get()?.count || 0;
+      return this.db.prepare('SELECT COUNT(*) as count FROM relationships WHERE confidence >= ?').get(minConfidence)?.count || 0;
     } catch {
-      return 0;
+      try { return this.db.prepare('SELECT COUNT(*) as count FROM relationships').get()?.count || 0; } catch { return 0; }
     }
   }
 
@@ -257,24 +306,47 @@ class GraphDB {
     if (!this.db) return;
     try {
       this.db.exec('BEGIN; DELETE FROM relationships; DELETE FROM evidence; DELETE FROM entity_aliases; DELETE FROM entities; COMMIT;');
+      try { this.db.exec('DELETE FROM entity_fts;'); } catch { /* ignore */ }
     } catch (err) {
       try { this.db.exec('ROLLBACK'); } catch { /* ignore */ }
       log.error('Failed to clear graph database:', err.message);
     }
   }
 
-  getAll() {
+  getAll(minConfidence = 0.0) {
     if (!this.db) throw new Error('Database not initialized');
 
-    const entities = this.db.prepare('SELECT * FROM entities').all().map(e => ({
-      ...e,
-      properties: JSON.parse(e.properties || '{}')
-    }));
+    let rawEntities = [];
+    try {
+      rawEntities = this.db.prepare('SELECT * FROM entities WHERE confidence >= ?').all(minConfidence);
+    } catch {
+      rawEntities = this.db.prepare('SELECT * FROM entities').all();
+    }
 
-    const relationships = this.db.prepare('SELECT * FROM relationships').all().map(r => ({
-      ...r,
-      metadata: JSON.parse(r.metadata || '{}')
-    }));
+    const entities = rawEntities
+      .map(e => {
+        const props = typeof e.properties === 'string' ? JSON.parse(e.properties || '{}') : (e.properties || {});
+        const conf = typeof e.confidence === 'number' ? e.confidence : (typeof props.confidence === 'number' ? props.confidence : 1.0);
+        return { ...e, confidence: conf, properties: props };
+      })
+      .filter(e => e.confidence >= minConfidence);
+
+    const validEntityIds = new Set(entities.map(e => e.id));
+
+    let rawRelationships = [];
+    try {
+      rawRelationships = this.db.prepare('SELECT * FROM relationships WHERE confidence >= ?').all(minConfidence);
+    } catch {
+      rawRelationships = this.db.prepare('SELECT * FROM relationships').all();
+    }
+
+    const relationships = rawRelationships
+      .filter(r => (r.confidence ?? 1.0) >= minConfidence && validEntityIds.has(r.source_id) && validEntityIds.has(r.target_id))
+      .map(r => ({
+        ...r,
+        confidence: r.confidence ?? 1.0,
+        metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata || '{}') : (r.metadata || {})
+      }));
 
     return { entities, relationships };
   }
@@ -346,29 +418,82 @@ class GraphDB {
    */
   traversePathOrId(identifier, maxDepth = 2) {
     if (!this.db || !identifier) return [];
-    let startEntity = this.getEntityByPath(identifier);
-    if (!startEntity) {
+    const rawTarget = String(identifier).trim();
+    const cleanTarget = rawTarget
+      .replace(/^(who|what|where|how|why)\s+(is|was|are|were|about)\s+/i, '')
+      .replace(/\?$/g, '')
+      .trim();
+
+    const targets = Array.from(new Set([cleanTarget, rawTarget])).filter(Boolean);
+    const startEntities = [];
+    const seenEntityIds = new Set();
+
+    for (const target of targets) {
+      const eByPath = this.getEntityByPath(target);
+      if (eByPath && !seenEntityIds.has(eByPath.id)) {
+        seenEntityIds.add(eByPath.id);
+        startEntities.push(eByPath);
+      }
       try {
-        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR id = ? LIMIT 1');
-        startEntity = stmt.get(String(identifier).trim(), identifier);
-      } catch {
-        /* ignore lookup error */
+        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR id = ?');
+        const rows = stmt.all(target, target);
+        for (const r of rows) {
+          if (!seenEntityIds.has(r.id)) {
+            seenEntityIds.add(r.id);
+            startEntities.push(r);
+          }
+        }
+      } catch { /* ignore lookup error */ }
+      try {
+        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) LIKE LOWER(?)');
+        const rows = stmt.all(`%${target}%`);
+        for (const r of rows) {
+          if (!seenEntityIds.has(r.id)) {
+            seenEntityIds.add(r.id);
+            startEntities.push(r);
+          }
+        }
+      } catch { /* ignore lookup error */ }
+    }
+
+    // Fallback: If full phrase doesn't yield entities, match individual word tokens (e.g. "Bikash", "Panda")
+    if (startEntities.length === 0 && cleanTarget.includes(' ')) {
+      const words = cleanTarget.split(/\s+/).filter(w => w.length > 2 && !/^(who|what|where|how|why|is|was|are|were|about|the|and)$/i.test(w));
+      for (const word of words) {
+        try {
+          const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(name) LIKE LOWER(?)');
+          const rows = stmt.all(word, `%${word}%`);
+          for (const r of rows) {
+            if (!seenEntityIds.has(r.id)) {
+              seenEntityIds.add(r.id);
+              startEntities.push(r);
+            }
+          }
+        } catch { /* ignore token lookup error */ }
       }
     }
-    if (!startEntity) {
-      try {
-        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) LIKE LOWER(?) LIMIT 1');
-        startEntity = stmt.get(`%${String(identifier).trim()}%`);
-      } catch {
-        /* ignore lookup error */
+
+    if (startEntities.length === 0) return [];
+
+    const allEdges = [];
+    const allNodes = [];
+    const seenEdgeIds = new Set();
+
+    for (const startEntity of startEntities) {
+      const { nodes, edges } = this.getNeighbors(startEntity.id, maxDepth);
+      for (const n of nodes) allNodes.push(n);
+      for (const e of edges) {
+        const edgeKey = `${e.source_id}->${e.target_id}:${e.type}`;
+        if (!seenEdgeIds.has(edgeKey)) {
+          seenEdgeIds.add(edgeKey);
+          allEdges.push(e);
+        }
       }
     }
-    if (!startEntity) return [];
 
-    const { nodes, edges } = this.getNeighbors(startEntity.id, maxDepth);
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
 
-    return edges.map(e => {
+    return allEdges.map(e => {
       const srcNode = nodeMap.get(e.source_id);
       const tgtNode = nodeMap.get(e.target_id);
       let evidenceText = null;
@@ -442,12 +567,12 @@ class GraphDB {
   /**
    * Calculate degree centrality, node colors, and rich visualization payload for UI graph view
    */
-  getRichGraphVisualization(limit = 150) {
+  getRichGraphVisualization(limit = 150, minConfidence = 0.0) {
     if (!this.db) return { nodes: [], edges: [], stats: { totalNodes: 0, totalEdges: 0, networkDensity: 0 } };
 
     try {
-      const rawEntities = this.db.prepare('SELECT * FROM entities LIMIT ?').all(limit);
-      const rawRelationships = this.db.prepare('SELECT * FROM relationships LIMIT ?').all(limit * 3);
+      const rawEntities = this.db.prepare('SELECT * FROM entities WHERE confidence >= ? LIMIT ?').all(minConfidence, limit);
+      const rawRelationships = this.db.prepare('SELECT * FROM relationships WHERE confidence >= ? LIMIT ?').all(minConfidence, limit * 3);
 
       // Compute degree centrality (incoming + outgoing connections per node)
       const degreeMap = new Map();
@@ -523,6 +648,64 @@ class GraphDB {
     } catch (err) {
       log.error('Failed to generate rich graph visualization:', err.message);
       return { nodes: [], edges: [], stats: { totalNodes: 0, totalEdges: 0, networkDensity: 0 } };
+    }
+  }
+
+  upsertWorkspaceEntity({ name = 'Workspace', description = '', projectType = 'General', primaryGoal = '', domainTags = [] }) {
+    if (!this.db) return;
+    try {
+      const tagsJson = Array.isArray(domainTags) ? JSON.stringify(domainTags) : String(domainTags || '[]');
+      this.db.exec('DELETE FROM workspace_entity;');
+      const stmt = this.db.prepare(`
+        INSERT INTO workspace_entity (name, description, project_type, primary_goal, domain_tags, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `);
+      stmt.run(name, description, projectType, primaryGoal, tagsJson);
+    } catch (err) {
+      log.error('Failed to upsert workspace entity:', err.message);
+    }
+  }
+
+  getWorkspaceEntity() {
+    if (!this.db) return null;
+    try {
+      const row = this.db.prepare('SELECT * FROM workspace_entity ORDER BY id DESC LIMIT 1').get();
+      if (!row) return null;
+      return { ...row, domain_tags: JSON.parse(row.domain_tags || '[]') };
+    } catch {
+      return null;
+    }
+  }
+
+  snapshotVersion(versionName = 'v1.0') {
+    if (!this.db) return null;
+    try {
+      const entityCount = this.getNodeCount();
+      const edgeCount = this.getEdgeCount();
+      const stmt = this.db.prepare('INSERT INTO graph_versions (version, entity_count, edge_count) VALUES (?, ?, ?)');
+      stmt.run(versionName, entityCount, edgeCount);
+      return true;
+    } catch (err) {
+      log.error('Failed to snapshot graph version:', err.message);
+      return false;
+    }
+  }
+
+  searchEntities(queryStr, limit = 20) {
+    if (!this.db || !queryStr) return [];
+    try {
+      const clean = String(queryStr).trim();
+      if (!clean) return [];
+      try {
+        const stmt = this.db.prepare('SELECT entity_id, name, canonical_name, type FROM entity_fts WHERE entity_fts MATCH ? LIMIT ?');
+        return stmt.all(`${clean}*`, limit);
+      } catch {
+        const stmt = this.db.prepare('SELECT id as entity_id, name, canonical_name, type FROM entities WHERE LOWER(name) LIKE LOWER(?) LIMIT ?');
+        return stmt.all(`%${clean}%`, limit);
+      }
+    } catch (err) {
+      log.error('Failed searchEntities:', err.message);
+      return [];
     }
   }
 }
