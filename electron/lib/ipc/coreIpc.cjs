@@ -502,11 +502,19 @@ function registerCoreIpcHandlers(ipcMain, deps) {
   });
 
   registerTrustedHandler("shell:open-folder", async (_event, payload) => {
-    const { folderPath } = payload || {};
-    if (typeof folderPath !== "string") {
+    const rawPath = typeof payload === "string" ? payload : payload?.folderPath;
+    if (typeof rawPath !== "string" || !rawPath.trim()) {
       throw new Error("Invalid folderPath payload");
     }
-    const resolved = path.normalize(path.resolve(folderPath));
+    let resolved = path.normalize(path.resolve(rawPath.trim()));
+    try {
+      const stats = await fs.promises.stat(resolved);
+      if (!stats.isDirectory()) {
+        resolved = path.dirname(resolved);
+      }
+    } catch {
+      resolved = path.dirname(resolved);
+    }
     const openResult = await shell.openPath(resolved);
     if (openResult) {
       throw new Error(openResult);

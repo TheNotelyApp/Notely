@@ -93,16 +93,24 @@ export function EditorPane({
     }
 
     editor.focus();
-    editor.selectionStart = startIndex;
-    editor.selectionEnd = startIndex;
+    if (typeof editor.setSelectionRange === "function") {
+      editor.setSelectionRange(startIndex, startIndex);
+    } else {
+      editor.selectionStart = startIndex;
+      editor.selectionEnd = startIndex;
+    }
 
-    const lineHeight = typeof editor.getLineHeight === "function"
-      ? editor.getLineHeight()
-      : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
-    const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
-    const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
-    const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
-    editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+    if (typeof editor.scrollToLine === "function") {
+      editor.scrollToLine(safeLine);
+    } else {
+      const lineHeight = typeof editor.getLineHeight === "function"
+        ? editor.getLineHeight()
+        : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
+      const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
+      const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
+      const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
+      editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+    }
     setFocusedLine(safeLine);
   }, [textareaRef, value]);
 

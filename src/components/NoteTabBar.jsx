@@ -1,9 +1,136 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2, RefreshCw } from "lucide-react";
+import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2, RefreshCw, Search, FileText, FilePlus } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { IconColorPickerModal } from "./IconColorPickerModal";
 import { getContrastColor } from "../utils/colorUtils";
+import OverlayDialog from "./OverlayDialog";
+
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return "";
+  const date = typeof timestamp === "number" ? timestamp : Date.parse(timestamp);
+  if (!Number.isFinite(date)) return "";
+  const diffMs = Date.now() - date;
+  if (diffMs < 60000) return "Just now";
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(date).toLocaleDateString();
+}
+
+function NoteSearchModal({ isOpen, onClose, documents, getMetadata, onSelectNote }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef(null);
+
+  const allNotes = useMemo(() => {
+    return (documents || []).filter((doc) => doc.entryType === "file");
+  }, [documents]);
+
+  const filteredNotes = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allNotes;
+    return allNotes.filter((doc) => {
+      const title = (doc.title || "").toLowerCase();
+      const path = (doc.filePath || "").toLowerCase();
+      return title.includes(q) || path.includes(q);
+    });
+  }, [allNotes, searchQuery]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSearchQuery("");
+      setSelectedIndex(0);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [isOpen]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (filteredNotes.length ? (prev + 1) % filteredNotes.length : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (filteredNotes.length ? (prev - 1 + filteredNotes.length) % filteredNotes.length : 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const selected = filteredNotes[selectedIndex];
+      if (selected) {
+        onSelectNote?.(selected.filePath);
+        onClose?.();
+      }
+    } else if (e.key === "Escape") {
+      onClose?.();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <OverlayDialog onClose={onClose} ariaLabel="Search All Notes" cardClassName="note-search-modal-card">
+      <div className="note-search-modal-header" onKeyDown={handleKeyDown}>
+        <div className="note-search-input-wrapper">
+          <Search size={16} className="note-search-icon" />
+          <input
+            ref={inputRef}
+            type="text"
+            className="note-search-input"
+            placeholder="Search all notes in workspace..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <AppIconButton className="note-search-close" onClick={onClose} aria-label="Close search">
+            <X size={16} />
+          </AppIconButton>
+        </div>
+      </div>
+      <div className="note-search-modal-body" onKeyDown={handleKeyDown}>
+        {filteredNotes.length > 0 ? (
+          <div className="note-search-results-list" role="listbox">
+            {filteredNotes.map((doc, idx) => {
+              const meta = getMetadata?.(doc.filePath) || {};
+              const ItemIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : FileText;
+              const title = doc.title || doc.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "");
+              const isSelected = idx === selectedIndex;
+              const relTime = formatRelativeTime(doc.mtime || doc.updatedAt || doc.lastModified);
+
+              return (
+                <button
+                  key={doc.filePath}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={`note-search-result-item ${isSelected ? "selected" : ""}`}
+                  onClick={() => {
+                    onSelectNote?.(doc.filePath);
+                    onClose?.();
+                  }}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                >
+                  <ItemIcon size={16} className="note-search-item-icon" />
+                  <div className="note-search-item-details">
+                    <span className="note-search-item-title">{title}</span>
+                    <span className="note-search-item-path">{doc.filePath}</span>
+                  </div>
+                  {relTime && <span className="note-search-item-time">{relTime}</span>}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="note-search-empty">No notes match "{searchQuery}"</div>
+        )}
+      </div>
+    </OverlayDialog>
+  );
+}
 
 export function NoteTabBar({
   openTabs = [],
@@ -29,6 +156,7 @@ export function NoteTabBar({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, filePath }
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [pickerState, setPickerState] = useState({ isOpen: false, entry: null });
   const { getMetadata, updateMetadata } = useWorkspaceMetadata();
 
@@ -43,7 +171,6 @@ export function NoteTabBar({
     observer.observe(barRef.current);
     return () => observer.disconnect();
   }, []);
-
 
   // Close menus on click-away
   useEffect(() => {
@@ -66,7 +193,12 @@ export function NoteTabBar({
 
   const closedNotes = useMemo(() => {
     return (documents || [])
-      .filter((doc) => doc.entryType === "file" && !openTabs.includes(doc.filePath));
+      .filter((doc) => doc.entryType === "file" && !openTabs.includes(doc.filePath))
+      .sort((a, b) => {
+        const timeA = a.mtime || a.updatedAt || a.lastModified || 0;
+        const timeB = b.mtime || b.updatedAt || b.lastModified || 0;
+        return timeB - timeA;
+      });
   }, [documents, openTabs]);
 
   const getTabTitle = useCallback((filePath) => {
@@ -172,6 +304,9 @@ export function NoteTabBar({
 
   if (!openTabs.length) return null;
 
+  const visibleClosedNotes = closedNotes.slice(0, 8);
+  const remainingClosedCount = closedNotes.length - 8;
+
   return (
     <div className="note-tab-bar" ref={barRef} role="tablist" aria-label="Open notes">
       <div className="note-tab-list">
@@ -227,130 +362,247 @@ export function NoteTabBar({
           );
         })}
 
-        {overflowTabs.length > 0 && (
-          <div className="note-tab-overflow-container">
-            <button
-              className="note-tab-overflow-btn"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDropdownOpen(!dropdownOpen);
-                setContextMenu(null);
-                setAddDropdownOpen(false);
-              }}
-              aria-haspopup="true"
-              aria-expanded={dropdownOpen}
-            >
-              <span>+{overflowTabs.length} more</span>
-              <ChevronDown size={12} />
-            </button>
-
-            {dropdownOpen && (
-              <div className="note-tab-overflow-dropdown" role="menu">
-                {overflowTabs.map((filePath) => {
-                  const isDirty = isTabDirty(filePath);
-                  const title = getTabTitle(filePath);
-                  const isActive = filePath === activeTabPath;
-                  const meta = getMetadata(filePath) || {};
-                  const TabIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : null;
-
-                  return (
-                    <button
-                      key={filePath}
-                      className={`note-tab-overflow-item${isActive ? " active" : ""}${isDirty ? " dirty" : ""}${meta.color ? " custom-colored-item" : ""}`}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onSelectTab?.(filePath);
-                        setDropdownOpen(false);
-                      }}
-                      onContextMenu={(e) => handleContextMenu(e, filePath)}
-                      title={filePath}
-                      style={meta.color ? {
-                        "--custom-bg-color": meta.color,
-                        "--custom-text-color": getContrastColor(meta.color)
-                      } : {}}
-                    >
-                      {TabIcon && <TabIcon size={14} style={{ marginRight: 6 }} />}
-                      <span className="note-tab-text">{title}</span>
-                      {isDirty && <span className="note-tab-dirty-dot" style={meta.color ? { backgroundColor: 'currentColor' } : {}} />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="note-tab-add-container">
-        <button
-          className="note-tab-add-btn"
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setAddDropdownOpen(!addDropdownOpen);
+        {/* "+" New Tab Button immediately after last tab chip */}
+        <div
+          className="note-tab-add-container"
+          onMouseEnter={() => {
+            setAddDropdownOpen(true);
             setContextMenu(null);
             setDropdownOpen(false);
           }}
-          title="Create or open note"
-          data-tooltip="Create or open note"
-          aria-label="Create or open note"
-          aria-haspopup="true"
-          aria-expanded={addDropdownOpen}
+          onMouseLeave={() => {
+            setAddDropdownOpen(false);
+          }}
         >
-          <Plus size={14} />
-        </button>
+          <button
+            className="note-tab-add-btn"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            title="Create or open note"
+            data-tooltip="Create or open note"
+            aria-label="Create or open note"
+            aria-haspopup="true"
+            aria-expanded={addDropdownOpen}
+          >
+            <Plus size={14} />
+          </button>
 
-        {addDropdownOpen && (
-          <div className="note-tab-add-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onNewTab?.();
-                setAddDropdownOpen(false);
-              }}
-            >
-              Create New Note...
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onNewFolder?.();
-                setAddDropdownOpen(false);
-              }}
-            >
-              Create New Folder...
-            </button>
-            
-            {closedNotes.length > 0 && (
-              <>
-                <div className="note-tab-add-dropdown-separator" />
-                <div className="note-tab-add-dropdown-header">Open Note</div>
-                <div className="note-tab-add-dropdown-scroll">
-                  {closedNotes.map((note) => (
+          {addDropdownOpen && (
+            <div className="note-tab-add-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
+              <div className="note-tab-add-section">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="note-tab-add-menu-btn"
+                  onClick={() => {
+                    onNewTab?.();
+                    setAddDropdownOpen(false);
+                  }}
+                >
+                  <FilePlus size={14} />
+                  <span>Create New Note</span>
+                </button>
+              </div>
+
+              {closedNotes.length > 0 && (
+                <>
+                  <div className="note-tab-add-dropdown-separator" />
+                  <div className="note-tab-add-dropdown-header">Recently Edited Notes</div>
+                  <div className="note-tab-add-dropdown-scroll">
+                    {visibleClosedNotes.map((note) => {
+                      const meta = getMetadata?.(note.filePath) || {};
+                      const ItemIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : FileText;
+                      const title = note.title || note.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "");
+                      const relTime = formatRelativeTime(note.mtime || note.updatedAt || note.lastModified);
+
+                      return (
+                        <button
+                          key={note.filePath}
+                          type="button"
+                          role="menuitem"
+                          className="note-tab-add-dropdown-item"
+                          title={note.filePath}
+                          onClick={() => {
+                            onSelectTab?.(note.filePath);
+                            setAddDropdownOpen(false);
+                          }}
+                        >
+                          <ItemIcon size={14} className="note-tab-add-item-icon" />
+                          <span className="note-tab-add-item-title">{title}</span>
+                          {relTime && <span className="note-tab-add-item-time">{relTime}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {remainingClosedCount > 0 && (
                     <button
-                      key={note.filePath}
                       type="button"
-                      role="menuitem"
-                      className="note-tab-add-dropdown-item"
-                      title={note.filePath}
+                      className="note-tab-add-more-btn"
                       onClick={() => {
-                        onSelectTab?.(note.filePath);
                         setAddDropdownOpen(false);
+                        setSearchModalOpen(true);
                       }}
                     >
-                      {note.title || note.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "")}
+                      <Search size={14} />
+                      <span>+{remainingClosedCount} More...</span>
                     </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Overflow container when tabs overflow */}
+      {overflowTabs.length > 0 && (
+        <div className="note-tab-overflow-container">
+          <button
+            className="note-tab-overflow-btn"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDropdownOpen(!dropdownOpen);
+              setContextMenu(null);
+              setAddDropdownOpen(false);
+            }}
+            aria-haspopup="true"
+            aria-expanded={dropdownOpen}
+          >
+            <span>+{overflowTabs.length} more</span>
+            <ChevronDown size={12} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="note-tab-overflow-dropdown" role="menu">
+              {overflowTabs.map((filePath) => {
+                const isDirty = isTabDirty(filePath);
+                const title = getTabTitle(filePath);
+                const isActive = filePath === activeTabPath;
+                const meta = getMetadata(filePath) || {};
+                const TabIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : null;
+
+                return (
+                  <button
+                    key={filePath}
+                    className={`note-tab-overflow-item${isActive ? " active" : ""}${isDirty ? " dirty" : ""}${meta.color ? " custom-colored-item" : ""}`}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSelectTab?.(filePath);
+                      setDropdownOpen(false);
+                    }}
+                    onContextMenu={(e) => handleContextMenu(e, filePath)}
+                    title={filePath}
+                    style={meta.color ? {
+                      "--custom-bg-color": meta.color,
+                      "--custom-text-color": getContrastColor(meta.color)
+                    } : {}}
+                  >
+                    {TabIcon && <TabIcon size={14} style={{ marginRight: 6 }} />}
+                    <span className="note-tab-text">{title}</span>
+                    {isDirty && <span className="note-tab-dirty-dot" style={meta.color ? { backgroundColor: 'currentColor' } : {}} />}
+                  </button>
+                );
+              })}
+
+              <div className="note-tab-add-dropdown-separator" style={{ margin: "4px 0" }} />
+              
+              <button
+                className="note-tab-overflow-item note-tab-add-overflow-item"
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDropdownOpen(false);
+                  setAddDropdownOpen(true);
+                }}
+                style={{ fontWeight: 600, color: "var(--accent-solid)" }}
+              >
+                <Plus size={14} style={{ marginRight: 6 }} />
+                <span className="note-tab-text">Create / Open Note...</span>
+              </button>
+            </div>
+          )}
+
+          {addDropdownOpen && (
+            <div className="note-tab-add-dropdown" role="menu" onClick={(e) => e.stopPropagation()}>
+              <div className="note-tab-add-section">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="note-tab-add-menu-btn"
+                  onClick={() => {
+                    onNewTab?.();
+                    setAddDropdownOpen(false);
+                  }}
+                >
+                  <FilePlus size={14} />
+                  <span>Create New Note</span>
+                </button>
+              </div>
+
+              {closedNotes.length > 0 && (
+                <>
+                  <div className="note-tab-add-dropdown-separator" />
+                  <div className="note-tab-add-dropdown-header">Recently Edited Notes</div>
+                  <div className="note-tab-add-dropdown-scroll">
+                    {visibleClosedNotes.map((note) => {
+                      const meta = getMetadata?.(note.filePath) || {};
+                      const ItemIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : FileText;
+                      const title = note.title || note.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "");
+                      const relTime = formatRelativeTime(note.mtime || note.updatedAt || note.lastModified);
+
+                      return (
+                        <button
+                          key={note.filePath}
+                          type="button"
+                          role="menuitem"
+                          className="note-tab-add-dropdown-item"
+                          title={note.filePath}
+                          onClick={() => {
+                            onSelectTab?.(note.filePath);
+                            setAddDropdownOpen(false);
+                          }}
+                        >
+                          <ItemIcon size={14} className="note-tab-add-item-icon" />
+                          <span className="note-tab-add-item-title">{title}</span>
+                          {relTime && <span className="note-tab-add-item-time">{relTime}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {remainingClosedCount > 0 && (
+                    <button
+                      type="button"
+                      className="note-tab-add-more-btn"
+                      onClick={() => {
+                        setAddDropdownOpen(false);
+                        setSearchModalOpen(true);
+                      }}
+                    >
+                      <Search size={14} />
+                      <span>+{remainingClosedCount} More...</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Searchable Modal for All Notes */}
+      <NoteSearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+        documents={documents}
+        getMetadata={getMetadata}
+        onSelectNote={onSelectTab}
+      />
 
       {/* Right-click Context Menu */}
       {contextMenu && (
@@ -486,3 +738,4 @@ export function NoteTabBar({
     </div>
   );
 }
+

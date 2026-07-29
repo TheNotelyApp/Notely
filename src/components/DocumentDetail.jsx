@@ -43,6 +43,7 @@ import { renderMarkdown } from "../utils/renderUtils";
 import { extractTasksFromText, getTaskCountsFromText } from "../utils/taskUtils";
 import useConfirm from "../hooks/useConfirm";
 import { NoteTabBar } from "./NoteTabBar";
+import { MetadataPopover } from "./MetadataPopover";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -352,131 +353,7 @@ function buildTimeRangeHeaderValue(fromValue, toValue) {
   return "";
 }
 
-const MetadataPanel = memo(function MetadataPanel({
-  showMetadataPanel,
-  isFocusMode,
-  titleText,
-  titleSaving,
-  timeRangeWarning,
-  nameText,
-  timeFromText,
-  timeToText,
-  locationText,
-  tagItems,
-  tagInputText,
-  onTitleChange,
-  onTitleBlur,
-  onTitleKeyDown,
-  onNameChange,
-  onTimeFromChange,
-  onTimeToChange,
-  onLocationChange,
-  onTagRemove,
-  onTagsChange,
-  onTagsKeyDown,
-}) {
-  if (!showMetadataPanel || isFocusMode) return null;
 
-  return (
-    <div className="metadata-grid">
-      <label className="metadata-card metadata-card-input">
-        <FileText size={16} />
-        <span>Title</span>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={titleText}
-          onChange={onTitleChange}
-          onBlur={onTitleBlur}
-          onKeyDown={onTitleKeyDown}
-          placeholder="Add title"
-          aria-label="Note title"
-          disabled={titleSaving}
-        />
-      </label>
-      <label className="metadata-card metadata-card-input">
-        <User size={16} />
-        <span>Name</span>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={nameText}
-          onChange={onNameChange}
-          placeholder="Add name"
-          aria-label="Note name"
-        />
-      </label>
-      <div className="metadata-card metadata-card-time-range">
-        <Clock size={16} />
-        <span>Time</span>
-        <div className="metadata-time-range-row">
-          <div className="metadata-time-range-field">
-            <span className="metadata-time-range-label">From</span>
-            <AppInput
-              type="datetime-local"
-              className="metadata-input metadata-datetime"
-              value={timeFromText}
-              onChange={onTimeFromChange}
-              aria-label="Start time"
-            />
-          </div>
-          <div className="metadata-time-range-field">
-            <span className="metadata-time-range-label">To</span>
-            <AppInput
-              type="datetime-local"
-              className="metadata-input metadata-datetime"
-              value={timeToText}
-              onChange={onTimeToChange}
-              aria-label="End time"
-            />
-          </div>
-        </div>
-        {timeRangeWarning ? <div className="metadata-warning" role="alert">{timeRangeWarning}</div> : null}
-      </div>
-      <label className="metadata-card metadata-card-input">
-        <MapPin size={16} />
-        <span>Location</span>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={locationText}
-          onChange={onLocationChange}
-          placeholder="Add location"
-          aria-label="Note location"
-        />
-      </label>
-      <div className="metadata-card metadata-card-tags">
-        <Tag size={16} />
-        <span>Tags</span>
-        <div className="metadata-tag-chip-list" aria-label="Existing tags">
-          {tagItems.length ? tagItems.map((tag) => (
-            <span className="metadata-tag-chip" key={tag.toLowerCase()}>
-              <span className="metadata-tag-chip-text">#{tag}</span>
-              <button
-                type="button"
-                className="metadata-tag-chip-remove"
-                aria-label={`Remove tag ${tag}`}
-                data-tooltip={`Remove ${tag}`}
-                onClick={() => onTagRemove(tag)}
-              >
-                <X size={12} />
-              </button>
-            </span>
-          )) : <span className="metadata-tag-empty">No tags yet</span>}
-        </div>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={tagInputText}
-          onChange={onTagsChange}
-          onKeyDown={onTagsKeyDown}
-          placeholder="Type tag and press Enter"
-          aria-label="Note tags"
-        />
-      </div>
-    </div>
-  );
-});
 
 const FindReplacePanel = memo(function FindReplacePanel({
   showFindReplace,
@@ -1232,44 +1109,42 @@ export function DocumentDetail({
   const jumpToLine = (line) => {
     const safeLine = Math.max(Number(line) || 1, 1);
     setTargetLine(safeLine);
-    
+    setIsTaskSummaryOpen(false);
+
     if (mode === "preview") {
-      const previewEl = window.document.querySelector(".markdown-preview, .preview-container");
-      if (previewEl) {
-        const targetNode = previewEl.querySelector(`[data-source-line="${safeLine}"]`) ||
-          Array.from(previewEl.querySelectorAll("[data-source-line]")).find(el => Number(el.getAttribute("data-source-line")) >= safeLine);
-        if (targetNode) {
-          targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
-          return;
-        }
-      }
       setEditorMode("edit", { announce: false, force: true });
-      requestAnimationFrame(() => jumpToLine(safeLine));
-      return;
     }
 
-    const editor = textareaRef?.current;
-    if (editor) {
-      const lines = (content || "").split(/\r?\n/);
-      let startIndex = 0;
-      for (let index = 0; index < Math.min(safeLine - 1, lines.length); index += 1) {
-        startIndex += lines[index].length + 1;
+    setTimeout(() => {
+      const editor = textareaRef?.current;
+      if (editor) {
+        const lines = (content || "").split(/\r?\n/);
+        let startIndex = 0;
+        for (let index = 0; index < Math.min(safeLine - 1, lines.length); index += 1) {
+          startIndex += lines[index].length + 1;
+        }
+
+        editor.focus();
+        if (typeof editor.setSelectionRange === "function") {
+          editor.setSelectionRange(startIndex, startIndex);
+        } else {
+          editor.selectionStart = startIndex;
+          editor.selectionEnd = startIndex;
+        }
+
+        if (typeof editor.scrollToLine === "function") {
+          editor.scrollToLine(safeLine);
+        } else {
+          const lineHeight = typeof editor.getLineHeight === "function"
+            ? editor.getLineHeight()
+            : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
+          const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
+          const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
+          const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
+          editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+        }
       }
 
-      editor.focus();
-      editor.selectionStart = startIndex;
-      editor.selectionEnd = startIndex;
-
-      const lineHeight = typeof editor.getLineHeight === "function"
-        ? editor.getLineHeight()
-        : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
-      const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
-      const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
-      const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
-      editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
-    }
-
-    if (mode === "split") {
       const previewEl = window.document.querySelector(".markdown-preview, .preview-container");
       if (previewEl) {
         const targetNode = previewEl.querySelector(`[data-source-line="${safeLine}"]`) ||
@@ -1278,7 +1153,7 @@ export function DocumentDetail({
           targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
-    }
+    }, 15);
   };
 
   const openFindPanel = ({ showReplace = false } = {}) => {
@@ -1837,59 +1712,82 @@ export function DocumentDetail({
                 {openTaskItems.length ? (
                   <div className="detail-task-popover-section">
                     <strong>Open</strong>
-                    <ul className="detail-task-popover-list">
+                    <div className="detail-task-popover-list">
                       {openTaskItems.map((task) => (
-                        <li
+                        <button
+                          type="button"
                           className="detail-task-popover-item open"
                           key={task.id}
                           onClick={() => jumpToLine(task.line)}
-                          style={{ cursor: "pointer" }}
-                          title="Click to jump to task in editor"
+                          data-tooltip="Click to jump to task in editor"
                         >
                           <span className="detail-task-popover-marker">[ ]</span>
                           <span>{task.text}</span>
-                        </li>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
                 {closedTaskItems.length ? (
                   <div className="detail-task-popover-section">
                     <strong>Closed</strong>
-                    <ul className="detail-task-popover-list">
+                    <div className="detail-task-popover-list">
                       {closedTaskItems.map((task) => (
-                        <li
+                        <button
+                          type="button"
                           className="detail-task-popover-item closed"
                           key={task.id}
                           onClick={() => jumpToLine(task.line)}
-                          style={{ cursor: "pointer" }}
-                          title="Click to jump to task in editor"
+                          data-tooltip="Click to jump to task in editor"
                         >
                           <span className="detail-task-popover-marker">[x]</span>
                           <span>{task.text}</span>
-                        </li>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
               </div>
             </div>
           )}
-          <div className={`save-status ${dirty ? "dirty" : "clean"}`} aria-live="polite" style={{ fontSize: "12px", color: "var(--text-muted)", marginRight: "4px" }}>
-            {dirty ? "Unsaved" : (autosaveEnabled && lastAutoSaveAt ? `Saved at ${new Date(lastAutoSaveAt).toLocaleTimeString()}` : "Saved")}
-          </div>
-          {!autosaveEnabled && dirty && (
-            <AppButton
-              variant="small"
-              onClick={handleManualSave}
-              disabled={saving || changedOnDisk}
-              data-tooltip="Save note (Ctrl+S)"
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              <Save size={14} />
-              <span>Save</span>
-            </AppButton>
-          )}
+
+          {/* Primary Action: Save Button (always visible, highlighted when dirty) */}
+          <AppButton
+            variant={dirty ? "primary" : "small"}
+            onClick={handleManualSave}
+            disabled={saving || changedOnDisk || !dirty}
+            data-tooltip={dirty ? "Save changes (Ctrl+S)" : "All changes saved"}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <Save size={14} />
+            <span>{saving ? "Saving..." : (dirty ? "Save" : "Saved")}</span>
+          </AppButton>
+
+          {/* Workspace Action: Details */}
+          <AppButton
+            variant="small"
+            className={showMetadataPanel ? "active" : ""}
+            data-tooltip="Toggle note metadata"
+            onClick={() => setShowMetadataPanel((prev) => !prev)}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <ListTree size={14} />
+            <span>Details</span>
+          </AppButton>
+
+          {/* Workspace Action: AI Assistant */}
+          <AppButton
+            variant="small"
+            className={aiPanelVisible ? "active" : ""}
+            data-tooltip={aiEnabled ? "Toggle AI Assistant Chat" : "Configure AI to toggle Assistant"}
+            onClick={onShowAI}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <Sparkles size={14} />
+            <span>{aiPanelVisible ? "Hide AI" : "AI Assistant"}</span>
+          </AppButton>
+
+          {/* View Action: Full Screen */}
           <AppButton
             variant="small"
             onClick={toggleFocusMode}
@@ -1900,36 +1798,6 @@ export function DocumentDetail({
             <span>{isFocusMode ? "Exit Full Screen" : "Full Screen"}</span>
           </AppButton>
         </div>
-      )}
-
-      {!isFocusMode && (
-        <header className="doc-header">
-        <div className="doc-header-main">
-          <h1>{document.title}</h1>
-          <p className="doc-header-file">{document.fileName}</p>
-        </div>
-        <div className="panel-actions">
-          <AppButton
-            variant="small"
-            className={showMetadataPanel ? "active" : ""}
-            data-tooltip="Toggle note metadata"
-            onClick={() => setShowMetadataPanel((value) => !value)}
-          >
-            {showMetadataPanel ? <EyeOff size={14} /> : <ListTree size={14} />}
-            {showMetadataPanel ? "Hide details" : "Show details"}
-          </AppButton>
-          <AppButton
-            variant="small"
-            className={aiPanelVisible ? "active" : ""}
-            data-tooltip={aiEnabled ? "Toggle AI Assistant Chat" : "Configure AI to toggle Assistant"}
-            onClick={onShowAI}
-            style={{ marginLeft: "6px" }}
-          >
-            <Sparkles size={14} />
-            {aiPanelVisible ? "Hide Assistant" : "AI Assistant"}
-          </AppButton>
-        </div>
-      </header>
       )}
 
       {isFocusMode && (
@@ -1946,28 +1814,14 @@ export function DocumentDetail({
         </div>
       )}
 
-      <MetadataPanel
-        showMetadataPanel={showMetadataPanel}
-        isFocusMode={isFocusMode}
-        titleText={titleDraft}
-        titleSaving={titleSaving}
-        timeRangeWarning={timeRangeWarning}
-        nameText={nameText}
-        timeFromText={timeRange.from}
-        timeToText={timeRange.to}
-        locationText={locationText}
-        tagItems={tagItems}
-        tagInputText={tagDraft}
-        onTitleChange={(event) => setTitleDraft(event.target.value)}
-        onTitleBlur={handleTitleBlur}
-        onTitleKeyDown={handleTitleKeyDown}
-        onNameChange={handleNameChange}
-        onTimeFromChange={handleTimeFromChange}
-        onTimeToChange={handleTimeToChange}
-        onLocationChange={handleLocationChange}
-        onTagRemove={handleTagRemove}
-        onTagsChange={handleTagsChange}
-        onTagsKeyDown={handleTagsKeyDown}
+      <MetadataPopover
+        document={document}
+        isOpen={showMetadataPanel && !isFocusMode}
+        onClose={() => setShowMetadataPanel(false)}
+        onChange={onChange}
+        onSaveDocument={handleManualSave}
+        onRenameTitle={onRenameTitle}
+        workspaceTagSuggestions={workspaceTagSuggestions}
       />
 
       {changedOnDisk && (
@@ -2128,7 +1982,6 @@ export function DocumentDetail({
             mode={mode}
             textareaRef={textareaRef}
             basePath={document.filePath}
-            workspaceStorageScope={workspaceStorageScope}
             typoCheckEnabled={typoCheckEnabled}
             screenCaptureMode={screenCaptureMode}
             showToolbar={!showMediaManager}
@@ -2149,8 +2002,6 @@ export function DocumentDetail({
                 source: "inline-continue",
               });
             }}
-            isFocusMode={isFocusMode}
-            onToggleFocusMode={() => onFocusModeChange?.(!isFocusMode)}
             ghostSuggestion={inlineGhostSuggestion}
             onAcceptInlineGhost={onAcceptInlineGhost}
             onRejectInlineGhost={onRejectInlineGhost}
@@ -2160,11 +2011,9 @@ export function DocumentDetail({
             inlineLinkedMarkdown={inlineLinkedMarkdown}
             ignoredSpellingWords={ignoredSpellingWords}
             onIgnoreSpellingWord={onIgnoreSpellingWord}
-            onRemoveIgnoredSpellingWord={onRemoveIgnoredSpellingWord}
-            onClearIgnoredSpellingWords={onClearIgnoredSpellingWords}
             onForceSaveDocument={onForceSaveDocument}
             initialLine={targetLine ?? initialLine}
-            onLineJumped={onLineJumped}
+            onLineJumped={() => setTargetLine(null)}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={onOutlineEnabledChange}
             tableEditorEnabled={tableEditorEnabled}
