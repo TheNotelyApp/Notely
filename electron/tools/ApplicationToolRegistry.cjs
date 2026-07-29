@@ -424,13 +424,14 @@ class ApplicationToolRegistry {
         required: ['notePath']
       },
       execute: async (args) => {
-        const notePath = args.notePath || args.note_path;
-        if (!notePath) {
-          throw new Error('notePath or note_path is required.');
+        const topic = args.topic || args.query || args.notePath || args.note_path;
+        if (!topic) {
+          throw new Error('topic or notePath is required.');
         }
         return this.knowledgeService.getRelatedTopics({
           ...args,
-          notePath
+          topic,
+          notePath: args.notePath || args.note_path || topic
         });
       }
     });

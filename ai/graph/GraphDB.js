@@ -418,27 +418,80 @@ class GraphDB {
    */
   traversePathOrId(identifier, maxDepth = 2) {
     if (!this.db || !identifier) return [];
-    let startEntity = this.getEntityByPath(identifier);
-    if (!startEntity) {
-      try {
-        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR id = ? LIMIT 1');
-        startEntity = stmt.get(String(identifier).trim(), identifier);
-      } catch {
-        /* ignore lookup error */
-      }
-    }
-    if (!startEntity) {
-      try {
-        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) LIKE LOWER(?) LIMIT 1');
-        startEntity = stmt.get(`%${String(identifier).trim()}%`);
-      } catch {
-        /* ignore lookup error */
-      }
-    }
-    if (!startEntity) return [];
+    const rawTarget = String(identifier).trim();
+    const cleanTarget = rawTarget
+      .replace(/^(who|what|where|how|why)\s+(is|was|are|were|about)\s+/i, '')
+      .replace(/\?$/g, '')
+      .trim();
 
-    const { nodes, edges } = this.getNeighbors(startEntity.id, maxDepth);
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const targets = Array.from(new Set([cleanTarget, rawTarget])).filter(Boolean);
+    const startEntities = [];
+    const seenEntityIds = new Set();
+
+    for (const target of targets) {
+      const eByPath = this.getEntityByPath(target);
+      if (eByPath && !seenEntityIds.has(eByPath.id)) {
+        seenEntityIds.add(eByPath.id);
+        startEntities.push(eByPath);
+      }
+      try {
+        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR id = ?');
+        const rows = stmt.all(target, target);
+        for (const r of rows) {
+          if (!seenEntityIds.has(r.id)) {
+            seenEntityIds.add(r.id);
+            startEntities.push(r);
+          }
+        }
+      } catch { /* ignore lookup error */ }
+      try {
+        const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) LIKE LOWER(?)');
+        const rows = stmt.all(`%${target}%`);
+        for (const r of rows) {
+          if (!seenEntityIds.has(r.id)) {
+            seenEntityIds.add(r.id);
+            startEntities.push(r);
+          }
+        }
+      } catch { /* ignore lookup error */ }
+    }
+
+    // Fallback: If full phrase doesn't yield entities, match individual word tokens (e.g. "Bikash", "Panda")
+    if (startEntities.length === 0 && cleanTarget.includes(' ')) {
+      const words = cleanTarget.split(/\s+/).filter(w => w.length > 2 && !/^(who|what|where|how|why|is|was|are|were|about|the|and)$/i.test(w));
+      for (const word of words) {
+        try {
+          const stmt = this.db.prepare('SELECT * FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(name) LIKE LOWER(?)');
+          const rows = stmt.all(word, `%${word}%`);
+          for (const r of rows) {
+            if (!seenEntityIds.has(r.id)) {
+              seenEntityIds.add(r.id);
+              startEntities.push(r);
+            }
+          }
+        } catch { /* ignore token lookup error */ }
+      }
+    }
+
+    if (startEntities.length === 0) return [];
+
+    const allEdges = [];
+    const allNodes = [];
+    const seenEdgeIds = new Set();
+
+    for (const startEntity of startEntities) {
+      const { nodes, edges } = this.getNeighbors(startEntity.id, maxDepth);
+      for (const n of nodes) allNodes.push(n);
+      for (const e of edges) {
+        const edgeKey = `${e.source_id}->${e.target_id}:${e.type}`;
+        if (!seenEdgeIds.has(edgeKey)) {
+          seenEdgeIds.add(edgeKey);
+          allEdges.push(e);
+        }
+      }
+    }
+
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
 
     return edges.map(e => {
       const srcNode = nodeMap.get(e.source_id);

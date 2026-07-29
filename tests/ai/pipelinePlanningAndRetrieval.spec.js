@@ -58,4 +58,11 @@ describe('Pipeline Planning & Retrieval Hardening Test Suite', () => {
     expect(aggregated.retrievalQuality[0].accepted).toBe(false);
     expect(aggregated.retrievalQuality[0].rejectedReason).toBe('below relevance threshold');
   });
+
+  // Test 5: Entity and Identity Queries Trigger NeedsGraph
+  it('5. Triggers needsGraph for identity inquiries like "Who is Bikash Panda"', () => {
+    const result = intentAnalyzer.analyze('Who is Bikash Panda', {});
+    expect(result.capabilities.needsGraph).toBe(true);
+    expect(result.informationNeeds).toContain('entity_relationships');
+  });
 });

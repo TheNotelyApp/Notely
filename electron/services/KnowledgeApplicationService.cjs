@@ -174,23 +174,57 @@ class KnowledgeApplicationService {
   /**
    * Get knowledge graph connections and related topics.
    */
-  async getRelatedTopics({ workspaceRoot, notePath, maxDepth = 2 }) {
-    if (this.agentInstance && this.agentInstance.graphService) {
+  async getRelatedTopics({ workspaceRoot, topic, notePath, maxDepth = 2 }) {
+    const target = topic || notePath;
+    if (!target) return { sourcePath: '', nodes: [], edges: [] };
+
+    // 1. Physical note path lookup if target is a file path ending with .md or existing on disk
+    if (typeof notePath === 'string' && (notePath.endsWith('.md') || (workspaceRoot && fs.existsSync(path.join(workspaceRoot, notePath))))) {
+      if (this.agentInstance && this.agentInstance.graphService) {
+        try {
+          const validPath = assertPathInWorkspace(notePath, workspaceRoot);
+          const related = await this.agentInstance.graphService.getRelatedNotes(validPath, maxDepth);
+          return {
+            sourcePath: validPath,
+            nodes: (related || []).map(r => ({ path: r.path || r, title: path.basename(r.path || r) })),
+            edges: []
+          };
+        } catch (err) {
+          console.warn('[KnowledgeService] Note path graph lookup error:', err.message);
+        }
+      }
+    }
+
+    // 2. Entity / Topic Graph Traversal via GraphDB or GraphRetriever
+    if (this.agentInstance) {
       try {
-        const validPath = assertPathInWorkspace(notePath, workspaceRoot);
-        const related = await this.agentInstance.graphService.getRelatedNotes(validPath, maxDepth);
-        return {
-          sourcePath: validPath,
-          nodes: (related || []).map(r => ({ path: r.path || r, title: path.basename(r.path || r) })),
-          edges: []
-        };
+        const gDb = this.agentInstance.graphDB || this.agentInstance.graphDb;
+        let rows = [];
+        if (gDb && typeof gDb.traversePathOrId === 'function') {
+          rows = gDb.traversePathOrId(target, maxDepth);
+        } else if (this.agentInstance.contextEngine?.graphRetriever) {
+          rows = this.agentInstance.contextEngine.graphRetriever.traverse(target, maxDepth);
+        }
+
+        if (rows && rows.length > 0) {
+          const triples = rows.map(r => `[${r.from_name || r.from_path}] --[${r.relation}]--> [${r.to_name || r.to_path}]`);
+          return {
+            sourceTopic: target,
+            graph_triples: triples,
+            content: triples.join('\n'),
+            relationships: rows,
+            nodes: rows.map(r => ({ name: r.to_name || r.to_path, type: r.to_type })),
+            edges: rows.map(r => ({ from: r.from_name, to: r.to_name, label: r.relation }))
+          };
+        }
       } catch (err) {
-        console.warn('[KnowledgeService] Graph Service error:', err.message);
+        console.warn('[KnowledgeService] Topic graph traversal error:', err.message);
       }
     }
 
     return {
-      sourcePath: notePath,
+      sourcePath: target,
+      content: `No knowledge graph connections found for: "${target}"`,
       nodes: [],
       edges: []
     };
