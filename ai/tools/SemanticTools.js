@@ -76,6 +76,9 @@ class SemanticToolRunner {
   async run(toolName, args = {}) {
     try {
       const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
+      if (this.agent) {
+        applicationToolRegistry.setAgentInstance(this.agent);
+      }
       const resolved = applicationToolRegistry.resolveToolName(toolName);
       if (resolved) {
         const res = await applicationToolRegistry.executeTool(resolved, args, {
@@ -83,6 +86,11 @@ class SemanticToolRunner {
           caller: 'planner'
         });
         if (res && res.success && res.data) {
+          if (typeof res.data === 'string') return res.data;
+          if (res.data.content && typeof res.data.content === 'string') return res.data.content;
+          if (Array.isArray(res.data.graph_triples) && res.data.graph_triples.length > 0) {
+            return res.data.graph_triples.join('\n');
+          }
           return res.data;
         }
       }

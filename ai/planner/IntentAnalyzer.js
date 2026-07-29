@@ -137,8 +137,11 @@ class IntentAnalyzer {
       category = 'Document QA';
     }
 
-    const zeroRetrievalCategories = new Set(['Knowledge Question', 'Creative Generation', 'Code Assistance']);
-    const requiresRetrieval = !zeroRetrievalCategories.has(category) || /\b(note|notes|workspace|file|files|my)\b/i.test(q);
+    // Always include workspace_content_search as baseline note-grounded capability
+    informationNeeds.add('workspace_content_search');
+
+    const isPureConversationalAck = /^(thanks|thank you|got it|ok|okay|cool|great|awesome|understood)\.?$/i.test(q.trim());
+    const requiresRetrieval = !isPureConversationalAck;
 
     if (!requiresRetrieval) {
       informationNeeds.clear();

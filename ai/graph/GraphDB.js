@@ -493,7 +493,7 @@ class GraphDB {
 
     const nodeMap = new Map(allNodes.map(n => [n.id, n]));
 
-    return edges.map(e => {
+    return allEdges.map(e => {
       const srcNode = nodeMap.get(e.source_id);
       const tgtNode = nodeMap.get(e.target_id);
       let evidenceText = null;

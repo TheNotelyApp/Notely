@@ -119,4 +119,17 @@ describe('SQLite Knowledge Graph DB and CTE Traversals', () => {
     const noPath = graphDb.findPath('node-a', 'node-xyz');
     expect(noPath).toBeNull();
   });
+
+  it('should traverse path for multi-word queries with separate token entities', () => {
+    graphDb.upsertEntity({ id: 'ent-bikash', name: 'Bikash', type: 'Person' });
+    graphDb.upsertEntity({ id: 'ent-panda', name: 'Panda', type: 'Person' });
+    graphDb.upsertEntity({ id: 'note-search', name: 'ai-and-search.md', type: 'Document' });
+    graphDb.upsertRelationship({ id: 'rel-1', source_id: 'ent-bikash', target_id: 'note-search', type: 'HAS_PERSON' });
+    graphDb.upsertRelationship({ id: 'rel-2', source_id: 'ent-panda', target_id: 'note-search', type: 'HAS_PERSON' });
+
+    const results = graphDb.traversePathOrId('Who is Bikash Panda', 2);
+    expect(results).toHaveLength(2);
+    expect(results.some(r => r.from_name === 'Bikash')).toBe(true);
+    expect(results.some(r => r.from_name === 'Panda')).toBe(true);
+  });
 });

@@ -314,8 +314,9 @@ const runTool = async (agent, name, args) => {
     const target = args.topic || args.query || args.identifier || args.notePath || args.note_path || '';
     try {
       let rows = [];
-      if (agent.graphDb) {
-        rows = agent.graphDb.traversePathOrId(target, args.maxDepth || 2);
+      const gDb = agent.graphDB || agent.graphDb || agent.contextEngine?.graphDB || agent.contextEngine?.graphDb;
+      if (gDb && typeof gDb.traversePathOrId === 'function') {
+        rows = gDb.traversePathOrId(target, args.maxDepth || 2);
       } else if (agent.contextEngine?.graphRetriever) {
         rows = agent.contextEngine.graphRetriever.traverse(target, args.maxDepth || 2);
       }
