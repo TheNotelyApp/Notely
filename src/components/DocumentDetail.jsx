@@ -10,11 +10,6 @@ import {
   PenLine,
   SplitSquareHorizontal,
   Eye,
-  EyeOff,
-  Clock,
-  MapPin,
-  User,
-  Tag,
   Images,
   X,
   ListTree,
@@ -41,8 +36,9 @@ import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 import { renderMarkdown } from "../utils/renderUtils";
 import { extractTasksFromText, getTaskCountsFromText } from "../utils/taskUtils";
-import useConfirm from "../hooks/useConfirm";
+import { getLineStartOffset, resolveTargetLine } from "../utils/markdownUtils";
 import { NoteTabBar } from "./NoteTabBar";
+import { MetadataPopover } from "./MetadataPopover";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -168,315 +164,8 @@ function getSelectedMatchIndex(matches, selectionStart, selectionEnd) {
   return matches.findIndex((match) => match.start === safeStart && match.end === safeEnd);
 }
 
-function getHeaderField(header, fieldName) {
-  const normalizedField = String(fieldName || "").trim().toLowerCase();
-  const line = String(header || "").split(/\r?\n/).find((item) => {
-    const match = item.match(/^([^:]+):\s*(.*)$/);
-    return match && match[1].trim().toLowerCase() === normalizedField;
-  });
-  return line?.replace(/^[^:]+:\s*/, "") || "";
-}
 
-function setHeaderField(header, fieldName, value) {
-  const normalizedField = String(fieldName || "").trim().toLowerCase();
-  const label = String(fieldName || "").trim();
-  const nextValue = String(value || "").trim();
-  const lines = String(header || "").split(/\r?\n/);
-  let replaced = false;
-  const nextLines = lines.filter((line) => line.trim() || lines.length > 1).map((line) => {
-    const match = line.match(/^([^:]+):\s*(.*)$/);
-    if (match && match[1].trim().toLowerCase() === normalizedField) {
-      replaced = true;
-      return nextValue ? `${label}: ${nextValue}` : "";
-    }
-    return line;
-  }).filter(Boolean);
 
-  if (!replaced && nextValue) {
-    nextLines.push(`${label}: ${nextValue}`);
-  }
-
-  return nextLines.join("\n").trim();
-}
-
-function normalizeTagInputFromEnter(value) {
-  return String(value || "")
-    .split(/[\s,#]+/)
-    .map((tag) => tag.trim().replace(/^#+/, ""))
-    .filter(Boolean)
-    .filter((tag, index, tags) => tags.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index)
-    .join(", ");
-}
-
-function parseTagList(value) {
-  return String(value || "")
-    .split(/[\s,#]+/)
-    .map((tag) => tag.trim().replace(/^#+/, ""))
-    .filter(Boolean);
-}
-
-function mergeTagLists(existingTags, incomingTags) {
-  const dedup = new Set();
-  const output = [];
-
-  for (const item of [...(existingTags || []), ...(incomingTags || [])]) {
-    const tag = String(item || "").trim().replace(/^#+/, "");
-    if (!tag) continue;
-    const key = tag.toLowerCase();
-    if (dedup.has(key)) continue;
-    dedup.add(key);
-    output.push(tag);
-  }
-
-  return output;
-}
-
-function autocompleteTagInput(value, suggestions, cursorIndex = null) {
-  const text = String(value || "");
-  if (!text) return null;
-  if (!Array.isArray(suggestions) || !suggestions.length) return null;
-  const safeCursor = Number.isFinite(cursorIndex) ? Math.max(0, Math.min(Number(cursorIndex), text.length)) : text.length;
-  if (safeCursor !== text.length) return null;
-  if (/[\s,#]$/.test(text)) return null;
-
-  let tokenStart = text.length - 1;
-  while (tokenStart >= 0 && !/[\s,#]/.test(text[tokenStart])) {
-    tokenStart -= 1;
-  }
-  tokenStart += 1;
-
-  const token = text.slice(tokenStart).trim();
-  if (!token) return null;
-
-  const lowerToken = token.toLowerCase();
-  const match = suggestions.find((item) => {
-    const candidate = String(item || "").trim();
-    if (!candidate) return false;
-    const lowerCandidate = candidate.toLowerCase();
-    return lowerCandidate.startsWith(lowerToken) && lowerCandidate !== lowerToken;
-  });
-
-  if (!match) return null;
-  return `${text.slice(0, tokenStart)}${match}`;
-}
-
-function normalizeTagSuggestionList(value) {
-  if (!Array.isArray(value)) return [];
-  const dedup = new Map();
-  for (const item of value) {
-    const tag = String(item || "").trim();
-    if (!tag) continue;
-    const key = tag.toLowerCase();
-    if (!dedup.has(key)) dedup.set(key, tag);
-  }
-  return [...dedup.values()].sort((left, right) => left.localeCompare(right));
-}
-
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const MONTH_INDEX_BY_LABEL = MONTH_LABELS.reduce((map, label, index) => {
-  map[label.toLowerCase()] = index;
-  return map;
-}, {});
-
-function formatDateTimeLocalForHeader(value) {
-  const text = String(value || "").trim();
-  if (!text || !text.includes("T")) return "";
-  const [datePart, timePart] = text.split("T");
-  const [year, month, day] = datePart.split("-").map((item) => Number(item));
-  if (!year || !month || !day || !timePart) return "";
-  const label = MONTH_LABELS[month - 1];
-  if (!label) return "";
-  return `${timePart}, ${String(day).padStart(2, "0")} ${label} ${year}`;
-}
-
-function parseHeaderDateTimeToInput(value) {
-  const text = String(value || "").trim();
-  if (!text) return "";
-  const match = text.match(/^(\d{1,2}):(\d{2}),\s*(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
-  if (!match) return "";
-
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const day = Number(match[3]);
-  const month = MONTH_INDEX_BY_LABEL[String(match[4]).slice(0, 3).toLowerCase()];
-  const year = Number(match[5]);
-
-  if (!Number.isInteger(month) || hour < 0 || hour > 23 || minute < 0 || minute > 59 || day < 1 || day > 31 || year < 1000) {
-    return "";
-  }
-
-  return `${String(year).padStart(4, "0")}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-function parseTimeRangeToInputs(value) {
-  const text = String(value || "").trim();
-  if (!text) {
-    return { from: "", to: "" };
-  }
-
-  const parts = text.split(/\s+to\s+/i);
-  if (parts.length === 2) {
-    return {
-      from: parseHeaderDateTimeToInput(parts[0]),
-      to: parseHeaderDateTimeToInput(parts[1]),
-    };
-  }
-
-  return {
-    from: parseHeaderDateTimeToInput(text),
-    to: "",
-  };
-}
-
-function buildTimeRangeHeaderValue(fromValue, toValue) {
-  const fromLabel = formatDateTimeLocalForHeader(fromValue);
-  const toLabel = formatDateTimeLocalForHeader(toValue);
-
-  if (fromLabel && toLabel) return `${fromLabel} to ${toLabel}`;
-  if (fromLabel) return fromLabel;
-  if (toLabel) return toLabel;
-  return "";
-}
-
-const MetadataPanel = memo(function MetadataPanel({
-  showMetadataPanel,
-  isFocusMode,
-  titleText,
-  titleSaving,
-  timeRangeWarning,
-  nameText,
-  timeFromText,
-  timeToText,
-  locationText,
-  tagItems,
-  tagInputText,
-  onTitleChange,
-  onTitleBlur,
-  onTitleKeyDown,
-  onNameChange,
-  onTimeFromChange,
-  onTimeToChange,
-  onLocationChange,
-  onTagRemove,
-  onTagsChange,
-  onTagsKeyDown,
-}) {
-  if (!showMetadataPanel || isFocusMode) return null;
-
-  return (
-    <div className="metadata-grid">
-      <label className="metadata-card metadata-card-input">
-        <FileText size={16} />
-        <span>Title</span>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={titleText}
-          onChange={onTitleChange}
-          onBlur={onTitleBlur}
-          onKeyDown={onTitleKeyDown}
-          placeholder="Add title"
-          aria-label="Note title"
-          disabled={titleSaving}
-        />
-      </label>
-      <label className="metadata-card metadata-card-input">
-        <User size={16} />
-        <span>Name</span>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={nameText}
-          onChange={onNameChange}
-          placeholder="Add name"
-          aria-label="Note name"
-        />
-      </label>
-      <div className="metadata-card metadata-card-time-range">
-        <Clock size={16} />
-        <span>Time</span>
-        <div className="metadata-time-range-row">
-          <div className="metadata-time-range-field">
-            <span className="metadata-time-range-label">From</span>
-            <AppInput
-              type="datetime-local"
-              className="metadata-input metadata-datetime"
-              value={timeFromText}
-              onChange={onTimeFromChange}
-              aria-label="Start time"
-            />
-          </div>
-          <div className="metadata-time-range-field">
-            <span className="metadata-time-range-label">To</span>
-            <AppInput
-              type="datetime-local"
-              className="metadata-input metadata-datetime"
-              value={timeToText}
-              onChange={onTimeToChange}
-              aria-label="End time"
-            />
-          </div>
-        </div>
-        {timeRangeWarning ? <div className="metadata-warning" role="alert">{timeRangeWarning}</div> : null}
-      </div>
-      <label className="metadata-card metadata-card-input">
-        <MapPin size={16} />
-        <span>Location</span>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={locationText}
-          onChange={onLocationChange}
-          placeholder="Add location"
-          aria-label="Note location"
-        />
-      </label>
-      <div className="metadata-card metadata-card-tags">
-        <Tag size={16} />
-        <span>Tags</span>
-        <div className="metadata-tag-chip-list" aria-label="Existing tags">
-          {tagItems.length ? tagItems.map((tag) => (
-            <span className="metadata-tag-chip" key={tag.toLowerCase()}>
-              <span className="metadata-tag-chip-text">#{tag}</span>
-              <button
-                type="button"
-                className="metadata-tag-chip-remove"
-                aria-label={`Remove tag ${tag}`}
-                data-tooltip={`Remove ${tag}`}
-                onClick={() => onTagRemove(tag)}
-              >
-                <X size={12} />
-              </button>
-            </span>
-          )) : <span className="metadata-tag-empty">No tags yet</span>}
-        </div>
-        <AppInput
-          type="text"
-          className="metadata-input"
-          value={tagInputText}
-          onChange={onTagsChange}
-          onKeyDown={onTagsKeyDown}
-          placeholder="Type tag and press Enter"
-          aria-label="Note tags"
-        />
-      </div>
-    </div>
-  );
-});
 
 const FindReplacePanel = memo(function FindReplacePanel({
   showFindReplace,
@@ -688,7 +377,6 @@ export function DocumentDetail({
   onOpenAISettings,
   onOpenDocument,
   initialLine = null,
-  onLineJumped,
   workspaceTagSuggestions = [],
   workspaceStorageScope = "default",
   typoCheckEnabled = true,
@@ -706,8 +394,6 @@ export function DocumentDetail({
   aiSidebar = null,
   ignoredSpellingWords = [],
   onIgnoreSpellingWord,
-  onRemoveIgnoredSpellingWord,
-  onClearIgnoredSpellingWords,
   onForceSaveDocument,
   autosaveEnabled = false,
   setAutosaveEnabled,
@@ -729,7 +415,6 @@ export function DocumentDetail({
   onCopyLinkPath,
   onReloadFromDisk,
 }) {
-  const { confirm } = useConfirm();
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
   const taskPopoverTimerRef = useRef(null);
@@ -745,7 +430,7 @@ export function DocumentDetail({
   const [pdfExportMode, setPdfExportMode] = useState("formal");
   const [pdfQualityPreset, setPdfQualityPreset] = useState("full");
 
-  const [lastAutoSaveAt, setLastAutoSaveAt] = useState(0);
+  const [, setLastAutoSaveAt] = useState(0);
   const [changedOnDisk, setChangedOnDisk] = useState(false);
   const [outlineWidth, setOutlineWidth] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
@@ -905,18 +590,6 @@ export function DocumentDetail({
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
   const [showMediaManager, setShowMediaManager] = useState(false);
   const [isTaskSummaryOpen, setIsTaskSummaryOpen] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(document.title || "");
-  const [tagDraft, setTagDraft] = useState("");
-  const [titleSaving, setTitleSaving] = useState(false);
-  const [cachedTagSuggestions, setCachedTagSuggestions] = useWorkspaceScopedStorage({
-    workspaceScope: workspaceStorageScope,
-    key: "notes:tag-suggestions",
-    defaultValue: [],
-    normalize: normalizeTagSuggestionList,
-  });
-  const titleRenameInFlightRef = useRef(false);
-  const lastSubmittedTitleRef = useRef("");
-
   const findRegexValid = !findUseRegex || isValidFindRegex(findQuery);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const findMatches = useMemo(
@@ -924,27 +597,6 @@ export function DocumentDetail({
     [content, findQuery, findCaseSensitive, findUseRegex],
   );
   const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
-  const nameText = getHeaderField(document.header, "Name");
-  const locationText = getHeaderField(document.header, "Location");
-  const timeText = getHeaderField(document.header, "Time");
-  const timeRange = useMemo(() => parseTimeRangeToInputs(timeText), [timeText]);
-  const timeRangeWarning = useMemo(() => {
-    if (!timeRange.from || !timeRange.to) return "";
-    const fromTs = Date.parse(timeRange.from);
-    const toTs = Date.parse(timeRange.to);
-    if (!Number.isFinite(fromTs) || !Number.isFinite(toTs)) return "";
-    return fromTs > toTs ? "End time must be after start time." : "";
-  }, [timeRange.from, timeRange.to]);
-  const tagText = getHeaderField(document.header, "Tags");
-  const tagItems = useMemo(() => mergeTagLists(parseTagList(tagText), []), [tagText]);
-  const combinedTagSuggestions = useMemo(() => {
-    const merged = normalizeTagSuggestionList([
-      ...workspaceTagSuggestions,
-      ...cachedTagSuggestions,
-      ...tagItems,
-    ]);
-    return merged.slice(0, 100);
-  }, [workspaceTagSuggestions, cachedTagSuggestions, tagItems]);
   const selectedFindMatchIndex = getSelectedMatchIndex(
     findMatches,
     textareaRef.current?.selectionStart,
@@ -957,12 +609,7 @@ export function DocumentDetail({
     ? `${activeFindMatchIndex + 1}/${findMatches.length}`
     : "0/0";
 
-  useEffect(() => {
-    setTitleDraft(document.title || "");
-    setTagDraft("");
-    titleRenameInFlightRef.current = false;
-    lastSubmittedTitleRef.current = "";
-  }, [document.title, document.filePath]);
+
 
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
@@ -1229,47 +876,46 @@ export function DocumentDetail({
     });
   };
 
-  const jumpToLine = (line) => {
-    const safeLine = Math.max(Number(line) || 1, 1);
-    setTargetLine(safeLine);
-    
-    if (mode === "preview") {
-      const previewEl = window.document.querySelector(".markdown-preview, .preview-container");
-      if (previewEl) {
-        const targetNode = previewEl.querySelector(`[data-source-line="${safeLine}"]`) ||
-          Array.from(previewEl.querySelectorAll("[data-source-line]")).find(el => Number(el.getAttribute("data-source-line")) >= safeLine);
-        if (targetNode) {
-          targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
-          return;
-        }
-      }
-      setEditorMode("edit", { announce: false, force: true });
-      requestAnimationFrame(() => jumpToLine(safeLine));
-      return;
-    }
-
+  const jumpToLine = (line, textHint = null) => {
     const editor = textareaRef?.current;
-    if (editor) {
-      const lines = (content || "").split(/\r?\n/);
-      let startIndex = 0;
-      for (let index = 0; index < Math.min(safeLine - 1, lines.length); index += 1) {
-        startIndex += lines[index].length + 1;
-      }
+    const activeText = editor?.value ?? content ?? "";
+    const safeLine = resolveTargetLine(activeText, line, textHint);
 
-      editor.focus();
-      editor.selectionStart = startIndex;
-      editor.selectionEnd = startIndex;
+    setTargetLine(safeLine);
+    setIsTaskSummaryOpen(false);
 
-      const lineHeight = typeof editor.getLineHeight === "function"
-        ? editor.getLineHeight()
-        : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
-      const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
-      const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
-      const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
-      editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+    if (mode === "preview") {
+      setEditorMode("edit", { announce: false, force: true });
     }
 
-    if (mode === "split") {
+    setTimeout(() => {
+      const ed = textareaRef?.current;
+      if (ed) {
+        ed.focus();
+        if (typeof ed.scrollToLine === "function") {
+          ed.scrollToLine(safeLine);
+        } else {
+          const startIndex = typeof ed.getLineStartOffset === "function"
+            ? ed.getLineStartOffset(safeLine)
+            : getLineStartOffset(ed.value ?? content ?? "", safeLine);
+
+          if (typeof ed.setSelectionRange === "function") {
+            ed.setSelectionRange(startIndex, startIndex);
+          } else {
+            ed.selectionStart = startIndex;
+            ed.selectionEnd = startIndex;
+          }
+
+          const lineHeight = typeof ed.getLineHeight === "function"
+            ? ed.getLineHeight()
+            : parseFloat(window.getComputedStyle(ed).lineHeight) || 20;
+          const viewportHeight = Number(ed.clientHeight) || lineHeight * 20;
+          const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
+          const maxScroll = Math.max(0, (Number(ed.scrollHeight) || 0) - viewportHeight);
+          ed.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+        }
+      }
+
       const previewEl = window.document.querySelector(".markdown-preview, .preview-container");
       if (previewEl) {
         const targetNode = previewEl.querySelector(`[data-source-line="${safeLine}"]`) ||
@@ -1278,7 +924,7 @@ export function DocumentDetail({
           targetNode.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
-    }
+    }, 15);
   };
 
   const openFindPanel = ({ showReplace = false } = {}) => {
@@ -1320,104 +966,6 @@ export function DocumentDetail({
     textareaRef.current?.focus?.();
   };
 
-  const handleTagsChange = (event) => {
-    const typedValue = event.target.value;
-    const typedCursor = event.target.selectionStart;
-    const completedValue = autocompleteTagInput(typedValue, combinedTagSuggestions, typedCursor);
-    const isSingleCharInsert = event.nativeEvent?.inputType === "insertText";
-    const nextValue = completedValue && isSingleCharInsert ? completedValue : typedValue;
-    const input = event.target;
-
-    setTagDraft(nextValue);
-
-    if (completedValue && isSingleCharInsert) {
-      requestAnimationFrame(() => {
-        if (!input || typeof input.setSelectionRange !== "function") return;
-        input.setSelectionRange(typedValue.length, completedValue.length);
-      });
-    }
-  };
-
-  const handleNameChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Name", event.target.value),
-    });
-  };
-
-  const handleLocationChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Location", event.target.value),
-    });
-  };
-
-  const handleTimeFromChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Time", buildTimeRangeHeaderValue(event.target.value, timeRange.to)),
-    });
-  };
-
-  const handleTimeToChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Time", buildTimeRangeHeaderValue(timeRange.from, event.target.value)),
-    });
-  };
-
-  const handleTagsKeyDown = (event) => {
-    if (event.key === "Tab") {
-      const completedValue = autocompleteTagInput(tagDraft, combinedTagSuggestions);
-      if (!completedValue) return;
-      event.preventDefault();
-      setTagDraft(completedValue);
-      requestAnimationFrame(() => {
-        if (!event.currentTarget || typeof event.currentTarget.setSelectionRange !== "function") return;
-        event.currentTarget.setSelectionRange(tagDraft.length, completedValue.length);
-      });
-      return;
-    }
-
-    if (event.key === "Backspace" && !tagDraft.trim() && tagItems.length) {
-      event.preventDefault();
-      const nextTags = tagItems.slice(0, -1);
-      onChange({
-        ...document,
-        header: setHeaderField(document.header, "Tags", nextTags.join(", ")),
-      });
-      return;
-    }
-
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-
-    const normalizedTags = normalizeTagInputFromEnter(tagDraft);
-    const nextTags = parseTagList(normalizedTags);
-    if (!nextTags.length) return;
-    const mergedTags = mergeTagLists(tagItems, nextTags);
-
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Tags", mergedTags.join(", ")),
-    });
-    setTagDraft("");
-
-    if (nextTags.length) {
-      setCachedTagSuggestions((current) => normalizeTagSuggestionList([...(current || []), ...nextTags]).slice(0, 100));
-    }
-  };
-
-  const handleTagRemove = (tagToRemove) => {
-    const targetKey = String(tagToRemove || "").trim().toLowerCase();
-    if (!targetKey) return;
-    const nextTags = tagItems.filter((tag) => tag.toLowerCase() !== targetKey);
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Tags", nextTags.join(", ")),
-    });
-  };
-
   const handleManualSave = async () => {
     if (changedOnDisk) return;
     try {
@@ -1439,76 +987,6 @@ export function DocumentDetail({
     navigator.clipboard.writeText(content || "")
       .then(() => onNotify?.("Copied as plain text.", "success"))
       .catch(() => onNotify?.("Unable to copy to clipboard.", "error"));
-  };
-
-  const commitTitleRename = async () => {
-    const nextTitle = String(titleDraft || "").trim();
-    if (!nextTitle || nextTitle === document.title || typeof onRenameTitle !== "function") {
-      setTitleDraft(document.title || "");
-      return;
-    }
-
-    if (titleRenameInFlightRef.current) {
-      return;
-    }
-
-    if (lastSubmittedTitleRef.current === nextTitle) {
-      return;
-    }
-
-    titleRenameInFlightRef.current = true;
-    lastSubmittedTitleRef.current = nextTitle;
-    setTitleSaving(true);
-    try {
-      const renamed = await onRenameTitle(nextTitle);
-      if (renamed === false) {
-        lastSubmittedTitleRef.current = "";
-      }
-    } catch {
-      lastSubmittedTitleRef.current = "";
-    } finally {
-      titleRenameInFlightRef.current = false;
-      setTitleSaving(false);
-    }
-  };
-
-  const handleTitleBlur = async () => {
-    const nextTitle = String(titleDraft || "").trim();
-    const currentTitle = String(document.title || "").trim();
-    if (!nextTitle) {
-      setTitleDraft(document.title || "");
-      return;
-    }
-    if (nextTitle === currentTitle || titleRenameInFlightRef.current) {
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: "Rename Note?",
-      message: `Rename note to "${nextTitle}"?`,
-      confirmLabel: "Rename",
-      cancelLabel: "Cancel",
-      variant: "primary"
-    });
-    if (!confirmed) {
-      setTitleDraft(document.title || "");
-      return;
-    }
-
-    commitTitleRename();
-  };
-
-  const handleTitleKeyDown = (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      commitTitleRename();
-      return;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setTitleDraft(document.title || "");
-      event.currentTarget.blur();
-    }
   };
 
   const goToMatch = (nextIndex) => {
@@ -1837,59 +1315,82 @@ export function DocumentDetail({
                 {openTaskItems.length ? (
                   <div className="detail-task-popover-section">
                     <strong>Open</strong>
-                    <ul className="detail-task-popover-list">
+                    <div className="detail-task-popover-list">
                       {openTaskItems.map((task) => (
-                        <li
+                        <button
+                          type="button"
                           className="detail-task-popover-item open"
                           key={task.id}
-                          onClick={() => jumpToLine(task.line)}
-                          style={{ cursor: "pointer" }}
-                          title="Click to jump to task in editor"
+                          onClick={() => jumpToLine(task.line, task.text)}
+                          data-tooltip="Click to jump to task in editor"
                         >
                           <span className="detail-task-popover-marker">[ ]</span>
                           <span>{task.text}</span>
-                        </li>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
                 {closedTaskItems.length ? (
                   <div className="detail-task-popover-section">
                     <strong>Closed</strong>
-                    <ul className="detail-task-popover-list">
+                    <div className="detail-task-popover-list">
                       {closedTaskItems.map((task) => (
-                        <li
+                        <button
+                          type="button"
                           className="detail-task-popover-item closed"
                           key={task.id}
-                          onClick={() => jumpToLine(task.line)}
-                          style={{ cursor: "pointer" }}
-                          title="Click to jump to task in editor"
+                          onClick={() => jumpToLine(task.line, task.text)}
+                          data-tooltip="Click to jump to task in editor"
                         >
                           <span className="detail-task-popover-marker">[x]</span>
                           <span>{task.text}</span>
-                        </li>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
               </div>
             </div>
           )}
-          <div className={`save-status ${dirty ? "dirty" : "clean"}`} aria-live="polite" style={{ fontSize: "12px", color: "var(--text-muted)", marginRight: "4px" }}>
-            {dirty ? "Unsaved" : (autosaveEnabled && lastAutoSaveAt ? `Saved at ${new Date(lastAutoSaveAt).toLocaleTimeString()}` : "Saved")}
-          </div>
-          {!autosaveEnabled && dirty && (
-            <AppButton
-              variant="small"
-              onClick={handleManualSave}
-              disabled={saving || changedOnDisk}
-              data-tooltip="Save note (Ctrl+S)"
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              <Save size={14} />
-              <span>Save</span>
-            </AppButton>
-          )}
+
+          {/* Primary Action: Save Button (always visible, highlighted when dirty) */}
+          <AppButton
+            variant={dirty ? "primary" : "small"}
+            onClick={handleManualSave}
+            disabled={saving || changedOnDisk || !dirty}
+            data-tooltip={dirty ? "Save changes (Ctrl+S)" : "All changes saved"}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <Save size={14} />
+            <span>{saving ? "Saving..." : (dirty ? "Save" : "Saved")}</span>
+          </AppButton>
+
+          {/* Workspace Action: Details */}
+          <AppButton
+            variant="small"
+            className={showMetadataPanel ? "active" : ""}
+            data-tooltip="Toggle note metadata"
+            onClick={() => setShowMetadataPanel((prev) => !prev)}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <ListTree size={14} />
+            <span>Details</span>
+          </AppButton>
+
+          {/* Workspace Action: AI Assistant */}
+          <AppButton
+            variant="small"
+            className={aiPanelVisible ? "active" : ""}
+            data-tooltip={aiEnabled ? "Toggle AI Assistant Chat" : "Configure AI to toggle Assistant"}
+            onClick={onShowAI}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <Sparkles size={14} />
+            <span>{aiPanelVisible ? "Hide AI" : "AI Assistant"}</span>
+          </AppButton>
+
+          {/* View Action: Full Screen */}
           <AppButton
             variant="small"
             onClick={toggleFocusMode}
@@ -1900,36 +1401,6 @@ export function DocumentDetail({
             <span>{isFocusMode ? "Exit Full Screen" : "Full Screen"}</span>
           </AppButton>
         </div>
-      )}
-
-      {!isFocusMode && (
-        <header className="doc-header">
-        <div className="doc-header-main">
-          <h1>{document.title}</h1>
-          <p className="doc-header-file">{document.fileName}</p>
-        </div>
-        <div className="panel-actions">
-          <AppButton
-            variant="small"
-            className={showMetadataPanel ? "active" : ""}
-            data-tooltip="Toggle note metadata"
-            onClick={() => setShowMetadataPanel((value) => !value)}
-          >
-            {showMetadataPanel ? <EyeOff size={14} /> : <ListTree size={14} />}
-            {showMetadataPanel ? "Hide details" : "Show details"}
-          </AppButton>
-          <AppButton
-            variant="small"
-            className={aiPanelVisible ? "active" : ""}
-            data-tooltip={aiEnabled ? "Toggle AI Assistant Chat" : "Configure AI to toggle Assistant"}
-            onClick={onShowAI}
-            style={{ marginLeft: "6px" }}
-          >
-            <Sparkles size={14} />
-            {aiPanelVisible ? "Hide Assistant" : "AI Assistant"}
-          </AppButton>
-        </div>
-      </header>
       )}
 
       {isFocusMode && (
@@ -1946,28 +1417,14 @@ export function DocumentDetail({
         </div>
       )}
 
-      <MetadataPanel
-        showMetadataPanel={showMetadataPanel}
-        isFocusMode={isFocusMode}
-        titleText={titleDraft}
-        titleSaving={titleSaving}
-        timeRangeWarning={timeRangeWarning}
-        nameText={nameText}
-        timeFromText={timeRange.from}
-        timeToText={timeRange.to}
-        locationText={locationText}
-        tagItems={tagItems}
-        tagInputText={tagDraft}
-        onTitleChange={(event) => setTitleDraft(event.target.value)}
-        onTitleBlur={handleTitleBlur}
-        onTitleKeyDown={handleTitleKeyDown}
-        onNameChange={handleNameChange}
-        onTimeFromChange={handleTimeFromChange}
-        onTimeToChange={handleTimeToChange}
-        onLocationChange={handleLocationChange}
-        onTagRemove={handleTagRemove}
-        onTagsChange={handleTagsChange}
-        onTagsKeyDown={handleTagsKeyDown}
+      <MetadataPopover
+        document={document}
+        isOpen={showMetadataPanel && !isFocusMode}
+        onClose={() => setShowMetadataPanel(false)}
+        onChange={onChange}
+        onSaveDocument={handleManualSave}
+        onRenameTitle={onRenameTitle}
+        workspaceTagSuggestions={workspaceTagSuggestions}
       />
 
       {changedOnDisk && (
@@ -2128,7 +1585,6 @@ export function DocumentDetail({
             mode={mode}
             textareaRef={textareaRef}
             basePath={document.filePath}
-            workspaceStorageScope={workspaceStorageScope}
             typoCheckEnabled={typoCheckEnabled}
             screenCaptureMode={screenCaptureMode}
             showToolbar={!showMediaManager}
@@ -2149,8 +1605,6 @@ export function DocumentDetail({
                 source: "inline-continue",
               });
             }}
-            isFocusMode={isFocusMode}
-            onToggleFocusMode={() => onFocusModeChange?.(!isFocusMode)}
             ghostSuggestion={inlineGhostSuggestion}
             onAcceptInlineGhost={onAcceptInlineGhost}
             onRejectInlineGhost={onRejectInlineGhost}
@@ -2160,11 +1614,9 @@ export function DocumentDetail({
             inlineLinkedMarkdown={inlineLinkedMarkdown}
             ignoredSpellingWords={ignoredSpellingWords}
             onIgnoreSpellingWord={onIgnoreSpellingWord}
-            onRemoveIgnoredSpellingWord={onRemoveIgnoredSpellingWord}
-            onClearIgnoredSpellingWords={onClearIgnoredSpellingWords}
             onForceSaveDocument={onForceSaveDocument}
             initialLine={targetLine ?? initialLine}
-            onLineJumped={onLineJumped}
+            onLineJumped={() => setTargetLine(null)}
             outlineEnabled={outlineEnabled}
             onOutlineEnabledChange={onOutlineEnabledChange}
             tableEditorEnabled={tableEditorEnabled}

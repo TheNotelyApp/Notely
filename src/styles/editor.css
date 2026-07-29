@@ -4699,7 +4699,7 @@
   justify-content: space-between;
   border: 1px solid var(--surface-border);
   border-bottom: 1px solid var(--surface-border);
-  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--surface-muted);
   padding: 6px 10px 0 10px;
   min-height: 38px;
@@ -4711,9 +4711,9 @@
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  overflow-x: auto;
+  overflow: visible;
   flex: 1;
-  scrollbar-width: none; /* Firefox */
+  min-width: 0;
   margin-bottom: -1px; /* Overlap with tab bar bottom border */
 }
 
@@ -4837,34 +4837,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-bg);
-  border: 1px solid var(--accent-solid);
-  border-radius: var(--radius-md);
-  color: var(--accent-solid);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   cursor: pointer;
-  width: 24px;
-  height: 24px;
-  transition: all 150ms ease;
+  padding: 4px;
+  width: 22px;
+  height: 22px;
+  transition: color 120ms ease, background 120ms ease;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .note-tab-add-btn:hover {
-  background: var(--surface-accent);
-  border-color: var(--accent-solid);
-  color: var(--accent-solid);
-  box-shadow: 0 2px 6px rgba(21, 52, 57, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-strong);
 }
 
 :root[data-theme="dark"] .note-tab-add-btn:hover {
-  background: var(--surface-bg);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-strong);
 }
 
 .note-tab-add-dropdown {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
+  right: auto;
   background: var(--surface-elevated);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-lg);
@@ -4873,7 +4873,23 @@
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  min-width: 180px;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - 32px));
+  box-sizing: border-box;
+}
+
+.note-tab-add-container.align-right .note-tab-add-dropdown {
+  left: auto;
+  right: 0;
+}
+
+.note-tab-add-dropdown::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  height: 12px;
 }
 
 :root[data-theme="dark"] .note-tab-add-dropdown {
@@ -4923,10 +4939,10 @@
 }
 
 .note-tab-add-dropdown-item {
-  display: block !important;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
   color: var(--text-muted) !important;
 }
 

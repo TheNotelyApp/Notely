@@ -81,14 +81,19 @@ function getSubsystemHealth() {
       dbStatus = 'degraded';
     }
 
-    const providerStats = agent.llmRegistry?.getActiveProvider()?.getUsageStats();
+    let providerStats;
+    try {
+      providerStats = agent.llmRegistry?.activeProvider ? agent.llmRegistry.getActiveProvider()?.getUsageStats() : null;
+    } catch {
+      providerStats = null;
+    }
     if (providerStats) {
       if ((providerStats.requestsTotal || 0) > requestsCount) requestsCount = providerStats.requestsTotal;
       if ((providerStats.tokensUsedTotal || 0) > tokensUsed) tokensUsed = providerStats.tokensUsedTotal;
     }
   }
 
-  const activeProvider = isInitialized ? (agent.llmRegistry?.getActiveProvider()?.name || 'none') : 'none';
+  const activeProvider = isInitialized && agent.llmRegistry?.activeProvider ? (agent.llmRegistry.getActiveProvider()?.name || 'none') : 'none';
 
   let isPaused = true;
   let isIndexing = false;

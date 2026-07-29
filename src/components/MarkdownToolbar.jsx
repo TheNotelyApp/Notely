@@ -885,10 +885,10 @@ export function MarkdownToolbar({
     <>
       <div className="editor-toolbar" aria-label="Markdown formatting toolbar">
         <AppIconButton onClick={() => onUndo?.()} title="Undo (Ctrl/Cmd+Z)" aria-label="Undo" disabled={!canUndo}>
-        <Undo2 size={18} />
+        <Undo2 size={16} />
       </AppIconButton>
       <AppIconButton onClick={() => onRedo?.()} title="Redo (Ctrl/Cmd+Y)" aria-label="Redo" disabled={!canRedo}>
-        <Redo2 size={18} />
+        <Redo2 size={16} />
       </AppIconButton>
       {snippets.map((snippet) => (
         <AppIconButton
@@ -903,20 +903,20 @@ export function MarkdownToolbar({
           title={snippet.title}
           aria-label={snippet.title}
         >
-          <snippet.icon size={18} />
+          <snippet.icon size={16} />
         </AppIconButton>
       ))}
       <AppIconButton onClick={openTableBuilder} title="Insert table" aria-label="Insert table">
-        <Table2 size={18} />
+        <Table2 size={16} />
       </AppIconButton>
       <AppIconButton onClick={openWebLinker} title="Insert web link" aria-label="Insert web link">
-        <Link2 size={18} />
+        <Link2 size={16} />
       </AppIconButton>
       <AppIconButton onClick={() => void openReferenceLinker()} title="Insert reference note link (Ctrl/Cmd+Shift+K)" aria-label="Insert reference note link">
-        <FileText size={18} />
+        <FileText size={16} />
       </AppIconButton>
       <AppIconButton onClick={() => imageInputRef.current?.click()} title="Insert media from file" aria-label="Insert media from file">
-        <ImagePlus size={18} />
+        <ImagePlus size={16} />
       </AppIconButton>
       <AppIconButton
         onClick={() => {
@@ -927,19 +927,19 @@ export function MarkdownToolbar({
         disabled={screenCaptureBusy || screenCaptureSaving}
         className={screenCaptureMode === "review" ? "toolbar-btn-capture review" : "toolbar-btn-capture auto"}
       >
-        <Scan size={18} />
+        <Scan size={16} />
         <span className="toolbar-capture-mode-glyph" aria-hidden="true">
           {screenCaptureMode === "review" ? "R" : "A"}
         </span>
       </AppIconButton>
       <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert workspace asset">
-        <Link size={18} />
+        <Link size={16} />
       </AppIconButton>
       <AppIconButton onClick={openDiagramBuilder} title="Insert diagram" aria-label="Insert diagram">
-        <Zap size={18} />
+        <Zap size={16} />
       </AppIconButton>
       <AppIconButton onClick={runMarkdownValidation} title="Validate markdown syntax" aria-label="Validate markdown syntax">
-        <CheckCircle2 size={18} />
+        <CheckCircle2 size={16} />
       </AppIconButton>
       <span
         className={`toolbar-validation-summary ${validationStatus}${validationIssues.length ? " has-issues" : ""}`}

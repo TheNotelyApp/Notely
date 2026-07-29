@@ -179,7 +179,10 @@ function buildGhostSuggestionDecorations(ghostSuggestion, onAccept, onReject, do
 function createEditorAdapter(view) {
   const clamp = (value) => Math.max(0, Math.min(Number(value) || 0, view.state.doc.length));
   const setSelection = (anchor, head) => {
-    view.dispatch({ selection: EditorSelection.single(clamp(anchor), clamp(head)) });
+    view.dispatch({
+      selection: EditorSelection.single(clamp(anchor), clamp(head)),
+      scrollIntoView: true,
+    });
   };
 
   return {
@@ -229,11 +232,17 @@ function createEditorAdapter(view) {
       const block = view.lineBlockAtHeight(view.scrollDOM.scrollTop);
       return view.state.doc.lineAt(block.from).number;
     },
+    getLineStartOffset(lineNumber) {
+      const safeLine = Math.max(1, Math.min(Number(lineNumber) || 1, view.state.doc.lines));
+      return view.state.doc.line(safeLine).from;
+    },
     scrollToLine(lineNumber) {
       const safeLine = Math.max(1, Math.min(Number(lineNumber) || 1, view.state.doc.lines));
       const line = view.state.doc.line(safeLine);
-      const block = view.lineBlockAt(line.from);
-      view.scrollDOM.scrollTop = block.top;
+      view.dispatch({
+        selection: EditorSelection.single(line.from),
+        effects: EditorView.scrollIntoView(line.from, { y: "center" }),
+      });
     },
     getLineTop(lineNumber) {
       const safeLine = Math.max(1, Math.min(Number(lineNumber) || 1, view.state.doc.lines));

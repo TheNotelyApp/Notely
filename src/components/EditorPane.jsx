@@ -8,6 +8,7 @@ import { MediaPreviewPane } from "./MediaPreviewPane";
 import OverlayDialog from "./OverlayDialog";
 import { useMarkdownValidation } from "../hooks/useMarkdownValidation";
 import { Link2, Unlink } from "lucide-react";
+import { getLineStartOffset, resolveTargetLine } from "../utils/markdownUtils";
 
 
 export function EditorPane({
@@ -81,37 +82,45 @@ export function EditorPane({
     }
   }, [onTableEditorToggle, tableEditorEnabled]);
 
-  const jumpToLine = useCallback((line) => {
+  const jumpToLine = useCallback((line, textHint = null) => {
     const editor = textareaRef?.current;
     if (!editor) return;
 
-    const safeLine = Math.max(Number(line) || 1, 1);
-    const lines = (value || "").split(/\r?\n/);
-    let startIndex = 0;
-    for (let index = 0; index < Math.min(safeLine - 1, lines.length); index += 1) {
-      startIndex += lines[index].length + 1;
-    }
+    const rawLine = Math.max(Number(line) || 1, 1);
+    const safeLine = resolveTargetLine(editor.value ?? value ?? "", rawLine, textHint);
 
     editor.focus();
-    editor.selectionStart = startIndex;
-    editor.selectionEnd = startIndex;
+    if (typeof editor.scrollToLine === "function") {
+      editor.scrollToLine(safeLine);
+    } else {
+      const startIndex = typeof editor.getLineStartOffset === "function"
+        ? editor.getLineStartOffset(safeLine)
+        : getLineStartOffset(editor.value ?? value ?? "", safeLine);
 
-    const lineHeight = typeof editor.getLineHeight === "function"
-      ? editor.getLineHeight()
-      : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
-    const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
-    const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
-    const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
-    editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+      if (typeof editor.setSelectionRange === "function") {
+        editor.setSelectionRange(startIndex, startIndex);
+      } else {
+        editor.selectionStart = startIndex;
+        editor.selectionEnd = startIndex;
+      }
+
+      const lineHeight = typeof editor.getLineHeight === "function"
+        ? editor.getLineHeight()
+        : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
+      const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
+      const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
+      const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
+      editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+    }
     setFocusedLine(safeLine);
   }, [textareaRef, value]);
 
   useEffect(() => {
-    if (initialLine && editorReadyTick) {
+    if (initialLine && textareaRef?.current) {
       jumpToLine(initialLine);
       onLineJumped?.();
     }
-  }, [initialLine, editorReadyTick, jumpToLine, onLineJumped]);
+  }, [initialLine, textareaRef, jumpToLine, onLineJumped]);
 
   useEffect(() => {
     if (textareaRef?.current) return undefined;
