@@ -10,11 +10,6 @@ import {
   PenLine,
   SplitSquareHorizontal,
   Eye,
-  EyeOff,
-  Clock,
-  MapPin,
-  User,
-  Tag,
   Images,
   X,
   ListTree,
@@ -42,7 +37,6 @@ import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 import { renderMarkdown } from "../utils/renderUtils";
 import { extractTasksFromText, getTaskCountsFromText } from "../utils/taskUtils";
 import { getLineStartOffset, resolveTargetLine } from "../utils/markdownUtils";
-import useConfirm from "../hooks/useConfirm";
 import { NoteTabBar } from "./NoteTabBar";
 import { MetadataPopover } from "./MetadataPopover";
 
@@ -170,189 +164,6 @@ function getSelectedMatchIndex(matches, selectionStart, selectionEnd) {
   return matches.findIndex((match) => match.start === safeStart && match.end === safeEnd);
 }
 
-function getHeaderField(header, fieldName) {
-  const normalizedField = String(fieldName || "").trim().toLowerCase();
-  const line = String(header || "").split(/\r?\n/).find((item) => {
-    const match = item.match(/^([^:]+):\s*(.*)$/);
-    return match && match[1].trim().toLowerCase() === normalizedField;
-  });
-  return line?.replace(/^[^:]+:\s*/, "") || "";
-}
-
-function setHeaderField(header, fieldName, value) {
-  const normalizedField = String(fieldName || "").trim().toLowerCase();
-  const label = String(fieldName || "").trim();
-  const nextValue = String(value || "").trim();
-  const lines = String(header || "").split(/\r?\n/);
-  let replaced = false;
-  const nextLines = lines.filter((line) => line.trim() || lines.length > 1).map((line) => {
-    const match = line.match(/^([^:]+):\s*(.*)$/);
-    if (match && match[1].trim().toLowerCase() === normalizedField) {
-      replaced = true;
-      return nextValue ? `${label}: ${nextValue}` : "";
-    }
-    return line;
-  }).filter(Boolean);
-
-  if (!replaced && nextValue) {
-    nextLines.push(`${label}: ${nextValue}`);
-  }
-
-  return nextLines.join("\n").trim();
-}
-
-function normalizeTagInputFromEnter(value) {
-  return String(value || "")
-    .split(/[\s,#]+/)
-    .map((tag) => tag.trim().replace(/^#+/, ""))
-    .filter(Boolean)
-    .filter((tag, index, tags) => tags.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index)
-    .join(", ");
-}
-
-function parseTagList(value) {
-  return String(value || "")
-    .split(/[\s,#]+/)
-    .map((tag) => tag.trim().replace(/^#+/, ""))
-    .filter(Boolean);
-}
-
-function mergeTagLists(existingTags, incomingTags) {
-  const dedup = new Set();
-  const output = [];
-
-  for (const item of [...(existingTags || []), ...(incomingTags || [])]) {
-    const tag = String(item || "").trim().replace(/^#+/, "");
-    if (!tag) continue;
-    const key = tag.toLowerCase();
-    if (dedup.has(key)) continue;
-    dedup.add(key);
-    output.push(tag);
-  }
-
-  return output;
-}
-
-function autocompleteTagInput(value, suggestions, cursorIndex = null) {
-  const text = String(value || "");
-  if (!text) return null;
-  if (!Array.isArray(suggestions) || !suggestions.length) return null;
-  const safeCursor = Number.isFinite(cursorIndex) ? Math.max(0, Math.min(Number(cursorIndex), text.length)) : text.length;
-  if (safeCursor !== text.length) return null;
-  if (/[\s,#]$/.test(text)) return null;
-
-  let tokenStart = text.length - 1;
-  while (tokenStart >= 0 && !/[\s,#]/.test(text[tokenStart])) {
-    tokenStart -= 1;
-  }
-  tokenStart += 1;
-
-  const token = text.slice(tokenStart).trim();
-  if (!token) return null;
-
-  const lowerToken = token.toLowerCase();
-  const match = suggestions.find((item) => {
-    const candidate = String(item || "").trim();
-    if (!candidate) return false;
-    const lowerCandidate = candidate.toLowerCase();
-    return lowerCandidate.startsWith(lowerToken) && lowerCandidate !== lowerToken;
-  });
-
-  if (!match) return null;
-  return `${text.slice(0, tokenStart)}${match}`;
-}
-
-function normalizeTagSuggestionList(value) {
-  if (!Array.isArray(value)) return [];
-  const dedup = new Map();
-  for (const item of value) {
-    const tag = String(item || "").trim();
-    if (!tag) continue;
-    const key = tag.toLowerCase();
-    if (!dedup.has(key)) dedup.set(key, tag);
-  }
-  return [...dedup.values()].sort((left, right) => left.localeCompare(right));
-}
-
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const MONTH_INDEX_BY_LABEL = MONTH_LABELS.reduce((map, label, index) => {
-  map[label.toLowerCase()] = index;
-  return map;
-}, {});
-
-function formatDateTimeLocalForHeader(value) {
-  const text = String(value || "").trim();
-  if (!text || !text.includes("T")) return "";
-  const [datePart, timePart] = text.split("T");
-  const [year, month, day] = datePart.split("-").map((item) => Number(item));
-  if (!year || !month || !day || !timePart) return "";
-  const label = MONTH_LABELS[month - 1];
-  if (!label) return "";
-  return `${timePart}, ${String(day).padStart(2, "0")} ${label} ${year}`;
-}
-
-function parseHeaderDateTimeToInput(value) {
-  const text = String(value || "").trim();
-  if (!text) return "";
-  const match = text.match(/^(\d{1,2}):(\d{2}),\s*(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
-  if (!match) return "";
-
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const day = Number(match[3]);
-  const month = MONTH_INDEX_BY_LABEL[String(match[4]).slice(0, 3).toLowerCase()];
-  const year = Number(match[5]);
-
-  if (!Number.isInteger(month) || hour < 0 || hour > 23 || minute < 0 || minute > 59 || day < 1 || day > 31 || year < 1000) {
-    return "";
-  }
-
-  return `${String(year).padStart(4, "0")}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-function parseTimeRangeToInputs(value) {
-  const text = String(value || "").trim();
-  if (!text) {
-    return { from: "", to: "" };
-  }
-
-  const parts = text.split(/\s+to\s+/i);
-  if (parts.length === 2) {
-    return {
-      from: parseHeaderDateTimeToInput(parts[0]),
-      to: parseHeaderDateTimeToInput(parts[1]),
-    };
-  }
-
-  return {
-    from: parseHeaderDateTimeToInput(text),
-    to: "",
-  };
-}
-
-function buildTimeRangeHeaderValue(fromValue, toValue) {
-  const fromLabel = formatDateTimeLocalForHeader(fromValue);
-  const toLabel = formatDateTimeLocalForHeader(toValue);
-
-  if (fromLabel && toLabel) return `${fromLabel} to ${toLabel}`;
-  if (fromLabel) return fromLabel;
-  if (toLabel) return toLabel;
-  return "";
-}
 
 
 
@@ -566,7 +377,6 @@ export function DocumentDetail({
   onOpenAISettings,
   onOpenDocument,
   initialLine = null,
-  onLineJumped,
   workspaceTagSuggestions = [],
   workspaceStorageScope = "default",
   typoCheckEnabled = true,
@@ -584,8 +394,6 @@ export function DocumentDetail({
   aiSidebar = null,
   ignoredSpellingWords = [],
   onIgnoreSpellingWord,
-  onRemoveIgnoredSpellingWord,
-  onClearIgnoredSpellingWords,
   onForceSaveDocument,
   autosaveEnabled = false,
   setAutosaveEnabled,
@@ -607,7 +415,6 @@ export function DocumentDetail({
   onCopyLinkPath,
   onReloadFromDisk,
 }) {
-  const { confirm } = useConfirm();
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
   const taskPopoverTimerRef = useRef(null);
@@ -623,7 +430,7 @@ export function DocumentDetail({
   const [pdfExportMode, setPdfExportMode] = useState("formal");
   const [pdfQualityPreset, setPdfQualityPreset] = useState("full");
 
-  const [lastAutoSaveAt, setLastAutoSaveAt] = useState(0);
+  const [, setLastAutoSaveAt] = useState(0);
   const [changedOnDisk, setChangedOnDisk] = useState(false);
   const [outlineWidth, setOutlineWidth] = useWorkspaceScopedStorage({
     workspaceScope: workspaceStorageScope,
@@ -783,18 +590,6 @@ export function DocumentDetail({
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
   const [showMediaManager, setShowMediaManager] = useState(false);
   const [isTaskSummaryOpen, setIsTaskSummaryOpen] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(document.title || "");
-  const [tagDraft, setTagDraft] = useState("");
-  const [titleSaving, setTitleSaving] = useState(false);
-  const [cachedTagSuggestions, setCachedTagSuggestions] = useWorkspaceScopedStorage({
-    workspaceScope: workspaceStorageScope,
-    key: "notes:tag-suggestions",
-    defaultValue: [],
-    normalize: normalizeTagSuggestionList,
-  });
-  const titleRenameInFlightRef = useRef(false);
-  const lastSubmittedTitleRef = useRef("");
-
   const findRegexValid = !findUseRegex || isValidFindRegex(findQuery);
   const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const findMatches = useMemo(
@@ -802,27 +597,6 @@ export function DocumentDetail({
     [content, findQuery, findCaseSensitive, findUseRegex],
   );
   const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
-  const nameText = getHeaderField(document.header, "Name");
-  const locationText = getHeaderField(document.header, "Location");
-  const timeText = getHeaderField(document.header, "Time");
-  const timeRange = useMemo(() => parseTimeRangeToInputs(timeText), [timeText]);
-  const timeRangeWarning = useMemo(() => {
-    if (!timeRange.from || !timeRange.to) return "";
-    const fromTs = Date.parse(timeRange.from);
-    const toTs = Date.parse(timeRange.to);
-    if (!Number.isFinite(fromTs) || !Number.isFinite(toTs)) return "";
-    return fromTs > toTs ? "End time must be after start time." : "";
-  }, [timeRange.from, timeRange.to]);
-  const tagText = getHeaderField(document.header, "Tags");
-  const tagItems = useMemo(() => mergeTagLists(parseTagList(tagText), []), [tagText]);
-  const combinedTagSuggestions = useMemo(() => {
-    const merged = normalizeTagSuggestionList([
-      ...workspaceTagSuggestions,
-      ...cachedTagSuggestions,
-      ...tagItems,
-    ]);
-    return merged.slice(0, 100);
-  }, [workspaceTagSuggestions, cachedTagSuggestions, tagItems]);
   const selectedFindMatchIndex = getSelectedMatchIndex(
     findMatches,
     textareaRef.current?.selectionStart,
@@ -835,12 +609,7 @@ export function DocumentDetail({
     ? `${activeFindMatchIndex + 1}/${findMatches.length}`
     : "0/0";
 
-  useEffect(() => {
-    setTitleDraft(document.title || "");
-    setTagDraft("");
-    titleRenameInFlightRef.current = false;
-    lastSubmittedTitleRef.current = "";
-  }, [document.title, document.filePath]);
+
 
   const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
   const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
@@ -1197,104 +966,6 @@ export function DocumentDetail({
     textareaRef.current?.focus?.();
   };
 
-  const handleTagsChange = (event) => {
-    const typedValue = event.target.value;
-    const typedCursor = event.target.selectionStart;
-    const completedValue = autocompleteTagInput(typedValue, combinedTagSuggestions, typedCursor);
-    const isSingleCharInsert = event.nativeEvent?.inputType === "insertText";
-    const nextValue = completedValue && isSingleCharInsert ? completedValue : typedValue;
-    const input = event.target;
-
-    setTagDraft(nextValue);
-
-    if (completedValue && isSingleCharInsert) {
-      requestAnimationFrame(() => {
-        if (!input || typeof input.setSelectionRange !== "function") return;
-        input.setSelectionRange(typedValue.length, completedValue.length);
-      });
-    }
-  };
-
-  const handleNameChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Name", event.target.value),
-    });
-  };
-
-  const handleLocationChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Location", event.target.value),
-    });
-  };
-
-  const handleTimeFromChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Time", buildTimeRangeHeaderValue(event.target.value, timeRange.to)),
-    });
-  };
-
-  const handleTimeToChange = (event) => {
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Time", buildTimeRangeHeaderValue(timeRange.from, event.target.value)),
-    });
-  };
-
-  const handleTagsKeyDown = (event) => {
-    if (event.key === "Tab") {
-      const completedValue = autocompleteTagInput(tagDraft, combinedTagSuggestions);
-      if (!completedValue) return;
-      event.preventDefault();
-      setTagDraft(completedValue);
-      requestAnimationFrame(() => {
-        if (!event.currentTarget || typeof event.currentTarget.setSelectionRange !== "function") return;
-        event.currentTarget.setSelectionRange(tagDraft.length, completedValue.length);
-      });
-      return;
-    }
-
-    if (event.key === "Backspace" && !tagDraft.trim() && tagItems.length) {
-      event.preventDefault();
-      const nextTags = tagItems.slice(0, -1);
-      onChange({
-        ...document,
-        header: setHeaderField(document.header, "Tags", nextTags.join(", ")),
-      });
-      return;
-    }
-
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-
-    const normalizedTags = normalizeTagInputFromEnter(tagDraft);
-    const nextTags = parseTagList(normalizedTags);
-    if (!nextTags.length) return;
-    const mergedTags = mergeTagLists(tagItems, nextTags);
-
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Tags", mergedTags.join(", ")),
-    });
-    setTagDraft("");
-
-    if (nextTags.length) {
-      setCachedTagSuggestions((current) => normalizeTagSuggestionList([...(current || []), ...nextTags]).slice(0, 100));
-    }
-  };
-
-  const handleTagRemove = (tagToRemove) => {
-    const targetKey = String(tagToRemove || "").trim().toLowerCase();
-    if (!targetKey) return;
-    const nextTags = tagItems.filter((tag) => tag.toLowerCase() !== targetKey);
-    onChange({
-      ...document,
-      header: setHeaderField(document.header, "Tags", nextTags.join(", ")),
-    });
-  };
-
   const handleManualSave = async () => {
     if (changedOnDisk) return;
     try {
@@ -1316,76 +987,6 @@ export function DocumentDetail({
     navigator.clipboard.writeText(content || "")
       .then(() => onNotify?.("Copied as plain text.", "success"))
       .catch(() => onNotify?.("Unable to copy to clipboard.", "error"));
-  };
-
-  const commitTitleRename = async () => {
-    const nextTitle = String(titleDraft || "").trim();
-    if (!nextTitle || nextTitle === document.title || typeof onRenameTitle !== "function") {
-      setTitleDraft(document.title || "");
-      return;
-    }
-
-    if (titleRenameInFlightRef.current) {
-      return;
-    }
-
-    if (lastSubmittedTitleRef.current === nextTitle) {
-      return;
-    }
-
-    titleRenameInFlightRef.current = true;
-    lastSubmittedTitleRef.current = nextTitle;
-    setTitleSaving(true);
-    try {
-      const renamed = await onRenameTitle(nextTitle);
-      if (renamed === false) {
-        lastSubmittedTitleRef.current = "";
-      }
-    } catch {
-      lastSubmittedTitleRef.current = "";
-    } finally {
-      titleRenameInFlightRef.current = false;
-      setTitleSaving(false);
-    }
-  };
-
-  const handleTitleBlur = async () => {
-    const nextTitle = String(titleDraft || "").trim();
-    const currentTitle = String(document.title || "").trim();
-    if (!nextTitle) {
-      setTitleDraft(document.title || "");
-      return;
-    }
-    if (nextTitle === currentTitle || titleRenameInFlightRef.current) {
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: "Rename Note?",
-      message: `Rename note to "${nextTitle}"?`,
-      confirmLabel: "Rename",
-      cancelLabel: "Cancel",
-      variant: "primary"
-    });
-    if (!confirmed) {
-      setTitleDraft(document.title || "");
-      return;
-    }
-
-    commitTitleRename();
-  };
-
-  const handleTitleKeyDown = (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      commitTitleRename();
-      return;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setTitleDraft(document.title || "");
-      event.currentTarget.blur();
-    }
   };
 
   const goToMatch = (nextIndex) => {

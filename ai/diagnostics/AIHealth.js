@@ -84,7 +84,7 @@ function getSubsystemHealth() {
     let providerStats;
     try {
       providerStats = agent.llmRegistry?.activeProvider ? agent.llmRegistry.getActiveProvider()?.getUsageStats() : null;
-    } catch (_) {
+    } catch {
       providerStats = null;
     }
     if (providerStats) {

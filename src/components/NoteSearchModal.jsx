@@ -77,7 +77,7 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
             setFetchedWorkspaceDocs(docs);
             return;
           }
-        } catch (err) {
+        } catch {
           // Fallback to prop documents
         }
       })();

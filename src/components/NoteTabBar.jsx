@@ -4,7 +4,6 @@ import * as LucideIcons from "lucide-react";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { IconColorPickerModal } from "./IconColorPickerModal";
 import { getContrastColor } from "../utils/colorUtils";
-import AppIconButton from "./AppIconButton";
 import NoteSearchModal from "./NoteSearchModal";
 import { listWorkspaceTaskDocuments, listDocuments } from "../services/electronService";
 
@@ -32,7 +31,6 @@ export function NoteTabBar({
   onSelectTab,
   onCloseTab,
   onNewTab,
-  onNewFolder,
   onCloseOthers,
   onCloseToRight,
   onCloseSaved,
@@ -63,7 +61,7 @@ export function NoteTabBar({
         if (Array.isArray(docs) && docs.length > 0) {
           setFetchedWorkspaceDocs(docs);
         }
-      } catch (err) {
+      } catch {
         // Fallback
       }
     })();
@@ -491,12 +489,12 @@ export function NoteTabBar({
                 </button>
               </div>
 
-              {closedNotes.length > 0 && (
+              {recentWorkspaceNotes.length > 0 && (
                 <>
                   <div className="note-tab-add-dropdown-separator" />
                   <div className="note-tab-add-dropdown-header">Recently Edited Notes</div>
                   <div className="note-tab-add-dropdown-scroll">
-                    {visibleClosedNotes.map((note) => {
+                    {visiblePopoverNotes.map((note) => {
                       const meta = getMetadata?.(note.filePath) || {};
                       const ItemIcon = meta.icon && LucideIcons[meta.icon] ? LucideIcons[meta.icon] : FileText;
                       const title = note.title || note.filePath.split(/[\\/]/).pop().replace(/\.md$/i, "");
