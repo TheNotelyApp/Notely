@@ -45,7 +45,9 @@ if (process.parentPort) {
         graphDb.initialize();
 
         graphQueue = new GraphQueue(graphDb);
-        const mockAgent = { appDataDir, workspaceRoot, config: { loadPreferences: () => ({ graphConfidence: 0.60 }) } };
+        const AIConfig = require('../../ai/core/AIConfig');
+        const aiConfig = new AIConfig(appDataDir);
+        const mockAgent = { appDataDir, workspaceRoot, config: aiConfig };
         graphService = new GraphService(mockAgent, graphDb);
         graphWorker = new GraphWorker(graphDb, graphQueue, graphService);
 

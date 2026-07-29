@@ -112,10 +112,13 @@ graph LR
     end
 ```
 
-1. **Zero-Shot Named Entity Recognition**:
-   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER2 ONNX sessions to extract domain entity candidates (`Application`, `Framework`, `Database`, `Microcontroller`, `Module`, `Software Component`, `Model`, `Person`, `Concept`) with confidence scores $\ge 0.50$.
-2. **Domain Candidate Resolution & Sub-Span Protection**:
-   Automatically recognizes single-word domain technical entities (`relay`, `pump`, `sensor`, `microcontroller`, `module`, `broker`, `gateway`) alongside PascalCase/CamelCase entities (`PyTorch`, `GraphWorker`, `Node.js`, `ESP32`). Standalone technical terms are protected from sub-span suppression when contained within larger phrase matches.
+1. **Pure Model-Driven Zero-Shot Named Entity Recognition**:
+   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER2 ONNX sessions to extract domain entity candidates (`Database`, `Framework`, `Software Component`, `Microcontroller`, `Device`, `Module`, `Integration`, `Broker`, `Architecture`, `Model`, `Service`, `Person`, `Application`, `Concept`). Logit decoding computes per-label score vectors across all candidate spans, picking the optimal label purely via neural logits without rule-based keyword overrides.
+2. **Dynamic UI Confidence Thresholding & Synchronized Filtering**:
+   The confidence threshold is dynamically loaded from UI settings (`ai-preferences.json`) and enforced across all three processing tiers:
+   - **Adapter Tier (`GLiNER2RelexAdapter`)**: Filters span scores below `confidenceThreshold`.
+   - **Ingestion Tier (`GraphService`)**: Blocks sub-threshold predictions before graph insertion.
+   - **Query Tier (`GraphDB`)**: Runs `WHERE confidence >= minConfidence` on `entities` and `relationships` tables, instantly filtering Knowledge Graph visualizations in real time when users adjust the UI slider.
 3. **Zero-Shot Relation Extraction & Semantic Verb Mapping**:
    Evaluates entity pairs in sentence windows, mapping transitive action verbs (`controls`, `uses`, `depends on`, `communicates with`, `connects to`, `stores`, `implements`, `creates`, `generates`) to structured relationship types (`CONTROLS`, `USES`, `STORES`, `GENERATES`, `CREATES`, `COMMUNICATES_WITH`, `CONNECTS_TO`, `INTEGRATES_WITH`, `DEPENDS_ON`, `IMPLEMENTS`).
 

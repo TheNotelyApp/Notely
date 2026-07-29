@@ -93,6 +93,7 @@ const CREATE_INDEXES = [
 ];
 
 const ALTER_ENTITIES_ADD_COLUMNS = [
+  `ALTER TABLE entities ADD COLUMN confidence REAL DEFAULT 1.0;`,
   `ALTER TABLE entities ADD COLUMN community_id INTEGER;`,
   `ALTER TABLE entities ADD COLUMN ontology_class TEXT;`,
   `ALTER TABLE entities ADD COLUMN source_count INTEGER DEFAULT 1;`,

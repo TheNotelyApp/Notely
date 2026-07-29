@@ -5,10 +5,11 @@
     "version": "1.0",
     "modelId": "dx111ge/gliner2-multi-v1-onnx",
     "path": "models/gliner2-relex",
+    "confidenceThreshold": 0.60,
     "defaultEntityTypes": [
-      "Application", "Framework", "Database", "Software Component",
-      "Microcontroller", "Device", "Module", "Integration", "Broker",
-      "Architecture", "Model", "Service", "Person", "Concept"
+      "Database", "Framework", "Software Component", "Microcontroller",
+      "Device", "Module", "Integration", "Broker", "Architecture",
+      "Model", "Service", "Person", "Application", "Concept"
     ],
     "defaultRelationTypes": [
       "USES", "STORES", "GENERATES", "CREATES", "COMMUNICATES_WITH",

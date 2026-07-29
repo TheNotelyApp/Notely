@@ -314,6 +314,7 @@ class MarkdownASTParser {
   cleanse(content = '') {
     if (!content || typeof content !== 'string') return '';
     return content
+      .replace(/^\s*#{1,6}\s*(?:rawnotes|raw notes|cleansednotes|cleansed notes|cleansed|raw)\s*$/gmi, '') // 0. System template section headers
       .replace(/^---\r?\n[\s\S]*?\r?\n---/g, '')             // 1. Frontmatter
       .replace(/```[\s\S]*?```/g, '')                         // 2. Code blocks
       .replace(/\$\$[\s\S]*?\$\$/g, '')                       // 3. Multiline math

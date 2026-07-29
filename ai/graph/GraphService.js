@@ -301,24 +301,7 @@ class GraphService {
         });
       }
 
-      // 1k. Header & Frontmatter Metadata Entities
-      for (const metaEnt of (ast.metadataEntities || [])) {
-        const metaId = this.entityResolver.generateEntityId(metaEnt.name, metaEnt.type || 'Entity');
-        this.graphDb.upsertEntity({
-          id: metaId,
-          name: metaEnt.name,
-          canonical_name: metaEnt.name,
-          type: metaEnt.type || 'Entity'
-        });
 
-        this.graphDb.upsertRelationship({
-          source_id: rootEntityId,
-          target_id: metaId,
-          type: metaEnt.relation || 'mentions',
-          weight: 0.95,
-          confidence: 1.0
-        });
-      }
 
       // 2. Cross-Note Plain Text Mention Mining via Inverted Index
       if (this.graphDb?.db) {
@@ -356,7 +339,7 @@ class GraphService {
       const semanticEngine = this.getSemanticEngine();
       if (semanticEngine) {
         const prefs = this.agent?.config ? this.agent.config.loadPreferences() : {};
-        const confidenceThreshold = prefs.graphConfidence || 0.50;
+        const confidenceThreshold = typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60;
         const cleansedContent = this.astParser.cleanse(content);
 
         const extractionResult = await semanticEngine.extract({
@@ -370,6 +353,7 @@ class GraphService {
 
         // Save AI extracted entities
         for (const ent of extractionResult.entities) {
+          if ((ent.confidence || 0) < confidenceThreshold) continue;
           const resolved = this.entityResolver.resolveMention(ent.text || ent.canonicalName, ent.type || 'Entity');
           if (resolved) {
             this.graphDb.upsertEntity({
@@ -407,6 +391,7 @@ class GraphService {
 
         // Save AI extracted relationships
         for (const rel of extractionResult.relations) {
+          if ((rel.confidence || 0) < confidenceThreshold) continue;
           const srcId = createdEntities.get(rel.sourceEntityId) || createdEntities.get(rel.sourceText) || this.entityResolver.generateEntityId(rel.sourceText, 'Entity');
           const tgtId = createdEntities.get(rel.targetEntityId) || createdEntities.get(rel.targetText) || this.entityResolver.generateEntityId(rel.targetText, 'Entity');
 

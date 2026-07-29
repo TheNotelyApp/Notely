@@ -845,12 +845,17 @@ async function handleBuildGraph(_event, _payload) {
 /**
  * Handle fetching graph entities and relationships
  */
-async function handleGetGraph(_event, _payload) {
+async function handleGetGraph(_event, payload) {
   try {
     if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
       throw new Error('AI agent or GraphDB is not initialized');
     }
-    const result = aiService.agent.graphDb.getAll();
+    const AIConfig = require('../../ai/core/AIConfig');
+    const config = new AIConfig();
+    const prefs = config.loadPreferences();
+    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60);
+
+    const result = aiService.agent.graphDb.getAll(minConfidence);
     return new AIQueryResponse(true, result);
   } catch (error) {
     console.error('[AI IPC] Get graph failed:', error);
@@ -861,7 +866,7 @@ async function handleGetGraph(_event, _payload) {
 /**
  * Handle fetching graph status metrics
  */
-async function handleGetGraphStatus(_event, _payload) {
+async function handleGetGraphStatus(_event, payload) {
   try {
     if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
       return new AIQueryResponse(true, {
@@ -874,7 +879,12 @@ async function handleGetGraphStatus(_event, _payload) {
         noteName: ''
       });
     }
-    const result = aiService.agent.graphDb.getStatus();
+    const AIConfig = require('../../ai/core/AIConfig');
+    const config = new AIConfig();
+    const prefs = config.loadPreferences();
+    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60);
+
+    const result = aiService.agent.graphDb.getStatus(minConfidence);
     const workerManager = require('./workerManager.cjs');
     const graphProgress = workerManager.getGraphProgressState();
     return new AIQueryResponse(true, {

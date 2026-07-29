@@ -125,6 +125,7 @@ Current UI status:
 - **Learn user patterns**: lets the app remember how you use AI so it can be more helpful later
 - **Generate embeddings**: turns on meaning-based search and related-note features
 - **Discover relationships**: helps the graph and AI features find links between related notes
+- **Graph confidence threshold**: controls the minimum confidence score (10% to 95%) required for neural-extracted entities and relationships. Adjusting this slider dynamically filters the Knowledge Graph visualization in real time.
 
 ### Advanced generation tuning
 

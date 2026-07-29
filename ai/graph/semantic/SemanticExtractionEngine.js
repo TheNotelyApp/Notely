@@ -22,22 +22,43 @@ class SemanticExtractionEngine {
   }
 
   _loadConfig() {
+    let registryConfig = {};
     try {
       const configPath = path.join(__dirname, '..', '..', 'config', 'ai-models.json');
       if (fs.existsSync(configPath)) {
         const raw = fs.readFileSync(configPath, 'utf8');
         const parsed = JSON.parse(raw);
-        return parsed?.semanticExtraction || {};
+        registryConfig = parsed?.semanticExtraction || {};
       }
     } catch (err) {
       log.warn('Could not read ai-models.json, using defaults:', err.message);
     }
+
+    let userConfidence = registryConfig.confidenceThreshold || 0.60;
+    try {
+      const appData = this.appDataDir || (process.env.APPDATA ? path.join(process.env.APPDATA, 'Notely') : null);
+      if (appData) {
+        const notelySubdirPath = path.join(appData, 'notely', 'ai-preferences.json');
+        const rootPath = path.join(appData, 'ai-preferences.json');
+        const prefsPath = fs.existsSync(notelySubdirPath) ? notelySubdirPath : rootPath;
+
+        if (fs.existsSync(prefsPath)) {
+          const prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+          if (typeof prefs.graphConfidence === 'number') {
+            userConfidence = prefs.graphConfidence;
+          }
+        }
+      }
+    } catch { /* ignore */ }
+
     return {
       provider: 'onnx',
       model: 'gliner2-relex',
       version: '1.0',
       modelId: 'dx111ge/gliner2-multi-v1-onnx',
-      path: 'models/gliner2-relex'
+      path: 'models/gliner2-relex',
+      confidenceThreshold: userConfidence,
+      ...registryConfig
     };
   }
 
@@ -53,12 +74,7 @@ class SemanticExtractionEngine {
           appDataDir: this.appDataDir
         });
       } else {
-        // Extensible for future adapters (e.g. rebel, glirel, local-llm, cloud-model)
-        this.adapter = new GLiNER2RelexAdapter({
-          modelId: this.config.modelId || 'dx111ge/gliner2-multi-v1-onnx',
-          path: this.config.path || 'models/gliner2-relex',
-          appDataDir: this.appDataDir
-        });
+        throw new Error(`Unknown semantic extraction provider: "${provider}". Supported: "onnx" (GLiNER2-Relex). Check ai-models.json.`);
       }
     }
     return this.adapter;
