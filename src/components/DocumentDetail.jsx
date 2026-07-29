@@ -41,6 +41,7 @@ import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 import { renderMarkdown } from "../utils/renderUtils";
 import { extractTasksFromText, getTaskCountsFromText } from "../utils/taskUtils";
+import { getLineStartOffset, resolveTargetLine } from "../utils/markdownUtils";
 import useConfirm from "../hooks/useConfirm";
 import { NoteTabBar } from "./NoteTabBar";
 import { MetadataPopover } from "./MetadataPopover";
@@ -1106,8 +1107,11 @@ export function DocumentDetail({
     });
   };
 
-  const jumpToLine = (line) => {
-    const safeLine = Math.max(Number(line) || 1, 1);
+  const jumpToLine = (line, textHint = null) => {
+    const editor = textareaRef?.current;
+    const activeText = editor?.value ?? content ?? "";
+    const safeLine = resolveTargetLine(activeText, line, textHint);
+
     setTargetLine(safeLine);
     setIsTaskSummaryOpen(false);
 
@@ -1116,32 +1120,30 @@ export function DocumentDetail({
     }
 
     setTimeout(() => {
-      const editor = textareaRef?.current;
-      if (editor) {
-        const lines = (content || "").split(/\r?\n/);
-        let startIndex = 0;
-        for (let index = 0; index < Math.min(safeLine - 1, lines.length); index += 1) {
-          startIndex += lines[index].length + 1;
-        }
-
-        editor.focus();
-        if (typeof editor.setSelectionRange === "function") {
-          editor.setSelectionRange(startIndex, startIndex);
+      const ed = textareaRef?.current;
+      if (ed) {
+        ed.focus();
+        if (typeof ed.scrollToLine === "function") {
+          ed.scrollToLine(safeLine);
         } else {
-          editor.selectionStart = startIndex;
-          editor.selectionEnd = startIndex;
-        }
+          const startIndex = typeof ed.getLineStartOffset === "function"
+            ? ed.getLineStartOffset(safeLine)
+            : getLineStartOffset(ed.value ?? content ?? "", safeLine);
 
-        if (typeof editor.scrollToLine === "function") {
-          editor.scrollToLine(safeLine);
-        } else {
-          const lineHeight = typeof editor.getLineHeight === "function"
-            ? editor.getLineHeight()
-            : parseFloat(window.getComputedStyle(editor).lineHeight) || 20;
-          const viewportHeight = Number(editor.clientHeight) || lineHeight * 20;
+          if (typeof ed.setSelectionRange === "function") {
+            ed.setSelectionRange(startIndex, startIndex);
+          } else {
+            ed.selectionStart = startIndex;
+            ed.selectionEnd = startIndex;
+          }
+
+          const lineHeight = typeof ed.getLineHeight === "function"
+            ? ed.getLineHeight()
+            : parseFloat(window.getComputedStyle(ed).lineHeight) || 20;
+          const viewportHeight = Number(ed.clientHeight) || lineHeight * 20;
           const targetTop = (safeLine - 1) * lineHeight - viewportHeight * 0.66;
-          const maxScroll = Math.max(0, (Number(editor.scrollHeight) || 0) - viewportHeight);
-          editor.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
+          const maxScroll = Math.max(0, (Number(ed.scrollHeight) || 0) - viewportHeight);
+          ed.scrollTop = Math.max(0, Math.min(targetTop, maxScroll));
         }
       }
 
@@ -1718,7 +1720,7 @@ export function DocumentDetail({
                           type="button"
                           className="detail-task-popover-item open"
                           key={task.id}
-                          onClick={() => jumpToLine(task.line)}
+                          onClick={() => jumpToLine(task.line, task.text)}
                           data-tooltip="Click to jump to task in editor"
                         >
                           <span className="detail-task-popover-marker">[ ]</span>
@@ -1737,7 +1739,7 @@ export function DocumentDetail({
                           type="button"
                           className="detail-task-popover-item closed"
                           key={task.id}
-                          onClick={() => jumpToLine(task.line)}
+                          onClick={() => jumpToLine(task.line, task.text)}
                           data-tooltip="Click to jump to task in editor"
                         >
                           <span className="detail-task-popover-marker">[x]</span>

@@ -2,6 +2,47 @@
  * Markdown and text utility functions
  */
 
+export function getLineStartOffset(text, targetLine) {
+  const safeLine = Math.max(Number(targetLine) || 1, 1);
+  const raw = String(text || "");
+  let currentLine = 1;
+  let offset = 0;
+  while (currentLine < safeLine && offset < raw.length) {
+    const nextNewline = raw.indexOf("\n", offset);
+    if (nextNewline === -1) {
+      break;
+    }
+    offset = nextNewline + 1;
+    currentLine += 1;
+  }
+  return offset;
+}
+
+export function resolveTargetLine(content, line, searchText) {
+  const safeLine = Math.max(Number(line) || 1, 1);
+  const text = String(content || "");
+  if (!text) return safeLine;
+
+  const lines = text.split(/\r?\n/);
+
+  if (safeLine <= lines.length) {
+    const lineText = lines[safeLine - 1] || "";
+    if (!searchText || lineText.includes(String(searchText).trim())) {
+      return safeLine;
+    }
+  }
+
+  if (searchText && String(searchText).trim()) {
+    const cleanSearch = String(searchText).trim();
+    const matchIndex = lines.findIndex((l) => l.includes(cleanSearch));
+    if (matchIndex !== -1) {
+      return matchIndex + 1;
+    }
+  }
+
+  return Math.min(safeLine, lines.length);
+}
+
 export function replaceTextAtSelection(value, start, end, insertion) {
   const safeStart = Number.isInteger(start) ? start : value.length;
   const safeEnd = Number.isInteger(end) ? end : safeStart;
