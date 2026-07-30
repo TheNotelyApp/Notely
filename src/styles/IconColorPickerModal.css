@@ -47,7 +47,7 @@
   color: var(--text-muted);
   cursor: pointer;
   transition: all var(--motion-fast);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   position: relative;
   overflow: hidden;
 }

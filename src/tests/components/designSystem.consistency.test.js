@@ -161,3 +161,84 @@ describe("Design System - Dialog button ordering", () => {
     expect(cancelPos, "Cancel button must appear before primary action button").toBeLessThan(confirmPos);
   });
 });
+
+// ─── Suite 7: Theme Variable Completeness ─────────────────────────────────────
+describe("Design System - Theme Variable Completeness", () => {
+  it("all semantic color variables in :root have dark theme overrides in variables.css", () => {
+    const css = readSource("src/styles/variables.css");
+    const rootBlockMatch = css.match(/:root\s*\{([\s\S]*?)\n\}/);
+    const darkBlockMatch = css.match(/:root\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/);
+
+    expect(rootBlockMatch, ":root block missing in variables.css").toBeTruthy();
+    expect(darkBlockMatch, ":root[data-theme='dark'] block missing in variables.css").toBeTruthy();
+
+    const rootVars = new Set(
+      [...rootBlockMatch[1].matchAll(/--(surface|text|border|accent|status|kg)-[a-zA-Z0-9-]+/g)].map((m) => m[0])
+    );
+    const darkVars = new Set(
+      [...darkBlockMatch[1].matchAll(/--(surface|text|border|accent|status|kg)-[a-zA-Z0-9-]+/g)].map((m) => m[0])
+    );
+
+    const missing = [];
+    for (const v of rootVars) {
+      if (!darkVars.has(v)) {
+        missing.push(v);
+      }
+    }
+    expect(missing, `Semantic tokens defined in :root missing in :root[data-theme="dark"]:\n${missing.join("\n")}`).toEqual([]);
+  });
+});
+
+// ─── Suite 8: Component stylesheets use design tokens (no raw hex) ───────────
+describe("Design System - Component stylesheets use tokens", () => {
+  it("no raw hex color literals in component stylesheets (must use var(--...))", () => {
+    const cssFiles = collectFiles(path.resolve(process.cwd(), "src/styles"), ".css").filter(
+      (f) => !f.endsWith("variables.css")
+    );
+
+    const offenders = [];
+    for (const filePath of cssFiles) {
+      const rel = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      const source = fs.readFileSync(filePath, "utf8");
+      const lines = source.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // Ignore CSS comments and inline SVG data URIs
+        if (line.startsWith("/*") || line.startsWith("*") || line.includes("data:image/svg+xml")) continue;
+
+        // Match hex colors: #fff, #1a2b3c, etc., not part of var(...) fallbacks or comments
+        const hexMatches = line.matchAll(/#(?:[0-9a-fA-F]{3,4}){1,2}\b/g);
+        for (const match of hexMatches) {
+          offenders.push(`${rel}:${i + 1} "${line}"`);
+        }
+      }
+    }
+    expect(offenders, `Hardcoded hex colors found in component stylesheets:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+// ─── Suite 9: Font-size token scale enforcement ──────────────────────────────
+describe("Design System - Font-size token scale enforcement", () => {
+  it("all font-size px values reference --font-size-* tokens", () => {
+    const cssFiles = collectFiles(path.resolve(process.cwd(), "src/styles"), ".css");
+    const offenders = [];
+
+    for (const filePath of cssFiles) {
+      const rel = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      const source = fs.readFileSync(filePath, "utf8");
+      const lines = source.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith("/*") || line.startsWith("*")) continue;
+        if (/font-size:\s*\d+px/.test(line)) {
+          offenders.push(`${rel}:${i + 1} "${line}"`);
+        }
+      }
+    }
+    expect(offenders, `Hardcoded font-size px values found in stylesheets:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
+

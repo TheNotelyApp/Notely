@@ -36,7 +36,6 @@ export function TrashDialog({ isOpen, onClose, onRestored }) {
         relativePath: item.relativePath,
         group: item.group
       });
-      // Refresh list
       await fetchTrashItems();
       if (onRestored) {
         onRestored();
@@ -64,12 +63,12 @@ export function TrashDialog({ isOpen, onClose, onRestored }) {
   return (
     <OverlayDialog open={isOpen} onClose={onClose} ariaLabel="Trash Recovery" cardClassName="trash-panel-card">
       <div className="overlay-dialog-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div className="trash-header-title">
           <Trash2 size={18} />
-          <h2 style={{ margin: 0 }}>Trash Bin</h2>
+          <h2>Trash Bin</h2>
         </div>
         {items.length > 0 && (
-          <button className="small-button danger-button" onClick={handleEmptyTrash} style={{ marginLeft: "auto", marginRight: "16px" }}>
+          <button className="small-button danger-button" onClick={handleEmptyTrash}>
             Empty Trash
           </button>
         )}
@@ -78,62 +77,46 @@ export function TrashDialog({ isOpen, onClose, onRestored }) {
           onClick={onClose}
           type="button"
           aria-label="Close trash dialog"
-          style={{ marginLeft: items.length > 0 ? "0" : "auto" }}
         >
           <X size={16} />
         </button>
       </div>
 
-      <div className="overlay-dialog-body" style={{ minHeight: "300px", maxHeight: "450px", overflowY: "auto", padding: "16px" }}>
+      <div className="overlay-dialog-body trash-dialog-body">
         {error && (
-          <div className="validation-banner danger" style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", padding: "8px", borderRadius: "6px" }}>
+          <div className="validation-banner danger">
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
         )}
 
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
+          <div className="trash-empty-container">
             <span className="loading-spinner">Loading...</span>
           </div>
         ) : items.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-            <Trash2 size={20} style={{ width: "40px", height: "40px", opacity: 0.3, marginBottom: "12px" }} />
-            <p style={{ margin: 0, fontSize: "14px" }}>Your trash bin is empty.</p>
+          <div className="trash-empty-container">
+            <Trash2 size={20} className="trash-empty-icon" />
+            <p className="trash-empty-text">Your trash bin is empty.</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: "8px" }}>
+          <div className="trash-items-grid">
             {items.map((item, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-md)",
-                  background: "var(--surface-accent)",
-                  border: "1px solid var(--border-soft)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+              <div key={idx} className="trash-item-card">
+                <div className="trash-item-left">
                   {item.isDirectory ? (
-                    <Folder size={16} style={{ color: "#dfb06c", flexShrink: 0 }} />
+                    <Folder size={16} style={{ color: "var(--status-warning-text)", flexShrink: 0 }} />
                   ) : (
                     <File size={16} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                   )}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, fontSize: "14px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                      {item.name}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                      Original Path: {item.relativePath}
-                    </div>
+                  <div className="trash-item-info">
+                    <div className="trash-item-name">{item.name}</div>
+                    <div className="trash-item-path">Original Path: {item.relativePath}</div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, marginLeft: "12px" }}>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                <div className="trash-item-meta">
+                  <span className="trash-item-date">
                     Deleted {formatDate(item.deletedAt)}
                   </span>
                   <button

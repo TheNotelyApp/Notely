@@ -18,14 +18,14 @@
 }
 
 .dictionary-dialog-header h2 {
-  font-size: 16px;
+  font-size: var(--font-size-heading-md);
   font-weight: 600;
   color: var(--text-strong);
   margin: 0;
 }
 
 .dictionary-dialog-header p {
-  font-size: 12px;
+  font-size: var(--font-size-label);
   color: var(--text-muted);
   margin: 2px 0 0 0;
 }
@@ -42,7 +42,7 @@
 }
 
 .dictionary-input-group label {
-  font-size: 12px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -55,11 +55,11 @@
 .dictionary-add-row input {
   flex: 1;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-soft);
   background: var(--surface-bg);
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   outline: none;
   height: 32px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -76,7 +76,7 @@
   gap: 6px;
   padding: 6px 12px;
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--font-size-label);
   height: 32px;
 }
 
@@ -88,7 +88,7 @@
 }
 
 .dictionary-word-count {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -98,23 +98,18 @@
 .dictionary-clear-btn {
   background: none;
   border: none;
-  color: #d9383a;
-  font-size: 12px;
+  color: var(--status-danger-text);
+  font-size: var(--font-size-label);
   font-weight: 600;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .dictionary-clear-btn:hover {
-  background: #fdf2f2;
-  color: #b92527;
-}
-
-[data-theme="dark"] .dictionary-clear-btn:hover {
-  background: #3c1214;
-  color: #ff6b6b;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .dictionary-word-pills {
@@ -134,7 +129,7 @@
   border: 1px solid var(--border-soft);
   padding: 4px 8px;
   border-radius: var(--radius-pill);
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -158,25 +153,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   width: 14px;
   height: 14px;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .dictionary-pill-close:hover {
-  background-color: rgba(217, 56, 58, 0.12);
-  color: #d9383a;
-}
-
-[data-theme="dark"] .dictionary-pill-close:hover {
-  background-color: rgba(255, 107, 107, 0.15);
-  color: #ff6b6b;
+  background-color: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .dictionary-empty {
   text-align: center;
   padding: var(--space-8) 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-body-sm);
 }

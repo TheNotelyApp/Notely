@@ -4,8 +4,8 @@ import { OverlayDialog } from "./OverlayDialog";
 export default function UpdateModal({
   isOpen,
   onClose,
-  status, // 'checking', 'up-to-date', 'available', 'error'
-  details, // { latestVersion, currentVersion, releaseUrl, releaseNotes, error }
+  status,
+  details,
 }) {
   if (!isOpen) return null;
 
@@ -25,7 +25,7 @@ export default function UpdateModal({
       ariaLabel="Application Update Status"
       cardClassName="update-modal-card"
     >
-      <div className="overlay-dialog-header" style={{ padding: "1.25rem 1.5rem" }}>
+      <div className="overlay-dialog-header">
         <h2>Check for Updates</h2>
         <button
           className="icon-button"
@@ -37,77 +37,63 @@ export default function UpdateModal({
         </button>
       </div>
 
-      <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="update-modal-body">
         {status === "checking" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "1.5rem 0" }}>
-            <RefreshCw className="animate-spin" size={20} style={{ color: "var(--accent-solid)", animation: "spin 1.5s linear infinite", transform: "scale(1.6)" }} />
-            <p style={{ color: "var(--text-muted)", fontSize: "0.95rem" }}>Checking GitHub for new releases...</p>
+          <div className="update-status-checking">
+            <RefreshCw className="update-status-checking-icon" size={20} />
+            <p className="update-status-checking-text">Checking GitHub for new releases...</p>
           </div>
         )}
 
         {status === "up-to-date" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "1.5rem 0", textAlign: "center" }}>
-            <CheckCircle size={20} style={{ color: "var(--status-success-text)", transform: "scale(2)", margin: "8px 0" }} />
+          <div className="update-status-uptodate">
+            <CheckCircle size={20} className="update-status-uptodate-icon" />
             <div>
-              <p style={{ fontWeight: "600", fontSize: "1.1rem", color: "var(--text-strong)", margin: "0 0 4px 0" }}>
+              <p className="update-status-uptodate-title">
                 You are up to date!
               </p>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: 0 }}>
+              <p className="update-status-uptodate-sub">
                 Notely v{cleanCurrent || "0.0.0"} is currently the latest version.
               </p>
             </div>
-            <button className="primary-button" onClick={onClose} type="button" style={{ marginTop: "12px" }}>
+            <button className="primary-button" onClick={onClose} type="button">
               Dismiss
             </button>
           </div>
         )}
 
         {status === "available" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "40px", height: "40px", borderRadius: "50%", background: "var(--surface-accent)", color: "var(--accent-solid)", flexShrink: 0 }}>
+          <div className="update-status-available">
+            <div className="update-status-available-head">
+              <div className="update-status-available-badge">
                 <Globe size={20} />
               </div>
               <div>
-                <p style={{ fontWeight: "600", fontSize: "1.1rem", color: "var(--text-strong)", margin: "0 0 4px 0" }}>
+                <p className="update-status-available-title">
                   New update available!
                 </p>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: 0 }}>
+                <p className="update-status-available-sub">
                   Version <strong>v{cleanLatest}</strong> is available. You are running v{cleanCurrent}.
                 </p>
               </div>
             </div>
 
             {details?.releaseNotes && (
-              <div style={{ marginTop: "8px" }}>
-                <p style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-strong)", margin: "0 0 6px 0" }}>
+              <div className="update-status-notes-section">
+                <p className="update-status-notes-label">
                   Release Notes:
                 </p>
-                <div
-                  style={{
-                    maxHeight: "180px",
-                    overflowY: "auto",
-                    background: "var(--surface-muted)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: "6px",
-                    padding: "10px 12px",
-                    fontSize: "0.82rem",
-                    color: "var(--text-default)",
-                    whiteSpace: "pre-wrap",
-                    lineHeight: "1.4"
-                  }}
-                >
+                <div className="update-status-notes-box">
                   {details.releaseNotes}
                 </div>
               </div>
             )}
 
-            <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+            <div className="update-status-available-actions">
               <button
                 className="primary-button"
                 onClick={handleOpenReleaseUrl}
                 type="button"
-                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
               >
                 <Globe size={14} />
                 Download Update
@@ -116,16 +102,6 @@ export default function UpdateModal({
                 className="secondary-button"
                 onClick={onClose}
                 type="button"
-                style={{
-                  padding: "0 16px",
-                  borderRadius: "6px",
-                  border: "1px solid var(--border-default)",
-                  background: "transparent",
-                  color: "var(--text-strong)",
-                  fontSize: "0.9rem",
-                  fontWeight: "500",
-                  cursor: "pointer"
-                }}
               >
                 Later
               </button>
@@ -134,17 +110,17 @@ export default function UpdateModal({
         )}
 
         {status === "error" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "1.5rem 0", textAlign: "center" }}>
-            <AlertTriangle size={20} style={{ color: "var(--status-danger-text)", transform: "scale(2)", margin: "8px 0" }} />
+          <div className="update-status-error">
+            <AlertTriangle size={20} className="update-status-error-icon" />
             <div>
-              <p style={{ fontWeight: "600", fontSize: "1.1rem", color: "var(--text-strong)", margin: "0 0 4px 0" }}>
+              <p className="update-status-uptodate-title">
                 Update check failed
               </p>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: 0 }}>
+              <p className="update-status-uptodate-sub">
                 {details?.error || "Could not connect to GitHub Releases API."}
               </p>
             </div>
-            <button className="primary-button" onClick={onClose} type="button" style={{ marginTop: "12px" }}>
+            <button className="primary-button" onClick={onClose} type="button">
               Dismiss
             </button>
           </div>

@@ -150,10 +150,11 @@
   margin-bottom: 4px;
 }
 
-.ahp-stat-value {
-  font-size: 22px;
+.ahp-gauge-value {
+  font-size: var(--font-size-heading-lg);
   font-weight: 700;
   color: var(--text-strong);
+  line-height: 1;
 }
 
 /* DB rows */
@@ -191,11 +192,31 @@
 }
 
 .ahp-db-row-path {
-  font-size: 10.5px;
-  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: var(--font-size-meta);
+  font-family: var(--font-family-mono);
   color: var(--text-muted);
   word-break: break-all;
   padding-left: 14px;
+}
+
+.ahp-alert-icon.warning {
+  color: var(--status-warning-text);
+}
+
+.ahp-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--text-on-accent);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-body-sm);
 }
 
 /* Error bar */
@@ -419,7 +440,7 @@
   max-width: 88%;
   border-radius: var(--radius-lg, 8px);
   padding: 5px 10px;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.35;
 }
 .ahp-bubble.user {
@@ -458,7 +479,7 @@
 .ahp-bubble-content h3,
 .ahp-bubble-content h4 {
   margin: 4px 0 2px 0 !important;
-  font-size: 11.5px !important;
+  font-size: var(--font-size-label) !important;
   font-weight: 700 !important;
 }
 
@@ -552,7 +573,7 @@
 
 .ahp-tool-name {
   font-weight: 600;
-  font-family: 'Consolas', 'Menlo', monospace;
+  font-family: var(--font-family-mono);
   flex-shrink: 0;
   color: var(--accent-solid);
 }
@@ -561,13 +582,13 @@
 }
 
 .ahp-tool-args-preview {
-  font-size: 10.5px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: 'Consolas', 'Menlo', monospace;
+  font-family: var(--font-family-mono);
 }
 
 .ahp-tool-chevron {
@@ -603,9 +624,9 @@
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.45;
-  font-family: 'Consolas', 'Menlo', monospace;
+  font-family: var(--font-family-mono);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 360px;
@@ -624,8 +645,8 @@
 .ahp-root .ahp-refresh-btn,
 .ahp-root select,
 .ahp-root .ahp-conv-search {
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08)) !important;
-  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--border-soft) !important;
+  border-radius: var(--radius-md);
   transition: border-color var(--motion-fast, 0.15s ease), background var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease);
 }
 
@@ -633,14 +654,20 @@
 .ahp-root .ahp-back-btn:hover:not(:disabled),
 .ahp-root select:hover,
 .ahp-root .ahp-conv-search:focus {
-  border-color: var(--border-default, rgba(255, 255, 255, 0.16)) !important;
-  background: var(--surface-subtle, rgba(255, 255, 255, 0.04));
+  border-color: var(--border-default) !important;
+  background: var(--surface-subtle);
 }
 
 .ahp-root .btn-primary {
-  border: 1px solid var(--accent-solid, #6366f1) !important;
-  background: var(--accent-solid, #6366f1);
-  color: #ffffff;
+  border: 1px solid var(--accent-solid) !important;
+  background: var(--accent-solid);
+  color: var(--text-on-accent);
+}
+
+.ahp-toggle-btn.active {
+  border: 1px solid var(--accent-solid) !important;
+  background: var(--accent-solid);
+  color: var(--text-on-accent);
 }
 
 /* ─── ATV: AI Trace Viewer ────────────────────────────────────────────────── */
@@ -652,6 +679,33 @@
   gap: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.ahp-metric-icon {
+  color: var(--accent-solid);
+}
+
+.ahp-metric-icon.error {
+  color: var(--status-danger-text);
+}
+
+.ahp-metric-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-bg);
+  transition: background 0.15s ease;
+}
+.ahp-metric-row:last-child { border-bottom: none; }
+.ahp-metric-row:hover {
+  background: var(--surface-subtle);
+}
+
+.ahp-metric-row.selected {
+  background: var(--surface-accent);
+  border-left: 3px solid var(--accent-solid);
 }
 
 /* Conversation-level stats chips row */
@@ -670,7 +724,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10.5px;
+  font-size: var(--font-size-meta);
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-md);
@@ -681,15 +735,15 @@
 }
 
 .atv-stat-chip.atv-stat-accent {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.25);
-  color: var(--accent-default, #6366f1);
+  background: var(--accent-soft);
+  border-color: var(--accent-solid);
+  color: var(--accent-solid);
 }
 
 .atv-stat-chip.atv-stat-error {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger-text);
 }
 
 /* Trace list */
@@ -718,8 +772,8 @@
   background: var(--surface-subtle);
 }
 .atv-trace-row.selected {
-  background: rgba(99, 102, 241, 0.07);
-  border-left: 3px solid var(--accent-default, #6366f1);
+  background: var(--surface-accent);
+  border-left: 3px solid var(--accent-solid);
   padding-left: 13px;
 }
 
@@ -731,15 +785,15 @@
 }
 
 .atv-trace-row-time {
-  font-size: 10.5px;
-  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: var(--font-size-meta);
+  font-family: var(--font-family-mono);
   font-weight: 600;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .atv-trace-row-query {
-  font-size: 12px;
+  font-size: var(--font-size-body-sm);
   font-weight: 500;
   color: var(--text-strong);
   flex: 1;
@@ -786,7 +840,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 11.5px;
+  font-size: var(--font-size-caption);
   color: var(--accent-solid);
   padding: 2px 4px;
   border-radius: var(--radius-sm);
@@ -800,7 +854,7 @@
 
 .atv-trace-query {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-body-sm);
   font-weight: 500;
   color: var(--text-strong);
   overflow: hidden;
@@ -848,7 +902,7 @@
 .atv-filter-chip {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--font-size-meta);
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-md);
@@ -866,7 +920,7 @@
 .atv-filter-chip.active {
   background: var(--accent-solid);
   border-color: var(--accent-solid);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* Timeline scroll area */
@@ -910,14 +964,52 @@
 }
 
 .atv-turn-badge {
-  font-size: 9.5px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   padding: 1px 6px;
   border-radius: var(--radius-sm);
   background: var(--accent-solid);
-  color: #ffffff;
+  color: var(--text-on-accent);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.ahp-batch-count {
+  font-size: var(--font-size-meta);
+  font-weight: 600;
+  color: var(--text-on-accent);
+  background: var(--accent-solid);
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+}
+
+.ahp-batch-count.running {
+  background: var(--accent-solid);
+}
+
+.ahp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-meta);
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+}
+
+.ahp-tag-blue {
+  background: var(--status-info-bg);
+  border-color: var(--status-info-border);
+  color: var(--status-info-text);
+}
+
+.ahp-tag-purple {
+  background: var(--surface-accent);
+  border-color: var(--border-soft);
+  color: var(--accent-soft);
 }
 
 /* Driver Origin Badges (System-Driven vs LLM-Driven) */
@@ -925,7 +1017,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 9px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   padding: 2px 6px;
   border-radius: var(--radius-sm);
@@ -935,19 +1027,19 @@
 }
 
 .atv-driver-badge.system {
-  background: rgba(59, 130, 246, 0.14);
-  color: #3b82f6;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: var(--status-info-bg);
+  color: var(--status-info-text);
+  border: 1px solid var(--status-info-border);
 }
 
 .atv-driver-badge.llm {
-  background: rgba(168, 85, 247, 0.14);
-  color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: var(--surface-accent);
+  color: var(--accent-soft);
+  border: 1px solid var(--border-soft);
 }
 
 .atv-turn-query {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   color: var(--text-normal);
   flex: 1;
@@ -1099,7 +1191,7 @@
 
 /* Timestamp */
 .atv-event-time {
-  font-size: 10px;
+  font-size: var(--font-size-meta);
   font-family: 'Consolas', 'Menlo', monospace;
   font-weight: 600;
   color: var(--text-muted);
@@ -1138,12 +1230,12 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   padding: 2px 7px;
   border-radius: var(--radius-pill);
   background: rgba(99, 102, 241, 0.12);
-  color: var(--accent-default, #6366f1);
+  color: var(--accent-solid);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1198,7 +1290,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
 }
 
 .atv-kv-key {
@@ -1213,7 +1305,7 @@
 }
 
 .atv-kv-val {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--text-normal);
   word-break: break-word;
   font-family: 'Consolas', 'Menlo', monospace;
@@ -1262,7 +1354,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--font-size-meta);
   color: var(--accent-solid);
   background: none;
   border: none;
@@ -1295,7 +1387,7 @@
 }
 
 .atv-sysprompt-len {
-  font-size: 10px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
   font-weight: 400;
 }
@@ -1311,18 +1403,17 @@
   margin-bottom: 8px;
 }
 
-/* Legacy notice */
-.atv-legacy-notice {
+.atv-alert-notice {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 7px;
   padding: 10px 14px;
   margin: 10px;
   border-radius: var(--radius-md);
-  background: rgba(251, 191, 36, 0.08);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
-  font-size: 11.5px;
+  background: var(--status-warning-bg);
+  border: 1px solid var(--status-warning-border);
+  color: var(--status-warning-text);
+  font-size: var(--font-size-caption);
 }
 
 /* Legacy stage rows (for old logs without events[]) */
@@ -1341,7 +1432,7 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   background: var(--surface-subtle);
-  font-size: 11.5px;
+  font-size: var(--font-size-caption);
 }
 
 .atv-stage-num {
@@ -1349,11 +1440,11 @@
   height: 22px;
   border-radius: 50%;
   background: var(--accent-solid);
-  color: #fff;
+  color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   flex-shrink: 0;
 }
