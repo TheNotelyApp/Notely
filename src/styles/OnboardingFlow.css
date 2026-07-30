@@ -384,4 +384,101 @@
   height: 40px !important;
 }
 
+/* Dark theme overrides powered by design tokens */
+[data-theme="dark"] .onboarding-card {
+  background: var(--surface-bg);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-overlay);
+}
 
+[data-theme="dark"] .onboarding-header-progress {
+  background: var(--surface-subtle);
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .onboarding-footer {
+  background: var(--surface-subtle);
+  border-top-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .onboarding-feature-item {
+  background: var(--surface-elevated);
+  border-color: var(--border-soft);
+}
+
+[data-theme="dark"] .onboarding-folder-selector {
+  background: var(--surface-subtle);
+  border-color: var(--border-soft);
+}
+
+[data-theme="dark"] .onboarding-folder-option {
+  background: var(--surface-bg);
+  border-color: transparent;
+}
+
+[data-theme="dark"] .onboarding-folder-option:hover {
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .onboarding-folder-option.selected {
+  background: var(--surface-accent);
+  border-color: var(--accent-solid);
+}
+
+[data-theme="dark"] .onboarding-theme-option {
+  background: var(--surface-elevated);
+  border-color: var(--border-soft);
+}
+
+[data-theme="dark"] .onboarding-theme-option:hover {
+  background: var(--surface-subtle);
+}
+
+[data-theme="dark"] .onboarding-theme-option.selected {
+  background: var(--surface-accent);
+  border-color: var(--accent-solid);
+}
+
+[data-theme="dark"] .onboarding-path-display {
+  background: #12181a;
+  border-color: #263336;
+}
+
+[data-theme="dark"] .onboarding-path-browse-btn {
+  background: #1c272a;
+  color: #d9e6e2;
+  border-color: #2b393c;
+}
+
+[data-theme="dark"] .onboarding-path-browse-btn:hover {
+  background: #243236;
+  border-color: #4f7f8a;
+}
+
+[data-theme="dark"] .onboarding-feature-text h4 {
+  color: #e3efeb !important;
+}
+
+[data-theme="dark"] .onboarding-feature-text p {
+  color: #9db0ac !important;
+}
+
+[data-theme="dark"] code {
+  background: #12181a !important;
+  color: #7fb6bf !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #263336;
+}
+
+[data-theme="dark"] .onboarding-slide h2 {
+  color: #e3efeb !important;
+}
+
+[data-theme="dark"] .onboarding-slide p {
+  color: #b7c8c4 !important;
+}
+
+[data-theme="dark"] #setupDemoCheckbox + label {
+  color: #b7c8c4 !important;
+}

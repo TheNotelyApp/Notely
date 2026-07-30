@@ -1,15 +1,15 @@
 .excalidraw-block {
   width: 100%;
-  margin: var(--space-6) 0;
+  margin: 1rem 0;
 }
 
 .excalidraw-preview-container {
   cursor: pointer;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
+  border: 1px solid #9fceb0;
+  border-radius: 8px;
   padding: 0;
-  background-color: var(--surface-bg);
-  transition: background-color var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
+  background-color: #ffffff;
+  transition: all 0.2s ease;
   min-height: 150px;
   display: flex;
   align-items: center;
@@ -19,54 +19,54 @@
 }
 
 .excalidraw-preview-container:hover {
-  background-color: var(--surface-bg);
-  border-color: var(--accent-solid);
-  box-shadow: var(--shadow-md);
+  background-color: #ffffff;
+  border-color: #7fb697;
+  box-shadow: 0 6px 16px rgba(47, 93, 98, 0.14);
 }
 
-.excalidraw-preview-container:focus-visible {
-  outline: 2px solid var(--focus-ring-color);
-  outline-offset: var(--focus-ring-offset);
+.excalidraw-preview-container:focus {
+  outline: 2px solid #7fb697;
+  outline-offset: 2px;
 }
 
 .excalidraw-preview-thumbnail {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.5rem;
   text-align: center;
   width: 100%;
   height: 100%;
   position: relative;
-  background-color: var(--surface-bg);
+  background-color: #ffffff;
 }
 
 .diagram-image {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  padding: var(--space-6);
+  padding: 1rem;
 }
 
 .click-hint {
   position: absolute;
-  bottom: var(--space-2);
-  right: var(--space-2);
-  font-size: var(--font-size-caption);
-  color: var(--text-muted);
+  bottom: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(80, 107, 112, 0.8);
   font-style: italic;
-  background: var(--surface-subtle);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
 .excalidraw-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  color: var(--text-muted);
-  padding: var(--space-8);
+  gap: 0.5rem;
+  color: #506b70;
+  padding: 2rem;
 }
 
 .empty-icon {
@@ -75,36 +75,72 @@
 }
 
 .excalidraw-loading {
-  color: var(--text-muted);
-  font-size: var(--font-size-body);
+  color: #506b70;
+  font-size: 1rem;
 }
 
 .excalidraw-error {
-  color: var(--status-danger-text);
-  padding: var(--space-3);
+  color: #d32f2f;
+  padding: 0.75rem;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK THEME — ExcalidrawBlock overrides
+   ══════════════════════════════════════════════════════════════════ */
+
+:root[data-theme="dark"] .excalidraw-preview-container {
+  background-color: var(--surface-elevated);
+  border-color: var(--border-default);
+}
+
+:root[data-theme="dark"] .excalidraw-preview-container:hover {
+  background-color: var(--surface-elevated);
+  border-color: var(--border-soft);
+}
+
+:root[data-theme="dark"] .excalidraw-preview-thumbnail {
+  background-color: var(--surface-elevated);
+}
+
+:root[data-theme="dark"] .click-hint {
+  background: rgba(29, 39, 42, 0.92);
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .excalidraw-empty-state {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .excalidraw-loading {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .excalidraw-error {
   background-color: var(--status-danger-bg);
-  border-radius: var(--radius-sm);
-  margin-top: var(--space-2);
-  font-size: var(--font-size-body-sm);
+  color: var(--status-danger-text);
 }
 
 .excalidraw-download-btn {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  top: 0.5rem;
+  right: 0.5rem;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-soft);
-  background: var(--surface-elevated);
-  color: var(--text-muted);
+  border-radius: 6px;
+  border: 1px solid #c8dcd3;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2e543f;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--motion-standard), background var(--motion-standard), color var(--motion-standard);
-  box-shadow: var(--shadow-sm);
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .excalidraw-preview-thumbnail:hover .excalidraw-download-btn {
@@ -112,7 +148,19 @@
 }
 
 .excalidraw-download-btn:hover {
-  background: var(--accent-solid);
-  color: var(--text-on-accent);
-  border-color: var(--accent-solid);
+  background: #2e543f;
+  color: #ffffff;
+  border-color: #2e543f;
 }
+
+:root[data-theme="dark"] .excalidraw-download-btn {
+  background: rgba(29, 39, 42, 0.92);
+  color: var(--text-muted);
+  border-color: var(--border-default);
+}
+
+:root[data-theme="dark"] .excalidraw-download-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+

@@ -120,7 +120,7 @@
 
 .kg-sidebar-section h4 {
   margin: 0 0 12px 0;
-  font-size: var(--font-size-body-sm);
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -135,7 +135,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: var(--font-size-label);
+  font-size: 12px;
   cursor: pointer;
   padding: 4px 0;
   color: var(--text-secondary);
@@ -147,7 +147,7 @@
 }
 
 .kg-filter-checkbox-row input[type="checkbox"] {
-  accent-color: var(--accent-solid);
+  accent-color: var(--color-primary, #6366f1);
   cursor: pointer;
 }
 
@@ -177,7 +177,7 @@
 
 .kg-details-head h4 {
   margin: 0;
-  font-size: var(--font-size-body-sm);
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -186,7 +186,7 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: var(--font-size-body);
+  font-size: 14px;
   padding: 4px;
   display: flex;
   align-items: center;
@@ -212,7 +212,7 @@
 }
 
 .kg-detail-row .label {
-  font-size: var(--font-size-caption);
+  font-size: 11px;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
@@ -220,7 +220,7 @@
 }
 
 .kg-detail-row strong {
-  font-size: var(--font-size-body);
+  font-size: 14px;
   color: var(--text-strong);
   word-break: break-all;
 }
@@ -343,7 +343,7 @@
 .knowledge-graph-container .btn-primary {
   background: var(--accent-solid);
   border: 1px solid var(--accent-solid);
-  color: var(--text-on-accent);
+  color: var(--text-on-accent, #ffffff);
 }
 
 .knowledge-graph-container .btn-primary:hover:not(:disabled) {
@@ -377,7 +377,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: var(--font-size-caption);
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -397,7 +397,7 @@
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  font-size: var(--font-size-caption);
+  font-size: 11px;
   color: var(--text-muted);
   font-family: var(--font-mono, monospace);
   margin-bottom: 6px;

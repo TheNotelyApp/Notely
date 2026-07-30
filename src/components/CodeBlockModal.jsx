@@ -332,20 +332,39 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
       </div>
 
       {executing && (
-        <div className="code-block-exec-loading">
+        <div style={{
+          marginTop: "12px",
+          padding: "8px 12px",
+          background: "#181a1f",
+          border: "1px solid #282c34",
+          borderRadius: "4px",
+          fontFamily: "Consolas, Monaco, monospace",
+          fontSize: "12px",
+          color: "#61afef"
+        }}>
           Executing code block...
         </div>
       )}
 
       {execResult && (
-        <div className={`code-block-exec-output ${execResult.isHtml ? "is-html" : ""}`}>
-          <div className="code-block-exec-header">
-            <span className={`code-block-exec-status ${execResult.success ? "success" : "failed"}`}>
+        <div style={{
+          marginTop: "12px",
+          padding: "8px 12px",
+          background: "#181a1f",
+          border: "1px solid #282c34",
+          borderRadius: "4px",
+          maxHeight: execResult.isHtml ? "270px" : "150px",
+          overflowY: "auto",
+          fontFamily: "Consolas, Monaco, monospace",
+          fontSize: "12px"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", borderBottom: "1px solid #282c34", paddingBottom: "4px" }}>
+            <span style={{ fontSize: "11px", fontWeight: "bold", color: execResult.success ? "#98c379" : "#e06c75" }}>
               {execResult.isHtml ? "HTML PREVIEW" : (execResult.success ? `SUCCESS (exit code ${execResult.exitCode})` : `FAILED (exit code ${execResult.exitCode})`)}
             </span>
             <button
               onClick={() => setExecResult(null)}
-              className="code-block-exec-clear-btn"
+              style={{ background: "none", border: "none", color: "#5c6370", cursor: "pointer", fontSize: "11px" }}
             >
               Clear
             </button>
@@ -354,10 +373,17 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
             <iframe
               srcDoc={execResult.htmlContent}
               sandbox="allow-scripts"
-              className="code-block-exec-iframe"
+              style={{
+                width: "100%",
+                height: "200px",
+                border: "none",
+                background: "#ffffff",
+                borderRadius: "4px",
+                marginTop: "4px"
+              }}
             />
           ) : (
-            <pre className={`code-block-exec-pre ${execResult.success ? "" : "failed"}`}>
+            <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: execResult.success ? "#abb2bf" : "#e06c75" }}>
               {execResult.stderr || execResult.stdout || "(No output)"}
             </pre>
           )}

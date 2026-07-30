@@ -28,7 +28,7 @@
   color: var(--text-muted);
   cursor: pointer;
   font-weight: 500;
-  font-size: var(--font-size-body);
+  font-size: 14px;
   transition: all 0.2s ease;
 }
 
@@ -59,7 +59,7 @@
 
 .tab-description {
   color: var(--text-muted);
-  font-size: var(--font-size-body-sm);
+  font-size: 13px;
   line-height: 1.5;
   margin: 0;
 }
@@ -68,7 +68,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: var(--font-size-body-sm);
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -78,7 +78,7 @@
   border: none;
   color: var(--accent-solid);
   cursor: pointer;
-  font-size: var(--font-size-body-sm);
+  font-size: 13px;
   padding: 0;
 }
 
@@ -137,7 +137,7 @@
 
 .note-title-cell {
   font-weight: 500;
-  font-size: var(--font-size-label);
+  font-size: 12px;
   margin-right: 10px;
   white-space: nowrap;
   overflow: hidden;
@@ -147,7 +147,7 @@
 }
 
 .note-path-cell {
-  font-size: var(--font-size-caption);
+  font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;

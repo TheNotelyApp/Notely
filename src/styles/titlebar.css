@@ -9,7 +9,7 @@
   -webkit-app-region: drag;
   padding: 0 12px;
   font-family: inherit;
-  font-size: var(--font-size-label);
+  font-size: 12px;
   color: var(--text-strong);
   z-index: 9999;
 }
@@ -43,7 +43,7 @@
   font-weight: 500;
   color: var(--text-muted);
   pointer-events: none;
-  font-size: var(--font-size-label);
+  font-size: 12px;
 }
 
 .titlebar-menu {
@@ -63,7 +63,7 @@
 .titlebar-menu-btn {
   background: transparent;
   border: none;
-  font-size: var(--font-size-label);
+  font-size: 12px;
   color: var(--text-muted);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -107,7 +107,7 @@
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  font-size: var(--font-size-label);
+  font-size: 12px;
   color: var(--text-strong);
   cursor: pointer;
   transition: background 0.1s ease;
@@ -152,7 +152,7 @@
 
 .titlebar-menu-item-shortcut {
   color: var(--text-muted);
-  font-size: var(--font-size-caption);
+  font-size: 11px;
   margin-left: 24px;
   opacity: 0.8;
 }
@@ -210,8 +210,8 @@
 }
 
 .titlebar-btn.close:hover {
-  background: var(--accent-red) !important;
-  color: var(--text-on-accent) !important;
+  background: #e81123 !important;
+  color: #ffffff !important;
 }
 
 /* Make sure active windows have distinct contrast if needed */

@@ -30,6 +30,7 @@ export function NotePreviewModal({
     }
   }
 
+  // Strip file:/// prefix and normalize slashes
   if (targetPath.startsWith("file:///")) {
     targetPath = decodeURIComponent(targetPath.replace("file:///", ""));
     if (navigator.platform.indexOf("Win") !== -1) {
@@ -59,6 +60,7 @@ export function NotePreviewModal({
       try {
         let noteText = "";
 
+        // 1. Try readDocument from electronService (window.notesApi)
         try {
           const res = await readDocument(targetPath);
           noteText = typeof res === "string" ? res : res?.content || res?.text || "";
@@ -66,6 +68,7 @@ export function NotePreviewModal({
           console.warn("[NotePreviewModal] readDocument IPC fallback:", apiErr?.message);
         }
 
+        // 2. Fallback to notesApi.readMarkdownSource if available
         if (!noteText && window.notesApi?.readMarkdownSource) {
           try {
             const res = await window.notesApi.readMarkdownSource(targetPath);
@@ -73,6 +76,7 @@ export function NotePreviewModal({
           } catch { /* ignore */ }
         }
 
+        // 3. Fallback to window.require('fs') if in Electron renderer
         if (!noteText && typeof window !== "undefined" && window.require) {
           try {
             const fs = window.require("fs");
@@ -118,15 +122,58 @@ export function NotePreviewModal({
       size=""
       cardClassName="note-preview-modal-card"
     >
-      <div className="note-preview-modal-wrapper">
-        <div className="note-preview-modal-header">
-          <div className="note-preview-modal-title">
-            <FileText size={16} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
-            <span className="note-preview-modal-filename">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "min(80vw, calc(100vw - 32px))",
+          maxHeight: "85vh",
+          height: "650px",
+          background: "var(--surface-bg, #ffffff)",
+          color: "var(--text-strong, var(--app-text, #333333))",
+          border: "1px solid var(--border-soft, #e2e8f0)",
+          borderRadius: "8px",
+          overflow: "hidden",
+          boxShadow: "var(--shadow-overlay, 0 10px 30px rgba(0,0,0,0.3))"
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 14px",
+            borderBottom: "1px solid var(--border-soft, #e2e8f0)",
+            background: "var(--surface-elevated, var(--surface-muted, #f8fafc))",
+            flexShrink: 0
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+            <FileText size={16} style={{ color: "var(--accent-solid, #6366f1)", flexShrink: 0 }} />
+            <span
+              style={{
+                fontWeight: 600,
+                fontSize: "13px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}
+            >
               {fileName}
             </span>
             {targetLine ? (
-              <span className="note-preview-modal-line-badge">
+              <span
+                style={{
+                  fontSize: "10px",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
+                  background: "var(--accent-muted, rgba(99,102,241,0.2))",
+                  color: "var(--accent-solid, #6366f1)",
+                  fontFamily: "monospace",
+                  flexShrink: 0
+                }}
+              >
                 Line {targetLine}
               </span>
             ) : null}
@@ -135,7 +182,16 @@ export function NotePreviewModal({
           <button
             type="button"
             onClick={onClose}
-            className="note-preview-modal-close-btn"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--text-subtle)",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              borderRadius: "4px"
+            }}
             title="Close Preview"
             aria-label="Close Preview"
           >
@@ -143,13 +199,41 @@ export function NotePreviewModal({
           </button>
         </div>
 
-        <div className="note-preview-modal-body">
+        {/* Modal Body */}
+        <div
+          style={{
+            flex: 1,
+            padding: "16px",
+            overflowY: "auto",
+            fontSize: "13px",
+            lineHeight: "1.6",
+            background: "var(--surface-bg, #ffffff)"
+          }}
+        >
           {isLoading ? (
-            <div className="note-preview-modal-loading">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                color: "var(--text-muted)",
+                fontSize: "13px"
+              }}
+            >
               Loading note content…
             </div>
           ) : error ? (
-            <div className="note-preview-modal-error">
+            <div
+              style={{
+                padding: "16px",
+                borderRadius: "6px",
+                background: "var(--surface-accent, rgba(239,68,68,0.1))",
+                color: "var(--accent-danger, #ef4444)",
+                fontSize: "12px",
+                border: "1px solid var(--border-soft)"
+              }}
+            >
               {error}
             </div>
           ) : content ? (
@@ -159,13 +243,31 @@ export function NotePreviewModal({
               readOnly
             />
           ) : (
-            <div className="note-preview-modal-empty">
+            <div
+              style={{
+                color: "var(--text-muted)",
+                textAlign: "center",
+                padding: "40px"
+              }}
+            >
               Note is empty.
             </div>
           )}
         </div>
 
-        <div className="note-preview-modal-footer">
+        {/* Modal Footer */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: "8px",
+            padding: "10px 14px",
+            borderTop: "1px solid var(--border-soft)",
+            background: "var(--surface-subtle)",
+            flexShrink: 0
+          }}
+        >
           <AppButton variant="small" onClick={onClose}>
             Close
           </AppButton>
@@ -176,6 +278,7 @@ export function NotePreviewModal({
               onOpenDocument?.(targetPath, targetLine);
               onClose?.();
             }}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
             <ExternalLink size={14} />
             <span>Open in Editor</span>

@@ -2,8 +2,8 @@
   position: fixed;
   z-index: 10000;
   pointer-events: none;
-  background-color: var(--tooltip-bg);
-  color: var(--tooltip-text);
+  background-color: var(--tooltip-bg, rgba(20, 30, 33, 0.92));
+  color: var(--tooltip-text, #f0f8f5);
   padding: 5px 10px;
   border-radius: var(--tooltip-radius, var(--radius-md));
   font-size: var(--font-size-label);
@@ -18,13 +18,13 @@
 }
 
 :root[data-theme="dark"] .global-tooltip {
-  background-color: var(--tooltip-bg);
-  color: var(--tooltip-text);
+  background-color: rgba(18, 28, 31, 0.95);
+  color: #ecf6f2;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 :root[data-theme="light"] .global-tooltip {
-  background-color: var(--surface-elevated);
+  background-color: rgba(255, 255, 255, 0.97);
   color: var(--text-strong);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--border-default);
   backdrop-filter: none;

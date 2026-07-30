@@ -172,7 +172,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
                     onClick={() => onOpen(note)}
                     data-tooltip={`Last edited: ${formatDate(note.updatedAt)}`}
                   >
-                    <Star size={12} style={{ flexShrink: 0, color: "var(--status-warning-text)", opacity: 0.9 }} />
+                    <Star size={12} style={{ flexShrink: 0, color: "#f5a623", opacity: 0.9 }} />
                     <span>{getCleanFilename(note.displayName || note.title || note.filePath)}</span>
                     <em className="dashboard-item-open-indicator">
                       <ArrowRight size={12} />

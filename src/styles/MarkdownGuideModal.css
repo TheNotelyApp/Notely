@@ -28,7 +28,7 @@
   border: none;
   outline: none;
   color: var(--text-default);
-  font-size: var(--font-size-body);
+  font-size: 14px;
 }
 
 .markdown-guide-table-container {
@@ -71,7 +71,7 @@
 
 .markdown-guide-example {
   color: var(--text-muted);
-  font-size: var(--font-size-body-sm);
+  font-size: 13px;
 }
 
 .markdown-guide-empty {

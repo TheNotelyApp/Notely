@@ -282,10 +282,10 @@ export default function AIChatPanel({
                 <select
                   value={selectedPersonaId}
                   onChange={(e) => setSelectedPersonaId(e.target.value)}
-                  style={{ flex: 1, fontSize: "11px", height: "22px", boxSizing: "border-box", padding: "0 6px", borderRadius: "4px", border: "1px solid var(--border-soft)", background: "var(--surface-elevated)", color: "var(--text-strong)", outline: "none", verticalAlign: "middle" }}
+                  style={{ flex: 1, fontSize: "11px", height: "22px", boxSizing: "border-box", padding: "0 6px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.35)", color: "#fff", outline: "none", verticalAlign: "middle" }}
                 >
                   {personas.map(p => (
-                    <option key={p.id} value={p.id} style={{ background: "var(--surface-elevated)", color: "var(--text-strong)" }}>
+                    <option key={p.id} value={p.id} style={{ background: "#1e3a40", color: "#fff" }}>
                       {p.avatar || "👤"} {p.name}
                     </option>
                   ))}
@@ -300,7 +300,7 @@ export default function AIChatPanel({
                     }
                     setIsEditingPersona(false);
                   }}
-                  style={{ background: "var(--surface-elevated)", color: "var(--text-strong)", border: "1px solid var(--border-soft)", borderRadius: "4px", height: "22px", boxSizing: "border-box", padding: "0 8px", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "4px", height: "22px", boxSizing: "border-box", padding: "0 8px", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                   title="Save persona"
                 >
                   <Check size={12} />
@@ -527,7 +527,7 @@ export default function AIChatPanel({
               <AppButton
                 variant="danger"
                 onClick={onAbort}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0 10px", minHeight: "24px", height: "24px", fontSize: "var(--font-size-meta)", background: "var(--accent-red)", color: "var(--text-on-accent)" }}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0 10px", minHeight: "24px", height: "24px", fontSize: "10.5px", background: "var(--accent-danger)", color: "#fff" }}
               >
                 <X size={12} />
                 <span>Stop</span>
