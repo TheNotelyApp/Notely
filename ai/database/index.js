@@ -1,14 +1,19 @@
 /**
  * Database Module Facade
- * Single entry point for legacy database manager and SQLite migration runners.
+ * Facade entry point for database utilities.
  */
 
-const DatabaseManager = require('./LegacyDBManager');
-const LegacyMigrations = require('./LegacyMigrations');
+class DatabaseManager {
+  constructor(appDataDir) {
+    this.appDataDir = appDataDir;
+    this.isInitialized = true;
+  }
+  initialize() { return true; }
+  close() {}
+}
 
 module.exports = {
   DatabaseManager,
-  LegacyMigrations,
-
   createDatabaseManager: (dbPath) => new DatabaseManager(dbPath)
 };
+

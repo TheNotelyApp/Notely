@@ -72,7 +72,7 @@ class AIService {
 
     // If we have paths, trigger full initialization
     if (this.appDataDir && this.workspaceRoot) {
-      const { PROVIDER_REGISTRY } = require('../providers/ProviderRegistry');
+      const { PROVIDER_REGISTRY } = require('../providers');
       const activeProviderName = prefs.aiProvider || 'gemini';
       
       let llmProvider = null;

@@ -7,7 +7,7 @@ const { DatabaseManager } = require('./database');
 const { LLMRegistry, HuggingFaceEmbeddingProvider } = require('./providers');
 const Agent = require('./core/Agent');
 const AIConfig = require('./core/AIConfig');
-const { createLogger } = require('./core/logger');
+const { createLogger } = require('./core');
 
 const log = createLogger('AISystemBootstrap');
 
