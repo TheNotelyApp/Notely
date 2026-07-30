@@ -48,19 +48,60 @@ class GroqProvider extends OpenAICompatibleProvider {
     this.name = 'Groq';
   }
 
+  async getModelInstance() {
+    const { createGroq } = await import('@ai-sdk/groq');
+    const { wrapLanguageModel } = await import('ai');
+    const client = createGroq({ apiKey: this.apiKey });
+    const baseModel = client(this.model);
+
+    const groqMiddleware = {
+      transformParams: async ({ params }) => {
+        const llamaToolInstruction =
+          '\n\n[TOOL CALLING RULES - FOLLOW STRICTLY]\n' +
+          '- Before calling any tool, extract ALL required parameters from the user message.\n' +
+          '- For search_notes: derive the `query` value from the user\'s question topic. Never call search_notes with empty args {}.\n' +
+          '- If you cannot determine a required argument, answer from your knowledge instead of calling the tool.\n' +
+          '- Never emit <function=...> text syntax. Use the structured tool call format only.';
+
+        return {
+          ...params,
+          prompt: params.prompt?.map(msg => {
+            if (msg.role === 'system') {
+              return {
+                ...msg,
+                content: typeof msg.content === 'string'
+                  ? msg.content + llamaToolInstruction
+                  : msg.content
+              };
+            }
+            return msg;
+          }) ?? params.prompt
+        };
+      },
+
+      wrapGenerate: async ({ doGenerate, params }) => {
+        const result = await doGenerate(params);
+        if (result.toolCalls && result.toolCalls.length > 0) {
+          result.toolCalls = result.toolCalls.map(tc => {
+            if (typeof tc.args === 'string') {
+              try { tc.args = JSON.parse(tc.args); } catch { /* leave as-is */ }
+            }
+            return tc;
+          });
+        }
+        return result;
+      }
+    };
+
+    return wrapLanguageModel({ model: baseModel, middleware: groqMiddleware });
+  }
+
   getCapabilities() {
     return {
       supportsEmbeddings: false,
       supportsChatCompletion: true,
       supportsCaching: false,
-
-      // GROQ WORKAROUND: Groq's streaming path is less reliable for multi-step
-      // tool calls — routing through generateText() (execute) is more stable.
-      // The root format issue (double-encoded args) is fixed via the
-      // wrapLanguageModel middleware in OpenAICompatibleProvider.getModelInstance().
       supportsStreaming: false,
-
-      // llama-3.3-70b-versatile has a 128k context window on Groq.
       maxTokens: 128000,
     };
   }

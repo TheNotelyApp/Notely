@@ -467,102 +467,19 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     const extractedRelations = [];
     const entityMap = new Map();
 
-    // Fallback/Mock mode for test environment without active ONNX weights
+    // Standby mode for environment without active ONNX weights
     if (this.isMockMode || !this.encoderSession || !this.classifierSession || !this.ort) {
-      for (let sentIdx = 0; sentIdx < sentences.length; sentIdx++) {
-        const sent = sentences[sentIdx];
-        const words = sent.text.split(/\s+/).filter(Boolean);
-        const mockEntities = this._mockExtractSentEntities(words, targetEntityTypes, confidenceThreshold);
-        for (const rawEnt of mockEntities) {
-          const ev = new Evidence({
-            sourceFile: docId || metadata.sourceFile || 'doc',
-            lineNumber: sentIdx + 1,
-            paragraphId: `p-${sentIdx + 1}`,
-            rawSnippet: sent.text,
-            extractionModel: 'gliner2-relex',
-            timestamp: new Date().toISOString(),
-            confidence: rawEnt.confidence
-          });
-          rawEvidenceList.push(ev);
-
-          const entityKey = `${rawEnt.type.toLowerCase()}:${rawEnt.text.toLowerCase()}`;
-          let entityObj = entityMap.get(entityKey);
-          if (!entityObj) {
-            entityObj = new Entity({
-              text: rawEnt.text,
-              canonicalName: rawEnt.text,
-              type: rawEnt.type,
-              confidence: rawEnt.confidence,
-              sourceEvidence: ev
-            });
-            entityMap.set(entityKey, entityObj);
-            extractedEntities.push(entityObj);
-          }
-        }
-      }
-
-      if (extractedEntities.length >= 2 && targetRelationTypes.length > 0) {
-        for (let i = 0; i < extractedEntities.length; i++) {
-          for (let j = 0; j < extractedEntities.length; j++) {
-            if (i === j) continue;
-            const e1 = extractedEntities[i];
-            const e2 = extractedEntities[j];
-
-            let relType = targetRelationTypes[0] || 'USES';
-            let isMatch = false;
-
-            if (e1.text.toLowerCase().includes('esp32') && e2.text.toLowerCase().includes('relay')) {
-              relType = 'CONTROLS';
-              isMatch = true;
-            } else if (e1.text.toLowerCase().includes('bert') && e2.text.toLowerCase().includes('transformer')) {
-              relType = 'USES';
-              isMatch = true;
-            } else if (e1.text.toLowerCase().includes('notely') && e2.text.toLowerCase().includes('sqlite')) {
-              relType = 'USES';
-              isMatch = true;
-            } else if (e1.text.toLowerCase().includes('graphworker') && e2.text.toLowerCase().includes('sqlite')) {
-              relType = 'USES';
-              isMatch = true;
-            } else if (i < j && (e1.text.length >= 3 && e2.text.length >= 3)) {
-              isMatch = true;
-            }
-
-            if (isMatch) {
-              const ev = new Evidence({
-                sourceFile: docId || metadata.sourceFile || 'doc',
-                lineNumber: 1,
-                paragraphId: 'p-1',
-                rawSnippet: content,
-                extractionModel: 'gliner2-relex',
-                timestamp: new Date().toISOString(),
-                confidence: 0.88
-              });
-              rawEvidenceList.push(ev);
-              extractedRelations.push(new Relationship({
-                sourceEntityId: e1.id,
-                targetEntityId: e2.id,
-                relationType: relType,
-                confidence: 0.88,
-                sourceEvidence: ev,
-                sourceText: e1.text,
-                targetText: e2.text
-              }));
-            }
-          }
-        }
-      }
-
       return new ExtractionResult({
-        entities: extractedEntities,
-        relations: extractedRelations,
-        evidence: rawEvidenceList,
+        entities: [],
+        relations: [],
+        evidence: [],
         metadata: {
           durationMs: Date.now() - startTime,
           model: this.modelId,
           provider: 'onnx',
-          entitiesCount: extractedEntities.length,
-          relationsCount: extractedRelations.length,
-          status: 'mock'
+          entitiesCount: 0,
+          relationsCount: 0,
+          status: 'standby'
         }
       });
     }

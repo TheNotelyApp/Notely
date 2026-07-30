@@ -116,7 +116,7 @@ class PromptPipeline {
         personaContent = `ACTIVE PERSONA ROLE (${loadedPersona.metadata.name || personaInput}):\n${metaStr}\n\n${loadedPersona.body}`;
       }
     } else if (typeof personaInput === 'object' && personaInput !== null) {
-      const { PersonaStandard } = require('../personas/PersonaStandard');
+      const { PersonaStandard } = require('../personas');
       const normalized = PersonaStandard.normalize(personaInput);
       personaContent = `ACTIVE PERSONA ROLE (${normalized.name}):\n${PersonaStandard.formatPersonaMarkdown(normalized)}`;
     }

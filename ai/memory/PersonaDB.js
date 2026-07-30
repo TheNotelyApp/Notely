@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { createLogger } = require('../core/logger');
-const { PersonaStandard } = require('../personas/PersonaStandard');
+const { PersonaStandard } = require('../personas');
 
 const log = createLogger('PersonaDB');
 

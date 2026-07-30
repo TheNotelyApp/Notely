@@ -11,8 +11,7 @@
 
 const { randomUUID } = require('crypto');
 const { createLogger } = require('./logger');
-const { buildEvents, buildEventsFromTrace } = require('../telemetry/eventBuilder');
-const { createTraceSession } = require('../telemetry/TraceContext');
+const { buildEvents, buildEventsFromTrace, createTraceSession, recordTelemetry } = require('../telemetry');
 
 const log = createLogger('AIFlow');
 
@@ -962,28 +961,7 @@ class AIFlow {
    * @private
    */
   _logFlowTelemetry(telemetryPayload) {
-    try {
-      if (this.agent.telemetryDb && this.agent.telemetryDb.isInitialized) {
-        this.agent.telemetryDb.addTelemetry(telemetryPayload);
-      } else if (this.agent.logDb && this.agent.logDb.isInitialized) {
-        this.agent.logDb.addLog(
-          'FlowTracker',
-          `Flow execution telemetry recorded for query: "${String(telemetryPayload.query).slice(0, 60)}"`,
-          'info',
-          telemetryPayload
-        );
-      } else {
-        const TelemetryDB = require('../telemetry/TelemetryDB');
-        const workspaceRoot = this.agent.workspaceRoot || process.cwd();
-        const fallbackDb = new TelemetryDB(workspaceRoot);
-        if (fallbackDb.initialize()) {
-          fallbackDb.addTelemetry(telemetryPayload);
-          fallbackDb.close();
-        }
-      }
-    } catch (err) {
-      log.warn('Failed to log TelemetryDB record:', err.message);
-    }
+    recordTelemetry(this.agent, telemetryPayload);
   }
 }
 

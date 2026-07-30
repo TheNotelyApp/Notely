@@ -2,6 +2,8 @@
  * MarkdownChunker - Splitting markdown logically by headers, code blocks, lists, and paragraphs
  */
 
+const crypto = require('crypto');
+
 class MarkdownChunker {
   /**
    * Split note content into chunks
@@ -23,13 +25,16 @@ class MarkdownChunker {
     let chunkIndex = 0;
     let currentType = 'paragraph';
 
+    const normPath = String(notePath || '').replace(/\\/g, '/').toLowerCase();
+    const pathHash = crypto.createHash('sha256').update(normPath).digest('hex').slice(0, 12);
+
     const flushChunk = (endLine) => {
       if (currentChunkLines.length === 0) return;
       
       const chunkText = currentChunkLines.join('\n').trim();
       if (chunkText.length >= minChunkSize) {
         const basename = String(notePath).split(/[/\\]/).pop().replace(/\.md$/, '');
-        const id = `${basename}#chunk-${chunkIndex}`;
+        const id = `${basename}#chunk-${pathHash}-${chunkIndex}`;
 
         chunks.push({
           id,

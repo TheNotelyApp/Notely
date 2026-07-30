@@ -48,38 +48,12 @@ class QueryExecutor {
       personaInput = { systemInstructions: context.systemPrompt };
     }
 
-    // Multi-Tool Planning & Context Orchestration (Only run if not pre-orchestrated by AIFlow)
+    // Master orchestration is handled exclusively by AIFlow.
     let orchestratorTrace = context.orchestratorTrace || [];
     let retrievedEvidence = context.retrievedEvidence || '';
     let systemPrompt = context.systemPrompt || null;
 
     if (!systemPrompt) {
-      if (this.agent.contextOrchestrator && !context.retrievedEvidence) {
-        try {
-          const orchRes = await this.agent.contextOrchestrator.orchestrate(query, context);
-          if (orchRes.aggregatedContext) {
-            retrievedEvidence = orchRes.aggregatedContext;
-          }
-          if (orchRes.trace) {
-            orchestratorTrace = orchRes.trace;
-          }
-        } catch (orchErr) {
-          console.warn('[QueryExecutor] ContextOrchestrator execution fallback:', orchErr.message);
-          if (this.agent.workspaceBrain) {
-            try {
-              const facts = await this.agent.workspaceBrain.getWorkspaceFacts(query, context);
-              if (this.agent.reasoningBrain) {
-                const evidenceStr = this.agent.reasoningBrain.formatEvidenceContext(facts);
-                if (evidenceStr) {
-                  retrievedEvidence = evidenceStr;
-                }
-              }
-            } catch { /* ignore fallback */ }
-          }
-        }
-      }
-
-      // Assemble final prompt using PromptPipeline
       const pipeline = this.agent.promptPipeline;
       systemPrompt = pipeline.assemble({
         persona: personaInput,

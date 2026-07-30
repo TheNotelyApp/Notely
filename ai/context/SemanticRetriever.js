@@ -71,12 +71,12 @@ class SemanticRetriever {
       return this.embeddingDB.searchTextFallback(query, topK);
     }
 
-    // Deduplicate by note_path to avoid duplicate chunks from the same note
-    const seenNotes = new Set();
+    // Select top-K highest scoring chunks (deduplicated by chunk ID)
+    const seenChunkIds = new Set();
     const uniqueScored = [];
     for (const item of thresholdFiltered) {
-      if (!seenNotes.has(item.note_path)) {
-        seenNotes.add(item.note_path);
+      if (!seenChunkIds.has(item.id)) {
+        seenChunkIds.add(item.id);
         uniqueScored.push(item);
       }
       if (uniqueScored.length >= topK) break;

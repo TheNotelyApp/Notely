@@ -1,7 +1,6 @@
 const fs = require('fs');
 const { createLogger } = require('../core/logger');
-const HashManager = require('../embeddings/HashManager');
-const MarkdownChunker = require('../embeddings/MarkdownChunker');
+const { HashManager, MarkdownChunker } = require('../embeddings');
 
 const log = createLogger('IndexWorker');
 
@@ -89,11 +88,9 @@ class IndexWorker {
 
       // Generate Chunks
       const chunks = MarkdownChunker.chunk(content, job.note_path);
-      
-      // Wipe stale chunks for this note before writing new ones
-      this.db.deleteNoteData(job.note_path);
 
       if (chunks.length === 0) {
+        this.db.deleteNoteData(job.note_path);
         this.db.upsertNoteHash(job.note_path, contentHash, 0);
         this.queue.updateStatus(job.id, 'done');
         this.db.logEvent(job.note_path, 'index', 'Empty note indexed');
@@ -111,6 +108,7 @@ class IndexWorker {
         throw new Error('No active embedding provider configured');
       }
 
+      const vectorizedChunks = [];
       for (let i = 0; i < chunks.length; i++) {
         // Yield execution between steps to avoid freezing event loop
         await new Promise(resolve => setImmediate(resolve));
@@ -131,13 +129,32 @@ class IndexWorker {
         chunk.embedding = vector;
         chunk.embedding_model = this.embedderService.getActiveModelName();
 
-        this.db.upsertChunk(chunk);
+        vectorizedChunks.push(chunk);
       }
 
-      // Record successful hash
-      this.db.upsertNoteHash(job.note_path, contentHash, chunks.length);
+      // Execute DB deletion, upserts, and note hash update after vectorization completes
+      this.db.deleteNoteData(job.note_path);
+      if (this.db?.db) {
+        this.db.db.exec('BEGIN');
+        try {
+          for (const vChunk of vectorizedChunks) {
+            this.db.upsertChunk(vChunk);
+          }
+          this.db.upsertNoteHash(job.note_path, contentHash, vectorizedChunks.length);
+          this.db.db.exec('COMMIT');
+        } catch (txnErr) {
+          try { this.db.db.exec('ROLLBACK'); } catch { /* ignore */ }
+          throw txnErr;
+        }
+      } else {
+        for (const vChunk of vectorizedChunks) {
+          this.db.upsertChunk(vChunk);
+        }
+        this.db.upsertNoteHash(job.note_path, contentHash, vectorizedChunks.length);
+      }
+
       this.queue.updateStatus(job.id, 'done');
-      this.db.logEvent(job.note_path, 'index', `Successfully indexed ${chunks.length} chunks`);
+      this.db.logEvent(job.note_path, 'index', `Successfully indexed ${vectorizedChunks.length} chunks`);
       
     } catch (err) {
       log.error(`Failed to process index job for: ${job.note_path}`, err);

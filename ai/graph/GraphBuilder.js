@@ -34,7 +34,7 @@ class GraphBuilder {
         this.graphDb.initialize();
       }
 
-      const LogDB = require('../logs/LogDB');
+      const { LogDB } = require('../logs');
       const logDb = new LogDB(this.agent.workspaceRoot);
       logDb.initialize();
       logDb.addLog('graph', 'Starting complete Knowledge Graph rebuild...', 'info');

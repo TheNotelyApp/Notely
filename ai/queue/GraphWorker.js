@@ -1,8 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { createLogger } = require('../core/logger');
-const GraphMaintenance = require('../graph/GraphMaintenance');
-const EntityResolver = require('../graph/EntityResolver');
+const { GraphMaintenance, EntityResolver } = require('../graph');
 
 const log = createLogger('GraphWorker');
 

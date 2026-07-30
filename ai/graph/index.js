@@ -11,6 +11,7 @@ const EntityResolver = require('./EntityResolver');
 const EvidenceStore = require('./EvidenceStore');
 const EvidenceFusionEngine = require('./EvidenceFusionEngine');
 const KnowledgeSourceRegistry = require('./KnowledgeSourceRegistry');
+const GraphMaintenance = require('./GraphMaintenance');
 const { SemanticExtractionEngine } = require('./semantic');
 
 module.exports = {
@@ -22,6 +23,7 @@ module.exports = {
   EvidenceStore,
   EvidenceFusionEngine,
   KnowledgeSourceRegistry,
+  GraphMaintenance,
   SemanticExtractionEngine,
 
   createGraphDB: (workspaceRoot) => new GraphDB(workspaceRoot),
