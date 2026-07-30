@@ -8,6 +8,7 @@ const EmbeddingService = require('./EmbeddingService');
 const ONNXEmbedder = require('./ONNXEmbedder');
 const HashManager = require('./HashManager');
 const MarkdownChunker = require('./MarkdownChunker');
+const ModelDownloader = require('./ModelDownloader');
 
 module.exports = {
   EmbeddingDB,
@@ -15,6 +16,7 @@ module.exports = {
   ONNXEmbedder,
   HashManager,
   MarkdownChunker,
+  ModelDownloader,
 
   createEmbeddingDB: (workspaceRoot) => new EmbeddingDB(workspaceRoot),
   createEmbeddingService: (db, provider) => new EmbeddingService(db, provider)

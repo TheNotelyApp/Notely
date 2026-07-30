@@ -5,7 +5,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createLogger } = require('../../core/logger');
+const { createLogger } = require('../../core');
+const { getModelsConfig } = require('../../config');
 const GLiNER2RelexAdapter = require('./adapters/GLiNER2RelexAdapter');
 const ExtractionValidator = require('./validators/ExtractionValidator');
 const { ExtractionResult } = require('./schemas/ExtractionResult');
@@ -24,14 +25,10 @@ class SemanticExtractionEngine {
   _loadConfig() {
     let registryConfig = {};
     try {
-      const configPath = path.join(__dirname, '..', '..', 'config', 'ai-models.json');
-      if (fs.existsSync(configPath)) {
-        const raw = fs.readFileSync(configPath, 'utf8');
-        const parsed = JSON.parse(raw);
-        registryConfig = parsed?.semanticExtraction || {};
-      }
+      const parsed = getModelsConfig();
+      registryConfig = parsed?.semanticExtraction || {};
     } catch (err) {
-      log.warn('Could not read ai-models.json, using defaults:', err.message);
+      log.warn('Could not read ai-models configuration, using defaults:', err.message);
     }
 
     let userConfidence = registryConfig.confidenceThreshold || 0.60;

@@ -3,7 +3,7 @@
  */
 
 const { getTools } = require('../tools');
-const { normalizeTokensDetail } = require('../utils/aiUtils');
+const { normalizeTokensDetail } = require('../utils');
 
 class QueryExecutor {
   constructor(agent) {

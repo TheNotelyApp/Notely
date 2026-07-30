@@ -11,13 +11,12 @@
 
 const { randomUUID } = require('crypto');
 const { createLogger } = require('./logger');
-const { buildEvents, buildEventsFromTrace, createTraceSession, recordTelemetry } = require('../telemetry');
+const { buildEvents, buildEventsFromTrace, createTraceSession, recordTelemetry, calculatePipelineHealth } = require('../telemetry');
 const compaction = require('../compaction');
 const { createPromptPipeline } = require('../prompts');
 const { PromptTester } = require('../testing');
-const { TaskSummaryFormatter } = require('../formatter');
+const { checkTaskSummaryOptimization } = require('../formatter');
 const { verifyCitations, formatLineNumberLinks } = require('../grounding');
-const { QueryTools } = require('../tools');
 
 const log = createLogger('AIFlow');
 
@@ -596,60 +595,22 @@ class AIFlow {
   }
 
   async _checkTaskSummaryOptimization(userQuery, orchRes, flowId, onChunk = null) {
-    const intent = orchRes?.intent || orchRes?.plannerDecision?.intent;
-    const isTaskIntent = ['workspace_task_summary', 'tasks:extract', 'checklist_summary'].includes(intent);
-    const isTargetedQuestion = /\b(do we have|is there|are there|which|who|where|when|why|how|about|on|for|related|first|next|priority|specific)\b/i.test(String(userQuery).toLowerCase());
-    const isTaskSummaryIntent = isTaskIntent && !isTargetedQuestion;
-
-    if (!isTaskSummaryIntent) return null;
-
-    let tasksData = orchRes?.rawTaskResults;
-    if ((!tasksData || !Array.isArray(tasksData) || tasksData.length === 0) && this.agent) {
-      try {
-        const tasksJson = await QueryTools.runTool(this.agent, 'get_tasks', { status: 'open' });
-        if (typeof tasksJson === 'string' && tasksJson.startsWith('[')) {
-          tasksData = JSON.parse(tasksJson);
-        }
-      } catch { /* ignore */ }
+    const res = await checkTaskSummaryOptimization(this.agent, userQuery, orchRes, flowId, onChunk);
+    if (res) {
+      log.info(`[Flow:${flowId}] Deterministic response optimization applied`);
     }
-
-    if (Array.isArray(tasksData) && tasksData.length > 0) {
-      const formattedResponse = TaskSummaryFormatter(tasksData);
-      if (onChunk) {
-        onChunk({ type: 'replace', content: formattedResponse });
-      }
-      log.info(`[Flow:${flowId}] Deterministic response optimization applied for intent: ${intent}`);
-      return {
-        type: 'query',
-        result: formattedResponse,
-        tokensUsed: 0,
-        tokensDetail: { inputTokens: 0, outputTokens: 0, toolTokens: 0, totalTokens: 0 },
-        trace: (orchRes?.trace || []).map(t => ({
-          ...t,
-          toolType: 'planned-execution',
-          callerType: 'executor',
-          selectedBy: 'planner',
-          intent
-        })),
-        strategy: 'TaskSummaryFormatter',
-        llmInvoked: false
-      };
-    }
-
-    return null;
+    return res;
   }
 
   async _stage5_PersistenceAndTelemetry({ userQuery, result, conversationId, flowId, s2, s3, groundingInfo, stages, traceSession, startTime, startIso, personaId }) {
     const s5Start = Date.now();
     const _s5SpanId = traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
 
-    const retrievalScore = Math.round((s2.confidenceScore || 0.9) * 100);
-    const groundingScore = groundingInfo.brokenCitations === 0 ? 100 : Math.max(50, 100 - (groundingInfo.brokenCitations * 20));
-    const promptEffScore = s3.systemPrompt ? Math.min(100, Math.round(Math.max(50, (1 - (s3.systemPrompt.length / 20000)) * 100))) : 90;
-    const telemetryScore = 100;
-    const overallHealth = Math.round((retrievalScore * 0.3) + (groundingScore * 0.3) + (promptEffScore * 0.2) + (telemetryScore * 0.2));
-
-    const pipelineHealth = { retrieval: retrievalScore, grounding: groundingScore, telemetry: telemetryScore, promptEfficiency: promptEffScore, overall: overallHealth };
+    const pipelineHealth = calculatePipelineHealth({
+      confidenceScore: s2.confidenceScore,
+      groundingInfo,
+      systemPrompt: s3.systemPrompt
+    });
 
     try {
       if (this.agent && this.agent.conversationStore) {

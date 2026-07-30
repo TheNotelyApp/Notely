@@ -32,6 +32,16 @@ function recordTelemetry(agent, telemetryPayload) {
   }
 }
 
+function calculatePipelineHealth({ confidenceScore = 0.9, groundingInfo = {}, systemPrompt = '' } = {}) {
+  const retrievalScore = Math.round((confidenceScore || 0.9) * 100);
+  const groundingScore = (groundingInfo?.brokenCitations || 0) === 0 ? 100 : Math.max(50, 100 - ((groundingInfo?.brokenCitations || 0) * 20));
+  const promptEffScore = systemPrompt ? Math.min(100, Math.round(Math.max(50, (1 - (systemPrompt.length / 20000)) * 100))) : 90;
+  const telemetryScore = 100;
+  const overallHealth = Math.round((retrievalScore * 0.3) + (groundingScore * 0.3) + (promptEffScore * 0.2) + (telemetryScore * 0.2));
+
+  return { retrieval: retrievalScore, grounding: groundingScore, telemetry: telemetryScore, promptEfficiency: promptEffScore, overall: overallHealth };
+}
+
 module.exports = {
   TraceSession,
   createTraceSession,
@@ -41,6 +51,7 @@ module.exports = {
   buildEvents,
   buildEventsFromTrace,
   recordTelemetry,
+  calculatePipelineHealth,
 
   createTelemetryDB: (workspaceRoot) => new TelemetryDB(workspaceRoot)
 };

@@ -2,7 +2,7 @@
  * AIHealth - Diagnostics and health check metrics aggregator for the AI subsystem
  */
 
-const { aiService } = require('../core/AIService');
+const { aiService } = require('../core');
 
 
 function getSubsystemHealth() {

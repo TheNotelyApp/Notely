@@ -1,9 +1,11 @@
 const { createLogger, setLogLevel, LEVELS } = require('./logger');
+const { aiService } = require('./AIService');
 
 module.exports = {
   createLogger,
   setLogLevel,
   LEVELS,
+  aiService,
   get Agent() { return require('./Agent'); },
   get AIFlow() { return require('./AIFlow'); },
   get AIConfig() { return require('./AIConfig'); },

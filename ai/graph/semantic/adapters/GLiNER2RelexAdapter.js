@@ -8,7 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const ModelAdapter = require('../ModelAdapter');
 const { Entity, Relationship, Evidence, ExtractionResult } = require('../schemas/ExtractionResult');
-const { createLogger } = require('../../../core/logger');
+const { createLogger } = require('../../../core');
+const { getModelsConfig } = require('../../../config');
 
 const log = createLogger('GLiNER2RelexAdapter');
 
@@ -29,14 +30,11 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     this.tokenizerConfig = null;
     this.modelConfig = null;
 
-    // Dynamically load configuration registry (ai-models.json)
+    // Dynamically load configuration registry via config facade
     let registryConfig = {};
     try {
-      const registryPath = path.join(__dirname, '../../../config/ai-models.json');
-      if (fs.existsSync(registryPath)) {
-        const raw = fs.readFileSync(registryPath, 'utf8');
-        registryConfig = JSON.parse(raw).semanticExtraction || {};
-      }
+      const modelsConfig = getModelsConfig();
+      registryConfig = modelsConfig.semanticExtraction || {};
     } catch { /* ignore config read error */ }
 
     this.defaultEntityTypes = config.entityTypes || registryConfig.defaultEntityTypes || [];

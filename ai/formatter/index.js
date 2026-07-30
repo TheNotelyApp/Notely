@@ -3,15 +3,60 @@
  * Single entry point for response formatting, markdown clean-up, evidence context formatting, and citation links.
  */
 
-const { formatResponse } = require('../utils/aiUtils');
+const { formatResponse } = require('../utils');
 const { GroundingEngine } = require('../grounding');
 
 const { TaskSummaryFormatter, formatFileUriLink } = require('./TaskSummaryFormatter');
+
+async function checkTaskSummaryOptimization(agent, userQuery, orchRes, flowId, onChunk = null) {
+  const intent = orchRes?.intent || orchRes?.plannerDecision?.intent;
+  const isTaskIntent = ['workspace_task_summary', 'tasks:extract', 'checklist_summary'].includes(intent);
+  const isTargetedQuestion = /\b(do we have|is there|are there|which|who|where|when|why|how|about|on|for|related|first|next|priority|specific)\b/i.test(String(userQuery).toLowerCase());
+  const isTaskSummaryIntent = isTaskIntent && !isTargetedQuestion;
+
+  if (!isTaskSummaryIntent) return null;
+
+  let tasksData = orchRes?.rawTaskResults;
+  if ((!tasksData || !Array.isArray(tasksData) || tasksData.length === 0) && agent) {
+    try {
+      const { QueryTools } = require('../tools');
+      const tasksJson = await QueryTools.runTool(agent, 'get_tasks', { status: 'open' });
+      if (typeof tasksJson === 'string' && tasksJson.startsWith('[')) {
+        tasksData = JSON.parse(tasksJson);
+      }
+    } catch { /* ignore */ }
+  }
+
+  if (Array.isArray(tasksData) && tasksData.length > 0) {
+    const formattedResponse = TaskSummaryFormatter(tasksData);
+    if (onChunk) {
+      onChunk({ type: 'replace', content: formattedResponse });
+    }
+    return {
+      type: 'query',
+      result: formattedResponse,
+      tokensUsed: 0,
+      tokensDetail: { inputTokens: 0, outputTokens: 0, toolTokens: 0, totalTokens: 0 },
+      trace: (orchRes?.trace || []).map(t => ({
+        ...t,
+        toolType: 'planned-execution',
+        callerType: 'executor',
+        selectedBy: 'planner',
+        intent
+      })),
+      strategy: 'TaskSummaryFormatter',
+      llmInvoked: false
+    };
+  }
+
+  return null;
+}
 
 module.exports = {
   formatResponse,
   TaskSummaryFormatter,
   formatFileUriLink,
+  checkTaskSummaryOptimization,
   formatLineNumberLinks: (text, workspaceFiles) => GroundingEngine.formatLineNumberLinks(text, workspaceFiles),
   verifyCitations: (text) => GroundingEngine.verifyCitations(text),
   

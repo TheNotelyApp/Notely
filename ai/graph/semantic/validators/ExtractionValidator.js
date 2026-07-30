@@ -2,7 +2,7 @@
  * ExtractionValidator - Graph Quality & Extraction Validation Engine before persistence
  */
 
-const { createLogger } = require('../../../core/logger');
+const { createLogger } = require('../../../core');
 
 const log = createLogger('ExtractionValidator');
 

@@ -16,6 +16,7 @@ module.exports = {
   extractSearchKeywords: SearchQueryUtils.extractSearchKeywords,
   normalizeSearchQuery: SearchQueryUtils.normalizeSearchQuery,
   formatResponse: aiUtils.formatResponse,
-  parseCommand: aiUtils.parseCommand
+  parseCommand: aiUtils.parseCommand,
+  normalizeTokensDetail: aiUtils.normalizeTokensDetail
 };
 
