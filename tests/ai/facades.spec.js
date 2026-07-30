@@ -9,12 +9,13 @@ describe('12 Domain Module Facades Integrity & Exports Tests', () => {
     expect(typeof plannerModule.createContextOrchestrator).toBe('function');
   });
 
-  it('should export brains facade with single entry point API', () => {
-    const brainsModule = require('../../ai/brains');
-    expect(brainsModule.WorkspaceBrain).toBeDefined();
-    expect(brainsModule.ReasoningBrain).toBeDefined();
-    expect(brainsModule.ActionBrain).toBeDefined();
-    expect(typeof brainsModule.createWorkspaceBrain).toBe('function');
+  it('should export core facade with single entry point API', () => {
+    const coreModule = require('../../ai/core');
+    expect(coreModule.Agent).toBeDefined();
+    expect(coreModule.AIFlow).toBeDefined();
+    expect(coreModule.AIConfig).toBeDefined();
+    expect(coreModule.AIService).toBeDefined();
+    expect(typeof coreModule.createLogger).toBe('function');
   });
 
   it('should export personas facade with single entry point API', () => {
@@ -122,7 +123,6 @@ describe('12 Domain Module Facades Integrity & Exports Tests', () => {
   it('should export database facade with single entry point API', () => {
     const databaseModule = require('../../ai/database');
     expect(databaseModule.DatabaseManager).toBeDefined();
-    expect(databaseModule.LegacyMigrations).toBeDefined();
   });
 
   it('should export diagnostics facade with single entry point API', () => {

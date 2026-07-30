@@ -6,7 +6,7 @@
  */
 
 const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('ToolRegistry');
 

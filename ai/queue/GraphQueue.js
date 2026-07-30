@@ -1,5 +1,5 @@
 const path = require('path');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('GraphQueue');
 

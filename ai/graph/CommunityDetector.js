@@ -2,7 +2,7 @@
  * CommunityDetector - Pure JS Label Propagation algorithm for Graph Community Detection
  */
 
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('CommunityDetector');
 

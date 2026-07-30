@@ -3,7 +3,7 @@
  */
 
 const fs = require('fs');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('GraphValidationEngine');
 

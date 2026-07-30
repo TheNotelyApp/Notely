@@ -8,7 +8,7 @@
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('TelemetryDB');
 

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 const { HashManager, MarkdownChunker } = require('../embeddings');
 
 const log = createLogger('IndexWorker');

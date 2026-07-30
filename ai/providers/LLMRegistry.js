@@ -8,7 +8,7 @@
  */
 
 const { PROVIDER_REGISTRY } = require('./ProviderRegistry');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 const log = createLogger('LLMRegistry');
 
 class LLMRegistry {

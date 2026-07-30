@@ -6,7 +6,7 @@
  * without hardcoding query string keywords or tool function signatures.
  */
 
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 const log = createLogger('IntentAnalyzer');
 
 const { getRegisteredTools } = require('./registryUtils');

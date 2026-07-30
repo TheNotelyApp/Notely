@@ -4,7 +4,7 @@
 
 const PromptLoader = require('./PromptLoader');
 const TemplateEngine = require('./TemplateEngine');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const EVIDENCE_BUDGET_CHARS = 4000;
 const log = createLogger('PromptPipeline');

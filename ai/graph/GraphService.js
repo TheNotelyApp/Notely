@@ -3,7 +3,7 @@
  */
 
 const path = require('path');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 const MarkdownASTParser = require('./MarkdownASTParser');
 const EvidenceStore = require('./EvidenceStore');
 const EntityResolver = require('./EntityResolver');

@@ -2,7 +2,7 @@
  * EvidenceStore - Manages raw evidence records for provenance tracking
  */
 
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('EvidenceStore');
 

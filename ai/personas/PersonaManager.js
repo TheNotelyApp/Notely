@@ -3,9 +3,9 @@
  */
 
 const path = require('path');
-const PromptLoader = require('../prompts/PromptLoader');
+const { PromptLoader } = require('../prompts');
 const { PersonaStandard } = require('./PersonaStandard');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('PersonaManager');
 

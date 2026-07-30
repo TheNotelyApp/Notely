@@ -8,8 +8,8 @@
 
 const IntentAnalyzer = require('./IntentAnalyzer');
 const CapabilityResolver = require('./CapabilityResolver');
-const { createLogger } = require('../core/logger');
-const { normalizeSearchQuery } = require('../utils/SearchQueryUtils');
+const { createLogger } = require('../core');
+const { normalizeSearchQuery } = require('../utils');
 const log = createLogger('Planner');
 
 class Planner {

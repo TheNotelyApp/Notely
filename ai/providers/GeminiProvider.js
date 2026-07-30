@@ -3,7 +3,7 @@
  */
 
 const LLMProvider = require('./ProviderBase');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 
 const log = createLogger('GeminiProvider');
 

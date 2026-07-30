@@ -11,7 +11,7 @@
  */
 
 const Planner = require('./Planner');
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 const log = createLogger('ContextOrchestrator');
 
 class ContextOrchestrator {
@@ -79,7 +79,7 @@ class ContextOrchestrator {
     let rawTaskResults = null;
 
     // Active workspace tools runner
-    const SemanticTools = require('../tools/SemanticTools');
+    const SemanticTools = require('../tools');
 
     // 2. Multi-Tool Parallel & Chained Execution Loop
     while (iterations < maxIterations && confidence < targetConfidence) {
@@ -265,7 +265,7 @@ class ContextOrchestrator {
       // Keyword search fallback for general queries when initial evidence is empty
       if (!isTaskQuery && collectedEvidence.length === 0 && iterations === 1) {
         try {
-          const { normalizeSearchQuery } = require('../utils/SearchQueryUtils');
+          const { normalizeSearchQuery } = require('../utils');
           const cleanKw = normalizeSearchQuery(query);
           if (cleanKw && cleanKw !== query.trim().toLowerCase()) {
             const runner = SemanticTools.getToolRunner('search_notes', this.agent) || SemanticTools.getToolRunner('search.notes', this.agent);

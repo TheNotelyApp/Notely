@@ -2,8 +2,7 @@
  * PromptTester - Automated linter, validator, and regression test runner for Notely AI prompts.
  */
 
-const PromptLoader = require('../prompts/PromptLoader');
-const PromptPipeline = require('../prompts/PromptPipeline');
+const { PromptLoader, PromptPipeline } = require('../prompts');
 
 class PromptTester {
   /**

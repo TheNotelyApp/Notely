@@ -171,7 +171,7 @@ const runTool = async (agent, name, args) => {
     const queryStr = args.query || '';
     try {
       const fs = require('fs');
-      const { extractSearchKeywords } = require('../utils/SearchQueryUtils');
+      const { extractSearchKeywords } = require('../utils');
       const keywords = extractSearchKeywords(queryStr);
       const cleanQuery = queryStr.trim().toLowerCase();
       const files = agent.documentService ? agent.documentService._collectMarkdownFiles(agent.workspaceRoot) : [];

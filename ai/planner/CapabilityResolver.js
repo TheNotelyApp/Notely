@@ -6,7 +6,7 @@
  * into semantic capability contracts without maintaining static internal hardcoded tool maps.
  */
 
-const { createLogger } = require('../core/logger');
+const { createLogger } = require('../core');
 const log = createLogger('CapabilityResolver');
 
 const { getRegisteredTools } = require('./registryUtils');
