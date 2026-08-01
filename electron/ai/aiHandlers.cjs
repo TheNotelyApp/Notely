@@ -853,7 +853,7 @@ async function handleGetGraph(_event, payload) {
     const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     const prefs = config.loadPreferences();
-    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60);
+    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.35);
 
     const result = aiService.agent.graphDb.getAll(minConfidence);
     return new AIQueryResponse(true, result);
@@ -882,7 +882,7 @@ async function handleGetGraphStatus(_event, payload) {
     const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     const prefs = config.loadPreferences();
-    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60);
+    const minConfidence = payload?.confidence ?? (typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.35);
 
     const result = aiService.agent.graphDb.getStatus(minConfidence);
     const workerManager = require('./workerManager.cjs');

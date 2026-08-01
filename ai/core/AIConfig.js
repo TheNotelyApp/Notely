@@ -169,7 +169,7 @@ class AIConfig {
           enableEmbeddings: true,
           enableRelationshipDiscovery: true,
           graphProvider: 'gliner2-relex',
-          graphConfidence: 0.60,
+          graphConfidence: 0.35,
           providerModels: {},
         };
       }

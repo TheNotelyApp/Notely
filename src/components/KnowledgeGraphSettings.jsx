@@ -12,7 +12,7 @@ import {
 
 export default function KnowledgeGraphSettings() {
   const [loading, setLoading] = useState(false);
-  const [preferences, setPreferences] = useState({ graphProvider: 'gliner2-relex', graphConfidence: 0.60 });
+  const [preferences, setPreferences] = useState({ graphProvider: 'gliner2-relex', graphConfidence: 0.35 });
   const [modelStatus, setModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
 
   useEffect(() => {
@@ -155,17 +155,17 @@ export default function KnowledgeGraphSettings() {
         <div className="preference-group compact" style={{ marginBottom: "12px" }}>
           <label htmlFor="graph-confidence-slider" style={{ fontSize: "11px", display: "flex", justifyContent: "space-between" }}>
             <span>Extraction Confidence Threshold</span>
-            <strong>{Math.round((preferences.graphConfidence || 0.60) * 100)}%</strong>
+            <strong>{Math.round((preferences.graphConfidence || 0.35) * 100)}%</strong>
           </label>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "4px" }}>
             <Sliders size={14} style={{ color: 'var(--text-muted)' }} />
             <input
               id="graph-confidence-slider"
               type="range"
-              min="0.30"
+              min="0.10"
               max="0.95"
               step="0.05"
-              value={preferences.graphConfidence || 0.60}
+              value={preferences.graphConfidence || 0.35}
               onChange={(e) => setPreferences({ ...preferences, graphConfidence: parseFloat(e.target.value) })}
               style={{ flex: 1 }}
             />

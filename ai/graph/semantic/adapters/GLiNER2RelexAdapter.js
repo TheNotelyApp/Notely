@@ -68,17 +68,6 @@ class GLiNER2RelexAdapter extends ModelAdapter {
 
     try {
       log.info(`Loading 5-Graph ONNX Runtime sessions for GLiNER2-Relex (${this.modelId})...`);
-      this.isWebRuntime = false;
-      try {
-        this.ort = require('onnxruntime-node');
-      } catch {
-        try {
-          this.ort = require('onnxruntime-web');
-          this.isWebRuntime = true;
-        } catch {
-          this.ort = null;
-        }
-      }
 
       const gliner2ConfigPath = path.join(modelDir, 'gliner2_config.json');
       const tokenizerPath = path.join(modelDir, 'tokenizer.json');
@@ -108,7 +97,17 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         classifier: 'classifier.onnx'
       };
 
-      if (this.ort) {
+      // 1. Attempt node runtime first if present
+      let nodeOrt = null;
+      try {
+        nodeOrt = require('onnxruntime-node');
+      } catch {
+        nodeOrt = null;
+      }
+
+      if (nodeOrt) {
+        this.ort = nodeOrt;
+        this.isWebRuntime = false;
         this.encoderSession = await this._loadSession(modelDir, files.encoder).catch(() => null);
         this.spanRepSession = await this._loadSession(modelDir, files.span_rep).catch(() => null);
         this.countEmbedSession = await this._loadSession(modelDir, files.count_embed).catch(() => null);
@@ -116,9 +115,29 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         this.classifierSession = await this._loadSession(modelDir, files.classifier).catch(() => null);
       }
 
+      // 2. Fall back to onnxruntime-web (WASM) if node runtime failed session initialization
+      if (!this.encoderSession || !this.classifierSession) {
+        try {
+          const webOrt = require('onnxruntime-web');
+          if (webOrt) {
+            log.info('Node ONNX runtime unavailable or DLL init failed; using WASM runtime (onnxruntime-web)...');
+            this.ort = webOrt;
+            this.isWebRuntime = true;
+            this.encoderSession = await this._loadSession(modelDir, files.encoder).catch(() => null);
+            this.spanRepSession = await this._loadSession(modelDir, files.span_rep).catch(() => null);
+            this.countEmbedSession = await this._loadSession(modelDir, files.count_embed).catch(() => null);
+            this.countPredSession = await this._loadSession(modelDir, files.count_pred).catch(() => null);
+            this.classifierSession = await this._loadSession(modelDir, files.classifier).catch(() => null);
+          }
+        } catch (webErr) {
+          log.warn('Failed to load onnxruntime-web fallback:', webErr.message);
+        }
+      }
+
       if (this.encoderSession && this.classifierSession) {
         this.isLoaded = true;
-        log.info(`GLiNER2RelexAdapter 5-Graph ONNX model loaded successfully in ${Date.now() - startTime}ms.`);
+        this.isMockMode = false;
+        log.info(`GLiNER2RelexAdapter 5-Graph ONNX model loaded successfully (${this.isWebRuntime ? 'WASM' : 'Node'}) in ${Date.now() - startTime}ms.`);
       } else {
         this._setupTestMockEnvironment();
         log.warn(`GLiNER2RelexAdapter: sessions unavailable, running in mock mode (no semantic extraction).`);
@@ -180,7 +199,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         const opts = { executionProviders: ['cpu'] };
         const dataPath = `${filePath}.data`;
         if (fs.existsSync(dataPath)) {
-          opts.externalData = [{ path: dataPath, fileName: `${fileName}.data` }];
+          opts.externalData = [{ path: dataPath }];
         }
         return await this.ort.InferenceSession.create(filePath, opts);
       }
@@ -248,30 +267,32 @@ class GLiNER2RelexAdapter extends ModelAdapter {
 
   segmentSentences(text) {
     if (!text || typeof text !== 'string') return [];
-    if (this.segmenter) {
-      const segments = Array.from(this.segmenter.segment(text));
-      return segments.map(s => ({
-        text: s.segment,
-        index: s.index,
-        length: s.segment.length
-      })).filter(s => s.text.trim().length > 3);
-    }
+    const lines = text.split(/\r?\n/);
     const sentences = [];
-    const re = /(?<=[.!?])\s+/g;
-    let lastIndex = 0;
-    let match;
-    while ((match = re.exec(text)) !== null) {
-      const sentText = text.slice(lastIndex, match.index);
-      if (sentText.trim().length > 3) {
-        sentences.push({ text: sentText, index: lastIndex, length: sentText.length });
+    let globalOffset = 0;
+
+    for (const line of lines) {
+      if (line.trim().length > 3) {
+        if (this.segmenter) {
+          const segs = Array.from(this.segmenter.segment(line));
+          for (const s of segs) {
+            if (s.segment.trim().length > 3) {
+              sentences.push({
+                text: s.segment,
+                index: globalOffset + s.index,
+                length: s.segment.length
+              });
+            }
+          }
+        } else {
+          sentences.push({
+            text: line,
+            index: globalOffset,
+            length: line.length
+          });
+        }
       }
-      lastIndex = match.index + match[0].length;
-    }
-    if (lastIndex < text.length) {
-      const tail = text.slice(lastIndex);
-      if (tail.trim().length > 3) {
-        sentences.push({ text: tail, index: lastIndex, length: tail.length });
-      }
+      globalOffset += line.length + 1;
     }
     return sentences;
   }
@@ -438,7 +459,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         }
       }
     } catch { /* ignore */ }
-    return 0.60;
+    return 0.35;
   }
 
   async extract(document, options = {}) {

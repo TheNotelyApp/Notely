@@ -339,7 +339,7 @@ class GraphService {
       const semanticEngine = this.getSemanticEngine();
       if (semanticEngine) {
         const prefs = this.agent?.config ? this.agent.config.loadPreferences() : {};
-        const confidenceThreshold = typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.60;
+        const confidenceThreshold = typeof prefs.graphConfidence === 'number' ? prefs.graphConfidence : 0.35;
         const cleansedContent = this.astParser.cleanse(content);
 
         const extractionResult = await semanticEngine.extract({

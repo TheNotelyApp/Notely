@@ -7,9 +7,10 @@
     "path": "models/gliner2-relex",
     "confidenceThreshold": 0.60,
     "defaultEntityTypes": [
-      "Database", "Framework", "Software Component", "Microcontroller",
-      "Device", "Module", "Integration", "Broker", "Architecture",
-      "Model", "Service", "Person", "Application", "Concept"
+      "Person", "Location", "Organization", "Company", "Date", "Time",
+      "Project", "Technology", "Database", "Framework", "Software Component",
+      "Microcontroller", "Device", "Module", "Integration", "Broker",
+      "Architecture", "Model", "Service", "Application", "Concept"
     ],
     "defaultRelationTypes": [
       "USES", "STORES", "GENERATES", "CREATES", "COMMUNICATES_WITH",
