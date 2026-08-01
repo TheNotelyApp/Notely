@@ -4,6 +4,8 @@
 
 const { utilityProcess, BrowserWindow } = require('electron');
 const path = require('path');
+const { createLogger } = require('../../ai/core/logger');
+const log = createLogger('Worker:Manager');
 
 let childProcess = null;
 let isPaused = false;
@@ -29,12 +31,12 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
   isWorking = false;
 
   const scriptPath = path.join(__dirname, 'workerProcess.cjs');
-  console.log('[Worker Manager] Spawning utilityProcess at:', scriptPath);
+  log.debug('Spawning utilityProcess: ' + scriptPath);
 
   childProcess = utilityProcess.fork(scriptPath);
 
   childProcess.on('spawn', () => {
-    console.log('[Worker Manager] Utility process spawned successfully.');
+    log.debug('Utility process spawned.');
     childProcess.postMessage({
       type: 'start',
       payload: { workspaceRoot, appDataDir, hfToken }
@@ -44,7 +46,7 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
   childProcess.on('message', (e) => {
     const { type, error, working, payload } = e || {};
     if (type === 'error') {
-      console.error('[Worker Manager] Child worker reported error:', error);
+      log.error('Child worker error', { message: error });
       isWorking = false;
     } else if (type === 'working') {
       isWorking = !!working;
@@ -70,7 +72,7 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
           }
         }
       } catch (err) {
-        console.error('[Worker Manager] Failed to broadcast graphProgress to renderer:', err.message);
+        log.error('Failed to broadcast graphProgress to renderer', { message: err.message });
       }
     } else if (type === 'graphComplete') {
       graphProgressState = {
@@ -81,8 +83,9 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
     }
   });
 
+
   childProcess.on('exit', (code) => {
-    console.log(`[Worker Manager] Utility process exited with code: ${code}`);
+    log.debug('Utility process exited with code: ' + code);
     childProcess = null;
     isWorking = false;
   });

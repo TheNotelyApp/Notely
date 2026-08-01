@@ -147,7 +147,7 @@ class SemanticExtractionEngine {
     });
 
     this.emitTelemetry(finalResult.metadata);
-    log.info(`SemanticExtractionEngine finished for '${docId}': ${finalResult.entities.length} entities, ${finalResult.relations.length} relations in ${durationMs}ms`);
+    log.debug(`SemanticExtractionEngine finished for '${docId}': ${finalResult.entities.length} entities, ${finalResult.relations.length} relations in ${durationMs}ms`);
 
     return finalResult;
   }
@@ -161,7 +161,7 @@ class SemanticExtractionEngine {
     if (this.telemetryEvents.length > 100) {
       this.telemetryEvents.shift();
     }
-    log.info('[Telemetry]', JSON.stringify(telemetryObj));
+    log.debug('[Telemetry]', JSON.stringify(telemetryObj));
   }
 
   getRecentTelemetry() {

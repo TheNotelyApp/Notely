@@ -422,7 +422,8 @@ class GraphService {
         }
       }
 
-      log.info(`Successfully processed note graph for: ${filePath}`);
+      log.debug(`Graph processed: ${path.basename(filePath)}`);
+
     } catch (err) {
       log.error(`Failed to process note graph for ${filePath}:`, err);
       throw err;

@@ -121,11 +121,11 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         log.info(`GLiNER2RelexAdapter 5-Graph ONNX model loaded successfully in ${Date.now() - startTime}ms.`);
       } else {
         this._setupTestMockEnvironment();
-        log.info(`GLiNER2RelexAdapter initialized in standby/mock mode.`);
+        log.warn(`GLiNER2RelexAdapter: sessions unavailable, running in mock mode (no semantic extraction).`);
       }
-    } catch {
+    } catch (loadErr) {
       this._setupTestMockEnvironment();
-      log.info(`GLiNER2RelexAdapter initialized in standby mode after load error.`);
+      log.warn('GLiNER2RelexAdapter: load error, running in mock mode (no semantic extraction).', { message: loadErr?.message });
     }
   }
 

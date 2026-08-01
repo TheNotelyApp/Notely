@@ -4,6 +4,8 @@
 
 const path = require('path');
 const fs = require('fs');
+const { createLogger } = require('../../ai/core/logger');
+const log = createLogger('Worker:Graph');
 
 function scanMarkdownFiles(dir) {
   let results = [];
@@ -274,7 +276,7 @@ if (process.parentPort) {
         process.exit(0);
       }
     } catch (err) {
-      console.error('[Worker Process] Error in child worker message handler:', err);
+      log.error('Worker message handler error', { message: err.message, stack: err.stack });
       process.parentPort.postMessage({ type: 'error', error: err.message });
     }
   });

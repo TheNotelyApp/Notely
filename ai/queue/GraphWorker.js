@@ -71,7 +71,7 @@ class GraphWorker {
     }
 
     this.isWorking = true;
-    log.info(`Processing graph job for: ${job.note_path}`);
+    log.debug(`Processing graph job: ${path.basename(job.note_path)}`);
     this.notifyProgress(job.note_path);
 
     try {
@@ -93,7 +93,7 @@ class GraphWorker {
       }
 
       this.queue.updateStatus(job.id, 'done');
-      log.info(`Successfully processed graph job for: ${job.note_path}`);
+      log.debug(`Graph job done: ${path.basename(job.note_path)}`);
     } catch (err) {
       log.error(`Failed graph job for ${job.note_path}:`, err);
       const isRetryable = job.retries < 2;
