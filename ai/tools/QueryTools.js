@@ -155,6 +155,24 @@ const getOfficialTools = (agent) => {
 };
 
 const runTool = async (agent, name, args) => {
+  try {
+    const { applicationToolRegistry } = require('../../electron/tools/ApplicationToolRegistry.cjs');
+    if (applicationToolRegistry && name !== 'create_note' && applicationToolRegistry.resolveToolName(name)) {
+      const res = await applicationToolRegistry.executeTool(name, args, {
+        workspaceRoot: agent?.workspaceRoot || null,
+        caller: 'query_tools'
+      });
+      if (res && res.success && res.data !== null && res.data !== undefined) {
+        if (res.data.content && typeof res.data.content === 'string') {
+          return res.data.content;
+        }
+        return typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2);
+      }
+    }
+  } catch {
+    // Fall back to legacy handlers below
+  }
+
   if (name === 'read_note') {
     const filePath = args.file_path || args.filePath;
     try {

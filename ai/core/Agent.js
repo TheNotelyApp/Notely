@@ -9,7 +9,6 @@ const { ContextManager } = require('../context');
 const { InteractionLog: MemoryManager } = require('../memory');
 const { GraphDB, GraphService, GraphBuilder } = require('../graph');
 
-const { WorkspaceBrain, ReasoningBrain, ActionBrain } = require('../brains');
 const { ContextOrchestrator } = require('../planner');
 
 const { PromptLoader, PromptPipeline } = require('../prompts');
@@ -27,10 +26,7 @@ class Agent {
     this.promptPipeline = new PromptPipeline(this.promptLoader);
     this.personaManager = new PersonaManager(this.promptLoader);
 
-    // Initialize 3-Brain Architecture & Context Orchestrator
-    this.workspaceBrain = new WorkspaceBrain(this);
-    this.reasoningBrain = new ReasoningBrain(this.llmRegistry);
-    this.actionBrain = new ActionBrain(this);
+    // Initialize Context Orchestrator
     this.contextOrchestrator = new ContextOrchestrator(this);
 
     // Initialize services — EmbeddingService receives null here; the actual

@@ -65,17 +65,6 @@ class QueryExecutor {
           }
         } catch (orchErr) {
           console.warn('[QueryExecutor] ContextOrchestrator execution fallback:', orchErr.message);
-          if (this.agent.workspaceBrain) {
-            try {
-              const facts = await this.agent.workspaceBrain.getWorkspaceFacts(query, context);
-              if (this.agent.reasoningBrain) {
-                const evidenceStr = this.agent.reasoningBrain.formatEvidenceContext(facts);
-                if (evidenceStr) {
-                  retrievedEvidence = evidenceStr;
-                }
-              }
-            } catch { /* ignore fallback */ }
-          }
         }
       }
 

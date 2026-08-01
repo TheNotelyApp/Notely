@@ -121,10 +121,6 @@ class SemanticToolRunner {
       return await this.agent.graphDb.findRelatedEntities(query, args.maxHops || args.maxDepth || 2);
     }
 
-    if (this.agent?.workspaceBrain?.getWorkspaceFacts && query) {
-      return await this.agent.workspaceBrain.getWorkspaceFacts(query);
-    }
-
     return [];
   }
 }

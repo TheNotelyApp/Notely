@@ -88,13 +88,27 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
   });
 }
 
-function enqueueNote(filePath, priority = 0) {
+function enqueueEmbeddingsNote(filePath, priority = 0) {
   if (childProcess) {
     childProcess.postMessage({
-      type: 'enqueue',
+      type: 'enqueueEmbeddings',
       payload: { filePath, priority }
     });
   }
+}
+
+function enqueueGraphNote(filePath, priority = 0) {
+  if (childProcess) {
+    childProcess.postMessage({
+      type: 'enqueueGraph',
+      payload: { filePath, priority }
+    });
+  }
+}
+
+function enqueueNote(filePath, priority = 0) {
+  enqueueEmbeddingsNote(filePath, priority);
+  enqueueGraphNote(filePath, priority);
 }
 
 function deleteNoteData(filePath) {
@@ -180,6 +194,8 @@ function shutdownWorker() {
 module.exports = {
   startWorker,
   enqueueNote,
+  enqueueEmbeddingsNote,
+  enqueueGraphNote,
   deleteNoteData,
   renameNoteData,
   pauseWorker,

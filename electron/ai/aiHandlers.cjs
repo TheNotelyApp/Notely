@@ -497,7 +497,7 @@ async function handleRebuildEmbeddings(_event, _payload) {
       for (const doc of docs) {
         const filePath = doc?.path || doc?.filePath;
         if (filePath) {
-          workerManager.enqueueNote(filePath, 0);
+          workerManager.enqueueEmbeddingsNote(filePath, 0);
           count++;
         }
       }

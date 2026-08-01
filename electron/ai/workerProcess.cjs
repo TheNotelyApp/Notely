@@ -168,6 +168,18 @@ if (process.parentPort) {
 
         process.parentPort.postMessage({ type: 'started' });
 
+      } else if (type === 'enqueueEmbeddings') {
+        const { filePath, priority } = payload;
+        if (embeddingDb) {
+          embeddingDb.enqueue(filePath, priority);
+          if (indexWorker) indexWorker.triggerNext();
+        }
+      } else if (type === 'enqueueGraph') {
+        const { filePath, priority } = payload;
+        if (graphQueue) {
+          graphQueue.enqueue(filePath, priority);
+          if (graphWorker) graphWorker.triggerNext();
+        }
       } else if (type === 'enqueue') {
         const { filePath, priority } = payload;
         if (embeddingDb) {

@@ -57,6 +57,18 @@ class EmbeddingDB {
     }
   }
 
+  ensureCacheFresh() {
+    if (!this.db) return;
+    try {
+      const stmt = this.db.prepare('SELECT COUNT(*) as count FROM chunks WHERE embedding IS NOT NULL');
+      const row = stmt.get();
+      const count = row ? row.count : 0;
+      if (count !== this.vectorCache.length) {
+        this.preloadCache();
+      }
+    } catch { /* ignore cache check error */ }
+  }
+
   createTables() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS chunks (

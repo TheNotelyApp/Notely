@@ -28,8 +28,10 @@ class MarkdownChunker {
       
       const chunkText = currentChunkLines.join('\n').trim();
       if (chunkText.length >= minChunkSize) {
+        const crypto = require('crypto');
         const basename = String(notePath).split(/[/\\]/).pop().replace(/\.md$/, '');
-        const id = `${basename}#chunk-${chunkIndex}`;
+        const pathHash = crypto.createHash('md5').update(String(notePath).replace(/\\/g, '/').toLowerCase()).digest('hex').slice(0, 6);
+        const id = `${basename}#chunk-${chunkIndex}_${pathHash}`;
 
         chunks.push({
           id,

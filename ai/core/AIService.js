@@ -132,98 +132,53 @@ class AIService {
   }
 
   /**
-   * Note save hook - enqueues embeddings indexing and triggers incremental graph update
+   * Note save hook - enqueues note indexing in background worker process
    */
   onNoteSave(filePath) {
     if (!this.enabled || !this.agent) return;
 
-    // 1. Enqueue in background embeddings index via workerManager
+    // Enqueue in background worker process (handles both embeddings & graph extraction)
     try {
       const workerManager = require('../../electron/ai/workerManager.cjs');
       workerManager.enqueueNote(filePath, 0);
     } catch (err) {
-      log.error(`Failed to enqueue note for background embedding indexing: ${filePath}`, err.message);
-    }
-
-    // 2. Trigger background graph relationship extraction
-    if (this.agent.graphService) {
-      const fs = require('fs');
-      if (fs.existsSync(filePath)) {
-        try {
-          const content = fs.readFileSync(filePath, 'utf8');
-          this.agent.graphService.processNote(filePath, content).catch(err => {
-            log.error(`Incremental graph extraction failed for ${filePath}:`, err.message);
-          });
-        } catch (err) {
-          log.error(`Failed to read file for graph extraction: ${filePath}`, err.message);
-        }
-      }
+      log.error(`Failed to enqueue note for background indexing: ${filePath}`, err.message);
     }
   }
 
   /**
-   * Note delete hook - purges note chunks and graph relationships
+   * Note delete hook - purges note chunks and graph relationships via workerManager
    */
   onNoteDelete(filePath) {
     if (!this.enabled || !this.agent) return;
 
-    // 1. Purge embedding DB chunks synchronously
-    if (this.agent.embeddingDb) {
-      try {
-        this.agent.embeddingDb.deleteNoteData(filePath);
-        log.info(`Synchronously deleted note embeddings for: ${filePath}`);
-      } catch (err) {
-        log.error(`Failed to synchronously delete note embeddings: ${filePath}`, err.message);
-      }
-    } else {
-      try {
-        const workerManager = require('../../electron/ai/workerManager.cjs');
-        workerManager.deleteNoteData(filePath);
-        log.info(`Deleted note embeddings from background index for: ${filePath}`);
-      } catch (err) {
-        log.error(`Failed to delete background note embeddings: ${filePath}`, err.message);
-      }
+    try {
+      const workerManager = require('../../electron/ai/workerManager.cjs');
+      workerManager.deleteNoteData(filePath);
+      log.info(`Enqueued background deletion for note embeddings & graph: ${filePath}`);
+    } catch (err) {
+      log.error(`Failed to delete background note data: ${filePath}`, err.message);
     }
 
-    // 2. Purge knowledge graph nodes & relationships
-    if (this.agent.graphDb) {
+    if (this.agent.graphDb && !this.agent.workerManager) {
       try {
         this.agent.graphDb.deleteNoteEntityAndRelationships(filePath);
-        log.info(`Synchronously deleted note entity and graph relationships for: ${filePath}`);
-      } catch (err) {
-        log.error(`Failed to delete note from Knowledge Graph: ${filePath}`, err.message);
-      }
+      } catch { /* ignore fallback */ }
     }
   }
 
   /**
-   * Note rename hook - updates note path mappings in both DBs
+   * Note rename hook - updates note path mappings in background worker process
    */
   onNoteRename(oldPath, newPath) {
     if (!this.enabled || !this.agent) return;
 
-    // 1. Update embedding DB tables via workerManager
     try {
       const workerManager = require('../../electron/ai/workerManager.cjs');
       workerManager.renameNoteData(oldPath, newPath);
-      log.info(`Triggered note paths rename in background embedding DB from ${oldPath} to ${newPath}`);
+      log.info(`Triggered note paths rename in background DBs from ${oldPath} to ${newPath}`);
     } catch (err) {
-      log.error(`Failed to rename note paths in background embedding DB:`, err.message);
-    }
-
-    // 2. Update knowledge graph entities
-    if (this.agent.graphDb && this.agent.graphDb.db) {
-      try {
-        const path = require('path');
-        const db = this.agent.graphDb.db;
-        const newName = path.basename(newPath, '.md');
-
-        db.prepare('UPDATE entities SET note_path = ?, name = ?, updated_at = datetime(\'now\') WHERE note_path = ?')
-          .run(newPath, newName, oldPath);
-        log.info(`Renamed note path in GraphDB from ${oldPath} to ${newPath}`);
-      } catch (err) {
-        log.error(`Failed to rename note path in GraphDB:`, err.message);
-      }
+      log.error(`Failed to rename note paths in background DBs:`, err.message);
     }
   }
 

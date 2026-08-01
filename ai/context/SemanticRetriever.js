@@ -41,6 +41,11 @@ class SemanticRetriever {
         : [];
     }
 
+    // Ensure main process vector cache is in sync with SQLite DB
+    if (typeof this.embeddingDB?.ensureCacheFresh === 'function') {
+      this.embeddingDB.ensureCacheFresh();
+    }
+
     // Scan the preloaded vector cache directly to bypass SQLite SELECT and buffer deserialization overhead
     const scored = [];
     const cache = this.embeddingDB.vectorCache || [];
