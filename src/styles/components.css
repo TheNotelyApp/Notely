@@ -5296,16 +5296,6 @@
   letter-spacing: -0.01em;
 }
 
-.note-search-modal-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-full, 999px);
-  background: var(--surface-accent);
-  color: var(--accent-solid);
-  border: 1px solid var(--border-subtle);
-}
-
 .note-search-filters {
   display: flex;
   align-items: center;

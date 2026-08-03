@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, Sparkles, Check, Info, X, FolderPlus, Save, FolderOpen, FileText, GitBranch } from "lucide-react";
+import { Folder, Sparkles, Info, X, FolderPlus, Save, FolderOpen, FileText, GitBranch } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import useConfirm from "../hooks/useConfirm";
 import AppButton from "./AppButton";

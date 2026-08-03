@@ -288,7 +288,7 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
           </div>
         ) : (
           <div className="note-search-empty">
-            <Search size={28} style={{ opacity: 0.35, marginBottom: 8 }} />
+            <Search size={20} style={{ opacity: 0.35, marginBottom: 8 }} />
             <span>No notes match filter criteria</span>
           </div>
         )}

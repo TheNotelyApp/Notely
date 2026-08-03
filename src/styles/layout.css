@@ -3218,7 +3218,7 @@
 .toggle-switch-track {
   width: 32px;
   height: 18px;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--border-medium);
   padding: 2px;
   box-sizing: border-box;
