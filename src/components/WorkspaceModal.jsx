@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, Sparkles, Check, Info, X, FolderPlus, Save } from "lucide-react";
+import { Folder, Sparkles, Check, Info, X, FolderPlus, Save, FolderOpen, FileText, GitBranch } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import useConfirm from "../hooks/useConfirm";
 import AppButton from "./AppButton";
@@ -13,8 +13,8 @@ const PROJECT_TYPES = [
   { value: "Documentation", label: "Documentation" },
 ];
 
-const EMOJI_OPTIONS = ["📝", "🚀", "💻", "🧠", "📚", "🎨", "⚡", "🔍", "🛠️", "🌐"];
-const COLOR_OPTIONS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6"];
+const EMOJI_OPTIONS = ["📝", "🚀", "💻", "🧠", "📚", "🎨", "⚡", "🔍", "🛠️", "🌐", "💡", "🎯", "🔥", "✨"];
+const COLOR_OPTIONS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6", "#06b6d4", "#84cc16", "#d946ef", "#f97316", "#64748b", "#0284c7"];
 
 export function WorkspaceModal({
   isOpen,
@@ -40,18 +40,25 @@ export function WorkspaceModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [parentWarning, setParentWarning] = useState("");
+  const [isNestedWorkspace, setIsNestedWorkspace] = useState(false);
 
   useEffect(() => {
     if (mode === "create" && parentLocation.trim() && window.notesApi?.validateWorkspace) {
       window.notesApi.validateWorkspace(parentLocation.trim()).then((res) => {
         if (res?.isWorkspace) {
-          setParentWarning("Notice: Parent location is an existing Notely workspace. This will create a nested workspace inside it.");
+          setParentWarning("Parent location is an existing Notely workspace. Nested workspaces are not allowed.");
+          setIsNestedWorkspace(true);
         } else {
           setParentWarning("");
+          setIsNestedWorkspace(false);
         }
-      }).catch(() => setParentWarning(""));
+      }).catch(() => {
+        setParentWarning("");
+        setIsNestedWorkspace(false);
+      });
     } else {
       setParentWarning("");
+      setIsNestedWorkspace(false);
     }
   }, [parentLocation, mode]);
 
@@ -222,45 +229,20 @@ export function WorkspaceModal({
       <form onSubmit={handleSubmit} className="workspace-modal-form">
         {error && <div className="workspace-modal-error">{error}</div>}
 
-        <div className="workspace-modal-field">
-          <label htmlFor="ws-name">Workspace Name *</label>
-          <input
-            id="ws-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Engineering Docs, Personal Study"
-            required
-            autoFocus
-          />
-        </div>
-
-        {isCreate && (
-          <div className="workspace-modal-field">
-            <label htmlFor="ws-parent-location">Parent Folder Location *</label>
-            <div className="workspace-modal-location-input">
-              <input
-                id="ws-parent-location"
-                type="text"
-                value={parentLocation}
-                onChange={(e) => setParentLocation(e.target.value)}
-                placeholder="Select parent folder path..."
-                required
-              />
-              <AppButton type="button" variant="small" onClick={handleBrowseLocation}>
-                Browse...
-              </AppButton>
-            </div>
-            {parentWarning && (
-              <div className="workspace-modal-warning-box">
-                <Info size={14} style={{ flexShrink: 0 }} />
-                <span>{parentWarning}</span>
-              </div>
-            )}
-          </div>
-        )}
-
         <div className="workspace-modal-grid">
+          <div className="workspace-modal-field">
+            <label htmlFor="ws-name">Workspace Name *</label>
+            <input
+              id="ws-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Engineering Docs"
+              required
+              autoFocus
+            />
+          </div>
+
           <div className="workspace-modal-field">
             <label htmlFor="ws-project-type">Project Type</label>
             <AppSelect
@@ -275,33 +257,64 @@ export function WorkspaceModal({
               ))}
             </AppSelect>
           </div>
+        </div>
 
+        {isCreate && (
           <div className="workspace-modal-field">
-            <label htmlFor="ws-tag-input">Domain / Topic Tags</label>
-            <div className="workspace-tags-container">
-              {domainTags.map((tag, idx) => (
-                <span key={`${tag}-${idx}`} className="workspace-tag-chip">
-                  #{tag}
-                  <button
-                    type="button"
-                    className="workspace-tag-remove"
-                    onClick={() => removeTag(idx)}
-                    aria-label={`Remove tag ${tag}`}
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
+            <label htmlFor="ws-parent-location">Parent Folder Location *</label>
+            <div className="workspace-modal-location-input">
               <input
-                id="ws-tag-input"
+                id="ws-parent-location"
                 type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                onBlur={() => addTag(tagInput)}
-                placeholder={domainTags.length === 0 ? "Type tag & press Enter/Space..." : "Add tag..."}
+                value={parentLocation}
+                onChange={(e) => setParentLocation(e.target.value)}
+                placeholder="Select parent folder path..."
+                required
               />
+              <AppButton
+                type="button"
+                variant="small"
+                onClick={handleBrowseLocation}
+                style={{ height: "34px", minHeight: "34px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <FolderOpen size={14} />
+                <span>Browse</span>
+              </AppButton>
             </div>
+            {parentWarning && (
+              <div className="workspace-modal-warning-box">
+                <Info size={14} style={{ flexShrink: 0 }} />
+                <span>{parentWarning}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="workspace-modal-field">
+          <label htmlFor="ws-tag-input">Domain / Topic Tags</label>
+          <div className="workspace-tags-container">
+            {domainTags.map((tag, idx) => (
+              <span key={`${tag}-${idx}`} className="workspace-tag-chip">
+                #{tag}
+                <button
+                  type="button"
+                  className="workspace-tag-remove"
+                  onClick={() => removeTag(idx)}
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+            <input
+              id="ws-tag-input"
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              onBlur={() => addTag(tagInput)}
+              placeholder={domainTags.length === 0 ? "Type tag & press Enter/Space..." : "Add tag..."}
+            />
           </div>
         </div>
 
@@ -319,68 +332,88 @@ export function WorkspaceModal({
           />
         </div>
 
-        <div className="workspace-modal-grid">
-          <div className="workspace-modal-field">
-            <label>Workspace Icon / Emoji</label>
-            <div className="workspace-modal-emoji-row">
-              {EMOJI_OPTIONS.map((e) => (
-                <button
-                  type="button"
-                  key={e}
-                  className={`workspace-emoji-btn ${icon === e ? "active" : ""}`}
-                  onClick={() => setIcon(e)}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+        <div className="workspace-modal-field">
+          <label>Workspace Icon / Emoji</label>
+          <div className="workspace-modal-emoji-row">
+            {EMOJI_OPTIONS.map((e) => (
+              <button
+                type="button"
+                key={e}
+                className={`workspace-emoji-btn ${icon === e ? "active" : ""}`}
+                onClick={() => setIcon(e)}
+              >
+                {e}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <div className="workspace-modal-field">
-            <label>Accent Color</label>
-            <div className="workspace-modal-color-row">
-              {COLOR_OPTIONS.map((c) => (
-                <button
-                  type="button"
-                  key={c}
-                  className={`workspace-color-btn ${color === c ? "active" : ""}`}
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(c)}
-                >
-                  {color === c && <Check size={12} color="#fff" />}
-                </button>
-              ))}
-            </div>
+        <div className="workspace-modal-field">
+          <label>Accent Color</label>
+          <div className="workspace-modal-color-row">
+            {COLOR_OPTIONS.map((c) => (
+              <button
+                type="button"
+                key={c}
+                className={`workspace-color-btn ${color === c ? "active" : ""}`}
+                style={{ backgroundColor: c }}
+                onClick={() => setColor(c)}
+              >
+                {color === c && <Check size={12} color="#fff" />}
+              </button>
+            ))}
           </div>
         </div>
 
         {isCreate && (
-          <div className="workspace-modal-checkbox-group">
-            <label className="workspace-modal-checkbox">
-              <input
-                type="checkbox"
-                checked={createWelcomeNote}
-                onChange={(e) => setCreateWelcomeNote(e.target.checked)}
-              />
-              <span>Create README.md note</span>
-            </label>
-            <label className="workspace-modal-checkbox">
-              <input
-                type="checkbox"
-                checked={initGit}
-                onChange={(e) => setInitGit(e.target.checked)}
-              />
-              <span>Initialize Git Repository</span>
-            </label>
+          <div className="workspace-modal-toggles-row">
+            <button
+              type="button"
+              className={`workspace-toggle-card ${createWelcomeNote ? "active" : ""}`}
+              onClick={() => setCreateWelcomeNote(!createWelcomeNote)}
+            >
+              <div className="toggle-card-left">
+                <FileText size={15} className="toggle-card-icon" />
+                <span>Create README.md note</span>
+              </div>
+              <div className={`toggle-switch-track ${createWelcomeNote ? "active" : ""}`}>
+                <div className="toggle-switch-thumb" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={`workspace-toggle-card ${initGit ? "active" : ""}`}
+              onClick={() => setInitGit(!initGit)}
+            >
+              <div className="toggle-card-left">
+                <GitBranch size={15} className="toggle-card-icon" />
+                <span>Initialize Git Repository</span>
+              </div>
+              <div className={`toggle-switch-track ${initGit ? "active" : ""}`}>
+                <div className="toggle-switch-thumb" />
+              </div>
+            </button>
           </div>
         )}
 
         <div className="workspace-modal-actions">
-          <AppButton type="button" variant="small" onClick={onClose} disabled={submitting}>
+          <AppButton
+            type="button"
+            variant="small"
+            onClick={onClose}
+            disabled={submitting}
+            style={{ height: "32px", minHeight: "32px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
             <X size={14} />
             <span>Cancel</span>
           </AppButton>
-          <AppButton type="submit" variant="primary" disabled={submitting}>
+          <AppButton
+            type="submit"
+            variant="primary"
+            disabled={submitting || !name.trim() || (isCreate && !parentLocation.trim()) || (isCreate && isNestedWorkspace)}
+            style={{ height: "32px", minHeight: "32px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
             {isCreate ? <FolderPlus size={14} /> : <Save size={14} />}
             <span>{submitting ? "Saving..." : isCreate ? "Create Workspace" : "Save Changes"}</span>
           </AppButton>

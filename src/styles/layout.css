@@ -2924,7 +2924,15 @@
 }
 
 .workspace-modal-card {
-  width: min(560px, 95vw);
+  width: min(580px, 95vw);
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.workspace-modal-card .overlay-dialog-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-bg) 95%, var(--surface-elevated));
 }
 
 .workspace-modal-form {
@@ -2949,49 +2957,50 @@
   gap: 6px;
   margin-top: 4px;
   padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, var(--accent-solid) 30%, var(--border-soft));
+  border: 1px solid #ef4444;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--accent-solid) 10%, transparent);
-  color: var(--text-strong);
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #ef4444;
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .workspace-tags-container {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--border-soft);
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-bg);
-  min-height: 36px;
+  min-height: 34px;
   box-sizing: border-box;
-}
-
-.workspace-tags-container:focus-within {
-  border-color: var(--accent-solid);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .workspace-tag-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 3px;
+  padding: 1px 6px;
   background: color-mix(in srgb, var(--accent-solid) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-solid) 30%, var(--border-soft));
   border-radius: var(--radius-sm);
   color: var(--text-strong);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 .workspace-tag-remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   padding: 0;
   border: none;
   background: transparent;
@@ -3007,12 +3016,12 @@
 
 .workspace-tags-container input {
   flex: 1;
-  min-width: 110px;
+  min-width: 90px;
   border: none !important;
   outline: none !important;
   background: transparent !important;
   padding: 2px 4px !important;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .workspace-modal-field {
@@ -3028,14 +3037,31 @@
 }
 
 .workspace-modal-field input[type="text"],
+.workspace-modal-field select,
 .workspace-modal-field textarea {
   width: 100%;
+  height: 34px;
+  min-height: 34px;
   box-sizing: border-box;
-  padding: 8px 12px;
-  border: 1px solid var(--border-soft);
+  padding: 6px 12px;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-bg);
   color: var(--text-strong);
+  font-size: 13px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.workspace-modal-field .app-select-root,
+.workspace-modal-field .app-select-trigger {
+  width: 100%;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  box-sizing: border-box;
+}
+
+.workspace-modal-field .app-select-trigger-text {
   font-size: 13px;
 }
 
@@ -3044,24 +3070,43 @@
   min-height: 70px;
 }
 
+.workspace-tags-container:hover,
+.workspace-modal-field input:hover,
+.workspace-modal-field textarea:hover {
+  border-color: var(--border-soft);
+}
+
+.workspace-tags-container:focus-within,
 .workspace-modal-field input:focus,
 .workspace-modal-field textarea:focus {
   outline: none;
-  border-color: var(--accent-solid);
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
 }
 
 .workspace-modal-location-input {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
 .workspace-modal-location-input input {
   flex: 1;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+
+.workspace-modal-location-input button {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  box-sizing: border-box;
 }
 
 .workspace-modal-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr;
   gap: 12px;
 }
 
@@ -3069,8 +3114,9 @@
 .workspace-modal-color-row {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
+  justify-content: space-between;
 }
 
 .workspace-emoji-btn {
@@ -3079,59 +3125,124 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-bg);
   cursor: pointer;
   font-size: 16px;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .workspace-emoji-btn:hover {
-  border-color: var(--border-medium);
-  background: var(--surface-elevated);
+  background: color-mix(in srgb, var(--accent-solid) 10%, var(--surface-bg));
+  border-color: color-mix(in srgb, var(--accent-solid) 40%, var(--border-subtle));
 }
 
 .workspace-emoji-btn.active {
   border-color: var(--accent-solid);
-  background: color-mix(in srgb, var(--accent-solid) 15%, transparent);
+  background: color-mix(in srgb, var(--accent-solid) 18%, transparent);
 }
 
 .workspace-color-btn {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
 }
 
-.workspace-color-btn:hover {
-  transform: scale(1.1);
+.workspace-color-btn:hover:not(.active) {
+  border-color: var(--surface-bg);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent-solid) 50%, transparent);
 }
 
 .workspace-color-btn.active {
-  border-color: var(--text-strong);
-  transform: scale(1.15);
+  border-color: var(--surface-bg);
+  box-shadow: 0 0 0 2px var(--accent-solid);
 }
 
-.workspace-modal-checkbox-group {
+.workspace-modal-toggles-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.workspace-toggle-card {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 4px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
-.workspace-modal-checkbox {
+.workspace-toggle-card:hover {
+  border-color: var(--border-medium);
+  background: var(--surface-elevated);
+}
+
+.workspace-toggle-card.active {
+  border-color: color-mix(in srgb, var(--accent-solid) 35%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-solid) 10%, var(--surface-bg));
+  color: var(--text-strong);
+}
+
+.toggle-card-left {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
+}
+
+.toggle-card-icon {
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.workspace-toggle-card.active .toggle-card-icon {
+  color: var(--accent-solid);
+}
+
+.toggle-switch-track {
+  width: 32px;
+  height: 18px;
+  border-radius: 10px;
+  background: var(--border-medium);
+  padding: 2px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-switch-track.active {
+  background: var(--accent-solid);
+}
+
+.toggle-switch-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toggle-switch-track.active .toggle-switch-thumb {
+  transform: translateX(14px);
 }
 
 .workspace-modal-actions {
@@ -3141,4 +3252,11 @@
   margin-top: 10px;
   padding-top: 12px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.workspace-modal-actions button:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  pointer-events: auto !important;
+  filter: grayscale(30%);
 }
