@@ -816,10 +816,20 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       return;
     }
 
+    const isTabStateDirty = (state) => {
+      if (!state || !state.doc) return false;
+      const currentHash = JSON.stringify({
+        header: state.doc.header || "",
+        rawNotes: state.doc.rawNotes || "",
+        cleansed: state.doc.cleansed || "",
+      });
+      return currentHash !== state.savedHash;
+    };
+
     const dirtyPaths = [];
     for (const path of openTabs) {
       const state = tabStatesRef.current[path];
-      if (state && state.doc && state.doc.savedHash !== state.savedHash) {
+      if (isTabStateDirty(state)) {
         dirtyPaths.push(path);
       }
     }
@@ -857,10 +867,20 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
   }
 
   async function handleRestartApp() {
+    const isTabStateDirty = (state) => {
+      if (!state || !state.doc) return false;
+      const currentHash = JSON.stringify({
+        header: state.doc.header || "",
+        rawNotes: state.doc.rawNotes || "",
+        cleansed: state.doc.cleansed || "",
+      });
+      return currentHash !== state.savedHash;
+    };
+
     const dirtyPaths = [];
     for (const path of openTabs) {
       const state = tabStatesRef.current[path];
-      if (state && state.doc && state.doc.savedHash !== state.savedHash) {
+      if (isTabStateDirty(state)) {
         dirtyPaths.push(path);
       }
     }
