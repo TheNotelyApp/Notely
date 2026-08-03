@@ -5249,21 +5249,26 @@
 .note-search-modal-card {
   position: relative;
   width: 92vw;
-  max-width: 580px;
+  max-width: 620px;
   max-height: 82vh;
   display: flex;
   flex-direction: column;
   background: var(--surface-elevated);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
-  overflow: hidden;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: visible;
+  backdrop-filter: blur(12px);
 }
 
 .note-search-modal-header {
-  padding: 16px 16px 14px 16px;
+  position: relative;
+  z-index: 50;
+  padding: 16px 16px 12px 16px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-muted);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
 }
 
 .note-search-modal-top-row {
@@ -5274,10 +5279,31 @@
   padding-right: 32px;
 }
 
+.note-search-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-search-modal-icon {
+  color: var(--accent-solid);
+}
+
 .note-search-modal-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+
+.note-search-modal-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--surface-accent);
+  color: var(--accent-solid);
+  border: 1px solid var(--border-subtle);
 }
 
 .note-search-filters {
@@ -5293,20 +5319,20 @@
   gap: 8px;
   padding: 0 10px;
   background: var(--surface-bg);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   flex: 1;
   min-width: 0;
-  transition: border-color var(--motion-fast), background var(--motion-fast);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .note-search-input-wrapper:hover {
   border-color: var(--border-soft);
-  background: var(--surface-accent);
 }
 
 .note-search-input-wrapper:focus-within {
-  border-color: var(--accent-solid);
+  border-color: color-mix(in srgb, var(--accent-solid) 45%, var(--border-soft));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 10%, transparent);
 }
 
 .note-search-icon {
@@ -5314,46 +5340,95 @@
   flex-shrink: 0;
 }
 
-.note-search-input {
+.note-search-input,
+.note-search-input.app-input {
   flex: 1;
   min-width: 0;
-  min-height: 34px;
+  min-height: 36px;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-strong);
+  font-size: 12.5px;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.note-search-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border: none;
   background: transparent;
-  color: var(--text-strong);
-  font-size: 12px;
-  outline: none;
-}
-
-.note-search-folder-select {
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  background: var(--surface-bg);
-  color: var(--text-strong);
-  font-size: 11.5px;
-  outline: none;
+  color: var(--text-subtle);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  max-width: 180px;
-  flex-shrink: 0;
-  transition: border-color var(--motion-fast), background var(--motion-fast);
+  padding: 0;
+  transition: color var(--motion-fast), background var(--motion-fast);
 }
 
-.note-search-folder-select:hover {
-  border-color: var(--border-soft);
+.note-search-clear-btn:hover {
+  color: var(--text-strong);
   background: var(--surface-accent);
 }
 
-.note-search-folder-select:focus-visible {
-  border-color: var(--accent-solid);
+.note-search-folder-picker {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 150px;
+  max-width: 210px;
+}
+
+.note-search-folder-app-select .app-select-trigger {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-bg);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.note-search-folder-app-select .app-select-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.note-search-folder-app-select .app-select-panel {
+  right: 0;
+  left: auto;
+  min-width: 220px;
+  max-width: 360px;
+  z-index: 1000;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.note-search-folder-app-select .app-select-option-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-search-folder-app-select .app-select-trigger:hover:not(:disabled) {
+  border-color: var(--border-soft);
+}
+
+.note-search-folder-app-select .app-select-trigger:focus-visible,
+.note-search-folder-app-select .app-select-trigger.open {
+  outline: none !important;
+  border-color: color-mix(in srgb, var(--accent-solid) 45%, var(--border-soft));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 10%, transparent);
 }
 
 .note-search-close {
   position: absolute;
   top: 14px;
   right: 14px;
-  z-index: 10;
+  z-index: 100;
   color: var(--text-subtle);
   border-radius: var(--radius-sm);
   transition: color var(--motion-fast), background var(--motion-fast);
@@ -5365,41 +5440,56 @@
 }
 
 .note-search-modal-body {
-  padding: 10px 12px;
+  position: relative;
+  z-index: 1;
+  padding: 10px 16px;
   overflow-y: auto;
-  max-height: 60vh;
+  max-height: 55vh;
+  min-height: 200px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.note-search-modal-body::-webkit-scrollbar {
+  display: none;
 }
 
 .note-search-results-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .note-search-result-item {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 6px 10px;
+  height: 32px;
+  min-height: 32px;
   border: 1px solid transparent;
   background: transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
   box-sizing: border-box;
-  transition: background var(--motion-fast);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
 }
 
-.note-search-result-item:hover,
+.note-search-result-item:hover {
+  background: color-mix(in srgb, var(--surface-accent) 40%, transparent);
+}
+
 .note-search-result-item.selected {
-  background: var(--surface-accent);
-  border-color: transparent;
+  background: color-mix(in srgb, var(--surface-accent) 65%, transparent);
+  border-color: color-mix(in srgb, var(--accent-solid) 20%, transparent);
 }
 
 .note-search-result-item:focus-visible {
   outline: none;
-  background: var(--surface-accent);
+  background: color-mix(in srgb, var(--surface-accent) 65%, transparent);
+  border-color: color-mix(in srgb, var(--accent-solid) 35%, transparent);
 }
 
 .note-search-item-icon {
@@ -5407,32 +5497,27 @@
   color: var(--accent-solid);
 }
 
-.note-search-item-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  text-align: left;
-}
-
 .note-search-item-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: left;
+  flex-shrink: 0;
+  max-width: 55%;
 }
 
-.note-search-item-path {
+.note-search-item-folder {
   font-size: 11px;
   color: var(--text-subtle);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: ui-monospace, monospace;
-  text-align: left;
+  flex: 1;
+  min-width: 0;
+  opacity: 0.7;
+  font-family: var(--font-mono, ui-monospace, monospace);
 }
 
 .note-search-item-time {
@@ -5441,13 +5526,36 @@
   flex-shrink: 0;
   margin-left: auto;
   text-align: right;
+  font-weight: 400;
+  opacity: 0.85;
 }
 
 .note-search-empty {
-  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
   text-align: center;
   color: var(--text-subtle);
   font-size: var(--font-size-body-sm);
+}
+
+.note-search-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-muted);
+  font-size: 11px;
+  color: var(--text-subtle);
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
+}
+
+.note-search-count-status {
+  font-weight: 500;
 }
 
 

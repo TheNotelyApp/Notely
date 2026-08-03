@@ -539,15 +539,6 @@ export function NoteTabBar({
         </div>
       )}
 
-      {/* Searchable Modal for All Notes */}
-      <NoteSearchModal
-        isOpen={searchModalOpen}
-        onClose={() => setSearchModalOpen(false)}
-        documents={documents}
-        getMetadata={getMetadata}
-        onSelectNote={onSelectTab}
-      />
-
       {/* Right-click Context Menu */}
       {contextMenu && (
         <div

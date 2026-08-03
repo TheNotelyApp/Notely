@@ -1,8 +1,10 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Search, X, FileText } from "lucide-react";
+import { Search, X, FileText, FolderOpen } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import AppIconButton from "./AppIconButton";
 import OverlayDialog from "./OverlayDialog";
+import AppSelect from "./AppSelect";
+import AppInput from "./AppInput";
 import { listWorkspaceTaskDocuments, listDocuments } from "../services/electronService";
 
 function formatRelativeTime(timestamp) {
@@ -175,18 +177,23 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      e.stopPropagation();
       setSelectedIndex((prev) => (filteredNotes.length ? (prev + 1) % filteredNotes.length : 0));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
+      e.stopPropagation();
       setSelectedIndex((prev) => (filteredNotes.length ? (prev - 1 + filteredNotes.length) % filteredNotes.length : 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
+      e.stopPropagation();
       const selected = filteredNotes[selectedIndex];
       if (selected) {
         onSelectNote?.(selected.filePath);
         onClose?.();
       }
     } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
       onClose?.();
     }
   };
@@ -195,17 +202,20 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
 
   return (
     <OverlayDialog onClose={onClose} ariaLabel="Search Workspace Notes" cardClassName="note-search-modal-card">
-      <AppIconButton className="note-search-close" onClick={onClose} aria-label="Close search">
-        <X size={16} />
-      </AppIconButton>
       <div className="note-search-modal-header" onKeyDown={handleKeyDown}>
+        <AppIconButton className="note-search-close" onClick={onClose} aria-label="Close search">
+          <X size={16} />
+        </AppIconButton>
         <div className="note-search-modal-top-row">
-          <span className="note-search-modal-title">Search Workspace Notes</span>
+          <div className="note-search-modal-title-group">
+            <FolderOpen size={16} className="note-search-modal-icon" />
+            <span className="note-search-modal-title">Workspace Notes</span>
+          </div>
         </div>
         <div className="note-search-filters">
           <div className="note-search-input-wrapper">
             <Search size={16} className="note-search-icon" />
-            <input
+            <AppInput
               ref={inputRef}
               type="text"
               className="note-search-input"
@@ -213,20 +223,33 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                className="note-search-clear-btn"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
-          <select
-            className="note-search-folder-select"
-            value={selectedFolder}
-            onChange={(e) => setSelectedFolder(e.target.value)}
-            aria-label="Filter by folder"
-          >
-            <option value="all">Root / All Folders</option>
-            {folderOptions.map((folder) => (
-              <option key={folder} value={folder}>
-                {folder}
-              </option>
-            ))}
-          </select>
+          <div className="note-search-folder-picker">
+            <AppSelect
+              value={selectedFolder}
+              onChange={(e) => setSelectedFolder(e.target.value)}
+              aria-label="Filter by folder"
+              className="note-search-folder-app-select"
+            >
+              <option value="all">All Folders</option>
+              <option value="Root">Root Folder</option>
+              {folderOptions.map((folder) => (
+                <option key={folder} value={folder}>
+                  {folder}
+                </option>
+              ))}
+            </AppSelect>
+          </div>
         </div>
       </div>
       <div className="note-search-modal-body" onKeyDown={handleKeyDown}>
@@ -239,6 +262,8 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
               const isSelected = idx === selectedIndex;
               const relTime = formatRelativeTime(doc.mtime || doc.updatedAt || doc.lastModified);
               const displayRelPath = doc.relativePath || doc.displayPath || getWorkspaceRelativePath(doc.filePath, documents);
+              const pathParts = (displayRelPath || "").split("/");
+              const folderPath = pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "";
 
               return (
                 <button
@@ -253,19 +278,25 @@ export function NoteSearchModal({ isOpen, onClose, documents = [], getMetadata, 
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                 >
-                  <ItemIcon size={16} className="note-search-item-icon" />
-                  <div className="note-search-item-details">
-                    <span className="note-search-item-title">{title}</span>
-                    <span className="note-search-item-path">{displayRelPath}</span>
-                  </div>
+                  <ItemIcon size={14} className="note-search-item-icon" />
+                  <span className="note-search-item-title">{title}</span>
+                  {folderPath && <span className="note-search-item-folder">in {folderPath}</span>}
                   {relTime && <span className="note-search-item-time">{relTime}</span>}
                 </button>
               );
             })}
           </div>
         ) : (
-          <div className="note-search-empty">No notes match filter criteria</div>
+          <div className="note-search-empty">
+            <Search size={28} style={{ opacity: 0.35, marginBottom: 8 }} />
+            <span>No notes match filter criteria</span>
+          </div>
         )}
+      </div>
+      <div className="note-search-modal-footer">
+        <div className="note-search-count-status">
+          Showing {filteredNotes.length} of {allNotes.length}
+        </div>
       </div>
     </OverlayDialog>
   );
