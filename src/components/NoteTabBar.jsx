@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2, RefreshCw, Search, FileText, FilePlus } from "lucide-react";
+import { X, Plus, ChevronDown, FolderOpen, ExternalLink, Edit2, RefreshCw, Search, FileText, FilePlus, XCircle, ArrowRight, CheckCircle2, FolderX } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { IconColorPickerModal } from "./IconColorPickerModal";
@@ -578,6 +578,7 @@ export function NoteTabBar({
               setContextMenu(null);
             }}
           >
+            <XCircle size={14} />
             Close Other Tabs
           </button>
           <button
@@ -588,6 +589,7 @@ export function NoteTabBar({
               setContextMenu(null);
             }}
           >
+            <ArrowRight size={14} />
             Close Tabs to the Right
           </button>
           <button
@@ -598,6 +600,7 @@ export function NoteTabBar({
               setContextMenu(null);
             }}
           >
+            <CheckCircle2 size={14} />
             Close Saved Tabs
           </button>
           <button
@@ -608,6 +611,7 @@ export function NoteTabBar({
               setContextMenu(null);
             }}
           >
+            <FolderX size={14} />
             Close All Tabs
           </button>
           <div className="tab-context-menu-separator" />

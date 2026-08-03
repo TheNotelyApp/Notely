@@ -296,7 +296,7 @@ export function WorkspaceModal({
                   onClick={() => removeTag(idx)}
                   aria-label={`Remove tag ${tag}`}
                 >
-                  <X size={11} />
+                  <X size={12} />
                 </button>
               </span>
             ))}
@@ -350,7 +350,7 @@ export function WorkspaceModal({
               onClick={() => setCreateWelcomeNote(!createWelcomeNote)}
             >
               <div className="toggle-card-left">
-                <FileText size={15} className="toggle-card-icon" />
+                <FileText size={14} className="toggle-card-icon" />
                 <span>Create README.md note</span>
               </div>
               <div className={`toggle-switch-track ${createWelcomeNote ? "active" : ""}`}>
@@ -364,7 +364,7 @@ export function WorkspaceModal({
               onClick={() => setInitGit(!initGit)}
             >
               <div className="toggle-card-left">
-                <GitBranch size={15} className="toggle-card-icon" />
+                <GitBranch size={14} className="toggle-card-icon" />
                 <span>Initialize Git Repository</span>
               </div>
               <div className={`toggle-switch-track ${initGit ? "active" : ""}`}>
