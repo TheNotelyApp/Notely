@@ -173,7 +173,7 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
 
   const handleImport = async () => {
     if (!importFilePath) {
-      notify("Please select a .note package file.", "warning");
+      notify("Please select a .nly package file.", "warning");
       return;
     }
 
@@ -246,7 +246,7 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       {tab === "export" ? (
         <div className="tab-content export-tab">
           <p className="tab-description">
-            Choose which notes to export. This will bundle all linked images, Excalidraw, and Draw.io diagrams into a secure, encrypted `.note` file.
+            Choose which notes to export. This will bundle all linked images, Excalidraw, and Draw.io diagrams into a secure, encrypted `.nly` file.
           </p>
 
           <div className="note-selector-header">

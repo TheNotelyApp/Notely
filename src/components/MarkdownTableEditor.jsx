@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { parseMarkdownTable, serializeMarkdownTable } from '../utils/tableUtils';
 import {
@@ -14,18 +14,31 @@ import {
   ArrowLeft,
   ArrowRight,
   Eraser,
-  Maximize2,
-  Minimize2,
   Table2,
 } from 'lucide-react';
 import AppButton from './AppButton';
+import useConfirm from '../hooks/useConfirm';
 
 export function MarkdownTableEditor({ initialMarkdown, onCommit, onCancel }) {
   const [tableData, setTableData] = useState({ headers: [], alignments: [], rows: [] });
   const [activeCell, setActiveCell] = useState(null); // { row, col }
   const [isDirty, setIsDirty] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const { confirm } = useConfirm();
   const containerRef = useRef(null);
+
+  const handleClose = useCallback(async () => {
+    if (isDirty) {
+      const ok = await confirm({
+        title: "Discard Unsaved Changes?",
+        message: "You have unsaved edits in this table. Are you sure you want to close without saving?",
+        confirmLabel: "Discard Changes",
+        cancelLabel: "Continue Editing",
+        variant: "danger",
+      });
+      if (!ok) return;
+    }
+    onCancel();
+  }, [isDirty, confirm, onCancel]);
 
   const handleActionPointerDown = (event, action) => {
     event.preventDefault();
@@ -62,18 +75,14 @@ export function MarkdownTableEditor({ initialMarkdown, onCommit, onCancel }) {
   }, []);
 
   const commitChanges = useCallback(() => {
-    if (!isDirty) {
-      onCancel();
-      return;
-    }
-
     const newMarkdown = serializeMarkdownTable(tableData, { originalMarkdown: initialMarkdown });
     onCommit(newMarkdown);
-  }, [initialMarkdown, isDirty, onCancel, onCommit, tableData]);
+    setIsDirty(false);
+  }, [initialMarkdown, onCommit, tableData]);
 
   const handleBackdropClick = (event) => {
     if (event.target === event.currentTarget) {
-      commitChanges();
+      handleClose();
     }
   };
 
@@ -99,19 +108,20 @@ export function MarkdownTableEditor({ initialMarkdown, onCommit, onCancel }) {
   };
 
   const addColumn = (afterIndex) => {
+    const insertIdx = Math.max(-1, Math.min(afterIndex, tableData.headers.length - 1));
     const newHeaders = [...tableData.headers];
-    newHeaders.splice(afterIndex + 1, 0, 'New Column');
-
     const newAlignments = [...tableData.alignments];
-    newAlignments.splice(afterIndex + 1, 0, '');
+    newHeaders.splice(insertIdx + 1, 0, 'Header');
+    newAlignments.splice(insertIdx + 1, 0, 'l');
 
     const newRows = tableData.rows.map((row) => {
-      const newRow = [...row];
-      newRow.splice(afterIndex + 1, 0, '');
-      return newRow;
+      const updatedRow = [...row];
+      updatedRow.splice(insertIdx + 1, 0, '');
+      return updatedRow;
     });
 
     setTableData({ headers: newHeaders, alignments: newAlignments, rows: newRows });
+    setActiveCell({ row: -1, col: insertIdx + 1 });
     setIsDirty(true);
   };
 
@@ -166,8 +176,10 @@ export function MarkdownTableEditor({ initialMarkdown, onCommit, onCancel }) {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Escape') {
-      onCancel();
-    } else if (e.key === 'Enter' && e.ctrlKey) {
+      handleClose();
+    } else if ((e.key === 'Enter' && e.ctrlKey) || (e.key.toLowerCase() === 's' && (e.ctrlKey || e.metaKey))) {
+      e.preventDefault();
+      e.stopPropagation();
       commitChanges();
     }
   };
@@ -176,170 +188,154 @@ export function MarkdownTableEditor({ initialMarkdown, onCommit, onCancel }) {
 
   return createPortal(
     <div
-      className="table-editor-backdrop"
+      className="markdown-table-editor-overlay"
       onClick={handleBackdropClick}
       onKeyDown={handleKeyDown}
       style={{
         position: 'fixed',
-        top: 0,
+        top: '32px',
         left: 0,
         right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        bottom: '28px',
+        backgroundColor: 'var(--surface-overlay, rgba(0, 0, 0, 0.45))',
         backdropFilter: 'blur(3px)',
-        zIndex: 999999,
+        zIndex: 1500,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: isMaximized ? '0' : '20px',
+        padding: '6px',
       }}
     >
       <div
-        className={`markdown-table-editor-modal ${isMaximized ? 'maximized' : ''}`}
+        className="markdown-table-editor-modal excalidraw-modal-container"
         ref={containerRef}
         style={{
-          width: isMaximized ? '100vw' : 'min(90vw, 960px)',
-          height: isMaximized ? '100vh' : 'min(85vh, 720px)',
-          borderRadius: isMaximized ? '0' : 'var(--radius-xl, 12px)',
+          width: 'calc(100vw - 12px)',
+          height: 'calc(100vh - 60px - 12px)',
+          maxWidth: 'none',
+          maxHeight: 'none',
+          borderRadius: 'var(--radius-md, 6px)',
           background: 'var(--surface-bg, #ffffff)',
           border: '1px solid var(--border-soft, rgba(0,0,0,0.1))',
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.25)',
+          boxShadow: 'var(--shadow-overlay)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
         }}
       >
         <div
-          className="table-editor-header"
+          className="table-editor-header excalidraw-modal-header"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '12px 16px',
+            padding: '4px 12px',
+            height: '40px',
+            minHeight: '40px',
+            boxSizing: 'border-box',
             borderBottom: '1px solid var(--border-color, #e1e4e8)',
-            background: 'var(--surface-muted, #f6f8fa)',
+            background: 'color-mix(in srgb, var(--surface-bg) 94%, var(--surface-elevated))',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '14px' }}>
-            <Table2 size={18} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-strong)' }}>
+            <Table2 size={16} />
             <span>Table Editor</span>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>
               ({tableData.headers.length} cols × {tableData.rows.length} rows)
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AppButton
-              variant="small"
-              iconOnly
-              title={isMaximized ? 'Restore size' : 'Maximize'}
-              onClick={() => setIsMaximized(!isMaximized)}
-            >
-              {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          <div className="excalidraw-modal-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AppButton variant="small" title="Add Row (Bottom)" onClick={() => addRow(tableData.rows.length - 1)}>
+              <Plus size={14} />
+              <span>Row</span>
             </AppButton>
-            <AppButton
-              variant="small"
-              iconOnly
-              title="Close"
-              onClick={onCancel}
-            >
+            <AppButton variant="small" title="Add Column (Right)" onClick={() => addColumn(tableData.headers.length - 1)}>
+              <Plus size={14} style={{ transform: 'rotate(90deg)' }} />
+              <span>Column</span>
+            </AppButton>
+            <div className="toolbar-divider" style={{ width: 1, height: 16, background: 'var(--border-color)', margin: '0 2px' }} />
+            <AppButton variant="small" danger title="Clear Data" onClick={clearTable}>
+              <Eraser size={14} />
+              <span>Clear</span>
+            </AppButton>
+            <div className="toolbar-divider" style={{ width: 1, height: 16, background: 'var(--border-color)', margin: '0 2px' }} />
+            <AppButton variant="primary" title="Save Table (Ctrl+S / Ctrl+Enter)" onClick={commitChanges}>
+              <Check size={14} />
+              <span>Save</span>
+            </AppButton>
+            <AppButton variant="small" title="Close" onClick={handleClose}>
               <X size={14} />
+              <span>Close</span>
             </AppButton>
           </div>
         </div>
 
-        <div className="table-editor-grid-container" style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+        <div className="table-editor-grid-container" style={{ flex: 1, overflow: 'auto', padding: '44px 24px 24px 24px' }}>
           <table className="table-editor-grid">
             <thead>
               <tr>
-                {tableData.headers.map((header, colIndex) => (
-                  <th key={`th-${colIndex}`}>
-                    <div className="cell-container">
-                      <input
-                        type="text"
-                        value={header}
-                        onChange={(e) => updateHeader(colIndex, e.target.value)}
-                        onFocus={() => setActiveCell({ row: -1, col: colIndex })}
-                      />
-                      {activeCell?.row === -1 && activeCell?.col === colIndex && (
-                        <div className="cell-actions top-actions">
-                          <button onPointerDown={(e) => handleActionPointerDown(e, () => updateAlignment(colIndex, 'l'))} className={tableData.alignments[colIndex] === 'l' ? 'active' : ''} title="Align Left"><AlignLeft size={14} /></button>
-                          <button onPointerDown={(e) => handleActionPointerDown(e, () => updateAlignment(colIndex, 'c'))} className={tableData.alignments[colIndex] === 'c' ? 'active' : ''} title="Align Center"><AlignCenter size={14} /></button>
-                          <button onPointerDown={(e) => handleActionPointerDown(e, () => updateAlignment(colIndex, 'r'))} className={tableData.alignments[colIndex] === 'r' ? 'active' : ''} title="Align Right"><AlignRight size={14} /></button>
-                          <div className="toolbar-divider" style={{ width: 1, height: 12, background: 'var(--border-color)', margin: '0 2px' }} />
-                          <button onPointerDown={(e) => handleActionPointerDown(e, () => addColumn(colIndex - 1))} className="action-chip" title="Insert Column Left"><ArrowLeft size={12} /><span>Left</span></button>
-                          <button onPointerDown={(e) => handleActionPointerDown(e, () => addColumn(colIndex))} className="action-chip" title="Insert Column Right"><ArrowRight size={12} /><span>Right</span></button>
-                          <button onPointerDown={(e) => handleActionPointerDown(e, () => deleteColumn(colIndex))} className="action-chip danger-text" title="Delete Column"><Trash2 size={12} /><span>Delete</span></button>
-                        </div>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                {tableData.headers.map((header, colIndex) => {
+                  const isLastCol = colIndex === tableData.headers.length - 1;
+                  return (
+                    <th key={`th-${colIndex}`}>
+                      <div className="cell-container">
+                        <input
+                          type="text"
+                          value={header}
+                          onChange={(e) => updateHeader(colIndex, e.target.value)}
+                          onFocus={() => setActiveCell({ row: -1, col: colIndex })}
+                        />
+                        {activeCell?.row === -1 && activeCell?.col === colIndex && (
+                          <div className={`cell-actions top-actions ${isLastCol ? 'align-right-edge' : ''}`}>
+                            <button onPointerDown={(e) => handleActionPointerDown(e, () => updateAlignment(colIndex, 'l'))} className={tableData.alignments[colIndex] === 'l' ? 'active' : ''} title="Align Left"><AlignLeft size={14} /></button>
+                            <button onPointerDown={(e) => handleActionPointerDown(e, () => updateAlignment(colIndex, 'c'))} className={tableData.alignments[colIndex] === 'c' ? 'active' : ''} title="Align Center"><AlignCenter size={14} /></button>
+                            <button onPointerDown={(e) => handleActionPointerDown(e, () => updateAlignment(colIndex, 'r'))} className={tableData.alignments[colIndex] === 'r' ? 'active' : ''} title="Align Right"><AlignRight size={14} /></button>
+                            <div className="toolbar-divider" style={{ width: 1, height: 12, background: 'var(--border-color)', margin: '0 2px' }} />
+                            <button onPointerDown={(e) => handleActionPointerDown(e, () => addColumn(colIndex - 1))} className="action-chip" title="Insert Column Left"><ArrowLeft size={12} /><span>Left</span></button>
+                            <button onPointerDown={(e) => handleActionPointerDown(e, () => addColumn(colIndex))} className="action-chip" title="Insert Column Right"><ArrowRight size={12} /><span>Right</span></button>
+                            <button onPointerDown={(e) => handleActionPointerDown(e, () => deleteColumn(colIndex))} className="action-chip danger-text" title="Delete Column"><Trash2 size={12} /><span>Delete</span></button>
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
               {tableData.rows.map((row, rowIndex) => (
                 <tr key={`tr-${rowIndex}`}>
-                  {row.map((cell, colIndex) => (
-                    <td key={`td-${rowIndex}-${colIndex}`}>
-                      <div className="cell-container">
-                        <input
-                          type="text"
-                          value={cell}
-                          onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                          onFocus={() => setActiveCell({ row: rowIndex, col: colIndex })}
-                        />
-                        {activeCell?.row === rowIndex && activeCell?.col === colIndex && (
-                          <div className="cell-actions right-actions">
-                            <button onPointerDown={(e) => handleActionPointerDown(e, () => addRow(rowIndex - 1))} className="action-chip" title="Insert Row Above"><ArrowUp size={12} /><span>Above</span></button>
-                            <button onPointerDown={(e) => handleActionPointerDown(e, () => addRow(rowIndex))} className="action-chip" title="Insert Row Below"><ArrowDown size={12} /><span>Below</span></button>
-                            <button onPointerDown={(e) => handleActionPointerDown(e, () => deleteRow(rowIndex))} className="action-chip danger-text" title="Delete Row"><Trash2 size={12} /><span>Delete</span></button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  ))}
+                  {row.map((cell, colIndex) => {
+                    const isLastCol = colIndex === row.length - 1;
+                    return (
+                      <td key={`td-${rowIndex}-${colIndex}`}>
+                        <div className="cell-container">
+                          <input
+                            type="text"
+                            value={cell}
+                            onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
+                            onFocus={() => setActiveCell({ row: rowIndex, col: colIndex })}
+                          />
+                          {activeCell?.row === rowIndex && activeCell?.col === colIndex && (
+                            <div className={`cell-actions right-actions ${isLastCol ? 'align-right-edge' : ''}`}>
+                              <button onPointerDown={(e) => handleActionPointerDown(e, () => addRow(rowIndex - 1))} className="action-chip" title="Insert Row Above"><ArrowUp size={12} /><span>Above</span></button>
+                              <button onPointerDown={(e) => handleActionPointerDown(e, () => addRow(rowIndex))} className="action-chip" title="Insert Row Below"><ArrowDown size={12} /><span>Below</span></button>
+                              <button onPointerDown={(e) => handleActionPointerDown(e, () => deleteRow(rowIndex))} className="action-chip danger-text" title="Delete Row"><Trash2 size={12} /><span>Delete</span></button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div
-          className="table-editor-toolbar"
-          style={{
-            padding: '12px 16px',
-            borderTop: '1px solid var(--border-color, #e1e4e8)',
-            background: 'var(--surface-muted, #f6f8fa)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <AppButton variant="small" title="Add Row (Bottom)" onClick={() => addRow(tableData.rows.length - 1)}>
-            <Plus size={14} />
-            <span>Row</span>
-          </AppButton>
-          <AppButton variant="small" title="Add Column (Right)" onClick={() => addColumn(tableData.headers.length - 1)}>
-            <Plus size={14} style={{ transform: 'rotate(90deg)' }} />
-            <span>Column</span>
-          </AppButton>
-          <div className="toolbar-divider" style={{ width: 1, height: 16, background: 'var(--border-color)', margin: '0 4px' }} />
-          <AppButton variant="small" danger title="Clear Data" onClick={clearTable}>
-            <Eraser size={14} />
-            <span>Clear</span>
-          </AppButton>
-          <div style={{ flex: 1 }} />
-          <AppButton variant="small" title="Cancel (Esc)" onClick={onCancel}>
-            <X size={14} />
-            <span>Cancel</span>
-          </AppButton>
-          <AppButton variant="primary" title="Save Table (Ctrl+Enter)" onClick={commitChanges}>
-            <Check size={14} />
-            <span>Save Table</span>
-          </AppButton>
         </div>
       </div>
     </div>,
     document.body
   );
 }
+
+export default MarkdownTableEditor;

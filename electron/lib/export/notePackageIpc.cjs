@@ -156,7 +156,7 @@ function registerNotePackageIpc(ipcMain, deps) {
     const rootFolderName = path.basename(notesRoot) || "workspace";
     return {
       destinationPath: destPath,
-      fileName: `${rootFolderName}.note`
+      fileName: `${rootFolderName}.nly`
     };
   });
 
@@ -165,8 +165,8 @@ function registerNotePackageIpc(ipcMain, deps) {
     const focusedWindow = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showSaveDialog(focusedWindow, {
       title: "Export Note Package",
-      defaultPath: defaultFileName || "notes_package.note",
-      filters: [{ name: "Notely Shareable Package", extensions: ["note"] }],
+      defaultPath: defaultFileName || "notes_package.nly",
+      filters: [{ name: "Notely Shareable Package", extensions: ["nly", "note"] }],
     });
     if (result.canceled || !result.filePath) {
       return { canceled: true };
@@ -179,7 +179,7 @@ function registerNotePackageIpc(ipcMain, deps) {
     const focusedWindow = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showOpenDialog(focusedWindow, {
       title: "Select Note Package to Import",
-      filters: [{ name: "Notely Shareable Package", extensions: ["note"] }],
+      filters: [{ name: "Notely Shareable Package", extensions: ["nly", "note"] }],
       properties: ["openFile"],
     });
     if (result.canceled || !result.filePaths?.[0]) {
@@ -193,7 +193,7 @@ function registerNotePackageIpc(ipcMain, deps) {
     const notesRoot = getNotesRoot();
     if (!notesRoot) throw new Error("No notes root configured.");
 
-    const exportFileName = fileName || `export_${Date.now()}.note`;
+    const exportFileName = fileName || `export_${Date.now()}.nly`;
     const resolvedDest = path.resolve(destinationPath);
     // Ensure destination directory exists (user may have typed a path manually)
     fsSync.mkdirSync(resolvedDest, { recursive: true });

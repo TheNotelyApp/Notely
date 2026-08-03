@@ -39,8 +39,11 @@ function createImageMedia(deps) {
 
 function getOriginalImageBackupPath(imagePath) {
   if (!imagePath) return "";
-  const relativeImagePath = path.relative(getNotesRoot(), path.resolve(imagePath));
-  return path.join(getAppDataDir(), ORIGINAL_IMAGE_DIR_NAME, relativeImagePath);
+  const absPath = path.resolve(imagePath);
+  const root = getNotesRoot();
+  const rawRelative = path.relative(root, absPath);
+  const safeRelative = rawRelative.startsWith("..") ? `external_${crypto.createHash("md5").update(absPath).digest("hex")}_${path.basename(absPath)}` : rawRelative;
+  return path.join(getAppDataDir(), ORIGINAL_IMAGE_DIR_NAME, safeRelative);
 }
 
 function hasOriginalImageBackup(imagePath) {
@@ -407,9 +410,11 @@ function resolveImageAssetPath(basePath, assetPath) {
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
     } else {
       candidates.push(path.resolve(baseDir, normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
       if (sluglessDiagramMatch && !/^\.notes-app[\\/]/i.test(normalizedAsset)) {
         const [, diagramId] = sluglessDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
+        candidates.push(path.resolve(getNotesRoot(), `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
       }
       // Backward compatibility for legacy Excalidraw paths:
       // excali-diagrams/<doc-slug>/<diagram-id>/diagram.png
@@ -418,6 +423,7 @@ function resolveImageAssetPath(basePath, assetPath) {
         const [, _legacyDocSlug, diagramId] = legacyDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
         candidates.push(path.resolve(baseDir, `excali-diagrams/${diagramId}/diagram.png`));
+        candidates.push(path.resolve(getNotesRoot(), `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
       }
     }
 
@@ -443,8 +449,11 @@ function isRasterImagePath(filePath) {
 
 function getThumbnailDirForImage(imagePath) {
   if (!imagePath) return "";
-  const relativeImagePath = path.relative(getNotesRoot(), path.resolve(imagePath));
-  const relativeDir = path.dirname(relativeImagePath);
+  const absPath = path.resolve(imagePath);
+  const root = getNotesRoot();
+  const rawRelative = path.relative(root, absPath);
+  const safeRelative = rawRelative.startsWith("..") ? `external_${crypto.createHash("md5").update(absPath).digest("hex")}` : rawRelative;
+  const relativeDir = path.dirname(safeRelative);
   return path.join(getAppDataDir(), THUMBNAIL_DIR_NAME, relativeDir);
 }
 

@@ -558,7 +558,7 @@ const ExcalidrawComponent = ({
           <div className="excalidraw-modal-actions">
             <AppButton ref={saveButtonRef} variant="primary" onClick={handleSave} disabled={isSaving}>
               <Save size={14} aria-hidden="true" />
-              {isSaving ? "Saving..." : "Save Diagram"}
+              {isSaving ? "Saving..." : "Save"}
             </AppButton>
             <AppButton variant="small" onClick={handleClose} disabled={isSaving}>
               <X size={14} aria-hidden="true" />

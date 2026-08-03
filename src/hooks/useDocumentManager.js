@@ -842,9 +842,10 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       if (result?.ignoredByEnv) {
         notify("Path saved, but NOTES_ROOT env override is active. Remove it to use this path.", "warning");
       } else {
-        await loadDocumentsData();
+        setOpenTabs([]);
         setCurrent(null);
         setHistory([]);
+        await loadDocumentsData();
         notify("Workspace opened successfully.", "success");
       }
       setRecentWorkspacesDialogOpen(false);

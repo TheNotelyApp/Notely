@@ -22,6 +22,7 @@ import ExcalidrawComponent from "./ExcalidrawEditor";
 import { DrawioBlock } from "./DrawioBlock";
 import { ImageCropModal } from "./ImageCropModal";
 import CodeBlockModal from "./CodeBlockModal";
+import { MarkdownTableEditor } from "./MarkdownTableEditor";
 
 function replaceAllLiteral(source, needle, replacement) {
   if (!needle || needle === replacement) return source;
@@ -447,6 +448,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   const [cropSaving, setCropSaving] = useState(false);
   const [replaceState, setReplaceState] = useState({ busy: false, assetPath: "" });
   const [codeEditState, setCodeEditState] = useState({ open: false, language: "", code: "", sourceLine: null });
+  const [tableEditState, setTableEditState] = useState({ open: false, initialMarkdown: "", sourceLine: null, lineCount: 0 });
   const [diagramEditState, setDiagramEditState] = useState({
     open: false,
     diagramId: "",
@@ -921,6 +923,52 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               }
             });
           });
+        }
+        return;
+      }
+
+      const tableWrapper = target.closest(".markdown-table-wrapper");
+      if (tableWrapper) {
+        if (target.closest("a, button, input, select, textarea")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const sourceLine = Number(tableWrapper.getAttribute("data-source-line")) || null;
+        const lines = String(content || "").split("\n");
+
+        if (sourceLine) {
+          let lineIdx = Math.max(0, Math.min(lines.length - 1, sourceLine - 1));
+          if (!lines[lineIdx] || !lines[lineIdx].includes("|")) {
+            for (const offset of [-1, 1, -2, 2, -3, 3, -4, 4, -5, 5]) {
+              const candidate = lineIdx + offset;
+              if (candidate >= 0 && candidate < lines.length && lines[candidate].includes("|")) {
+                lineIdx = candidate;
+                break;
+              }
+            }
+          }
+          if (lines[lineIdx] && lines[lineIdx].includes("|")) {
+            let startIdx = lineIdx;
+            while (startIdx > 0 && lines[startIdx - 1].includes("|")) startIdx -= 1;
+            let endIdx = lineIdx;
+            while (endIdx < lines.length - 1 && lines[endIdx + 1].includes("|")) endIdx += 1;
+            const tableLines = lines.slice(startIdx, endIdx + 1);
+            setTableEditState({ open: true, initialMarkdown: tableLines.join("\n"), sourceLine: startIdx + 1, lineCount: tableLines.length });
+            return;
+          }
+        }
+
+        // Fallback: locate table containing '|' in content
+        const firstTableIdx = lines.findIndex((l) => l.includes("|"));
+        if (firstTableIdx !== -1) {
+          let startIdx = firstTableIdx;
+          while (startIdx > 0 && lines[startIdx - 1].includes("|")) startIdx -= 1;
+          let endIdx = firstTableIdx;
+          while (endIdx < lines.length - 1 && lines[endIdx + 1].includes("|")) endIdx += 1;
+          const tableLines = lines.slice(startIdx, endIdx + 1);
+          setTableEditState({ open: true, initialMarkdown: tableLines.join("\n"), sourceLine: startIdx + 1, lineCount: tableLines.length });
+        } else {
+          onNotify?.("Unable to read table source.", "error");
         }
         return;
       }
@@ -2039,6 +2087,27 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           )}
         </div>,
         document.body
+      )}
+      {tableEditState.open && (
+        <MarkdownTableEditor
+          initialMarkdown={tableEditState.initialMarkdown}
+          onCommit={(newMarkdown) => {
+            if (onContentChange && tableEditState.sourceLine) {
+              const lines = String(content || "").split("\n");
+              const startIdx = tableEditState.sourceLine - 1;
+              lines.splice(startIdx, tableEditState.lineCount, newMarkdown);
+              onContentChange(lines.join("\n"));
+              const newLineCount = newMarkdown.split("\n").length;
+              setTableEditState((prev) => ({
+                ...prev,
+                initialMarkdown: newMarkdown,
+                lineCount: newLineCount,
+              }));
+              onNotify?.("Table saved successfully.", "success");
+            }
+          }}
+          onCancel={() => setTableEditState({ open: false, initialMarkdown: "", sourceLine: null, lineCount: 0 })}
+        />
       )}
     </>
   );

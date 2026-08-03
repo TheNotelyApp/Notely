@@ -131,6 +131,19 @@ md.core.ruler.push("notely-source-lines", (state) => {
   });
 });
 
+md.renderer.rules.table_open = (tokens, idx, options, env) => {
+  const token = tokens[idx];
+  const mappedLine = Array.isArray(token.map) ? (Number(token.map[0]) || 0) + (Number(env?.sourceLineOffset) || 0) + 1 : 0;
+  const attrLine = Number(token.attrGet("data-source-line")) || 0;
+  const sourceStartLine = mappedLine || attrLine;
+  const lineAttr = sourceStartLine > 0 ? ` data-source-line="${sourceStartLine}"` : "";
+  return `<div class="markdown-table-wrapper"${lineAttr} role="button" tabindex="0" title="Click to edit table"><table>`;
+};
+
+md.renderer.rules.table_close = () => {
+  return `</table></div>`;
+};
+
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const token = tokens[idx];
   const src = token.attrGet("src") || "";
