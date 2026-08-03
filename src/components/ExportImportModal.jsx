@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Download, Upload, X, CheckSquare, Square } from "lucide-react";
+import { Download, Upload, X, CheckSquare, Square, FolderOpen } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppInput from "./AppInput";
 import "../styles/ExportImportModal.css";
@@ -79,19 +79,26 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
             }
           }
         }
+
         setAvailableNotes(files);
+        setSelectedNotes(new Set(files.map((f) => f.filePath)));
       } catch (err) {
-        notify("Failed to list workspace notes: " + err.message, "error");
+        notify("Unable to load notes list: " + err.message, "error");
       } finally {
         setLoading(false);
       }
     };
 
     loadNotes();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, tab]);
+  }, [isOpen, tab, notify]);
 
-  if (!isOpen) return null;
+  const handleSelectAll = () => {
+    if (selectedNotes.size === availableNotes.length) {
+      setSelectedNotes(new Set());
+    } else {
+      setSelectedNotes(new Set(availableNotes.map((n) => n.filePath)));
+    }
+  };
 
   const handleSelectNote = (filePath) => {
     const next = new Set(selectedNotes);
@@ -103,40 +110,25 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     setSelectedNotes(next);
   };
 
-  const handleSelectAll = () => {
-    if (selectedNotes.size === availableNotes.length) {
-      setSelectedNotes(new Set());
-    } else {
-      setSelectedNotes(new Set(availableNotes.map(n => n.filePath)));
-    }
-  };
-
   const handleBrowseExport = async () => {
     try {
-      const defaultName = `export_${Date.now()}.note`;
-      const result = await window.notesApi.browseExportDestination({ defaultFileName: defaultName });
-      if (!result.canceled && result.filePath) {
-        // Extract dir and file
-        const fullPath = result.filePath.replace(/\\/g, "/");
-        const idx = fullPath.lastIndexOf("/");
-        const dir = fullPath.slice(0, idx);
-        const name = fullPath.slice(idx + 1);
-        setDestinationPath(dir);
-        setFileName(name);
+      const selected = await window.notesApi.selectExportPackageFolder();
+      if (selected) {
+        setDestinationPath(selected);
       }
     } catch (err) {
-      notify("Folder browser failed: " + err.message, "error");
+      notify("Failed to choose folder: " + err.message, "error");
     }
   };
 
   const handleBrowseImport = async () => {
     try {
-      const result = await window.notesApi.browseImportFile();
-      if (!result.canceled && result.filePath) {
-        setImportFilePath(result.filePath);
+      const selected = await window.notesApi.selectImportPackageFile();
+      if (selected) {
+        setImportFilePath(selected);
       }
     } catch (err) {
-      notify("File browser failed: " + err.message, "error");
+      notify("Failed to choose import file: " + err.message, "error");
     }
   };
 
@@ -145,24 +137,28 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       notify("Please select at least one note to export.", "warning");
       return;
     }
-    if (!destinationPath || !fileName) {
-      notify("Please select an export destination.", "warning");
+    if (!destinationPath) {
+      notify("Please select a save location.", "warning");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await window.notesApi.exportNotePackage({
-        noteFilePaths: Array.from(selectedNotes),
-        destinationPath,
-        fileName,
-        password: exportPassword
+      const notePaths = Array.from(selectedNotes);
+      const outputName = fileName.endsWith(".nly") ? fileName : `${fileName}.nly`;
+      const fullOutputPath = `${destinationPath}/${outputName}`;
+
+      const res = await window.notesApi.exportNotePackage({
+        notePaths,
+        outputPath: fullOutputPath,
+        password: exportPassword || undefined,
       });
-      if (result.success) {
-        notify("Notes successfully exported!", "success");
+
+      if (res?.success) {
+        notify(`Exported ${res.exportedNotesCount} note(s) to ${res.outputPath}`, "success");
         onClose();
       } else {
-        notify("Export failed: " + result.error, "error");
+        notify("Export failed: " + (res?.error || "Unknown error"), "error");
       }
     } catch (err) {
       notify("Export failed: " + err.message, "error");
@@ -173,30 +169,27 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
 
   const handleImport = async () => {
     if (!importFilePath) {
-      notify("Please select a .nly package file.", "warning");
+      notify("Please select a .nly or .note package to import.", "warning");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await window.notesApi.importNotePackage({
-        packageFilePath: importFilePath,
-        password: importPassword
+      const res = await window.notesApi.importNotePackage({
+        packagePath: importFilePath,
+        password: importPassword || undefined,
       });
-      if (result.success) {
-        notify(`Successfully imported ${result.importedNotes.length} notes!`, "success");
-        if (typeof reloadDocuments === "function") {
-          reloadDocuments();
-        }
+
+      if (res?.success) {
+        notify(`Imported ${res.importedNotesCount} note(s) into workspace.`, "success");
+        if (reloadDocuments) await reloadDocuments();
         onClose();
       } else {
-        if (result.error === "PASSWORD_REQUIRED") {
+        if (res?.passwordRequired) {
           setRequireImportPassword(true);
-          notify("This package is password-protected. Please enter password.", "warning");
-        } else if (result.error === "INCORRECT_PASSWORD") {
-          notify("Incorrect password. Please try again.", "error");
+          notify("This package is password-protected. Please enter the password.", "warning");
         } else {
-          notify("Import failed: " + result.error, "error");
+          notify("Import failed: " + (res?.error || "Unknown error"), "error");
         }
       }
     } catch (err) {
@@ -210,11 +203,14 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     <OverlayDialog
       open={isOpen}
       onClose={onClose}
-      ariaLabel="Export / Import Note Packages"
-      cardClassName="export-import-dialog-card"
+      ariaLabel={tab === "export" ? "Export Note Package" : "Import Note Package"}
+      cardClassName={`export-import-dialog-card ${tab === "import" ? "import-mode-card" : ""}`}
     >
       <div className="overlay-dialog-header">
-        <h2>Shareable Note Package</h2>
+        <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {tab === "export" ? <Upload size={18} /> : <Download size={18} />}
+          <span>{tab === "export" ? "Export Note Package" : "Import Note Package"}</span>
+        </h2>
         <button
           className="icon-button"
           onClick={onClose}
@@ -226,38 +222,34 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
         </button>
       </div>
 
-      <div className="dialog-tabs">
-        <button
-          className={`dialog-tab ${tab === "export" ? "active" : ""}`}
-          onClick={() => setTab("export")}
-          disabled={loading}
-        >
-          Export Package
-        </button>
-        <button
-          className={`dialog-tab ${tab === "import" ? "active" : ""}`}
-          onClick={() => setTab("import")}
-          disabled={loading}
-        >
-          Import Package
-        </button>
-      </div>
-
       {tab === "export" ? (
         <div className="tab-content export-tab">
           <p className="tab-description">
             Choose which notes to export. This will bundle all linked images, Excalidraw, and Draw.io diagrams into a secure, encrypted `.nly` file.
           </p>
 
-          <div className="note-selector-header">
-            <span>Select Notes ({selectedNotes.size} of {availableNotes.length})</span>
+          <div className="note-selector-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "4px 0" }}>
+            <span className="selection-count" style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 500 }}>
+              {selectedNotes.size} of {availableNotes.length} notes selected
+            </span>
             <button
               className="link-button"
               type="button"
               onClick={handleSelectAll}
               disabled={loading || availableNotes.length === 0}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px" }}
             >
-              {selectedNotes.size === availableNotes.length ? "Deselect All" : "Select All"}
+              {selectedNotes.size === availableNotes.length ? (
+                <>
+                  <CheckSquare size={14} />
+                  <span>Deselect All</span>
+                </>
+              ) : (
+                <>
+                  <Square size={14} />
+                  <span>Select All</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -301,8 +293,10 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
                 type="button"
                 onClick={handleBrowseExport}
                 disabled={loading}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
               >
-                Browse
+                <FolderOpen size={14} />
+                <span>Browse</span>
               </button>
             </div>
           </div>
@@ -318,8 +312,15 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
             />
           </div>
 
-          <div className="overlay-dialog-actions">
-            <button className="small-button" type="button" onClick={onClose} disabled={loading}>
+          <div className="overlay-dialog-actions" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+            <button
+              className="small-button"
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
+            >
+              <X size={14} />
               <span>Cancel</span>
             </button>
             <button
@@ -327,8 +328,9 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
               type="button"
               onClick={handleExport}
               disabled={loading || selectedNotes.size === 0 || !destinationPath}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
             >
-              <Download size={14} />
+              <Upload size={14} />
               <span>{loading ? "Exporting..." : "Export Package"}</span>
             </button>
           </div>
@@ -336,11 +338,11 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       ) : (
         <div className="tab-content import-tab">
           <p className="tab-description">
-            Select a `.note` package file to import notes and all of their dependencies into your current workspace. Any naming collisions will be resolved safely using the package mapping metadata.
+            Select a `.nly` or `.note` package file to import notes and all of their dependencies into your current workspace. Any naming collisions will be resolved safely using the package mapping metadata.
           </p>
 
           <div className="overlay-dialog-field">
-            <span>Select .note file</span>
+            <span>Select Package File</span>
             <div className="browse-row">
               <AppInput
                 type="text"
@@ -354,8 +356,10 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
                 type="button"
                 onClick={handleBrowseImport}
                 disabled={loading}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
               >
-                Browse
+                <FolderOpen size={14} />
+                <span>Browse</span>
               </button>
             </div>
           </div>
@@ -373,11 +377,15 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
             </div>
           )}
 
-          {/* Spacer: keeps import tab the same height as export tab */}
-          <div className="import-tab-spacer" />
-
-          <div className="overlay-dialog-actions">
-            <button className="small-button" type="button" onClick={onClose} disabled={loading}>
+          <div className="overlay-dialog-actions" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+            <button
+              className="small-button"
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
+            >
+              <X size={14} />
               <span>Cancel</span>
             </button>
             <button
@@ -385,8 +393,9 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
               type="button"
               onClick={handleImport}
               disabled={loading || !importFilePath}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
             >
-              <Upload size={14} />
+              <Download size={14} />
               <span>{loading ? "Importing..." : "Import Package"}</span>
             </button>
           </div>

@@ -6,7 +6,8 @@ import {
   SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
   ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
-  HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon
+  HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
+  Upload, Download
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 
@@ -21,6 +22,8 @@ const MENU_ICON_MAP = {
   "save*": Save,
   "auto save": RefreshCw,
   "export pdf": FileText,
+  "export note package": Upload,
+  "import note package": Download,
   "export/import note package": Package,
   "rename note": Edit2,
   "reload from disk": RefreshCw,

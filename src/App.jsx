@@ -1506,6 +1506,18 @@ export default function App() {
         return;
       }
 
+      if (action === "open-export-package" || action === "export-note-package") {
+        setExportImportMode("export");
+        setExportImportOpen(true);
+        return;
+      }
+
+      if (action === "open-import-package" || action === "import-note-package") {
+        setExportImportMode("import");
+        setExportImportOpen(true);
+        return;
+      }
+
       if (action === "open-export-import") {
         setExportImportMode("export");
         setExportImportOpen(true);
@@ -2169,6 +2181,8 @@ export default function App() {
     { id: "reload-workspace", label: "Reload Workspace from Disk", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+R", aliases: "refresh reload workspace disk" },
     { id: "reload-document", label: "Reload Current Note from Disk", group: "Editor", shortcut: "Ctrl/Cmd+Shift+R", disabled: !current, aliases: "refresh reload note file disk" },
     { id: "export-workspace-zip", label: "Export Workspace as Zip", group: "Workspace", aliases: "export backup archive zip workspace" },
+    { id: "open-export-package", label: "Export Note Package...", group: "Package", aliases: "export note package nly note package backup share" },
+    { id: "open-import-package", label: "Import Note Package...", group: "Package", aliases: "import note package nly note package restore open" },
     { id: "open-workspace-graph", label: "Open Workspace Graph", group: "Navigation", aliases: "graph map relationships links topology" },
     { id: "open-tasks-panel", label: "Open Tasks Panel", group: "Navigation", aliases: "tasks todos checkboxes unchecked open items" },
     { id: "open-all-tasks", label: "Open All Tasks", group: "Navigation", aliases: "all tasks completed closed open task list workspace tasks" },

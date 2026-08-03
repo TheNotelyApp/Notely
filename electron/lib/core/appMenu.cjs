@@ -115,8 +115,12 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "export-pdf")
         },
         {
-          label: "Export/Import note package",
-          click: () => sendMenuAction(win, "open-export-import")
+          label: "Export Note Package",
+          click: () => sendMenuAction(win, "open-export-package")
+        },
+        {
+          label: "Import Note Package",
+          click: () => sendMenuAction(win, "open-import-package")
         },
         { type: "separator" },
         {
@@ -183,8 +187,12 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "reload-workspace")
         },
         {
-          label: "Export/Import note package",
-          click: () => sendMenuAction(win, "open-export-import")
+          label: "Export Note Package",
+          click: () => sendMenuAction(win, "open-export-package")
+        },
+        {
+          label: "Import Note Package",
+          click: () => sendMenuAction(win, "open-import-package")
         },
         { type: "separator" },
         {
