@@ -14,7 +14,6 @@ const PROJECT_TYPES = [
 ];
 
 const EMOJI_OPTIONS = ["📝", "🚀", "💻", "🧠", "📚", "🎨", "⚡", "🔍", "🛠️", "🌐", "💡", "🎯", "🔥", "✨"];
-const COLOR_OPTIONS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6", "#06b6d4", "#84cc16", "#d946ef", "#f97316", "#64748b", "#0284c7"];
 
 export function WorkspaceModal({
   isOpen,
@@ -34,7 +33,6 @@ export function WorkspaceModal({
   const [projectType, setProjectType] = useState("General");
   const [primaryGoal, setPrimaryGoal] = useState("");
   const [icon, setIcon] = useState("📝");
-  const [color, setColor] = useState("#3b82f6");
   const [createWelcomeNote, setCreateWelcomeNote] = useState(true);
   const [initGit, setInitGit] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -78,7 +76,6 @@ export function WorkspaceModal({
         setProjectType(initialInfo.projectType || "General");
         setPrimaryGoal(initialInfo.primaryGoal || "");
         setIcon(initialInfo.icon || "📝");
-        setColor(initialInfo.color || "#3b82f6");
         setCreateWelcomeNote(initialInfo.createWelcomeNote !== false);
         setInitGit(initialInfo.initGit !== false);
       } else {
@@ -89,7 +86,6 @@ export function WorkspaceModal({
         setProjectType(initialInfo.projectType || "General");
         setPrimaryGoal(initialInfo.primaryGoal || "");
         setIcon(initialInfo.icon || "📝");
-        setColor(initialInfo.color || "#3b82f6");
       }
     }
     wasOpenRef.current = isOpen;
@@ -179,7 +175,6 @@ export function WorkspaceModal({
           projectType,
           primaryGoal: primaryGoal.trim(),
           icon,
-          color,
           createWelcomeNote,
           initGit,
         });
@@ -191,7 +186,6 @@ export function WorkspaceModal({
           projectType,
           primaryGoal: primaryGoal.trim(),
           icon,
-          color,
         });
       }
       onClose?.();
@@ -343,23 +337,6 @@ export function WorkspaceModal({
                 onClick={() => setIcon(e)}
               >
                 {e}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="workspace-modal-field">
-          <label>Accent Color</label>
-          <div className="workspace-modal-color-row">
-            {COLOR_OPTIONS.map((c) => (
-              <button
-                type="button"
-                key={c}
-                className={`workspace-color-btn ${color === c ? "active" : ""}`}
-                style={{ backgroundColor: c }}
-                onClick={() => setColor(c)}
-              >
-                {color === c && <Check size={12} color="#fff" />}
               </button>
             ))}
           </div>

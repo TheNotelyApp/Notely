@@ -2938,7 +2938,8 @@ export default function App() {
   return (
     <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}${focusModeEnabled && current ? " focus-mode-active" : ""}`}>
       <TitleBar
-        title={current ? current.title : (activeProject ? activeProject.name : "Notely")}
+        title={current ? current.title : (workspaceInfoState?.name || (activeProject ? activeProject.name : "Notely"))}
+        workspaceIcon={current ? null : (workspaceInfoState?.icon || "📝")}
         onOpenWebsite={current ? handleOpenWebsiteForCurrent : handleOpenWebsiteFromLanding}
       />
       <div className="app-main-layout">

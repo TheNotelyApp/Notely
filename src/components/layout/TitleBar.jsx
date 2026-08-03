@@ -150,7 +150,7 @@ function getItemIcon(item) {
   return <IconComponent size={12} className="titlebar-menu-item-icon" />;
 }
 
-export function TitleBar({ title = "Notely", onOpenWebsite }) {
+export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite }) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [menuStructure, setMenuStructure] = useState([]);
   const [activeMenuIndex, setActiveMenuIndex] = useState(null);
@@ -376,7 +376,10 @@ export function TitleBar({ title = "Notely", onOpenWebsite }) {
         </div>
       </div>
 
-      <div className="titlebar-title">{title}</div>
+      <div className="titlebar-title" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+        {workspaceIcon && <span className="titlebar-workspace-icon" style={{ fontSize: "13px", lineHeight: 1, display: "inline-flex", alignItems: "center" }}>{workspaceIcon}</span>}
+        <span>{title}</span>
+      </div>
 
       <div className="titlebar-controls">
         {onOpenWebsite && (
