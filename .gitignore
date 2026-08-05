@@ -6,8 +6,9 @@ build/
 .artifacts/
 release/
 .codegraph/
-notes/
-notes/.notes-app/
+/notes/
+/notes/.notes-app/
+!tests/golden_workspace/notes/
 electron/app-version.generated.json
 docs-site-dist/
 docs-site/.vitepress/cache/
