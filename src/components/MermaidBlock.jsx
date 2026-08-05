@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 let mermaidInitialized = false;
 
-export function MermaidBlock({ code, index }) {
+export function MermaidBlock({ code, index, onEdit }) {
   const [svg, setSvg] = useState("");
   const [error, setError] = useState("");
 
@@ -54,5 +54,15 @@ export function MermaidBlock({ code, index }) {
     return <pre className="diagram-error">{error}</pre>;
   }
 
-  return <div className="mermaid-render" dangerouslySetInnerHTML={{ __html: svg }} />;
+  return (
+    <div
+      className="mermaid-render"
+      onClick={() => onEdit?.(code)}
+      style={{
+        cursor: onEdit ? "pointer" : "default",
+      }}
+      title={onEdit ? "Click to edit Mermaid diagram visually" : ""}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
 }

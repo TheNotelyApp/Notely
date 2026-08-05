@@ -318,13 +318,14 @@
   position: relative;
   border-radius: var(--radius-md, 6px);
   border: 1px solid transparent;
-  padding: 4px;
+  padding: 0;
   cursor: pointer;
   overflow-x: auto;
   transition: border-color var(--motion-standard, 0.15s ease),
               box-shadow var(--motion-standard, 0.15s ease),
               background var(--motion-standard, 0.15s ease);
 }
+
 
 .preview .markdown-table-wrapper:hover {
   border-color: color-mix(in srgb, var(--accent-solid, #3b82f6) 65%, var(--border-soft, #cbd5e1));
@@ -624,10 +625,28 @@
   overflow: auto;
   margin: 16px 0;
   padding: 16px;
-  border: 1px solid #d9dedb;
+  border: 1px solid var(--border-soft, #d9dedb);
   border-radius: 6px;
-  background: #faf9f6;
+  background: var(--bg-card, #faf9f6);
+  cursor: pointer;
+  transition: border-color var(--motion-standard, 0.15s ease),
+              box-shadow var(--motion-standard, 0.15s ease),
+              background var(--motion-standard, 0.15s ease);
 }
+
+.mermaid-render:hover {
+  border-color: color-mix(in srgb, var(--accent-solid, #3b82f6) 65%, var(--border-soft, #cbd5e1));
+  background: color-mix(in srgb, var(--accent-solid, #3b82f6) 3%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-solid, #3b82f6) 20%, transparent),
+              0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.mermaid-render:focus-visible {
+  outline: none;
+  border-color: var(--accent-solid, #3b82f6);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid, #3b82f6) 35%, transparent);
+}
+
 
 .diagram-error,
 .error-banner {
