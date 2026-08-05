@@ -510,7 +510,7 @@ class GraphService {
           this.fusionEngine.fuseTriple({
             source_id: rootEntityId,
             target_id: srcId,
-            type: 'mentions_concept',
+            type: 'mentions',
             weight: mined.confidence,
             confidence: mined.confidence,
             extractor: 'deterministic_miner',

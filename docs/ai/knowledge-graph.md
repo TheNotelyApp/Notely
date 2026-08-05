@@ -1,46 +1,70 @@
 # Knowledge Graph Generation Engine
 
-Notely features an offline, local-first, AI-powered **Knowledge Graph Generation Engine**. It operates without any cloud dependencies, transforming raw Markdown notes, image annotations, and workspace metadata into an interconnected Property Graph using local FP16 ONNX neural models, SQLite storage, and hybrid GraphRAG retrieval.
+Notely features an offline, local-first, AI-powered **8-Stage Knowledge Graph Generation Engine**. It operates without any cloud dependencies, transforming raw Markdown notes, image annotations, and workspace metadata into an interconnected Property Graph using local FP16 ONNX neural models, SQLite vector storage, deterministic domain pattern mining, and hybrid GraphRAG retrieval.
 
 ---
 
 ## Architecture Overview
 
-The system uses a multi-tier pipeline separating document structure parsing from model-agnostic neural semantic extraction.
+The system uses an 8-stage pipeline separating document structure parsing from model-agnostic neural semantic extraction, vector embedding deduplication, and evidence fusion.
 
 ```mermaid
 flowchart TD
-    MD[Markdown Note .md] --> AST[Markdown AST Parser]
-    META[.notes-app/metadata.json] --> METASRC[Workspace Metadata Knowledge Source]
-    IMG[Image Annotations media.alt] --> AST
+    MD[Markdown Note .md] --> S1[Stage 1: AST Structural Parser & Pre-Cleansing]
+    S1 --> S2[Stage 2: Linguistic Noun-Phrase & Prose Isolator]
+    S2 --> S3[Stage 3: Deterministic Domain Pattern Mining]
+    S2 --> S4[Stage 4: GLiNER2 ONNX Neural Extraction]
+    S3 & S4 --> S5[Stage 5: Universal Quality Gate & Noise Filtering]
+    S5 --> S6[Stage 6: Algorithmic Entity Type Sanitization]
+    S6 --> S7[Stage 7: ONNX Vector Embedding Concept Deduplication]
+    S7 --> S8[Stage 8: Evidence Fusion Engine & Plausibility Matrix]
     
-    AST -->|Structural Nodes & Evidence| EV[Evidence Store SQLite]
-    METASRC -->|Workspace & Tag Entities| DB[(SQLite Property Graph ai-graph.db)]
-    
-    subgraph Model-Agnostic Neural Extraction Layer
-        MD --> SEE[Semantic Extraction Engine]
-        SEE --> ADAP[GLiNER2-Relex ONNX Adapter]
-        ADAP -->|Zero-Shot Entities & Relations| VAL[Extraction Validator]
-        VAL -->|Validated Candidates & Provenance| EV
-    end
-    
-    EV --> FUSE[Evidence Fusion Engine]
-    FUSE --> DB
-    
-    subgraph Retrieval & Maintenance
-        DB --> CTE[Recursive CTE Graph Walk]
-        DB --> MAINT[Self-Healing Background Maintenance]
-        CTE --> HYB[Hybrid Retriever RRF]
-        HYB --> LLM[LLM Context Builder]
-        MAINT --> DB
-    end
+    S8 --> DB[(SQLite Property Graph ai-graph.db)]
+    DB --> CD[Community Detector Label Propagation]
+    DB --> CTE[Recursive CTE Graph Walk]
 ```
 
 ---
 
-## Detailed Pipeline Flow
+## The 8 Pipeline Stages
 
-Processing a Markdown document follows a deterministic, non-blocking pipeline inside an isolated Electron `utilityProcess` worker process.
+### Stage 1: AST Structural Parser & Pre-Cleansing
+- **Component:** `MarkdownASTParser.js`
+- **Role:** Extracts structural AST entities (`Note`, `Section`, `Tag`, `Media`, `CodeBlock`, `Task`). Strips HTML attributes (`{data-*="..."}`), markdown tables (`| ... |`), image tags, key-value metadata lines, and frontmatter metadata to produce clean natural prose text for neural extraction.
+
+### Stage 2: Linguistic Noun-Phrase & Prose Isolator
+- **Component:** `MarkdownASTParser.js` / Sentence Segmenter
+- **Role:** Isolates natural language sentences and candidate noun phrases before passing text into heavy ONNX sessions, filtering out structural noise lines and code syntax.
+
+### Stage 3: Deterministic Domain Pattern Mining
+- **Component:** `DeterministicSemanticMiner.js`
+- **Role:** Mines pattern-based technical domain relationships (`USES`, `DEPENDS_ON`, `GENERATES`, `INTEGRATES_WITH`, `IMPLEMENTS`, `ENABLES`, `WORKS_ON`) directly from prose sentences with $0.88 - 0.92$ baseline confidence.
+
+### Stage 4: GLiNER2 ONNX Neural Zero-Shot Extraction
+- **Component:** `GLiNER2RelexAdapter.js`
+- **Role:** Runs 5-graph ONNX Runtime inference using `gliner2-multi-v1-onnx`. Extracts neural entities and relationships with calibrated sigmoid scoring (`_sigmoid(val + 1.2)`), capped candidate span width (`maxWidth = 4`), and compound disjunctive entity splitting (`"Gemini or Groq"` $\rightarrow$ `"Gemini"`, `"Groq"`).
+
+### Stage 5: Universal Quality Gate & Noise Filtering
+- **Component:** `EntityResolver.js`
+- **Role:** Enforces universal length bounds ($2 \le \text{chars} \le 35$, max 4 words), uppercase 2/3-char acronym rules (`AI`, `UI`, `DB`, `API`, `SDK`, `SQL`), grammatical boundary checks, 4+ repeated character entropy, vowel ratio validation, and verb clause rejection (ZERO hardcoded entity word lists).
+
+### Stage 6: Algorithmic Entity Type Sanitization & Coercion
+- **Component:** `EntityResolver.js`
+- **Role:** Applies Title-Cased proper noun pattern classification (multi-word capitalized names $\rightarrow$ `Person`). Strictly coerces misclassified common nouns (`Workspace`, `AI Integration`, `Screenshot`, `Interactive`) to generic `Concept` or `Technology`.
+
+### Stage 7: ONNX Vector Embedding Concept Deduplication & Alias Fusion
+- **Component:** `EmbeddingService.js` + `EntityResolver.js` + `GraphDB.js`
+- **Role:** Leverages existing local ONNX embedder (`bge-small-en-v1.5`) to compute 384-dimensional dense vectors stored in SQLite (`entity_embeddings` table). Performs sub-millisecond cosine similarity checks against existing SQLite entity vectors to automatically merge concept variations (`"SQLite DB"` $\leftrightarrow$ `"SQLite Database"`) at $>0.88$ similarity.
+
+### Stage 8: Evidence Fusion Engine, Plausibility Matrix & Community Detection
+- **Component:** `EvidenceFusionEngine.js`, `CommunityDetector.js`, `GraphDB.js`
+- **Role:** Merges edge confidence scores using probabilistic union $P(A \cup B) = 1 - (1 - P(A))(1 - P(B))$. Enforces the **Semantic Relationship Plausibility Matrix** (blocks structural node domain actions, restricts `COMMUNICATES_WITH`, `IMPLEMENTS`, `GENERATES` predicates to compatible entity types). Executes label propagation community clustering over the cleaned graph.
+
+---
+
+## Detailed Ingestion Flow
+
+Processing a Markdown document follows a deterministic, non-blocking pipeline inside an isolated Electron `utilityProcess` background worker.
 
 ```mermaid
 sequenceDiagram
@@ -48,83 +72,32 @@ sequenceDiagram
     participant UI as Electron Renderer
     participant Worker as Background UtilityProcess
     participant AST as Markdown AST Parser
+    participant DSM as Deterministic Semantic Miner
     participant SEE as Semantic Extraction Engine
-    participant ADAP as GLiNER2-Relex ONNX Adapter
-    participant VAL as Extraction Validator
-    participant EV as Evidence Store & Fusion Engine
+    participant ER as Entity Resolver & Vector Deduplicator
+    participant EV as Evidence Fusion Engine
     participant DB as SQLite GraphDB
 
     UI->>Worker: Enqueue Note (Path, Content)
-    Worker->>AST: Parse Markdown AST Structure & Image Annotations
-    AST-->>Worker: Return Structural Tokens (Links, Tags, Images, URLs, Documents)
+    Worker->>AST: Parse Markdown AST & Pre-Cleanse Prose
+    AST-->>Worker: Return Structural Tokens & Cleansed Prose
     Worker->>DB: Upsert Root Note & Structural Entities
-    Worker->>EV: Register Baseline Structural Evidence
     
-    Worker->>SEE: Execute extract(document) via Model Adapter
-    SEE->>ADAP: Run GLiNER2-Relex FP16 ONNX Inference Session
-    ADAP-->>SEE: Return Zero-Shot Entities, Relations & Character Spans
+    Worker->>DSM: Mine Technical Pattern Triples
+    Worker->>SEE: Execute GLiNER2 ONNX Inference
+    SEE-->>Worker: Return Zero-Shot Entity & Relation Candidates
     
-    SEE->>VAL: Validate Candidates (Duplicates, Low Conf, Sub-spans, Graph Explosion)
-    VAL-->>SEE: Return Validation Telemetry & Approved Candidates
+    Worker->>ER: Apply 5-Rule Quality Gate & Type Coercion
+    Worker->>ER: Stage 7 Vector Cosine Deduplication & Alias Linking
     
-    SEE->>EV: Fuse Triples & Insert Provenance Records
-    EV->>DB: Upsert Resolved Entities & Relationship Edges
+    Worker->>EV: Apply Semantic Plausibility Matrix & Fuse Triples
+    EV->>DB: Upsert Clean Entities, Relationships & Evidence Records
     Worker-->>UI: Broadcast IPC Progress (ai:graph:progress)
 ```
 
 ---
 
-## Key Components & Concepts
-
-### 1. Markdown AST Parser & 23-Stage Cleansing Engine
-
-The structural parser converts Markdown text, embedded media, and workspace configuration into structural graph elements, while cleansing prose for neural extraction:
-
-- **Root Note Entity**: Uniquely identifies the document by path hash.
-- **Workspace Metadata (`.notes-app/metadata.json`)**: Automatically extracts workspace info, project types, and domain tags (`categorized_by`, `has_project_type`).
-- **Image Annotations (`![alt](path)`)**: Captures local and remote image links (`contains_media`), extracting semantic captions (`media.alt`) into `Annotation` nodes (`annotated_with`).
-- **Frontmatter & Key-Value Metadata**: Automatically extracts YAML block frontmatter and top key-value lines (`Tags:`, `Name:`, `Location:`, `Time:`):
-  - `Tags:` / `- tag` $\rightarrow$ Generates `#tag` (`Tag`) nodes linked to Note.
-  - `Name: Person A` $\rightarrow$ Generates `Person` entities linked via `has_person`.
-  - `Location: City` $\rightarrow$ Generates `Location` entities linked via `located_in`.
-- **Wikilinks (`[[Target]]`)**: Links documents to target notes with bidirectional edge weights.
-- **Section Headings (`# Heading`)**: Captures document hierarchy (`contains_section`) with level-attenuated weights ($H_1 = 1.4, H_2 = 1.3, \dots, H_6 = 0.9$). Built-in Notely system sections (`# RawNotes`, `# Cleansed`) are excluded.
-- **Tags (`#tag`)**: Categorizes concepts (`tagged`).
-- **Attachments & External URLs**: Captures external web links (`references_url`) and attached documents (`attaches_file`).
-- **Tasks (`- [ ]`, `- [x]`)**: Extracts open (`has_open_task`) and completed (`has_completed_task`) task items.
-- **23-Stage Prose Cleansing Engine (`cleanse()`)**:
-  Strips frontmatter, code blocks, multiline/inline math, HTML tags, callout headers, blockquotes, heading hashes, list prefixes, checkboxes, table pipes, footnotes, and markdown formatting (`**`, `*`, `~~`, `` ` ``). Passes 100% clean natural language prose to the neural extraction engine without syntax noise.
-
----
-
-### 2. GLiNER2-Relex ONNX Model Engine
-
-Semantic extraction uses an offline **GLiNER2-Relex FP16 ONNX model** (`dx111ge/gliner2-multi-v1-onnx`) executed via local ONNX runtime (`onnxruntime-node`).
-
-```mermaid
-graph LR
-    subgraph Model-Agnostic Engine Architecture
-        A[Input Document / Sentence] --> B[23-Stage AST Cleansing]
-        B --> C[Semantic Extraction Engine]
-        C --> D[GLiNER2-Relex ONNX Adapter]
-        D --> E[Zero-Shot Entity & Relation Candidates]
-        E --> F[Extraction Validator]
-    end
-```
-
-1. **Pure Model-Driven Zero-Shot Named Entity Recognition**:
-   Segments document using `Intl.Segmenter` and runs zero-shot GLiNER2 ONNX sessions to extract domain entity candidates (`Database`, `Framework`, `Software Component`, `Microcontroller`, `Device`, `Module`, `Integration`, `Broker`, `Architecture`, `Model`, `Service`, `Person`, `Application`, `Concept`). Logit decoding computes per-label score vectors across all candidate spans, picking the optimal label purely via neural logits without rule-based keyword overrides.
-2. **Dynamic UI Confidence Thresholding & Synchronized Filtering**:
-   The confidence threshold is dynamically loaded from UI settings (`ai-preferences.json`) and enforced across all three processing tiers:
-   - **Adapter Tier (`GLiNER2RelexAdapter`)**: Filters span scores below `confidenceThreshold`.
-   - **Ingestion Tier (`GraphService`)**: Blocks sub-threshold predictions before graph insertion.
-   - **Query Tier (`GraphDB`)**: Runs `WHERE confidence >= minConfidence` on `entities` and `relationships` tables, instantly filtering Knowledge Graph visualizations in real time when users adjust the UI slider.
-3. **Zero-Shot Relation Extraction & Semantic Verb Mapping**:
-   Evaluates entity pairs in sentence windows, mapping transitive action verbs (`controls`, `uses`, `depends on`, `communicates with`, `connects to`, `stores`, `implements`, `creates`, `generates`) to structured relationship types (`CONTROLS`, `USES`, `STORES`, `GENERATES`, `CREATES`, `COMMUNICATES_WITH`, `CONNECTS_TO`, `INTEGRATES_WITH`, `DEPENDS_ON`, `IMPLEMENTS`).
-
----
-
-### 3. SQLite Property Graph & Evidence Store
+## Database Schema & Vector Storage
 
 Knowledge graph data is stored locally in `.notes-app/ai-graph.db` using native SQLite (`node:sqlite`) with Write-Ahead Logging (`PRAGMA journal_mode = WAL;`).
 
@@ -133,6 +106,7 @@ erDiagram
     entities ||--o{ relationships : "source_id"
     entities ||--o{ relationships : "target_id"
     entities ||--o{ entity_aliases : "entity_id"
+    entities ||--o| entity_embeddings : "entity_id"
     evidence ||--o{ relationships : "evidence_id"
     
     entities {
@@ -142,6 +116,8 @@ erDiagram
         string type
         string note_path
         json properties
+        real confidence
+        int community_id
         datetime created_at
     }
     
@@ -152,8 +128,16 @@ erDiagram
         string type
         real weight
         real confidence
+        string extractor
         json metadata
         string evidence_id FK
+    }
+    
+    entity_embeddings {
+        string entity_id PK
+        blob vector
+        int dimension
+        datetime updated_at
     }
     
     evidence {
@@ -170,50 +154,27 @@ erDiagram
     }
 ```
 
-- **Deterministic Entities**: Entity IDs are generated deterministically using SHA-256 (`ent-` + sha256 of type:normalizedName).
-- **Evidence & Provenance**: Every AI-discovered relationship links to an `evidence` record preserving exact source offsets, raw sentence text, extractor identity, and confidence score.
+---
+
+## Graph Quality & Provenance Validation
+
+- **Universal Quality Gate (`EntityResolver.js`)**:
+  Inspects candidate terms before persistence, rejecting stop words, grammatical prepositions, verb fragments, non-word gibberish, and editor syntax artifacts.
+- **Semantic Relationship Plausibility Matrix (`EvidenceFusionEngine.js`)**:
+  Enforces predicate compatibility rules:
+  - Structural nodes (`Note`, `Tag`, `Section`) cannot engage in semantic domain relations.
+  - `COMMUNICATES_WITH` requires communicating entity types (`Person`, `Service`, `System`, `Technology`).
+  - `IMPLEMENTS` & `GENERATES` require valid technical sources and targets.
+- **Evidence Provenance (`EvidenceStore.js`)**:
+  Every AI relationship links to an `evidence` record preserving exact source offsets, raw sentence text, extractor identity, and confidence score.
 
 ---
 
-### 4. Graph Quality Validation & Entity Resolution
+## Community Detection & Maintenance
 
-- **Pre-Persistence Validation (`ExtractionValidator.js`)**:
-  Inspects candidate entities and relationships before saving to DB, filtering out duplicate nodes, duplicate edges, missing evidence, invalid references, low-confidence edges, and enforcing graph explosion limits ($\le 500$ candidates per pass).
-- **Canonical Entity Resolution (`EntityResolver.js`)**:
-  Resolves entity name variations using hybrid string similarity:
-  $$\text{Similarity}(s_1, s_2) = \max\left( \text{LevenshteinSim}(s_1, s_2), \text{JaccardTokenSim}(s_1, s_2) \right)$$
-  Candidate matches above threshold $\ge 0.88$ are automatically mapped in `entity_aliases` table.
-
----
-
-### 5. Hybrid GraphRAG & RRF Retrieval
-
-Retrieval combines semantic vector search with recursive GraphRAG multi-hop walks using **Reciprocal Rank Fusion (RRF)**:
-
-```mermaid
-graph TD
-    UserQuery[User Query] --> VecSearch[Vector Embedding Search]
-    UserQuery --> GraphWalk[Recursive CTE Graph Walk]
-    
-    VecSearch -->|Semantic Ranks| RRF[Reciprocal Rank Fusion Engine]
-    GraphWalk -->|Decayed Depth & Edge Weights| RRF
-    
-    RRF -->|Ranked Document List| Context[LLM Context Builder]
-```
-
-$$\text{RRF\_Score}(d) = \frac{1}{k + \text{Rank}_{\text{vector}}(d)} + \frac{1 + \alpha \cdot W_{\text{graph}}(d)}{k + \text{Rank}_{\text{graph}}(d)}$$
-
-Where:
-- $k = 60$ (standard RRF constant)
-- $\alpha = 0.25$ (graph weight bonus multiplier)
-- $W_{\text{graph}}(d)$ is the accumulated edge weight with depth decay ($1 / (1 + \text{depth})$)
-
----
-
-### 6. Self-Healing Background Maintenance
-
-When the background job queue drains, `GraphMaintenance` runs incremental cleanup tasks:
-
-1. **Orphan Purging**: Deletes orphan non-note entities with zero connections.
-2. **Stale Edge Decay**: Applies decay factor ($W \times 0.95$) to relationships older than 30 days.
-3. **Alias Deduplication**: Merges candidate duplicate entity mentions using hybrid string similarity.
+1. **Label Propagation Clustering (`CommunityDetector.js`)**:
+   Groups graph nodes into dense semantic communities using fast label propagation clustering.
+2. **Self-Healing Background Maintenance (`GraphMaintenance.js`)**:
+   - **Orphan Purging**: Deletes unlinked non-note entities.
+   - **Stale Edge Decay**: Applies decay factor ($W \times 0.95$) to relationships older than 30 days.
+   - **Alias Deduplication**: Merges candidate duplicate entity mentions using vector distance and string similarity.
