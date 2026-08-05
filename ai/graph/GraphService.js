@@ -39,14 +39,6 @@ class GraphService {
     return this.semanticEngine;
   }
 
-  getPipeline() {
-    return this.getSemanticEngine();
-  }
-
-  getExtractor() {
-    return this.getSemanticEngine();
-  }
-
   /**
    * Process a markdown note and save entities, relationships, and evidence to GraphDB
    * Enqueued to serialize execution and prevent concurrent transaction collisions.

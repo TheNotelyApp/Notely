@@ -33,8 +33,9 @@ Vector embeddings enable Semantic Search and Context Retrieval:
 ## 3. Knowledge Graph Engine
 
 Relationship extraction and entity graph generation:
-- **Local Model**: Uses the local `Qwen2.5-0.5B` GGUF engine to discover and record note relationships offline.
-- **Text Provider**: Automatically leverages your active cloud model configured in the main text settings tab.
+- **GLiNER2-Relex ONNX (Always Local)**: The Knowledge Graph uses a dedicated `gliner2-multi-v1-onnx` model running locally via ONNX Runtime. This is separate from your text generation provider — it runs entirely offline with no API key required and is not user-configurable.
+- **Model Location**: Downloaded automatically to `%AppData%/notely/models/gliner2-relex/` on first graph build.
+- **Confidence Threshold**: Adjustable in AI Settings (`graphConfidence`, default 0.45–0.60). Higher values produce fewer but more precise relationships.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * GraphValidationEngine - Automated validation engine for checking knowledge graph consistency & quality (15 rules)
+ * GraphValidationEngine - Automated validation engine for checking knowledge graph consistency & quality (16 rules)
  */
 
 const fs = require('fs');
