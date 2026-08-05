@@ -3,17 +3,14 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { assertTrustedIpcSender } = require("./ipcSecurity.cjs");
+const { CodeExecuteSchema, validatePayload } = require("./ipcSchemas.cjs");
 
 function registerCodeExecutorIpcHandlers(ipcMain, deps) {
   const { BrowserWindow } = deps;
 
-  ipcMain.handle("code:execute", async (event, payload) => {
+  ipcMain.handle("code:execute", async (event, rawPayload) => {
     assertTrustedIpcSender(BrowserWindow, event, "code:execute");
-
-    const { language, code } = payload || {};
-    if (!language || typeof code !== "string") {
-      throw new Error("Invalid execution payload: language and code are required.");
-    }
+    const { language, code } = validatePayload(CodeExecuteSchema, rawPayload, "code:execute");
 
     const normLang = language.toLowerCase();
     const supportedLangs = ["javascript", "js", "python", "py", "bash", "sh", "powershell", "ps1", "html"];

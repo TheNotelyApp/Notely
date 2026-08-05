@@ -10,8 +10,7 @@ import {
   Square,
   Circle,
   Diamond,
-  Plus,
-  Maximize2,
+  Plus
 } from "lucide-react";
 
 export function MermaidCanvas({
@@ -70,7 +69,7 @@ export function MermaidCanvas({
             cursor: "pointer",
           }}
         >
-          <Square size={13} /> Process
+          <Square size={14} /> Process
         </button>
         <button
           className="canvas-shape-btn"
@@ -89,7 +88,7 @@ export function MermaidCanvas({
             cursor: "pointer",
           }}
         >
-          <Diamond size={13} /> Decision
+          <Diamond size={14} /> Decision
         </button>
         <button
           className="canvas-shape-btn"
@@ -108,7 +107,7 @@ export function MermaidCanvas({
             cursor: "pointer",
           }}
         >
-          <Circle size={13} /> Start / End
+          <Circle size={14} /> Start / End
         </button>
         <button
           className="canvas-shape-btn"
@@ -127,7 +126,7 @@ export function MermaidCanvas({
             cursor: "pointer",
           }}
         >
-          <Circle size={13} /> Circle
+          <Circle size={14} /> Circle
         </button>
         <button
           className="canvas-shape-btn primary"

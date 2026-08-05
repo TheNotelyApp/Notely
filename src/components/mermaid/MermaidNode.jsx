@@ -155,7 +155,7 @@ export const MermaidNode = memo(function MermaidNode({ id, data, selected }) {
         ) : (
           <div className="node-label-wrap" onDoubleClick={handleDoubleClick} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "text" }}>
             <span className="node-label-text">{label}</span>
-            <Edit2 size={10} className="node-edit-icon" style={{ opacity: 0.4, transition: "opacity 0.15s ease" }} />
+            <Edit2 size={12} className="node-edit-icon" style={{ opacity: 0.4, transition: "opacity 0.15s ease" }} />
           </div>
         )}
       </div>
@@ -187,7 +187,7 @@ export const MermaidNode = memo(function MermaidNode({ id, data, selected }) {
             boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
           }}
         >
-          <Trash2 size={10} />
+          <Trash2 size={12} />
         </button>
       )}
     </div>

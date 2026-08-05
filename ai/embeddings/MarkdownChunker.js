@@ -22,20 +22,24 @@ class MarkdownChunker {
     let startLine = 1;
     let chunkIndex = 0;
     let currentType = 'paragraph';
+    let currentHeading = '';
 
     const flushChunk = (endLine) => {
       if (currentChunkLines.length === 0) return;
       
-      const chunkText = currentChunkLines.join('\n').trim();
-      if (chunkText.length >= minChunkSize) {
+      const rawText = currentChunkLines.join('\n').trim();
+      if (rawText.length >= minChunkSize) {
         const basename = String(notePath).split(/[/\\]/).pop().replace(/\.md$/, '');
         const id = `${basename}#chunk-${chunkIndex}`;
+        const content = currentHeading && !rawText.startsWith('#')
+          ? `[Context: ${currentHeading}]\n${rawText}`
+          : rawText;
 
         chunks.push({
           id,
           note_path: notePath,
           chunk_index: chunkIndex,
-          content: chunkText,
+          content,
           chunk_type: currentType,
           start_line: startLine,
           end_line: endLine,
@@ -58,6 +62,7 @@ class MarkdownChunker {
       if (isHeader) {
         // Flush previous chunk
         flushChunk(lineNum - 1);
+        currentHeading = line.replace(/^#+\s*/, '').trim();
         startLine = lineNum;
         currentType = 'heading';
         currentChunkLines.push(line);

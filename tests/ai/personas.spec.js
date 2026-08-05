@@ -14,10 +14,14 @@ describe('PersonaDB Frontmatter and Importing Tests', () => {
   });
 
   afterAll(() => {
-    personaDB.close();
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+    try {
+      personaDB.close();
+    } catch { /* ignore */ }
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      }
+    } catch { /* ignore Windows file locks */ }
   });
 
   it('should seed default built-ins', () => {

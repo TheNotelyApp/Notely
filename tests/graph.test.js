@@ -9,9 +9,12 @@ describe('SQLite Knowledge Graph DB and CTE Traversals', () => {
 
   beforeEach(() => {
     // Ensure clean workspace directory
-    if (!fs.existsSync(tempWorkspace)) {
-      fs.mkdirSync(tempWorkspace, { recursive: true });
-    }
+    try {
+      if (fs.existsSync(tempWorkspace)) {
+        fs.rmSync(tempWorkspace, { recursive: true, force: true });
+      }
+    } catch { /* ignore */ }
+    fs.mkdirSync(tempWorkspace, { recursive: true });
     
     // Initialize GraphDB targeting the temp workspace
     graphDb = new GraphDB(tempWorkspace);

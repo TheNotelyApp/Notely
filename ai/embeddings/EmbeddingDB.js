@@ -242,6 +242,7 @@ class EmbeddingDB {
   }
 
   dequeue() {
+    if (!this.db) return null;
     const nextJob = this.db.prepare(`
       SELECT * FROM indexing_queue 
       WHERE status = 'pending' 
