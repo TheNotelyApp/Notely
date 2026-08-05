@@ -418,16 +418,33 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         }
       }
 
-      if (bestScore >= threshold && bestLabelIdx >= 0) {
-        const charStart = charOffsets[start] || 0;
-        const charEnd = (charOffsets[start + w - 1] || charStart) + words[start + w - 1].length;
+      if (bestLabelIdx !== -1 && bestScore >= threshold) {
+        const spanType = labels[bestLabelIdx];
+
+        // Compound Disjunctive/Conjunctive Entity Splitting (e.g. "Gemini or Groq" -> "Gemini", "Groq")
+        if (/\b(or|and)\b/i.test(textSpan)) {
+          const parts = textSpan.split(/\s+(?:or|and)\s+/i).filter(Boolean);
+          if (parts.length > 1 && parts.every(p => /^[A-Z][a-zA-Z0-9_-]*$/.test(p.trim()))) {
+            for (const part of parts) {
+              const cleanPart = part.trim();
+              candidates.push({
+                text: cleanPart,
+                start: charOffsets[start] ? charOffsets[start].start : 0,
+                end: charOffsets[start + w - 1] ? charOffsets[start + w - 1].end : charOffsets[start].start + cleanPart.length,
+                type: spanType,
+                confidence: parseFloat(bestScore.toFixed(3))
+              });
+            }
+            continue;
+          }
+        }
 
         candidates.push({
           text: textSpan,
-          type: labels[bestLabelIdx] || 'Concept',
+          type: spanType,
           confidence: parseFloat(bestScore.toFixed(3)),
-          start: charStart,
-          end: charEnd
+          start: charOffsets[start] ? charOffsets[start].start : 0,
+          end: charOffsets[start + w - 1] ? charOffsets[start + w - 1].end : charOffsets[start].start + textSpan.length
         });
       }
     }

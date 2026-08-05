@@ -291,18 +291,25 @@ export default function KnowledgeGraph({ onBack }) {
         const formattedEdges = relationships.map((rel) => {
           const relTypeUpper = String(rel.type || 'RELATION').toUpperCase();
           const relColor = RELATIONSHIP_COLORS[relTypeUpper] || RELATIONSHIP_COLORS.DEFAULT;
+          const isMentions = rel.type === 'mentions';
+
           return {
             id: `edge-${rel.id}-${rel.source_id}-${rel.target_id}`,
             source: rel.source_id,
             target: rel.target_id,
-            label: rel.type,
+            label: isMentions ? undefined : rel.type,
             type: 'smoothstep',
-            style: { stroke: relColor, strokeWidth: 1.8, transition: 'opacity var(--motion-standard)' },
+            style: {
+              stroke: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor,
+              strokeWidth: isMentions ? 1.0 : 1.8,
+              strokeDasharray: isMentions ? '3 3' : undefined,
+              transition: 'opacity var(--motion-standard)'
+            },
             labelStyle: { fill: 'var(--text-strong)', fontSize: 8, fontWeight: 700 },
             labelBgStyle: { fill: 'var(--surface-bg)', stroke: relColor, strokeWidth: 1, fillOpacity: 0.95 },
             labelBgPadding: [3, 5],
             labelBgBorderRadius: 4,
-            markerEnd: { type: 'arrowclosed', color: relColor, width: 12, height: 12 },
+            markerEnd: { type: 'arrowclosed', color: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor, width: 10, height: 10 },
             animated: relTypeUpper === 'DEPENDS_ON' || relTypeUpper === 'USES'
           };
         });

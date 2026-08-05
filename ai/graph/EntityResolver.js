@@ -8,8 +8,65 @@ const { createLogger } = require('../core/logger');
 const log = createLogger('EntityResolver');
 
 class EntityResolver {
-  constructor(graphDb) {
+  constructor(graphDb, embeddingService = null) {
     this.graphDb = graphDb;
+    this.embeddingService = embeddingService;
+  }
+
+  setEmbeddingService(service) {
+    this.embeddingService = service;
+  }
+
+  _cosineSimilarity(v1, v2) {
+    if (!v1 || !v2 || v1.length !== v2.length) return 0;
+    let dot = 0, norm1 = 0, norm2 = 0;
+    for (let i = 0; i < v1.length; i++) {
+      dot += v1[i] * v2[i];
+      norm1 += v1[i] * v1[i];
+      norm2 += v2[i] * v2[i];
+    }
+    if (norm1 === 0 || norm2 === 0) return 0;
+    return dot / (Math.sqrt(norm1) * Math.sqrt(norm2));
+  }
+
+  async resolveMentionVector(clean, sanitizedType) {
+    if (!this.embeddingService || !this.graphDb?.db) return null;
+    try {
+      const candidateVector = await this.embeddingService.generateVector(clean);
+      if (!candidateVector) return null;
+
+      const storedVectors = this.graphDb.getAllEntityVectors();
+      if (storedVectors.length === 0) return null;
+
+      let bestMatch = null;
+      let highestSimilarity = 0.88; // Threshold for automatic vector concept merging
+
+      for (const item of storedVectors) {
+        const sim = this._cosineSimilarity(candidateVector, item.vector);
+        if (sim > highestSimilarity) {
+          highestSimilarity = sim;
+          bestMatch = item.entityId;
+        }
+      }
+
+      if (bestMatch) {
+        const existing = this.graphDb.db.prepare('SELECT id, name, canonical_name, type FROM entities WHERE id = ?').get(bestMatch);
+        if (existing) {
+          log.info(`Vector concept merged "${clean}" -> "${existing.canonical_name}" (similarity: ${highestSimilarity.toFixed(3)})`);
+          this.addAlias(clean, existing.id, parseFloat(highestSimilarity.toFixed(3)));
+          return {
+            id: existing.id,
+            name: existing.name,
+            canonical_name: existing.canonical_name,
+            type: existing.type,
+            isAlias: true
+          };
+        }
+      }
+    } catch (err) {
+      log.debug('Vector resolution skipped:', err.message);
+    }
+    return null;
   }
 
   /**
@@ -107,6 +164,25 @@ class EntityResolver {
     // Rule 5: Non-Task clauses ending in conjunctions or connectives
     if (proposedType === 'Task' && CONNECTIVES.has(words[words.length - 1].toLowerCase())) {
       return 'Concept';
+    }
+
+    // Rule 6: Strict Organization Typing
+    // Organization MUST contain explicit org indicators (Corp, Inc, Ltd, Company, Technologies, Labs, Group, Foundation, Team)
+    // Coerce misclassifications ("Interactive", "Support You", "Abhiram", "Integration") from Organization to Concept or Person.
+    if (proposedType === 'Organization') {
+      const HAS_ORG_SUFFIX = /\b(corp|inc|ltd|company|technologies|labs|group|foundation|team|studio|org|agency|institute)\b/i.test(clean);
+      if (!HAS_ORG_SUFFIX && !isMultiWordTitleCase) {
+        return 'Concept';
+      }
+    }
+
+    // Rule 7: Strict Location, Project & Task Coercion
+    // Generic UI terms, action phrases, or short greetings ("Interactive", "Hello World", "Integration", "Note Graph: Visualize") coerce to Concept
+    if (proposedType === 'Location' || proposedType === 'Project' || proposedType === 'Task') {
+      const GENERIC_PHRASES = new Set(['hello world', 'integration', 'interactive', 'support you', 'visualize', 'note graph', 'note graph: visualize']);
+      if (GENERIC_PHRASES.has(norm) || norm.includes(':')) {
+        return 'Concept';
+      }
     }
 
     return proposedType || 'Concept';

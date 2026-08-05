@@ -84,7 +84,7 @@ class GraphDB {
       }
 
       // Versioned database schema migrations (Gap 3)
-      const TARGET_SCHEMA_VERSION = 3;
+      const TARGET_SCHEMA_VERSION = 4;
       let currentVersion = 0;
       try {
         const vRow = this.db.prepare('PRAGMA user_version').get();
@@ -149,6 +149,46 @@ class GraphDB {
           );
         `);
       } catch { /* ignore */ }
+    }
+    if (fromVersion < 4) {
+      // Version 4: Ensure entity_embeddings table exists
+      try {
+        const { CREATE_ENTITY_EMBEDDINGS_TABLE } = require('./GraphSchema');
+        this.db.exec(CREATE_ENTITY_EMBEDDINGS_TABLE);
+      } catch { /* ignore */ }
+    }
+  }
+
+  upsertEntityVector(entityId, vectorArray) {
+    if (!this.db || !entityId || !vectorArray) return;
+    try {
+      const float32 = new Float32Array(vectorArray);
+      const buffer = Buffer.from(float32.buffer);
+      const stmt = this.db.prepare(`
+        INSERT INTO entity_embeddings (entity_id, vector, dimension, updated_at)
+        VALUES (?, ?, ?, datetime('now'))
+        ON CONFLICT(entity_id) DO UPDATE SET
+          vector = excluded.vector,
+          dimension = excluded.dimension,
+          updated_at = datetime('now');
+      `);
+      stmt.run(entityId, buffer, float32.length);
+    } catch (err) {
+      log.error('Failed to upsert entity vector:', err.message);
+    }
+  }
+
+  getAllEntityVectors() {
+    if (!this.db) return [];
+    try {
+      const rows = this.db.prepare('SELECT entity_id, vector, dimension FROM entity_embeddings').all();
+      return rows.map(r => {
+        const buf = r.vector;
+        const float32 = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+        return { entityId: r.entity_id, vector: float32, dimension: r.dimension };
+      });
+    } catch {
+      return [];
     }
   }
 

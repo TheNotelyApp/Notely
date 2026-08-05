@@ -23,7 +23,8 @@ class GraphService {
     this.graphDb = graphDb;
     this.astParser = new MarkdownASTParser();
     this.evidenceStore = new EvidenceStore(graphDb);
-    this.entityResolver = new EntityResolver(graphDb);
+    this.embeddingService = (agentOrOptions && agentOrOptions.embeddingService) || null;
+    this.entityResolver = new EntityResolver(graphDb, this.embeddingService);
     this.fusionEngine = new EvidenceFusionEngine(graphDb, this.evidenceStore);
     this.ontologyBuilder = ontologyBuilder || new OntologyBuilder('general');
     this.semanticMiner = new DeterministicSemanticMiner();

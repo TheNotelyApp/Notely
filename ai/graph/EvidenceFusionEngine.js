@@ -17,6 +17,41 @@ class EvidenceFusionEngine {
     if (!source_id || !target_id || source_id === target_id) return null;
     const db = this.graphDb.db;
 
+    // Foreign Key & Entity Type Pre-Check
+    const sourceEnt = db.prepare('SELECT id, type, name FROM entities WHERE id = ?').get(source_id);
+    const targetEnt = db.prepare('SELECT id, type, name FROM entities WHERE id = ?').get(target_id);
+    if (!sourceEnt || !targetEnt) return null;
+
+    const STRUCTURAL_TYPES = new Set(['Note', 'Section', 'Tag', 'Media', 'CodeBlock', 'Task']);
+    const STRUCTURAL_RELATIONS = new Set(['contains_section', 'contains_media', 'contains_code', 'tagged', 'links_to', 'attaches_file', 'references_url', 'mentions']);
+
+    // Plausibility Rule 1: Structural nodes (Note, Tag, Section) cannot engage in semantic domain relations
+    if ((STRUCTURAL_TYPES.has(sourceEnt.type) || STRUCTURAL_TYPES.has(targetEnt.type)) && !STRUCTURAL_RELATIONS.has(type)) {
+      return null;
+    }
+
+    // Plausibility Rule 2: COMMUNICATES_WITH requires communicating entities (Person, Service, System, Technology)
+    if (type === 'COMMUNICATES_WITH') {
+      const COMM_TYPES = new Set(['Person', 'Service', 'System', 'Technology']);
+      if (!COMM_TYPES.has(sourceEnt.type) || !COMM_TYPES.has(targetEnt.type)) return null;
+    }
+
+    // Plausibility Rule 3: IMPLEMENTS requires Technical Source -> Feature/Concept Target
+    if (type === 'IMPLEMENTS') {
+      if (sourceEnt.type === 'Note' || sourceEnt.type === 'Tag' || targetEnt.name.toLowerCase() === 'interactive') return null;
+    }
+
+    // Plausibility Rule 4: GENERATES requires Tool/System Source -> Artifact/Concept Target
+    if (type === 'GENERATES') {
+      if (sourceEnt.name.startsWith('#') || targetEnt.name.toLowerCase() === 'integration') return null;
+    }
+
+    let validEvidenceId = null;
+    if (evidenceId) {
+      const evExists = db.prepare('SELECT id FROM evidence WHERE id = ?').get(evidenceId);
+      if (evExists) validEvidenceId = evidenceId;
+    }
+
     // Plausibility Guard: Reject inverse circular relationships (e.g. A CONTROLS B AND B CONTROLS A)
     const inverseRelation = db.prepare(
       'SELECT id FROM relationships WHERE source_id = ? AND target_id = ? AND type = ?'
@@ -39,7 +74,7 @@ class EvidenceFusionEngine {
           confidence,
           extractor,
           metadata,
-          evidence_id: evidenceId
+          evidence_id: validEvidenceId
         });
 
         const newEdge = db.prepare(
