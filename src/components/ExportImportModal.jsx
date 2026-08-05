@@ -112,9 +112,20 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
 
   const handleBrowseExport = async () => {
     try {
-      const selected = await window.notesApi.selectExportPackageFolder();
+      const fn = window.notesApi?.selectExportPackageFolder || window.notesApi?.browseExportDestination;
+      const res = await fn?.({ defaultFileName: fileName });
+      if (!res || res.canceled) return;
+      const selected = typeof res === "string" ? res : res.filePath;
       if (selected) {
-        setDestinationPath(selected);
+        if (selected.endsWith(".nly") || selected.endsWith(".note")) {
+          const parts = selected.replace(/\\/g, "/").split("/");
+          const file = parts.pop();
+          const dir = parts.join("/");
+          if (dir) setDestinationPath(dir);
+          if (file) setFileName(file);
+        } else {
+          setDestinationPath(selected);
+        }
       }
     } catch (err) {
       notify("Failed to choose folder: " + err.message, "error");
@@ -123,7 +134,10 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
 
   const handleBrowseImport = async () => {
     try {
-      const selected = await window.notesApi.selectImportPackageFile();
+      const fn = window.notesApi?.selectImportPackageFile || window.notesApi?.browseImportFile;
+      const res = await fn?.();
+      if (!res || res.canceled) return;
+      const selected = typeof res === "string" ? res : res.filePath;
       if (selected) {
         setImportFilePath(selected);
       }

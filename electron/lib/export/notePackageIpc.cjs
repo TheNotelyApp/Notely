@@ -189,15 +189,22 @@ function registerNotePackageIpc(ipcMain, deps) {
   });
 
   // --- Export Note Package ---
-  handleTrusted("note-package:export", async (_event, { noteFilePaths, destinationPath, fileName, password }) => {
+  handleTrusted("note-package:export", async (_event, payload = {}) => {
+    const { noteFilePaths, destinationPath, fileName, password, notePaths, outputPath } = payload;
     const notesRoot = getNotesRoot();
     if (!notesRoot) throw new Error("No notes root configured.");
 
-    const exportFileName = fileName || `export_${Date.now()}.nly`;
-    const resolvedDest = path.resolve(destinationPath);
-    // Ensure destination directory exists (user may have typed a path manually)
-    fsSync.mkdirSync(resolvedDest, { recursive: true });
-    const finalDest = path.join(resolvedDest, exportFileName);
+    const pathsToExport = noteFilePaths || notePaths || [];
+    let finalDest = "";
+    if (outputPath) {
+      finalDest = path.resolve(outputPath);
+      fsSync.mkdirSync(path.dirname(finalDest), { recursive: true });
+    } else {
+      const exportFileName = fileName || `export_${Date.now()}.nly`;
+      const resolvedDest = path.resolve(destinationPath || notesRoot);
+      fsSync.mkdirSync(resolvedDest, { recursive: true });
+      finalDest = path.join(resolvedDest, exportFileName);
+    }
 
     // Staging dirs
     const tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), "notely-note-export-"));
@@ -235,7 +242,7 @@ function registerNotePackageIpc(ipcMain, deps) {
 
     try {
       // 1. Gather all note contents and parse dependencies
-      for (const inputPath of noteFilePaths) {
+      for (const inputPath of pathsToExport) {
         // inputPath may be absolute or relative — normalise to absolute first
         const absolutePath = path.isAbsolute(inputPath)
           ? inputPath
@@ -393,7 +400,12 @@ function registerNotePackageIpc(ipcMain, deps) {
         try { await fs.unlink(finalDestTmp); } catch { /* ignore */ }
       }
 
-      return { success: true, destination: finalDest };
+      return {
+        success: true,
+        destination: finalDest,
+        outputPath: finalDest,
+        exportedNotesCount: manifest.notes.length,
+      };
     } finally {
       // Cleanup temp
       try {
@@ -405,7 +417,13 @@ function registerNotePackageIpc(ipcMain, deps) {
   });
 
   // --- Import Note Package ---
-  handleTrusted("note-package:import", async (_event, { packageFilePath, password }) => {
+  handleTrusted("note-package:import", async (_event, payload = {}) => {
+    const { packageFilePath, packagePath, password } = payload;
+    const inputPackagePath = packageFilePath || packagePath;
+    if (!inputPackagePath) {
+      throw new Error("No package file path provided for import.");
+    }
+
     const notesRoot = getNotesRoot();
     if (!notesRoot) throw new Error("No notes root configured.");
 
@@ -414,7 +432,7 @@ function registerNotePackageIpc(ipcMain, deps) {
 
     try {
       // 1. Decrypt note package
-      const encryptedBuffer = await fs.readFile(packageFilePath);
+      const encryptedBuffer = await fs.readFile(inputPackagePath);
       const decryptedBuffer = decryptBuffer(encryptedBuffer);
       await fs.writeFile(zipExtractPath, decryptedBuffer);
 
@@ -457,7 +475,7 @@ function registerNotePackageIpc(ipcMain, deps) {
       // Password Check
       if (manifest.passwordHash) {
         if (!password) {
-          return { success: false, error: "PASSWORD_REQUIRED" };
+          return { success: false, passwordRequired: true, error: "PASSWORD_REQUIRED" };
         }
         const checkHash = crypto.createHash("sha256").update(password + (manifest.passwordSalt || "")).digest("hex");
         if (checkHash !== manifest.passwordHash) {
@@ -632,7 +650,11 @@ function registerNotePackageIpc(ipcMain, deps) {
         await fs.writeFile(targetFile, content, "utf8");
       }
 
-      return { success: true, importedNotes: Object.values(renameMap.notes) };
+      return {
+        success: true,
+        importedNotes: Object.values(renameMap.notes),
+        importedNotesCount: (manifest.notes || []).length,
+      };
     } finally {
       // Cleanup temp
       try {
