@@ -220,6 +220,8 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_GRAPH_STATUS, handleGetGraphStatus);
   registerHandler(IPC_EVENTS.AI_GRAPH_PAUSE, handlePauseGraphWorker);
   registerHandler(IPC_EVENTS.AI_GRAPH_RESUME, handleResumeGraphWorker);
+  registerHandler(IPC_EVENTS.AI_GRAPH_EXPORT_JSON, handleExportGraphAsJSON);
+  registerHandler(IPC_EVENTS.AI_GRAPH_EXPORT_MD, handleExportGraphAsMarkdown);
 
   // Embeddings Engine Subsystem
   registerHandler(IPC_EVENTS.AI_EMBEDDINGS_REBUILD, handleRebuildEmbeddings);
@@ -859,6 +861,32 @@ async function handleGetGraph(_event, payload) {
     return new AIQueryResponse(true, result);
   } catch (error) {
     console.error('[AI IPC] Get graph failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleExportGraphAsJSON(_event, payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
+      throw new Error('AI agent or GraphDB is not initialized');
+    }
+    const result = aiService.agent.graphDb.exportAsJSON(payload || {});
+    return new AIQueryResponse(true, result);
+  } catch (error) {
+    console.error('[AI IPC] Export graph as JSON failed:', error);
+    return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleExportGraphAsMarkdown(_event, payload) {
+  try {
+    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.graphDb) {
+      throw new Error('AI agent or GraphDB is not initialized');
+    }
+    const result = aiService.agent.graphDb.exportAsMarkdown(payload || {});
+    return new AIQueryResponse(true, result);
+  } catch (error) {
+    console.error('[AI IPC] Export graph as Markdown failed:', error);
     return new AIQueryResponse(false, null, error.message);
   }
 }

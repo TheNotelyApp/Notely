@@ -39,7 +39,7 @@ class MarkdownASTParser {
     // 0. Frontmatter & Key-Value Header Metadata Parsing (Tags, Name, Location, Time)
     const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     const fmText = fmMatch ? fmMatch[1] : '';
-    const metaBlockText = (fmText ? fmText + '\n' : '') + content.slice(0, 1500);
+    const metaBlockText = fmText;
 
     const kvRegex = /^(?:[ \t]*[-*]\s+)?([a-zA-Z0-9_\s]+):\s*(.*)$/gm;
     let kvMatch;
@@ -271,15 +271,28 @@ class MarkdownASTParser {
       }
     }
 
-    // 11. Tasks: - [ ] task, [ ] task, - [x] completed task
+    // 11. Tasks: - [ ] task, - [x] completed task
     const tasks = [];
+    const TASK_BLACKLIST = new Set(['todo', 'tbd', 'fixme', '...', 'xxx', 'n/a', 'temp', 'task', 'sample task', 'item']);
     const taskRegex = /^\s*[-*+]?\s*\[([ xX])\]\s+(.+)$/gm;
     while ((match = taskRegex.exec(content)) !== null) {
       const completed = match[1].toLowerCase() === 'x';
-      const taskText = match[2].replace(/[*_~`]/g, '').trim();
-      if (taskText && taskText.length >= 2) {
+      const rawText = match[2].replace(/\|/g, '').replace(/[*_~`]/g, '').trim();
+      const normText = rawText.toLowerCase();
+
+      const hasConsequenceGibberish = /[bcdfghjklmnpqrstvwxyz]{6,}/i.test(rawText);
+      const isTooLongWordWithoutVowels = rawText.split(/\s+/).some(w => w.length > 12 && !/[aeiouy]/i.test(w));
+
+      if (
+        rawText &&
+        rawText.length >= 5 &&
+        !TASK_BLACKLIST.has(normText) &&
+        !/^[\s.\-_:=+*#|]+$/.test(rawText) &&
+        !hasConsequenceGibberish &&
+        !isTooLongWordWithoutVowels
+      ) {
         tasks.push({
-          taskText,
+          taskText: rawText,
           completed,
           spanStart: match.index,
           spanEnd: match.index + match[0].length
@@ -314,30 +327,33 @@ class MarkdownASTParser {
   cleanse(content = '') {
     if (!content || typeof content !== 'string') return '';
     return content
-      .replace(/^\s*#{1,6}\s*(?:rawnotes|raw notes|cleansednotes|cleansed notes|cleansed|raw)\s*$/gmi, '') // 0. System template section headers
+      .replace(/^\s*#{1,6}\s*(?:rawnotes|raw notes|cleansednotes|cleansed notes|cleansed|raw)\s*$/gmi, '') // 0. System template headers
       .replace(/^---\r?\n[\s\S]*?\r?\n---/g, '')             // 1. Frontmatter
       .replace(/```[\s\S]*?```/g, '')                         // 2. Code blocks
       .replace(/\$\$[\s\S]*?\$\$/g, '')                       // 3. Multiline math
       .replace(/\$[^$\n]+\$/g, '')                            // 4. Inline math
-      .replace(/<[^>]*>/g, '')                                // 5. HTML tags
-      .replace(/^>\s*\[!.*?\]\s*(.*)$/gm, '$1')               // 6. Callout headers
-      .replace(/^>\s*/gm, '')                                 // 7. Blockquotes
-      .replace(/!\[(.*?)\]\((.*?)\)/g, '$1')                  // 8. Images -> alt text
-      .replace(/\[(.*?)\]\((.*?)\)/g, '$1')                   // 9. Links -> label
-      .replace(/\[\[(.*?)\]\]/g, (m, inner) => inner.includes('|') ? inner.split('|')[1].trim() : inner.trim()) // 10. Wikilinks
-      .replace(/^\s*#{1,6}\s+/gm, '')                         // 11. Headings
-      .replace(/^\s*[-*+]?\s*\[[ xX]\]\s+/gm, '')              // 12. Checkboxes
-      .replace(/^\s*[-*+]\s+/gm, '')                          // 13. Bullet lists
-      .replace(/^\s*\d+\.\s+/gm, '')                          // 14. Numbered lists
-      .replace(/\|.*\|/g, (m) => m.replace(/\|/g, ' '))       // 15. Markdown table pipes -> spaces
-      .replace(/^[-\s:|]{3,}$/gm, '')                         // 16. Table separator lines
-      .replace(/\[\^\d+\]:?/g, '')                            // 17. Footnotes
-      .replace(/\*{1,3}(.*?)\*{1,3}/g, '$1')                  // 18. Bold/Italic asterisks
-      .replace(/_{1,3}(.*?)_{1,3}/g, '$1')                    // 19. Bold/Italic underscores
-      .replace(/~~(.*?)~~/g, '$1')                            // 20. Strikethrough
-      .replace(/`([^`]+)`/g, '$1')                            // 21. Inline code
-      .replace(/\r?\n/g, ' ')                                 // 22. Line breaks -> space
-      .replace(/\s+/g, ' ')                                   // 23. Collapse whitespace
+      .replace(/\{data-[^}]*\}/gi, '')                        // 5. Excalidraw / HTML attribute blocks {data-...}
+      .replace(/\{[^}\n]{3,}\}/g, '')                         // 5b. Any curly attribute blocks
+      .replace(/!\[.*?\]\(.*?\)(\{.*?\})?/g, '')              // 6. Complete Image syntax (including attributes)
+      .replace(/<[^>]*>/g, '')                                // 7. HTML tags
+      .replace(/^>\s*\[!.*?\]\s*(.*)$/gm, '$1')               // 8. Callout headers
+      .replace(/^>\s*/gm, '')                                 // 9. Blockquotes
+      .replace(/^\|.*\|$/gm, '')                              // 10. Complete Markdown table rows
+      .replace(/\|.*\|/g, '')                                 // 10b. Table fragments
+      .replace(/^[a-zA-Z0-9_\s]+:\s*.*$/gm, '')               // 11. Key-value metadata lines (Name: Bikash, Time: 10:04)
+      .replace(/\[(.*?)\]\((.*?)\)/g, '$1')                   // 12. Standard links -> label
+      .replace(/\[\[(.*?)\]\]/g, (m, inner) => inner.includes('|') ? inner.split('|')[1].trim() : inner.trim()) // 13. Wikilinks
+      .replace(/^\s*#{1,6}\s+/gm, '')                         // 14. Headings
+      .replace(/^\s*[-*+]?\s*\[[ xX]\]\s+/gm, '')              // 15. Checkboxes
+      .replace(/^\s*[-*+]\s+/gm, '')                          // 16. Bullet lists
+      .replace(/^\s*\d+\.\s+/gm, '')                          // 17. Numbered lists
+      .replace(/\[\^\d+\]:?/g, '')                            // 18. Footnotes
+      .replace(/\*{1,3}(.*?)\*{1,3}/g, '$1')                  // 19. Bold/Italic asterisks
+      .replace(/_{1,3}(.*?)_{1,3}/g, '$1')                    // 20. Bold/Italic underscores
+      .replace(/~~(.*?)~~/g, '$1')                            // 21. Strikethrough
+      .replace(/`([^`]+)`/g, '$1')                            // 22. Inline code
+      .replace(/\r?\n/g, ' ')                                 // 23. Line breaks -> space
+      .replace(/\s+/g, ' ')                                   // 24. Collapse whitespace
       .trim();
   }
 }

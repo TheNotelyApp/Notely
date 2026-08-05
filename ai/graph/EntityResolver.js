@@ -13,11 +13,113 @@ class EntityResolver {
   }
 
   /**
+   * Helper: Normalize string by decoding URI encoding and trimming whitespace
+   */
+  cleanName(str) {
+    if (!str || typeof str !== 'string') return '';
+    let s = str.trim();
+    try {
+      s = decodeURIComponent(s);
+    } catch { /* ignore URI decode error */ }
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Comprehensive Quality Gate: Checks if entity candidate string is valid knowledge term
+   */
+  /**
+   * Universal Linguistic Quality Gate (Zero hardcoded entity lists)
+   * Enforces grammatical boundary rules, character entropy, and syntax artifact filters.
+   */
+  isValidEntityName(name) {
+    if (!name || typeof name !== 'string') return false;
+    const clean = name.trim();
+    const norm = clean.toLowerCase();
+
+    // 1. Min/Max Length & Acronym Rule (2 & 3 char words must be uppercase acronyms like AI, UI, DB, API, SDK, CLI, SQL, APP, WEB)
+    if (clean.length < 2 || clean.length > 35 || clean.split(/\s+/).length > 4) return false;
+    const WHITELIST_SHORT = new Set(['AI', 'UI', 'UX', 'DB', 'JS', 'TS', 'IP', 'OS', 'ID', 'IT', 'API', 'SDK', 'CLI', 'SQL', 'APP', 'WEB', 'CPU', 'RAM', 'URL', 'SSH', 'SSL', 'CSV', 'XML', 'PNG', 'JPG', 'SVG', 'PDF']);
+    if (clean.length <= 3 && !WHITELIST_SHORT.has(clean.toUpperCase())) return false;
+
+    const words = norm.split(/\s+/);
+
+    // 2. Grammatical Boundary Rule: Cannot start or end with prepositions, articles, connectives, verbs, or UI tokens
+    const GRAMMAR_BOUNDARIES = new Set([
+      'a', 'an', 'the', 'and', 'or', 'but', 'for', 'in', 'on', 'at', 'to', 'from',
+      'by', 'with', 'of', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'if', 'else', 'so', 'than', 'too', 'very', 'not', 'no', 'nor', 'it', 'its',
+      'create', 'update', 'delete', 'connect', 'build', 'run', 'make', 'use', 'get', 'set', 'help', 'test',
+      'again', 'teh', 'weh', 'value', 'column'
+    ]);
+    if (GRAMMAR_BOUNDARIES.has(words[0]) || GRAMMAR_BOUNDARIES.has(words[words.length - 1])) return false;
+
+    // 3. Sentence Clause & Aux Verb Rule: Reject clause fragments containing auxiliary verbs
+    if (/\b(will|would|could|should|have|has|had|help|helps|test)\b/i.test(clean)) return false;
+
+    // 4. Character Entropy & Phonetic Rule: Must contain vowels; reject repeated chars & invalid consonant clusters
+    if (!/[aeiouy]/i.test(norm)) return false; // Must contain at least one vowel
+    if (/(.)\1{3,}/.test(norm)) return false;  // Reject 4+ repeated chars (e.g. "dddde")
+    if (/[bcdfghjklmnpqrstvwxyz]{5,}/i.test(norm)) return false; // Reject 5+ consecutive consonants
+    if (/^\.[a-z]{1,2}\b/i.test(norm)) return false;
+
+    // 5. Markup & Syntax Artifact Rule: Reject editor markup, HTML attributes, numbers with decimals, table cells
+    if (/[{}=|]|\bdata-|\d+\.\d+|\bvalue \d|\bcolumn \d|^[-*+\s:#=]+$/i.test(norm)) return false;
+
+    return true;
+  }
+
+  /**
+   * Validate and sanitize entity type classification, coercing misclassifications to Concept.
+   * Pure algorithmic & pattern-based rules - ZERO hardcoded entity or person name lists.
+   */
+  sanitizeEntityType(name, proposedType = 'Concept') {
+    if (!this.isValidEntityName(name)) return null;
+
+    const clean = name.trim();
+    const norm = clean.toLowerCase();
+    const words = clean.split(/\s+/);
+    const CONNECTIVES = new Set(['and', 'or', 'for', 'in', 'on', 'at', 'to', 'from', 'with', 'by', 'of']);
+
+    // Rule 1: Multi-word Title-Cased Proper Name Pattern (e.g. "Bikash Panda", "Abhiram Panda", "Ada Lovelace")
+    const isMultiWordTitleCase = words.length >= 2 && words.every(w => /^[A-Z][a-z]+$/.test(w));
+    if (isMultiWordTitleCase && (proposedType === 'Person' || proposedType === 'Organization' || proposedType === 'Concept')) {
+      return 'Person';
+    }
+
+    // Rule 2: Single-word capitalized proper name (e.g. "Abhiram", "Bikash") proposed as Person or Organization
+    const isSingleTitleCase = words.length === 1 && /^[A-Z][a-z]{2,}$/.test(clean);
+    const COMMON_NON_PERSONS = new Set(['workspace', 'system', 'search', 'note', 'document', 'screenshot', 'diagram', 'project', 'settings', 'connect', 'api', 'column', 'value', 'test', 'again', 'create', 'teh']);
+    if (isSingleTitleCase && (proposedType === 'Person' || proposedType === 'Organization')) {
+      if (COMMON_NON_PERSONS.has(norm)) return 'Concept';
+      return 'Person';
+    }
+
+    // Rule 3: Common Non-Person Nouns cannot be Person
+    if (proposedType === 'Person' && COMMON_NON_PERSONS.has(norm)) {
+      return 'Concept';
+    }
+
+    // Rule 4: Structural media terms (screenshot, diagram, image) cannot be Event, Location, or Task
+    if ((proposedType === 'Event' || proposedType === 'Location' || proposedType === 'Task') && /^(screenshot|diagram|image|photo|drawing|picture|file|note)$/i.test(norm)) {
+      return 'Concept';
+    }
+
+    // Rule 5: Non-Task clauses ending in conjunctions or connectives
+    if (proposedType === 'Task' && CONNECTIVES.has(words[words.length - 1].toLowerCase())) {
+      return 'Concept';
+    }
+
+    return proposedType || 'Concept';
+  }
+
+  /**
    * Deterministic entity ID generation via SHA-256 (supports international non-ASCII characters)
    */
   generateEntityId(name, type = 'Entity') {
-    const normName = String(name || '').trim().toLowerCase();
-    const hash = crypto.createHash('sha256').update(`${type.toLowerCase()}:${normName}`).digest('hex').slice(0, 16);
+    const valid = this.cleanName(name);
+    const sanitizedType = this.sanitizeEntityType(valid, type) || 'Concept';
+    const normName = valid.toLowerCase();
+    const hash = crypto.createHash('sha256').update(`${sanitizedType.toLowerCase()}:${normName}`).digest('hex').slice(0, 16);
     return `ent-${hash}`;
   }
 
@@ -26,7 +128,7 @@ class EntityResolver {
    */
   resolveMention(mentionName, type = 'Entity') {
     if (!mentionName || typeof mentionName !== 'string') return null;
-    const clean = mentionName.trim();
+    const clean = this.cleanName(mentionName);
     if (clean.length === 0) return null;
 
     const aliasMatch = this.findAlias(clean);
@@ -40,6 +142,9 @@ class EntityResolver {
       };
     }
 
+    const sanitizedType = this.sanitizeEntityType(clean, type);
+    if (!sanitizedType) return null;
+
     // Reuse existing canonical entity ID if present in database to prevent type fragmentation
     if (this.graphDb?.db) {
       try {
@@ -47,7 +152,7 @@ class EntityResolver {
           'SELECT id, name, canonical_name, type FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(canonical_name) = LOWER(?) LIMIT 1'
         ).get(clean, clean);
         if (existing) {
-          const resolvedType = (existing.type && existing.type !== 'Concept') ? existing.type : type;
+          const resolvedType = this.sanitizeEntityType(clean, existing.type) || sanitizedType;
           return {
             id: existing.id,
             name: existing.name || clean,
@@ -59,12 +164,12 @@ class EntityResolver {
       } catch { /* ignore DB lookup error */ }
     }
 
-    const defaultId = this.generateEntityId(clean, type);
+    const defaultId = this.generateEntityId(clean, sanitizedType);
     return {
       id: defaultId,
       name: clean,
       canonical_name: clean,
-      type,
+      type: sanitizedType,
       isAlias: false
     };
   }

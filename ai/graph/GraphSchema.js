@@ -85,10 +85,12 @@ const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name);`,
   `CREATE INDEX IF NOT EXISTS idx_entities_note ON entities(note_path);`,
   `CREATE INDEX IF NOT EXISTS idx_entities_canonical ON entities(canonical_name);`,
+  `CREATE INDEX IF NOT EXISTS idx_entities_canonical_lower ON entities(LOWER(canonical_name));`,
   `CREATE INDEX IF NOT EXISTS idx_aliases_entity ON entity_aliases(entity_id);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_source ON evidence(source_id);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_extractor ON evidence(extractor);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_span ON evidence(source_id, subject_span_start);`,
+  `CREATE INDEX IF NOT EXISTS idx_rel_evidence_junction ON relationship_evidence(evidence_id);`,
   `CREATE INDEX IF NOT EXISTS idx_queue_status_priority ON graph_queue(status, priority DESC);`
 ];
 

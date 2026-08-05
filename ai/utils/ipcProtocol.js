@@ -14,6 +14,8 @@ const IPC_EVENTS = {
   AI_GRAPH_STATUS: 'ai:graph:status',
   AI_GRAPH_PAUSE: 'ai:graph:pause',
   AI_GRAPH_RESUME: 'ai:graph:resume',
+  AI_GRAPH_EXPORT_JSON: 'ai:graph:export-json',
+  AI_GRAPH_EXPORT_MD: 'ai:graph:export-md',
   AI_EMBEDDINGS_REBUILD: 'ai:embeddings:rebuild',
   AI_EMBEDDINGS_CLEAR: 'ai:embeddings:clear-data',
   AI_EMBEDDINGS_STATUS: 'ai:embeddings:status',

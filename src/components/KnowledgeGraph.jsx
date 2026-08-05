@@ -9,7 +9,7 @@ import {
   Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw, ExternalLink } from 'lucide-react';
+import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw, ExternalLink, Copy, FileText, Code } from 'lucide-react';
 import {
   aiGetGraph,
   aiBuildGraph,
@@ -20,7 +20,9 @@ import {
   aiGetGraphModelStatus,
   aiPauseGraphWorker,
   aiResumeGraphWorker,
-  onGraphProgress
+  onGraphProgress,
+  aiExportGraphAsJSON,
+  aiExportGraphAsMarkdown
 } from '../services/electronService';
 import { OverlayDialog } from './OverlayDialog';
 import { useConfirm } from '../hooks/useConfirm';
@@ -137,10 +139,37 @@ export default function KnowledgeGraph({ onBack }) {
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
 
-  // Force Layout State
   const [chargeStrength] = useState(-280);
   const [linkDistance] = useState(150);
   const [collideRadius] = useState(80);
+
+  const handleCopyJSON = async () => {
+    try {
+      const res = await aiExportGraphAsJSON();
+      if (res?.data) {
+        await navigator.clipboard.writeText(JSON.stringify(res.data, null, 2));
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'Knowledge Graph JSON copied to clipboard.', type: 'success' }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to copy graph JSON:', err);
+    }
+  };
+
+  const handleCopyMarkdown = async () => {
+    try {
+      const res = await aiExportGraphAsMarkdown();
+      if (res?.data) {
+        await navigator.clipboard.writeText(res.data);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { message: 'Knowledge Graph Markdown summary copied to clipboard.', type: 'success' }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to copy graph Markdown:', err);
+    }
+  };
 
   const loadModelAndPrefs = useCallback(async () => {
     try {
@@ -502,7 +531,7 @@ export default function KnowledgeGraph({ onBack }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Engine:</span>
-                <strong style={{ color: 'var(--text-strong)' }}>{preferences.graphProvider === 'local' ? 'ModernBERT 2-Model' : 'Cloud LLM'}</strong>
+                <strong style={{ color: 'var(--text-strong)' }}>{(preferences.graphProvider === 'gliner2-relex' || preferences.graphProvider === 'local') ? 'GLiNER2-Relex ONNX' : 'Cloud LLM'}</strong>
               </div>
               <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -510,9 +539,9 @@ export default function KnowledgeGraph({ onBack }) {
                 <strong style={{ color: 'var(--text-strong)' }}>{sizeMB} MB</strong>
               </div>
               <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: preferences.graphProvider !== 'local' || modelStatus.downloaded ? 'var(--status-success-text)' : 'var(--text-warning)' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: preferences.graphProvider !== 'local' || modelStatus.downloaded ? 'var(--status-success-border)' : 'var(--text-warning)' }}></span>
-                {preferences.graphProvider !== 'local' ? 'Active' : modelStatus.downloaded ? 'Ready' : 'Missing'}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: (preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') || modelStatus.downloaded ? 'var(--status-success-text)' : 'var(--text-warning)' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: (preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') || modelStatus.downloaded ? 'var(--status-success-border)' : 'var(--text-warning)' }}></span>
+                {(preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') ? 'Active' : modelStatus.downloaded ? 'Ready' : 'Missing'}
               </span>
             </div>
           )}
@@ -552,6 +581,26 @@ export default function KnowledgeGraph({ onBack }) {
               data-tooltip="Rebuild Knowledge Graph"
             >
               <RefreshCw size={14} className={graphStatus.isBuilding ? 'spin' : ''} />
+            </button>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleCopyMarkdown}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 8px' }}
+              data-tooltip="Copy Graph Summary (Markdown)"
+            >
+              <FileText size={14} />
+              <span style={{ fontSize: '12px' }}>Copy MD</span>
+            </button>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleCopyJSON}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 8px' }}
+              data-tooltip="Copy Complete Graph (JSON)"
+            >
+              <Code size={14} />
+              <span style={{ fontSize: '12px' }}>Copy JSON</span>
             </button>
 
             <button

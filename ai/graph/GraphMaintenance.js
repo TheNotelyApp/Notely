@@ -79,13 +79,16 @@ class GraphMaintenance {
     let mergedCount = 0;
     try {
       const db = this.graphDb.db;
-      const entities = db.prepare("SELECT id, name, canonical_name, type FROM entities WHERE type != 'Note' ORDER BY updated_at DESC LIMIT 500").all();
+      const SKIP_DEDUP_TYPES = new Set(['Note', 'Section', 'Task', 'CodeBlock', 'Annotation', 'Formula']);
+      const entities = db.prepare("SELECT id, name, canonical_name, type FROM entities WHERE type NOT IN ('Note', 'Section', 'Task', 'CodeBlock', 'Annotation', 'Formula') ORDER BY updated_at DESC LIMIT 500").all();
 
       for (let i = 0; i < entities.length; i++) {
         for (let j = i + 1; j < entities.length; j++) {
           const e1 = entities[i];
           const e2 = entities[j];
           if (!e1 || !e2 || e1.id === e2.id || e1.type !== e2.type) continue;
+          if (SKIP_DEDUP_TYPES.has(e1.type)) continue;
+          if ((e1.name || '').length < 4 || (e2.name || '').length < 4) continue;
 
           const sim = this.entityResolver.calculateSimilarity(e1.name, e2.name);
           if (sim >= 0.88) {
@@ -99,6 +102,12 @@ class GraphMaintenance {
             try {
               db.prepare('UPDATE relationships SET source_id = ? WHERE source_id = ?').run(survivor.id, deprecated.id);
               db.prepare('UPDATE relationships SET target_id = ? WHERE target_id = ?').run(survivor.id, deprecated.id);
+              db.exec('DELETE FROM relationships WHERE source_id = target_id;');
+              try {
+                db.exec(`DELETE FROM relationships WHERE id NOT IN (
+                  SELECT MIN(id) FROM relationships GROUP BY source_id, target_id, type
+                )`);
+              } catch { /* ignore */ }
               db.prepare('UPDATE entities SET merged_into = ? WHERE id = ?').run(survivor.id, deprecated.id);
               db.prepare('DELETE FROM entities WHERE id = ?').run(deprecated.id);
               db.exec('COMMIT');

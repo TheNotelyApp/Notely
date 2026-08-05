@@ -116,6 +116,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiBuildGraph: (payload) => ipcRenderer.invoke("ai:graph:build", payload),
   aiGetGraph: (payload) => ipcRenderer.invoke("ai:graph:get", payload),
   aiGetGraphStatus: (payload) => ipcRenderer.invoke("ai:graph:status", payload),
+  aiExportGraphAsJSON: (payload) => ipcRenderer.invoke("ai:graph:export-json", payload),
+  aiExportGraphAsMarkdown: (payload) => ipcRenderer.invoke("ai:graph:export-md", payload),
   aiClearGraphData: () => ipcRenderer.invoke("ai:graph:clear-data"),
   aiClearEmbeddingsData: () => ipcRenderer.invoke("ai:embeddings:clear-data"),
   aiDetectPatterns: (payload) => ipcRenderer.invoke("ai:patterns:detect", payload),

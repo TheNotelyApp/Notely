@@ -132,4 +132,49 @@ describe('SQLite Knowledge Graph DB and CTE Traversals', () => {
     expect(results.some(r => r.from_name === 'Bikash')).toBe(true);
     expect(results.some(r => r.from_name === 'Panda')).toBe(true);
   });
+
+  it('should reject self-loops and clamp confidence (P8)', () => {
+    graphDb.upsertEntity({ id: 'node-self', type: 'Note', name: 'Self Loop Test' });
+
+    // Self-loop should be ignored
+    graphDb.upsertRelationship({ source_id: 'node-self', target_id: 'node-self', type: 'SELF_LOOP', confidence: 1.0 });
+    const status = graphDb.getStatus();
+    expect(status.edgeCount).toBe(0);
+
+    // Confidence out-of-bounds should be clamped
+    graphDb.upsertEntity({ id: 'node-target', type: 'Note', name: 'Target Note' });
+    graphDb.upsertRelationship({ source_id: 'node-self', target_id: 'node-target', type: 'LINKS_TO', confidence: 2.5 });
+    const all = graphDb.getAll();
+    expect(all.relationships[0].confidence).toBe(1.0);
+  });
+
+  it('should increment source_count on entity upsert conflict (P10)', () => {
+    graphDb.upsertEntity({ id: 'node-count', type: 'Concept', name: 'Shared Concept' });
+    let ent = graphDb.getAll().entities.find(e => e.id === 'node-count');
+    expect(ent.source_count).toBe(1);
+
+    // Second upsert should increment source_count
+    graphDb.upsertEntity({ id: 'node-count', type: 'Concept', name: 'Shared Concept' });
+    ent = graphDb.getAll().entities.find(e => e.id === 'node-count');
+    expect(ent.source_count).toBe(2);
+  });
+
+  it('should export graph as JSON and Markdown (P12)', () => {
+    graphDb.upsertEntity({ id: 'node-1', type: 'Note', name: 'Doc 1' });
+    graphDb.upsertEntity({ id: 'node-2', type: 'Concept', name: 'AI Architecture' });
+    graphDb.upsertRelationship({ source_id: 'node-1', target_id: 'node-2', type: 'DISCUSSES', confidence: 0.95 });
+
+    const json = graphDb.exportAsJSON();
+    expect(json.metadata.schemaVersion).toBe('1.0');
+    expect(json.statistics.entityCount).toBe(2);
+    expect(json.statistics.relationshipCount).toBe(1);
+    expect(json.entities).toHaveLength(2);
+    expect(json.relationships).toHaveLength(1);
+
+    const md = graphDb.exportAsMarkdown();
+    expect(md).toContain('# Knowledge Graph Export');
+    expect(md).toContain('Doc 1');
+    expect(md).toContain('AI Architecture');
+    expect(md).toContain('DISCUSSES');
+  });
 });

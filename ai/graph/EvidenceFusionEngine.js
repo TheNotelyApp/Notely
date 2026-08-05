@@ -12,9 +12,16 @@ class EvidenceFusionEngine {
     this.evidenceStore = evidenceStore;
   }
 
-  fuseTriple({ source_id, target_id, type, weight = 1.0, confidence = 1.0, evidenceId = null, metadata = {} }) {
+  fuseTriple({ source_id, target_id, type, weight = 1.0, confidence = 1.0, evidenceId = null, extractor = 'gliner2-relex', metadata = {} }) {
     if (!this.graphDb?.db) return null;
+    if (!source_id || !target_id || source_id === target_id) return null;
     const db = this.graphDb.db;
+
+    // Plausibility Guard: Reject inverse circular relationships (e.g. A CONTROLS B AND B CONTROLS A)
+    const inverseRelation = db.prepare(
+      'SELECT id FROM relationships WHERE source_id = ? AND target_id = ? AND type = ?'
+    ).get(target_id, source_id, type);
+    if (inverseRelation) return null;
 
     try {
       // 1. Check if relationship already exists
@@ -30,6 +37,7 @@ class EvidenceFusionEngine {
           type,
           weight,
           confidence,
+          extractor,
           metadata,
           evidence_id: evidenceId
         });
@@ -51,9 +59,9 @@ class EvidenceFusionEngine {
 
         db.prepare(`
           UPDATE relationships
-          SET confidence = ?, weight = ?, metadata = ?
+          SET confidence = ?, weight = ?, extractor = ?, metadata = ?
           WHERE id = ?
-        `).run(mergedConfidence, mergedWeight, metadataJson, existing.id);
+        `).run(mergedConfidence, mergedWeight, extractor, metadataJson, existing.id);
 
         if (evidenceId) {
           this._linkEvidence(existing.id, evidenceId);
@@ -78,6 +86,9 @@ class EvidenceFusionEngine {
       this.graphDb.db.prepare(
         'INSERT OR IGNORE INTO relationship_evidence (relationship_id, evidence_id) VALUES (?, ?)'
       ).run(relationshipId, evidenceId);
+      this.graphDb.db.prepare(
+        'UPDATE relationships SET evidence_id = COALESCE(evidence_id, ?) WHERE id = ?'
+      ).run(evidenceId, relationshipId);
     } catch { /* ignore junction link error */ }
   }
 }

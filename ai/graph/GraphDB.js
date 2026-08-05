@@ -83,12 +83,72 @@ class GraphDB {
         this.db.exec(idxQuery);
       }
 
+      // Versioned database schema migrations (Gap 3)
+      const TARGET_SCHEMA_VERSION = 3;
+      let currentVersion = 0;
+      try {
+        const vRow = this.db.prepare('PRAGMA user_version').get();
+        currentVersion = vRow ? (vRow.user_version || 0) : 0;
+      } catch { /* default 0 */ }
+
+      if (currentVersion < TARGET_SCHEMA_VERSION) {
+        this._runSchemaMigrations(currentVersion, TARGET_SCHEMA_VERSION);
+        try {
+          this.db.exec(`PRAGMA user_version = ${TARGET_SCHEMA_VERSION}`);
+        } catch { /* ignore pragma write error */ }
+      }
+
       this.isInitialized = true;
       log.info('GraphDB initialized successfully');
       return true;
     } catch (err) {
       log.error('Failed to initialize GraphDB:', err);
       throw err;
+    }
+  }
+
+  _runSchemaMigrations(fromVersion, toVersion) {
+    log.info(`Migrating GraphDB schema from v${fromVersion} to v${toVersion}`);
+    if (fromVersion < 1) {
+      // Version 1: Add new entity metadata columns if missing
+      const cols = [
+        'confidence REAL DEFAULT 1.0',
+        'community_id INTEGER',
+        'ontology_class TEXT',
+        'source_count INTEGER DEFAULT 1',
+        "first_seen_at TEXT DEFAULT (datetime('now'))",
+        'is_retired INTEGER DEFAULT 0',
+        'merged_into TEXT'
+      ];
+      for (const col of cols) {
+        try { this.db.exec(`ALTER TABLE entities ADD COLUMN ${col};`); } catch { /* ignore */ }
+      }
+    }
+    if (fromVersion < 2) {
+      // Version 2: Ensure relationship_evidence and communities tables exist
+      try {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS relationship_evidence (
+            relationship_id INTEGER NOT NULL REFERENCES relationships(id) ON DELETE CASCADE,
+            evidence_id TEXT NOT NULL REFERENCES evidence(id) ON DELETE CASCADE,
+            PRIMARY KEY (relationship_id, evidence_id)
+          );
+        `);
+      } catch { /* ignore */ }
+    }
+    if (fromVersion < 3) {
+      // Version 3: Clean up structural relationship extractor tags
+      try {
+        this.db.exec(`
+          UPDATE relationships SET extractor = 'ast_parser'
+          WHERE extractor = 'glirel' AND type IN (
+            'links_to','tagged','contains_section','contains_media',
+            'contains_code','attaches_file','references_url','annotated_with',
+            'contains_formula','has_open_task','has_completed_task',
+            'relates_to','mentions_note'
+          );
+        `);
+      } catch { /* ignore */ }
     }
   }
 
@@ -153,6 +213,7 @@ class GraphDB {
           note_path = excluded.note_path,
           properties = excluded.properties,
           confidence = excluded.confidence,
+          source_count = COALESCE(entities.source_count, 1) + 1,
           updated_at = datetime('now');
       `;
       this.db.prepare(query).run(id, name, canonical, type, note_path, propertiesJson, confidence);
@@ -166,6 +227,7 @@ class GraphDB {
           type = excluded.type,
           note_path = excluded.note_path,
           properties = excluded.properties,
+          source_count = COALESCE(entities.source_count, 1) + 1,
           updated_at = datetime('now');
       `;
       this.db.prepare(fallbackQuery).run(id, name, canonical, type, note_path, propertiesJson);
@@ -188,11 +250,12 @@ class GraphDB {
    * Delete note entity, associated evidence, and incoming/outgoing relationships
    */
   deleteNoteEntityAndRelationships(notePath) {
-    if (!this.db) return;
+    if (!this.db || !notePath) return;
     try {
-      const crypto = require('crypto');
-      const normPath = String(notePath || '').trim().toLowerCase();
-      const entityId = `ent-${crypto.createHash('sha256').update(`note:${normPath}`).digest('hex').slice(0, 16)}`;
+      const EntityResolver = require('./EntityResolver');
+      const er = new EntityResolver(this);
+      const noteName = er.cleanName(path.basename(notePath, '.md'));
+      const entityId = er.generateEntityId(noteName, 'Note');
 
       this.db.exec('BEGIN');
       try {
@@ -240,17 +303,21 @@ class GraphDB {
   }
 
   /**
-   * Upsert a relationship with confidence and optional evidence linkage
+   * Upsert a relationship with confidence, extractor tag, and optional evidence linkage
    */
-  upsertRelationship({ source_id, target_id, type, weight = 1.0, confidence = 1.0, metadata = {}, evidence_id = null }) {
+  upsertRelationship({ source_id, target_id, type, weight = 1.0, confidence = 1.0, metadata = {}, evidence_id = null, extractor = 'ast_parser' }) {
     if (!this.db) throw new Error('Database not initialized');
+    if (!source_id || !target_id || source_id === target_id) return;
+
+    const clampedConfidence = Math.max(0.0, Math.min(1.0, typeof confidence === 'number' ? confidence : parseFloat(confidence) || 1.0));
 
     const query = `
-      INSERT INTO relationships (source_id, target_id, type, weight, confidence, metadata, evidence_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO relationships (source_id, target_id, type, weight, confidence, extractor, metadata, evidence_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(source_id, target_id, type) DO UPDATE SET
         weight = excluded.weight,
         confidence = excluded.confidence,
+        extractor = excluded.extractor,
         metadata = excluded.metadata,
         evidence_id = COALESCE(excluded.evidence_id, relationships.evidence_id);
     `;
@@ -258,10 +325,18 @@ class GraphDB {
     const metadataJson = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
     const stmt = this.db.prepare(query);
     try {
-      stmt.run(source_id, target_id, type, weight, confidence, metadataJson, evidence_id);
+      stmt.run(source_id, target_id, type, weight, clampedConfidence, extractor, metadataJson, evidence_id);
+      if (evidence_id) {
+        try {
+          const relRow = this.db.prepare('SELECT id FROM relationships WHERE source_id = ? AND target_id = ? AND type = ?').get(source_id, target_id, type);
+          if (relRow?.id) {
+            this.db.prepare('INSERT OR IGNORE INTO relationship_evidence (relationship_id, evidence_id) VALUES (?, ?)').run(relRow.id, evidence_id);
+          }
+        } catch { /* ignore junction insert error */ }
+      }
     } catch (err) {
       if (err.message?.includes('FOREIGN KEY') && evidence_id) {
-        stmt.run(source_id, target_id, type, weight, confidence, metadataJson, null);
+        stmt.run(source_id, target_id, type, weight, clampedConfidence, extractor, metadataJson, null);
       } else {
         throw err;
       }
@@ -527,8 +602,8 @@ class GraphDB {
 
     const cteQuery = `
       WITH RECURSIVE paths(id, path_str, depth) AS (
-        SELECT ? as id, ? as path_str, 0 as depth
-        UNION ALL
+        SELECT ? as id, CAST(? AS TEXT) as path_str, 0 as depth
+        UNION
         SELECT r.target_id, p.path_str || ',' || r.target_id, p.depth + 1
         FROM relationships r JOIN paths p ON r.source_id = p.id
         WHERE p.depth < ? AND p.path_str NOT LIKE '%' || r.target_id || '%'
@@ -551,9 +626,10 @@ class GraphDB {
       if (row && row.id) {
         entityId = row.id;
       } else {
-        const path = require('path');
-        const noteName = path.basename(notePath, '.md');
-        entityId = noteName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const EntityResolver = require('./EntityResolver');
+        const er = new EntityResolver(this);
+        const noteName = er.cleanName(path.basename(notePath, '.md'));
+        entityId = er.generateEntityId(noteName, 'Note');
       }
       
       const relCountRow = this.db.prepare('SELECT COUNT(*) as count FROM relationships WHERE source_id = ? OR target_id = ?').get(entityId, entityId);
@@ -707,6 +783,208 @@ class GraphDB {
       log.error('Failed searchEntities:', err.message);
       return [];
     }
+  }
+
+  exportAsJSON(options = {}) {
+    if (!this.db) {
+      return {
+        metadata: { exportedAt: new Date().toISOString(), error: 'Database not initialized' },
+        statistics: { entityCount: 0, relationshipCount: 0, evidenceCount: 0, communityCount: 0, evidenceCoverageRatio: 0 },
+        entities: [],
+        relationships: [],
+        evidence: [],
+        validation: null
+      };
+    }
+
+    try {
+      const entities = this.db.prepare('SELECT * FROM entities').all().map(e => ({
+        ...e,
+        properties: typeof e.properties === 'string' ? JSON.parse(e.properties || '{}') : (e.properties || {})
+      }));
+
+      const relationships = this.db.prepare('SELECT * FROM relationships').all().map(r => ({
+        ...r,
+        metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata || '{}') : (r.metadata || {})
+      }));
+
+      let evidence = [];
+      try {
+        evidence = this.db.prepare('SELECT * FROM evidence').all();
+      } catch { /* ignore */ }
+
+      let lastVersion = null;
+      try {
+        lastVersion = this.db.prepare('SELECT * FROM graph_versions ORDER BY id DESC LIMIT 1').get()?.version || 'v1.0';
+      } catch { /* ignore */ }
+
+      const workspaceEnt = this.getWorkspaceEntity();
+
+      const confidenceDistribution = {
+        '0.9-1.0': 0,
+        '0.8-0.9': 0,
+        '0.7-0.8': 0,
+        '0.6-0.7': 0,
+        'below-0.6': 0
+      };
+      relationships.forEach(r => {
+        const c = r.confidence ?? 1.0;
+        if (c >= 0.9) confidenceDistribution['0.9-1.0']++;
+        else if (c >= 0.8) confidenceDistribution['0.8-0.9']++;
+        else if (c >= 0.7) confidenceDistribution['0.7-0.8']++;
+        else if (c >= 0.6) confidenceDistribution['0.6-0.7']++;
+        else confidenceDistribution['below-0.6']++;
+      });
+
+      const typeDistribution = {};
+      entities.forEach(e => {
+        const t = e.type || 'Entity';
+        typeDistribution[t] = (typeDistribution[t] || 0) + 1;
+      });
+
+      const totalRels = relationships.length;
+      const relsWithEv = relationships.filter(r => r.evidence_id).length;
+      const evidenceCoverageRatio = totalRels > 0 ? parseFloat((relsWithEv / totalRels).toFixed(4)) : 1.0;
+
+      const degreeMap = new Map();
+      relationships.forEach(r => {
+        degreeMap.set(r.source_id, (degreeMap.get(r.source_id) || 0) + 1);
+        degreeMap.set(r.target_id, (degreeMap.get(r.target_id) || 0) + 1);
+      });
+      const topHubs = [...entities]
+        .map(e => ({ id: e.id, name: e.name, type: e.type, degree: degreeMap.get(e.id) || 0 }))
+        .sort((a, b) => b.degree - a.degree)
+        .slice(0, 5);
+
+      let communityCount = 0;
+      try {
+        communityCount = this.db.prepare('SELECT COUNT(*) as count FROM communities').get()?.count || 0;
+        if (communityCount === 0 && entities.length > 0) {
+          const CommunityDetector = require('./CommunityDetector');
+          const detector = new CommunityDetector();
+          const res = detector.detect(this);
+          communityCount = res.communityCount || 0;
+        }
+      } catch { /* ignore */ }
+
+      let validation = null;
+      try {
+        const GraphValidationEngine = require('./GraphValidationEngine');
+        const validator = new GraphValidationEngine(this);
+        validation = validator.validateSync();
+      } catch { /* ignore */ }
+
+      return {
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          graphVersion: lastVersion || 'v1.0',
+          schemaVersion: '1.0',
+          pipelineVersion: '1.0',
+          extractionModel: 'gliner2-relex',
+          embeddingModel: null,
+          workspaceName: workspaceEnt?.name || 'Workspace',
+          workspaceHash: null,
+          buildDurationMs: null
+        },
+        statistics: {
+          entityCount: entities.length,
+          relationshipCount: relationships.length,
+          evidenceCount: evidence.length,
+          communityCount,
+          evidenceCoverageRatio,
+          avgConfidence: totalRels > 0 ? parseFloat((relationships.reduce((s, r) => s + (r.confidence ?? 1.0), 0) / totalRels).toFixed(4)) : 1.0,
+          confidenceDistribution,
+          typeDistribution,
+          topHubs
+        },
+        entities,
+        relationships,
+        evidence,
+        validation
+      };
+    } catch (err) {
+      log.error('Failed exportAsJSON:', err.message);
+      return {
+        metadata: { exportedAt: new Date().toISOString(), error: err.message },
+        statistics: { entityCount: 0, relationshipCount: 0, evidenceCount: 0, communityCount: 0, evidenceCoverageRatio: 0 },
+        entities: [],
+        relationships: [],
+        evidence: [],
+        validation: null
+      };
+    }
+  }
+
+  exportAsMarkdown(options = {}) {
+    const json = this.exportAsJSON(options);
+    const { metadata, statistics, entities, relationships, validation } = json;
+
+    const lines = [];
+    lines.push('# Knowledge Graph Export');
+    lines.push(`Generated: ${metadata.exportedAt}`);
+    lines.push(`Graph Version: ${metadata.graphVersion}`);
+    lines.push('');
+
+    lines.push('## Metadata');
+    lines.push(`- Workspace: ${metadata.workspaceName}`);
+    lines.push(`- Schema Version: ${metadata.schemaVersion}`);
+    lines.push(`- Extraction Model: ${metadata.extractionModel}`);
+    lines.push('');
+
+    lines.push('## Statistics');
+    lines.push(`- Entities: ${statistics.entityCount}`);
+    lines.push(`- Relationships: ${statistics.relationshipCount}`);
+    lines.push(`- Evidence Records: ${statistics.evidenceCount}`);
+    lines.push(`- Communities: ${statistics.communityCount}`);
+    lines.push(`- Evidence Coverage: ${(statistics.evidenceCoverageRatio * 100).toFixed(1)}%`);
+    lines.push(`- Avg Confidence: ${statistics.avgConfidence}`);
+    lines.push('');
+
+    if (statistics.topHubs?.length > 0) {
+      lines.push('## Top Hub Entities');
+      statistics.topHubs.forEach(h => {
+        lines.push(`- **${h.name}** (${h.type}, degree: ${h.degree})`);
+      });
+      lines.push('');
+    }
+
+    if (validation) {
+      lines.push('## Validation Summary');
+      lines.push(`- Orphan Entities: ${validation.orphans || 0}`);
+      lines.push(`- Self Loops: ${validation.selfLoops || 0}`);
+      lines.push(`- Duplicate Edges: ${validation.duplicateEdges || 0}`);
+      lines.push(`- Evidenceless AI Edges: ${validation.evidencelessEdges || 0}`);
+      lines.push(`- Evidence Coverage Ratio: ${((validation.evidenceCoverageRatio || 0) * 100).toFixed(1)}%`);
+      lines.push('');
+    }
+
+    lines.push('## Entities');
+    const byType = {};
+    entities.forEach(e => {
+      const t = e.type || 'Entity';
+      if (!byType[t]) byType[t] = [];
+      byType[t].push(e);
+    });
+
+    Object.keys(byType).sort().forEach(type => {
+      lines.push(`### ${type}`);
+      byType[type].forEach(e => {
+        const pathInfo = e.note_path ? ` [${e.note_path}]` : '';
+        lines.push(`- **${e.name}** (confidence: ${e.confidence ?? 1.0})${pathInfo}`);
+      });
+      lines.push('');
+    });
+
+    lines.push('## Relationships');
+    const entityNameMap = new Map(entities.map(e => [e.id, e.name]));
+    relationships.forEach(r => {
+      const srcName = entityNameMap.get(r.source_id) || r.source_id;
+      const tgtName = entityNameMap.get(r.target_id) || r.target_id;
+      lines.push(`- [${srcName}] --[${r.type}]--> [${tgtName}] (confidence: ${r.confidence ?? 1.0})`);
+    });
+    lines.push('');
+
+    return lines.join('\n');
   }
 }
 

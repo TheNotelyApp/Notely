@@ -27,6 +27,7 @@ class WorkspaceMetadataKnowledgeSource extends KnowledgeSource {
     const name = info.name || 'Workspace';
     const entities = [
       {
+        id: 'ent-workspace-root',
         name,
         type: 'Workspace',
         properties: {
@@ -36,22 +37,6 @@ class WorkspaceMetadataKnowledgeSource extends KnowledgeSource {
         }
       }
     ];
-
-    if (info.projectType && info.projectType.trim()) {
-      entities.push({
-        name: info.projectType.trim(),
-        type: 'ProjectType',
-        properties: { isProjectType: true }
-      });
-    }
-
-    if (info.primaryGoal && info.primaryGoal.trim()) {
-      entities.push({
-        name: info.primaryGoal.trim(),
-        type: 'Goal',
-        properties: { isPrimaryGoal: true }
-      });
-    }
 
     if (Array.isArray(info.domainTags)) {
       for (const tag of info.domainTags) {
@@ -72,30 +57,6 @@ class WorkspaceMetadataKnowledgeSource extends KnowledgeSource {
     const info = this.workspaceInfo;
     const name = info.name || 'Workspace';
     const relationships = [];
-
-    if (info.projectType && info.projectType.trim()) {
-      relationships.push({
-        source_name: name,
-        target_name: info.projectType.trim(),
-        source_type: 'Workspace',
-        target_type: 'ProjectType',
-        type: 'has_project_type',
-        weight: 1.0,
-        confidence: 0.95
-      });
-    }
-
-    if (info.primaryGoal && info.primaryGoal.trim()) {
-      relationships.push({
-        source_name: name,
-        target_name: info.primaryGoal.trim(),
-        source_type: 'Workspace',
-        target_type: 'Goal',
-        type: 'has_goal',
-        weight: 1.0,
-        confidence: 0.95
-      });
-    }
 
     if (Array.isArray(info.domainTags)) {
       for (const tag of info.domainTags) {

@@ -42,6 +42,9 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     this.defaultEntityTypes = config.entityTypes || registryConfig.defaultEntityTypes || [];
     this.defaultRelationTypes = config.relationTypes || registryConfig.defaultRelationTypes || [];
 
+    this._consecutiveFailures = 0;
+    this._unloadTimer = null;
+
     this.segmenter = typeof Intl !== 'undefined' && Intl.Segmenter
       ? new Intl.Segmenter('en', { granularity: 'sentence' })
       : null;
@@ -111,13 +114,12 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       if (this.ort) {
         this.encoderSession = await this._loadSession(modelDir, files.encoder).catch(() => null);
         this.spanRepSession = await this._loadSession(modelDir, files.span_rep).catch(() => null);
-        this.countEmbedSession = await this._loadSession(modelDir, files.count_embed).catch(() => null);
-        this.countPredSession = await this._loadSession(modelDir, files.count_pred).catch(() => null);
         this.classifierSession = await this._loadSession(modelDir, files.classifier).catch(() => null);
       }
 
       if (this.encoderSession && this.classifierSession) {
         this.isLoaded = true;
+        this._consecutiveFailures = 0;
         log.info(`GLiNER2RelexAdapter 5-Graph ONNX model loaded successfully in ${Date.now() - startTime}ms.`);
       } else {
         this._setupTestMockEnvironment();
@@ -127,6 +129,30 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       this._setupTestMockEnvironment();
       log.info(`GLiNER2RelexAdapter initialized in standby mode after load error.`);
     }
+  }
+
+  _runSessionWithTimeout(session, inputs, timeoutMs = 8000) {
+    if (!session) return Promise.resolve(null);
+    return Promise.race([
+      session.run(inputs),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('ONNX inference session timeout')), timeoutMs))
+    ]);
+  }
+
+  _scheduleIdleUnload(idleMs = 300000) {
+    if (this._unloadTimer) clearTimeout(this._unloadTimer);
+    this._unloadTimer = setTimeout(() => {
+      try {
+        if (this.encoderSession?.close) this.encoderSession.close();
+        if (this.spanRepSession?.close) this.spanRepSession.close();
+        if (this.classifierSession?.close) this.classifierSession.close();
+      } catch { /* ignore */ }
+      this.encoderSession = null;
+      this.spanRepSession = null;
+      this.classifierSession = null;
+      this.isLoaded = false;
+      log.info('GLiNER2 ONNX sessions unloaded due to idle timeout.');
+    }, idleMs);
   }
 
   _setupTestMockEnvironment() {
@@ -295,7 +321,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     const pToken = this.modelConfig?.special_tokens?.['[P]'] || 250104;
     const eToken = this.modelConfig?.special_tokens?.['[E]'] || 250106;
     const sepTextToken = this.modelConfig?.special_tokens?.['[SEP_TEXT]'] || 250103;
-    const maxWidth = this.modelConfig?.max_width || 8;
+    const maxWidth = Math.min(4, this.modelConfig?.max_width || 4);
 
     const schemaTokenIds = [pToken];
     const schemaPositions = [0];
@@ -308,13 +334,15 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     }
 
     const fullInputIds = [...schemaTokenIds, sepTextToken];
-    const textPositions = [];
+    const textStartPositions = [];
+    const textEndPositions = [];
 
     for (let i = 0; i < words.length; i++) {
-      textPositions.push(fullInputIds.length);
+      textStartPositions.push(fullInputIds.length);
       const wordTokens = this._tokenizeWord(words[i]);
       if (wordTokens.length === 0) wordTokens.push(0);
       fullInputIds.push(...wordTokens);
+      textEndPositions.push(fullInputIds.length - 1);
     }
 
     const seqLen = fullInputIds.length;
@@ -329,8 +357,8 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     for (let start = 0; start < numWords; start++) {
       for (let w = 1; w <= maxWidth; w++) {
         if (start + w <= numWords) {
-          const startSubIdx = textPositions[start];
-          const endSubIdx = textPositions[start + w - 1];
+          const startSubIdx = textStartPositions[start];
+          const endSubIdx = textEndPositions[start + w - 1];
           spanStartList.push(BigInt(startSubIdx));
           spanEndList.push(BigInt(endSubIdx));
           validSpans.push({ wordIndexStart: start, length: w });
@@ -350,7 +378,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
   }
 
   _sigmoid(val) {
-    return 1 / (1 + Math.exp(-val));
+    return 1 / (1 + Math.exp(-(val + 1.2)));
   }
 
   _decodeSpanScores(logitsData, words, labels, charOffsets, threshold, maxWidth, validSpans) {
@@ -364,8 +392,14 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       const start = span.wordIndexStart;
       const w = span.length;
 
-      let textSpan = words.slice(start, start + w).join(' ').replace(/[.,;:]+$/, '').trim();
-      if (!textSpan || /^\W+$/.test(textSpan)) continue;
+      // Noise Guard: Reject spans longer than 4 words or 35 chars
+      if (w > 4) continue;
+
+      let textSpan = words.slice(start, start + w).join(' ').replace(/^[-*+\s:#=]+|[.,;:)]+$/g, '').trim();
+      if (!textSpan || textSpan.length > 35 || /^\W+$/.test(textSpan)) continue;
+
+      // Reject formatting artifacts, HTML attributes, table headers/cells, UI strings
+      if (/[{}=|]|\bdata-|\bvalue \d|\bcolumn \d|\btest for\b|\bask questions\b|\bchat with\b/i.test(textSpan)) continue;
 
       const spanLogits = logitsData.subarray
         ? logitsData.subarray(i * numLabels, (i + 1) * numLabels)
@@ -422,6 +456,10 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     return [];
   }
 
+  _mockGenerateRelations() {
+    return [];
+  }
+
   getSavedConfidenceThreshold() {
     try {
       const appData = this.appDataDir || (process.env.APPDATA ? path.join(process.env.APPDATA, 'Notely') : null);
@@ -438,7 +476,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         }
       }
     } catch { /* ignore */ }
-    return 0.60;
+    return 0.45;
   }
 
   async extract(document, options = {}) {
@@ -454,6 +492,16 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         relations: [],
         evidence: [],
         metadata: { durationMs: 0, model: this.modelId }
+      });
+    }
+
+    if (this._consecutiveFailures >= 5) {
+      log.warn('GLiNER2 adapter disabled after 5 consecutive failures');
+      return new ExtractionResult({
+        entities: [],
+        relations: [],
+        evidence: [],
+        metadata: { durationMs: 0, model: this.modelId, status: 'circuit_breaker_active' }
       });
     }
 
@@ -502,54 +550,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       }
 
       if (extractedEntities.length >= 2 && targetRelationTypes.length > 0) {
-        for (let i = 0; i < extractedEntities.length; i++) {
-          for (let j = 0; j < extractedEntities.length; j++) {
-            if (i === j) continue;
-            const e1 = extractedEntities[i];
-            const e2 = extractedEntities[j];
-
-            let relType = targetRelationTypes[0] || 'USES';
-            let isMatch = false;
-
-            if (e1.text.toLowerCase().includes('esp32') && e2.text.toLowerCase().includes('relay')) {
-              relType = 'CONTROLS';
-              isMatch = true;
-            } else if (e1.text.toLowerCase().includes('bert') && e2.text.toLowerCase().includes('transformer')) {
-              relType = 'USES';
-              isMatch = true;
-            } else if (e1.text.toLowerCase().includes('notely') && e2.text.toLowerCase().includes('sqlite')) {
-              relType = 'USES';
-              isMatch = true;
-            } else if (e1.text.toLowerCase().includes('graphworker') && e2.text.toLowerCase().includes('sqlite')) {
-              relType = 'USES';
-              isMatch = true;
-            } else if (i < j && (e1.text.length >= 3 && e2.text.length >= 3)) {
-              isMatch = true;
-            }
-
-            if (isMatch) {
-              const ev = new Evidence({
-                sourceFile: docId || metadata.sourceFile || 'doc',
-                lineNumber: 1,
-                paragraphId: 'p-1',
-                rawSnippet: content,
-                extractionModel: 'gliner2-relex',
-                timestamp: new Date().toISOString(),
-                confidence: 0.88
-              });
-              rawEvidenceList.push(ev);
-              extractedRelations.push(new Relationship({
-                sourceEntityId: e1.id,
-                targetEntityId: e2.id,
-                relationType: relType,
-                confidence: 0.88,
-                sourceEvidence: ev,
-                sourceText: e1.text,
-                targetText: e2.text
-              }));
-            }
-          }
-        }
+        this._mockGenerateRelations(extractedEntities, targetRelationTypes, content, docId, metadata, rawEvidenceList, extractedRelations);
       }
 
       return new ExtractionResult({
@@ -582,12 +583,12 @@ class GLiNER2RelexAdapter extends ModelAdapter {
           attention_mask: tensors.attention_mask
         };
 
-        const encOutput = await this.encoderSession.run(feeds);
+        const encOutput = await this._runSessionWithTimeout(this.encoderSession, feeds);
         let logitsData = null;
 
         if (encOutput && encOutput.hidden_state && this.spanRepSession && this.classifierSession) {
           // Full 3-stage neural inference: Encoder -> Span Rep -> Classifier
-          const spanOut = await this.spanRepSession.run({
+          const spanOut = await this._runSessionWithTimeout(this.spanRepSession, {
             hidden_states: encOutput.hidden_state,
             span_start_idx: tensors.spanStartTensor,
             span_end_idx: tensors.spanEndTensor
@@ -598,7 +599,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
             const numSpans = tensors.validSpans.length;
             const classInput = new this.ort.Tensor(spanReps.type, spanReps.data, [numSpans, 768]);
             const inputName = (this.classifierSession.inputNames && this.classifierSession.inputNames[0]) || 'span_representations';
-            const classOut = await this.classifierSession.run({ [inputName]: classInput });
+            const classOut = await this._runSessionWithTimeout(this.classifierSession, { [inputName]: classInput });
             if (classOut && classOut.logits) {
               logitsData = classOut.logits.data;
             }
@@ -659,13 +660,15 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         const sentEnts = extractedEntities.filter(e => sent.text.toLowerCase().includes(e.text.toLowerCase()));
         if (sentEnts.length >= 2 && targetRelationTypes.length > 0) {
           const relTensors = this._buildInputTensors(words, targetRelationTypes);
-          const relEncOutput = await this.encoderSession.run({
-            input_ids: relTensors.input_ids,
-            attention_mask: relTensors.attention_mask
-          }).catch(() => null);
+          const relEncOutput = (encOutput && encOutput.hidden_state && tensors.input_ids?.data?.length === relTensors.input_ids?.data?.length)
+            ? encOutput
+            : await this._runSessionWithTimeout(this.encoderSession, {
+                input_ids: relTensors.input_ids,
+                attention_mask: relTensors.attention_mask
+              }).catch(() => null);
 
           if (relEncOutput && relEncOutput.hidden_state && this.spanRepSession && this.classifierSession) {
-            const relSpanOut = await this.spanRepSession.run({
+            const relSpanOut = await this._runSessionWithTimeout(this.spanRepSession, {
               hidden_states: relEncOutput.hidden_state,
               span_start_idx: relTensors.spanStartTensor,
               span_end_idx: relTensors.spanEndTensor
@@ -675,7 +678,8 @@ class GLiNER2RelexAdapter extends ModelAdapter {
               const relSpanReps = relSpanOut.span_representations;
               const relNumSpans = relTensors.validSpans.length;
               const relClassInput = new this.ort.Tensor(relSpanReps.type, relSpanReps.data, [relNumSpans, 768]);
-              const relClassOut = await this.classifierSession.run({ hidden_state: relClassInput }).catch(() => null);
+              const relInputName = (this.classifierSession.inputNames && this.classifierSession.inputNames[0]) || 'span_representations';
+              const relClassOut = await this._runSessionWithTimeout(this.classifierSession, { [relInputName]: relClassInput }).catch(() => null);
 
               if (relClassOut && relClassOut.logits) {
                 const relLogitsData = relClassOut.logits.data;
@@ -689,13 +693,14 @@ class GLiNER2RelexAdapter extends ModelAdapter {
                   relTensors.validSpans
                 );
 
-                for (let i = 0; i < sentEnts.length; i++) {
-                  for (let j = 0; j < sentEnts.length; j++) {
-                    if (i === j) continue;
-                    const e1 = sentEnts[i];
-                    const e2 = sentEnts[j];
+                if (decodedRels.length > 0) {
+                  const bestRel = decodedRels[0];
+                  for (let i = 0; i < sentEnts.length; i++) {
+                    for (let j = 0; j < sentEnts.length; j++) {
+                      if (i === j) continue;
+                      const e1 = sentEnts[i];
+                      const e2 = sentEnts[j];
 
-                    for (const candRel of decodedRels) {
                       const ev = new Evidence({
                         sourceFile: docId || metadata.sourceFile || 'doc',
                         lineNumber: sentIdx + 1,
@@ -703,15 +708,15 @@ class GLiNER2RelexAdapter extends ModelAdapter {
                         rawSnippet: sent.text,
                         extractionModel: 'gliner2-relex',
                         timestamp: new Date().toISOString(),
-                        confidence: candRel.confidence
+                        confidence: bestRel.confidence
                       });
                       rawEvidenceList.push(ev);
 
                       extractedRelations.push(new Relationship({
                         sourceEntityId: e1.id,
                         targetEntityId: e2.id,
-                        relationType: candRel.type,
-                        confidence: candRel.confidence,
+                        relationType: bestRel.type,
+                        confidence: bestRel.confidence,
                         sourceEvidence: ev,
                         sourceText: e1.text,
                         targetText: e2.text
@@ -724,11 +729,14 @@ class GLiNER2RelexAdapter extends ModelAdapter {
           }
         }
       } catch (sentErr) {
-        log.debug(`Sentence ONNX inference error at idx ${sentIdx}:`, sentErr.message);
+        this._consecutiveFailures = (this._consecutiveFailures || 0) + 1;
+        log.warn(`Sentence-level ONNX inference error (${this._consecutiveFailures} consecutive):`, sentErr.message);
       }
     }
 
     const durationMs = Date.now() - startTime;
+    this._consecutiveFailures = 0;
+    this._scheduleIdleUnload();
 
     return new ExtractionResult({
       entities: extractedEntities,
@@ -742,6 +750,58 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         relationsCount: extractedRelations.length
       }
     });
+  }
+
+  // TEST ENVIRONMENT ONLY — produces mock extractions when model weights are not loaded
+  _mockGenerateRelations(extractedEntities, targetRelationTypes, content, docId, metadata, rawEvidenceList, extractedRelations) {
+    for (let i = 0; i < extractedEntities.length; i++) {
+      for (let j = 0; j < extractedEntities.length; j++) {
+        if (i === j) continue;
+        const e1 = extractedEntities[i];
+        const e2 = extractedEntities[j];
+
+        let relType = targetRelationTypes[0] || 'USES';
+        let isMatch = false;
+
+        if (e1.text.toLowerCase().includes('esp32') && e2.text.toLowerCase().includes('relay')) {
+          relType = 'CONTROLS';
+          isMatch = true;
+        } else if (e1.text.toLowerCase().includes('bert') && e2.text.toLowerCase().includes('transformer')) {
+          relType = 'USES';
+          isMatch = true;
+        } else if (e1.text.toLowerCase().includes('notely') && e2.text.toLowerCase().includes('sqlite')) {
+          relType = 'USES';
+          isMatch = true;
+        } else if (e1.text.toLowerCase().includes('graphworker') && e2.text.toLowerCase().includes('sqlite')) {
+          relType = 'USES';
+          isMatch = true;
+        } else if (i < j && (e1.text.length >= 3 && e2.text.length >= 3)) {
+          isMatch = true;
+        }
+
+        if (isMatch) {
+          const ev = new Evidence({
+            sourceFile: docId || metadata.sourceFile || 'doc',
+            lineNumber: 1,
+            paragraphId: 'p-1',
+            rawSnippet: content,
+            extractionModel: 'gliner2-relex',
+            timestamp: new Date().toISOString(),
+            confidence: 0.88
+          });
+          rawEvidenceList.push(ev);
+          extractedRelations.push(new Relationship({
+            sourceEntityId: e1.id,
+            targetEntityId: e2.id,
+            relationType: relType,
+            confidence: 0.88,
+            sourceEvidence: ev,
+            sourceText: e1.text,
+            targetText: e2.text
+          }));
+        }
+      }
+    }
   }
 }
 
