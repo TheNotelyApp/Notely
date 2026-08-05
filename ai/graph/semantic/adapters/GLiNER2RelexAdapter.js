@@ -473,9 +473,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     return [];
   }
 
-  _mockGenerateRelations() {
-    return [];
-  }
+
 
   getSavedConfidenceThreshold() {
     try {

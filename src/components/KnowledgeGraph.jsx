@@ -9,7 +9,7 @@ import {
   Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw, ExternalLink, Copy, FileText, Code } from 'lucide-react';
+import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw, ExternalLink, FileText, Code } from 'lucide-react';
 import {
   aiGetGraph,
   aiBuildGraph,

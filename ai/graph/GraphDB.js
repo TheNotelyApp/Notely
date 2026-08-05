@@ -825,7 +825,7 @@ class GraphDB {
     }
   }
 
-  exportAsJSON(options = {}) {
+  exportAsJSON(_options = {}) {
     if (!this.db) {
       return {
         metadata: { exportedAt: new Date().toISOString(), error: 'Database not initialized' },

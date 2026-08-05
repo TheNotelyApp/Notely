@@ -29,7 +29,7 @@ class EntityResolver {
     return dot / (Math.sqrt(norm1) * Math.sqrt(norm2));
   }
 
-  async resolveMentionVector(clean, sanitizedType) {
+  async resolveMentionVector(clean, _sanitizedType) {
     if (!this.embeddingService || !this.graphDb?.db) return null;
     try {
       const candidateVector = await this.embeddingService.generateVector(clean);
