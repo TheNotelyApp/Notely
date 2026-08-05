@@ -23,6 +23,7 @@ import { DrawioBlock } from "./DrawioBlock";
 import { ImageCropModal } from "./ImageCropModal";
 import CodeBlockModal from "./CodeBlockModal";
 import { MarkdownTableEditor } from "./MarkdownTableEditor";
+import { MermaidVisualEditorModal } from "./mermaid/MermaidVisualEditorModal";
 
 function replaceAllLiteral(source, needle, replacement) {
   if (!needle || needle === replacement) return source;
@@ -448,6 +449,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   const [cropSaving, setCropSaving] = useState(false);
   const [replaceState, setReplaceState] = useState({ busy: false, assetPath: "" });
   const [codeEditState, setCodeEditState] = useState({ open: false, language: "", code: "", sourceLine: null });
+  const [mermaidEditState, setMermaidEditState] = useState({ open: false, initialCode: "", originalBlockCode: "" });
   const [tableEditState, setTableEditState] = useState({ open: false, initialMarkdown: "", sourceLine: null, lineCount: 0 });
   const [diagramEditState, setDiagramEditState] = useState({
     open: false,
@@ -1885,7 +1887,20 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       >
       {parts.map((part, index) =>
         part.type === "mermaid" ? (
-          <MermaidBlock code={part.value} index={index} key={`${part.type}-${index}`} />
+          <MermaidBlock
+            code={part.value}
+            index={index}
+            key={`${part.type}-${index}`}
+            onEdit={(codeToEdit) => {
+              if (!readOnly) {
+                setMermaidEditState({
+                  open: true,
+                  initialCode: codeToEdit,
+                  originalBlockCode: part.value,
+                });
+              }
+            }}
+          />
         ) : part.type === "excalidraw" ? (
           readOnly ? (
             <div key={`${part.type}-${index}`} className="excalidraw-block">
@@ -2109,6 +2124,29 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           onCancel={() => setTableEditState({ open: false, initialMarkdown: "", sourceLine: null, lineCount: 0 })}
         />
       )}
+      {mermaidEditState.open && (
+        <MermaidVisualEditorModal
+          isOpen={mermaidEditState.open}
+          initialCode={mermaidEditState.initialCode}
+          onClose={() => setMermaidEditState({ open: false, initialCode: "", originalBlockCode: "" })}
+          onSave={(newCode) => {
+            if (onContentChange) {
+              const oldBlock = `\`\`\`mermaid\n${mermaidEditState.originalBlockCode}\n\`\`\``;
+              const newBlock = `\`\`\`mermaid\n${newCode}\n\`\`\``;
+              if (content && content.includes(oldBlock)) {
+                onContentChange(content.replace(oldBlock, newBlock));
+              } else if (content && content.includes(mermaidEditState.originalBlockCode)) {
+                onContentChange(content.replace(mermaidEditState.originalBlockCode, newCode));
+              } else {
+                onContentChange(`${content}\n\n${newBlock}`);
+              }
+              onNotify?.("Mermaid diagram saved.", "success");
+            }
+            setMermaidEditState({ open: false, initialCode: "", originalBlockCode: "" });
+          }}
+        />
+      )}
     </>
   );
 });
+
