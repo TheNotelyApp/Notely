@@ -14,6 +14,11 @@ class GraphBuilder {
     this.graphDb = graphDb;
     this.graphService = graphService;
     this.isRebuilding = false;
+    this._lastBuildReport = null;
+  }
+
+  getPipelineReport() {
+    return this._lastBuildReport;
   }
 
   /**
@@ -28,6 +33,17 @@ class GraphBuilder {
     try {
       this.isRebuilding = true;
       this._rebuildStartTime = Date.now();
+      this._buildReport = {
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        totalDurationMs: 0,
+        stages: {
+          discovery: { durationMs: 0, itemCount: 0 },
+          nonMarkdownExtraction: { durationMs: 0, entityCount: 0, relationCount: 0 },
+          markdownProcessing: { durationMs: 0, processedCount: 0, failedCount: 0 }
+        },
+        finalStats: null
+      };
       log.info('Starting complete Knowledge Graph rebuild...');
 
       if (!this.graphDb.isInitialized) {
@@ -35,9 +51,9 @@ class GraphBuilder {
       }
 
       const LogDB = require('../logs/LogDB');
-      const logDb = new LogDB(this.agent.workspaceRoot);
-      logDb.initialize();
-      logDb.addLog('graph', 'Starting complete Knowledge Graph rebuild...', 'info');
+      this._logDb = new LogDB(this.agent.workspaceRoot);
+      this._logDb.initialize();
+      this._logDb.addLog('graph', 'Starting complete Knowledge Graph rebuild...', 'info');
 
       // Clear existing graph tables
       this.graphDb.clear();
@@ -46,7 +62,6 @@ class GraphBuilder {
       const WorkspaceMetadataKnowledgeSource = require('./sources/WorkspaceMetadataKnowledgeSource');
       const FolderHierarchyKnowledgeSource = require('./sources/FolderHierarchyKnowledgeSource');
       const ImageAnnotationKnowledgeSource = require('./sources/ImageAnnotationKnowledgeSource');
-      const MarkdownKnowledgeSource = require('./sources/MarkdownKnowledgeSource');
       const ExcalidrawKnowledgeSource = require('./sources/ExcalidrawKnowledgeSource');
       const DrawioKnowledgeSource = require('./sources/DrawioKnowledgeSource');
       const MermaidKnowledgeSource = require('./sources/MermaidKnowledgeSource');
@@ -81,17 +96,19 @@ class GraphBuilder {
       registry.register(new ExcalidrawKnowledgeSource());
       registry.register(new DrawioKnowledgeSource());
       registry.register(new MermaidKnowledgeSource());
-      registry.register(new MarkdownKnowledgeSource());
 
       // 2. Discover non-markdown and markdown items
       const discoveredItems = registry.discoverAll(workspaceRoot);
       log.info(`Discovered ${discoveredItems.length} knowledge items across sources`);
 
+      const EvidenceStore = require('./EvidenceStore');
+      const evidenceStore = new EvidenceStore(this.graphDb);
+
       // Extract metadata, folder hierarchy, and image annotation sources first
       for (const item of discoveredItems) {
         if (item.source.sourceType() !== 'markdown') {
           try {
-            const { entities, relationships } = await registry.extract(item.source, item.path);
+            const { entities, relationships, evidence } = await registry.extract(item.source, item.path);
             for (const ent of entities) {
               const id = this.graphService?.entityResolver
                 ? this.graphService.entityResolver.generateEntityId(ent.name, ent.type || 'Entity')
@@ -109,6 +126,19 @@ class GraphBuilder {
                 this.graphDb.upsertRelationship({ source_id: srcId, target_id: tgtId, type: rel.type, weight: rel.weight, confidence: rel.confidence });
               }
             }
+            if (Array.isArray(evidence)) {
+              for (const ev of evidence) {
+                evidenceStore.addEvidence({
+                  sourceId: item.path,
+                  extractor: item.source.sourceType(),
+                  subjectText: ev.subjectText || ev.subject_text || item.path,
+                  predicateText: ev.predicateText || ev.predicate_text || 'related_to',
+                  objectText: ev.objectText || ev.object_text || '',
+                  rawSentence: ev.rawSentence || ev.raw_sentence || ev.subjectText || item.path,
+                  confidence: ev.confidence || item.source.baseConfidence() || 1.0
+                });
+              }
+            }
           } catch (nonMdErr) {
             log.warn(`Non-markdown source error (${item.source.sourceType()}):`, nonMdErr.message);
           }
@@ -119,7 +149,7 @@ class GraphBuilder {
       const workspaceFiles = this._getWorkspaceMarkdownFiles();
       const total = workspaceFiles.length;
       log.info(`Found ${total} markdown notes to index for graph`);
-      logDb.addLog('graph', `Found ${total} markdown notes to index for graph`, 'info');
+      this._logDb?.addLog('graph', `Found ${total} markdown notes to index for graph`, 'info');
 
       let processedCount = 0;
       let failedCount = 0;
@@ -141,10 +171,10 @@ class GraphBuilder {
             const content = fs.readFileSync(filePath, 'utf8');
             await this.graphService.processNote(filePath, content);
             processedCount++;
-            logDb.addLog('graph', `Extracted graph entities from note: ${path.basename(filePath)}`, 'info');
+            this._logDb?.addLog('graph', `Extracted graph entities from note: ${path.basename(filePath)}`, 'info');
           } catch (fileErr) {
             log.error(`Error processing note ${filePath}:`, fileErr.message);
-            logDb.addLog('graph', `Failed extracting entities from note ${path.basename(filePath)}: ${fileErr.message}`, 'error');
+            this._logDb?.addLog('graph', `Failed extracting entities from note ${path.basename(filePath)}: ${fileErr.message}`, 'error');
             failedCount++;
           }
         }));
@@ -156,11 +186,11 @@ class GraphBuilder {
       // Run community detection
       const CommunityDetector = require('./CommunityDetector');
       const communityDetector = new CommunityDetector();
-      communityDetector.detect(this.graphDb, logDb);
+      communityDetector.detect(this.graphDb, this._logDb);
 
       // Run validation engine
       const GraphValidationEngine = require('./GraphValidationEngine');
-      const validator = new GraphValidationEngine(this.graphDb, logDb);
+      const validator = new GraphValidationEngine(this.graphDb, this._logDb);
       await validator.validate();
 
       // Optimize SQLite query planner
@@ -169,27 +199,33 @@ class GraphBuilder {
       }
 
       log.info(`Knowledge Graph rebuild complete. Processed: ${processedCount}, Failed: ${failedCount}`);
-      logDb.addLog('graph', `Knowledge Graph rebuild complete. Processed: ${processedCount}, Failed: ${failedCount}`, 'info', {
+      this._logDb?.addLog('graph', `Knowledge Graph rebuild complete. Processed: ${processedCount}, Failed: ${failedCount}`, 'info', {
         processedCount,
         failedCount,
         durationMs: Date.now() - (this._rebuildStartTime || Date.now())
       });
 
-      // Snapshot version
-      this.graphDb.snapshotVersion('v1.0');
+      if (this._buildReport) {
+        this._buildReport.completedAt = new Date().toISOString();
+        this._buildReport.totalDurationMs = Date.now() - (this._rebuildStartTime || Date.now());
+        this._buildReport.stages.markdownProcessing = { durationMs: this._buildReport.totalDurationMs, processedCount, failedCount };
+        this._buildReport.finalStats = this.graphDb.getStatus();
+        this._lastBuildReport = this._buildReport;
+      }
 
-      logDb.close();
       return {
         success: true,
         processedCount,
         failedCount,
-        stats: this.graphDb.getStatus()
+        stats: this.graphDb.getStatus(),
+        report: this._lastBuildReport
       };
     } catch (err) {
       log.error('Failed to rebuild graph:', err);
       return { success: false, error: err.message };
     } finally {
       this.isRebuilding = false;
+      try { if (this._logDb) { this._logDb.close(); this._logDb = null; } } catch { /* ignore */ }
     }
   }
 

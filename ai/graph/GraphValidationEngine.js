@@ -1,5 +1,5 @@
 /**
- * GraphValidationEngine - Automated validation engine for checking knowledge graph consistency & quality (15 rules)
+ * GraphValidationEngine - Automated validation engine for checking knowledge graph consistency & quality (16 rules)
  */
 
 const fs = require('fs');
@@ -13,13 +13,14 @@ class GraphValidationEngine {
     this.logDb = logDb;
   }
 
-  async validate() {
+  validateSync() {
     const results = {
       orphans: 0,
       confidenceAnomalies: 0,
       evidencelessEdges: 0,
       selfLoops: 0,
       duplicateEdges: 0,
+      duplicateEntities: 0,
       typeOverloading: false,
       starTopology: false,
       missingWorkspace: false,
@@ -68,7 +69,7 @@ class GraphValidationEngine {
         SELECT source_id, target_id, type, COUNT(*) as c
         FROM relationships GROUP BY source_id, target_id, type HAVING c > 1
       `).all();
-      results.duplicateEdges = dupes.length;
+      results.duplicateEdges = dupes.reduce((sum, d) => sum + (d.c - 1), 0);
 
       // Rule 6: Type overloading (>20% default 'Concept' type)
       const totalEnts = db.prepare(`SELECT COUNT(*) as c FROM entities`).get()?.c || 0;
@@ -102,7 +103,8 @@ class GraphValidationEngine {
       const noteEnts = db.prepare(`SELECT id, note_path FROM entities WHERE note_path IS NOT NULL`).all();
       let staleCount = 0;
       for (const ne of noteEnts) {
-        if (ne.note_path && !fs.existsSync(ne.note_path)) staleCount++;
+        if (!ne.note_path) continue;
+        try { fs.statSync(ne.note_path); } catch { staleCount++; }
       }
       results.staleEntities = staleCount;
 
@@ -127,15 +129,28 @@ class GraphValidationEngine {
       const edgesWithEvidence = db.prepare(`SELECT COUNT(DISTINCT relationship_id) as c FROM relationship_evidence`).get()?.c || 0;
       results.evidenceCoverageRatio = totalEdges > 0 ? parseFloat((edgesWithEvidence / totalEdges).toFixed(2)) : 1.0;
 
+      // Rule 16: Duplicate entities sharing canonical name
+      const dupEnts = db.prepare(`
+        SELECT LOWER(canonical_name) as cname, COUNT(*) as c
+        FROM entities
+        GROUP BY LOWER(canonical_name)
+        HAVING c > 1
+      `).all();
+      results.duplicateEntities = dupEnts.length;
+
       if (this.logDb) {
-        this.logDb.addLog('graph', 'Graph validation pass executed across 15 rules', 'info', results);
+        this.logDb.addLog('graph', 'Graph validation pass executed across 16 rules', 'info', results);
       }
-      log.info('GraphValidationEngine pass completed successfully across 15 rules:', results);
+      log.info('GraphValidationEngine pass completed successfully across 16 rules:', results);
     } catch (err) {
       log.error('Failed graph validation pass:', err.message);
     }
 
     return results;
+  }
+
+  async validate() {
+    return this.validateSync();
   }
 }
 

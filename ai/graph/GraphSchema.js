@@ -85,10 +85,12 @@ const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name);`,
   `CREATE INDEX IF NOT EXISTS idx_entities_note ON entities(note_path);`,
   `CREATE INDEX IF NOT EXISTS idx_entities_canonical ON entities(canonical_name);`,
+  `CREATE INDEX IF NOT EXISTS idx_entities_canonical_lower ON entities(LOWER(canonical_name));`,
   `CREATE INDEX IF NOT EXISTS idx_aliases_entity ON entity_aliases(entity_id);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_source ON evidence(source_id);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_extractor ON evidence(extractor);`,
   `CREATE INDEX IF NOT EXISTS idx_evidence_span ON evidence(source_id, subject_span_start);`,
+  `CREATE INDEX IF NOT EXISTS idx_rel_evidence_junction ON relationship_evidence(evidence_id);`,
   `CREATE INDEX IF NOT EXISTS idx_queue_status_priority ON graph_queue(status, priority DESC);`
 ];
 
@@ -149,6 +151,14 @@ CREATE VIRTUAL TABLE IF NOT EXISTS entity_fts USING fts5(
   type UNINDEXED
 );`;
 
+const CREATE_ENTITY_EMBEDDINGS_TABLE = `
+CREATE TABLE IF NOT EXISTS entity_embeddings (
+  entity_id TEXT PRIMARY KEY REFERENCES entities(id) ON DELETE CASCADE,
+  vector BLOB NOT NULL,
+  dimension INTEGER NOT NULL DEFAULT 384,
+  updated_at TEXT DEFAULT (datetime('now'))
+);`;
+
 module.exports = {
   CREATE_ENTITIES_TABLE,
   CREATE_ENTITY_ALIASES_TABLE,
@@ -161,6 +171,7 @@ module.exports = {
   CREATE_COMMUNITIES_TABLE,
   CREATE_GRAPH_VERSIONS_TABLE,
   CREATE_WORKSPACE_ENTITY_TABLE,
-  CREATE_ENTITY_FTS
+  CREATE_ENTITY_FTS,
+  CREATE_ENTITY_EMBEDDINGS_TABLE
 };
 

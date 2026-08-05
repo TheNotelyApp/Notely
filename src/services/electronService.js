@@ -339,6 +339,22 @@ export async function aiGetGraphStatus() {
   return api.aiGetGraphStatus({});
 }
 
+export async function aiExportGraphAsJSON(options = {}) {
+  const api = getNotesApi();
+  if (typeof api.aiExportGraphAsJSON !== "function") {
+    throw new Error("AI graph export is unavailable.");
+  }
+  return api.aiExportGraphAsJSON(options);
+}
+
+export async function aiExportGraphAsMarkdown(options = {}) {
+  const api = getNotesApi();
+  if (typeof api.aiExportGraphAsMarkdown !== "function") {
+    throw new Error("AI graph export is unavailable.");
+  }
+  return api.aiExportGraphAsMarkdown(options);
+}
+
 export async function aiGetLogs(subsystem = null, limit = 100, conversationId = null) {
   const api = getNotesApi();
   if (typeof api.aiGetLogs !== "function") return { success: false, data: [] };

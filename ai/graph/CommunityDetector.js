@@ -89,7 +89,7 @@ class CommunityDetector {
       db.exec('BEGIN');
       try {
         db.exec('DELETE FROM communities;');
-        const insertCommStmt = db.prepare('INSERT INTO communities (id, label, node_count, updated_at) VALUES (?, ?, ?, datetime("now"))');
+        const insertCommStmt = db.prepare("INSERT INTO communities (id, label, node_count, updated_at) VALUES (?, ?, ?, datetime('now'))");
         const updateEntStmt = db.prepare('UPDATE entities SET community_id = ? WHERE id = ?');
 
         let cIndex = 1;
