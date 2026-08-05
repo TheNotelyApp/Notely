@@ -39,9 +39,15 @@ class MarkdownASTParser {
     // 0. Frontmatter & Key-Value Header Metadata Parsing (Tags, Name, Location, Time)
     const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     const fmText = fmMatch ? fmMatch[1] : '';
-    const metaBlockText = fmText;
 
-    const kvRegex = /^(?:[ \t]*[-*]\s+)?([a-zA-Z0-9_\s]+):\s*(.*)$/gm;
+    // Also parse body-level header fields (Key: Value lines after frontmatter, before first heading)
+    const bodyStart = fmMatch ? fmMatch[0].length : 0;
+    const bodyContent = content.slice(bodyStart);
+    const firstHeadingIdx = bodyContent.search(/^#{1,6}\s/m);
+    const bodyHeader = firstHeadingIdx > 0 ? bodyContent.slice(0, firstHeadingIdx) : bodyContent.slice(0, 500);
+    const metaBlockText = fmText + '\n' + bodyHeader;
+
+    const kvRegex = /^(?:[ \t]*[-*][ \t]+)?([a-zA-Z0-9_][a-zA-Z0-9_ \t]*):\s*(.*)$/gm;
     let kvMatch;
     while ((kvMatch = kvRegex.exec(metaBlockText)) !== null) {
       const key = kvMatch[1].trim().toLowerCase();

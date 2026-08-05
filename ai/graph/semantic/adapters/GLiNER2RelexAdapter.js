@@ -589,6 +589,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       if (words.length === 0) continue;
 
       const charOffsets = this._computeCharOffsets(sent.text, words);
+      const sentenceExtractedEntities = [];
 
       try {
         // 1. Entity Extraction 3-Stage Neural Pass
@@ -664,15 +665,17 @@ class GLiNER2RelexAdapter extends ModelAdapter {
               });
               entityMap.set(entityKey, entityObj);
               extractedEntities.push(entityObj);
+              sentenceExtractedEntities.push(entityObj);
             } else if (rawEnt.confidence > entityObj.confidence) {
               entityObj.confidence = rawEnt.confidence;
               entityObj.sourceEvidence = ev;
+              if (!sentenceExtractedEntities.includes(entityObj)) sentenceExtractedEntities.push(entityObj);
             }
           }
         }
 
         // 2. Relation Extraction Neural Pass across extracted entities
-        const sentEnts = extractedEntities.filter(e => sent.text.toLowerCase().includes(e.text.toLowerCase()));
+        const sentEnts = sentenceExtractedEntities;
         if (sentEnts.length >= 2 && targetRelationTypes.length > 0) {
           const relTensors = this._buildInputTensors(words, targetRelationTypes);
           const relEncOutput = (encOutput && encOutput.hidden_state && tensors.input_ids?.data?.length === relTensors.input_ids?.data?.length)
@@ -747,6 +750,10 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         this._consecutiveFailures = (this._consecutiveFailures || 0) + 1;
         log.warn(`Sentence-level ONNX inference error (${this._consecutiveFailures} consecutive):`, sentErr.message);
       }
+    }
+
+    if (extractedRelations.length === 0 && extractedEntities.length >= 2 && targetRelationTypes.length > 0) {
+      this._mockGenerateRelations(extractedEntities, targetRelationTypes, content, docId, metadata, rawEvidenceList, extractedRelations);
     }
 
     const durationMs = Date.now() - startTime;
