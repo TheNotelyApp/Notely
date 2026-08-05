@@ -23,7 +23,7 @@ const SHAPE_REGEXES = [
  * Color preset map for style serialization
  */
 export const COLOR_PRESETS = [
-  { id: "default", label: "Default", fill: "var(--surface-elevated, #ffffff)", stroke: "var(--border-soft, #cbd5e1)", text: "var(--text-strong, #0f172a)" },
+  { id: "default", label: "Default", fill: undefined, stroke: undefined, text: undefined },
   { id: "blue", label: "Ocean Blue", fill: "#1e3a8a", stroke: "#3b82f6", text: "#ffffff" },
   { id: "green", label: "Emerald Green", fill: "#064e3b", stroke: "#10b981", text: "#ffffff" },
   { id: "amber", label: "Amber Gold", fill: "#78350f", stroke: "#f59e0b", text: "#ffffff" },
@@ -56,6 +56,8 @@ export function parseMermaidToFlow(code = "") {
   const edges = [];
   let edgeIdCounter = 1;
 
+  const RESERVED_KEYWORDS = new Set(["end", "subgraph", "flowchart", "graph", "style", "classdef", "class", "click", "direction", "linkstyle"]);
+
   function ensureNode(token) {
     if (!token) return null;
     let raw = token.trim();
@@ -66,6 +68,7 @@ export function parseMermaidToFlow(code = "") {
       const match = raw.match(regex);
       if (match) {
         const id = match[1];
+        if (RESERVED_KEYWORDS.has(id.toLowerCase())) return null;
         const label = match[2].replace(/^["']|["']$/g, "").trim();
         nodesMap.set(id, { id, label, shape: type });
         return id;
@@ -76,6 +79,7 @@ export function parseMermaidToFlow(code = "") {
     const idMatch = raw.match(/^([a-zA-Z0-9_-]+)$/);
     if (idMatch) {
       const id = idMatch[1];
+      if (RESERVED_KEYWORDS.has(id.toLowerCase())) return null;
       if (!nodesMap.has(id)) {
         nodesMap.set(id, { id, label: id, shape: "rectangle" });
       }
@@ -91,9 +95,20 @@ export function parseMermaidToFlow(code = "") {
   // Parse lines for nodes, connections, and styles
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const lower = line.toLowerCase();
 
-    // Skip header line
-    if (i === 0 && (line.toLowerCase().startsWith("flowchart") || line.toLowerCase().startsWith("graph"))) {
+    // Skip header line, comments, subgraphs, end declarations, classDef, style directives
+    if (
+      (i === 0 && (lower.startsWith("flowchart") || lower.startsWith("graph"))) ||
+      lower.startsWith("%%") ||
+      lower.startsWith("subgraph") ||
+      lower === "end" ||
+      lower.startsWith("end ") ||
+      lower.startsWith("classdef ") ||
+      lower.startsWith("direction ") ||
+      lower.startsWith("linkstyle ") ||
+      lower.startsWith("click ")
+    ) {
       continue;
     }
 
@@ -262,10 +277,10 @@ export function generateMermaidFromFlow(nodes = [], edges = [], direction = "TD"
     }
     lines.push(`    ${nodeDecl}`);
 
-    // Generate style directive if node has custom colors
-    const fill = node.data?.fillColor;
-    const stroke = node.data?.strokeColor;
-    const text = node.data?.textColor;
+    // Generate style directive if node has custom colors (only for valid non-var colors)
+    const fill = node.data?.fillColor && !node.data.fillColor.startsWith("var(") ? node.data.fillColor : null;
+    const stroke = node.data?.strokeColor && !node.data.strokeColor.startsWith("var(") ? node.data.strokeColor : null;
+    const text = node.data?.textColor && !node.data.textColor.startsWith("var(") ? node.data.textColor : null;
 
     if (fill || stroke || text) {
       const parts = [];

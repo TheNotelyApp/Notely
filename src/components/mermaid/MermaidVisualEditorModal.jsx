@@ -8,24 +8,174 @@ import dagre from "dagre";
 import {
   Save,
   X,
-  Plus,
   RotateCcw,
   Code2,
   Eye,
-  Columns,
   Workflow,
   Sliders,
   Palette,
-  Circle,
-  Diamond,
   Trash2,
+  Undo,
+  Redo,
+  Copy,
+  Check,
+  Info,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import { MermaidCanvas } from "./MermaidCanvas";
 import { parseMermaidToFlow, generateMermaidFromFlow, COLOR_PRESETS } from "./mermaidParser";
 import { MermaidBlock } from "../MermaidBlock";
 import OverlayDialog from "../OverlayDialog";
 import AppButton from "../AppButton";
+import AppSelect from "../AppSelect";
 import "../../styles/mermaidEditor.css";
+
+function FullpageMermaidPreview({ code }) {
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panPos, setPanPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
+  const cleanCode = code?.trim() || "";
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX - panPos.x, y: e.clientY - panPos.y };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    setPanPos({
+      x: e.clientX - dragStartRef.current.x,
+      y: e.clientY - dragStartRef.current.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 0.1 : -0.1;
+    setZoomScale((prev) => Math.min(Math.max(prev + zoomFactor, 0.4), 3));
+  };
+
+  const handleReset = () => {
+    setZoomScale(1);
+    setPanPos({ x: 0, y: 0 });
+  };
+
+  if (!cleanCode) {
+    return (
+      <div className="fullpage-preview-empty" style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: "0.88rem" }}>
+        No diagram code to preview. Switch to <strong>Visual Canvas</strong> or <strong>Mermaid Code</strong> tab to build your diagram.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`fullpage-preview-container ${isDragging ? "is-dragging" : ""}`}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        background: "var(--surface-bg, #ffffff)",
+        cursor: isDragging ? "grabbing" : "pointer",
+        userSelect: "none",
+      }}
+    >
+      {/* Zoom Toolbar */}
+      <div
+        className="preview-zoom-toolbar"
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          zIndex: 10,
+          background: "var(--surface-elevated, #ffffff)",
+          border: "1px solid var(--border-soft, #cbd5e1)",
+          borderRadius: "var(--radius-md, 6px)",
+          boxShadow: "var(--shadow-overlay, 0 8px 24px rgba(0,0,0,0.12))",
+          padding: "4px 8px",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <button
+          onClick={() => setZoomScale((prev) => Math.min(prev + 0.2, 3))}
+          title="Zoom In"
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-strong)", padding: 4 }}
+        >
+          <ZoomIn size={14} />
+        </button>
+        <span style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--text-muted)", minWidth: 40, textAlign: "center" }}>
+          {Math.round(zoomScale * 100)}%
+        </span>
+        <button
+          onClick={() => setZoomScale((prev) => Math.max(prev - 0.2, 0.4))}
+          title="Zoom Out"
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-strong)", padding: 4 }}
+        >
+          <ZoomOut size={14} />
+        </button>
+        <button
+          onClick={handleReset}
+          title="Reset Zoom & Pan"
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-strong)", padding: 4 }}
+        >
+          <Maximize2 size={14} />
+        </button>
+      </div>
+
+      {/* Full Viewport Renderer */}
+      <div
+        className="fullpage-svg-viewport"
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          padding: 32,
+        }}
+      >
+        <div
+          style={{
+            transform: `translate(${panPos.x}px, ${panPos.y}px) scale(${zoomScale})`,
+            transformOrigin: "center center",
+            transition: isDragging ? "none" : "transform 0.1s ease-out",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <MermaidBlock code={cleanCode} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const DIAGRAM_TEMPLATES = {
+  flowchart: `flowchart TD\n    A["Start Task"] -->|Next| B("In Progress")\n    B --> C{"Is Done?"}\n    C -->|Yes| D(("Complete"))`,
+  sequence: `sequenceDiagram\n    autonumber\n    actor User\n    participant App as App Frontend\n    participant API as Backend Service\n    User->>App: Click Submit\n    App->>API: POST /data\n    API-->>App: 200 OK\n    App-->>User: Show Success Banner`,
+  class: `classDiagram\n    class User {\n        +String id\n        +String name\n        +login()\n    }\n    class Document {\n        +String title\n        +save()\n    }\n    User "1" --> "*" Document : owns`,
+  state: `stateDiagram-v2\n    [*] --> Draft\n    Draft --> Reviewing: Submit\n    Reviewing --> Approved: Accept\n    Reviewing --> Draft: Request Changes\n    Approved --> [*]`,
+};
 
 export function MermaidVisualEditorModal({
   initialCode = "",
@@ -33,14 +183,21 @@ export function MermaidVisualEditorModal({
   onClose,
   onSave,
 }) {
-  const [activeTab, setActiveTab] = useState("split"); // "split" | "visual" | "code"
+  const [activeTab, setActiveTab] = useState("visual"); // "visual" | "code" | "preview"
+  const [diagramType, setDiagramType] = useState("flowchart"); // "flowchart" | "sequence" | "class" | "state"
   const [direction, setDirection] = useState("TD");
   const [mermaidCode, setMermaidCode] = useState("");
   const [codeError, setCodeError] = useState("");
+  const [copied, setCopied] = useState(false);
   const [selectedElement, setSelectedElement] = useState(null); // { type: "node" | "edge", id: string }
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Undo / Redo History
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const isInternalUpdateRef = useRef(false);
 
   const saveButtonRef = useRef(null);
   const edgesRef = useRef(edges);
@@ -52,14 +209,33 @@ export function MermaidVisualEditorModal({
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
 
+  // Push state to history
+  const pushHistory = useCallback((currentNodes, currentEdges, currentDir) => {
+    if (isInternalUpdateRef.current) return;
+    const snapshot = {
+      nodes: JSON.parse(JSON.stringify(currentNodes)),
+      edges: JSON.parse(JSON.stringify(currentEdges)),
+      direction: currentDir,
+    };
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      return [...newHistory, snapshot];
+    });
+    setHistoryIndex((prev) => prev + 1);
+  }, [historyIndex]);
+
   // Sync canvas -> code
   const syncCodeFromFlow = useCallback(
-    (currentNodes, currentEdges, currentDir) => {
+    (currentNodes, currentEdges, currentDir, recordHistory = true) => {
+      if (diagramType !== "flowchart") return;
       const code = generateMermaidFromFlow(currentNodes, currentEdges, currentDir);
       setMermaidCode(code);
       setCodeError("");
+      if (recordHistory) {
+        pushHistory(currentNodes, currentEdges, currentDir);
+      }
     },
-    []
+    [diagramType, pushHistory]
   );
 
   // Handle label change on custom node
@@ -155,22 +331,42 @@ export function MermaidVisualEditorModal({
     [handleNodeLabelChange, handleNodeShapeChange, handleNodeColorChange, handleNodeDelete]
   );
 
-  // Track modal open state to run initialization ONLY when modal opens
+  // Track modal open state
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
       wasOpenRef.current = true;
-      const rawCode = initialCode.trim() || `flowchart TD\n    A["Start Task"] -->|Next| B("In Progress")\n    B --> C{"Is Done?"}\n    C -->|Yes| D(("Complete"))`;
+      const rawCode = initialCode.trim() || DIAGRAM_TEMPLATES.flowchart;
       setMermaidCode(rawCode);
 
-      try {
-        const parsed = parseMermaidToFlow(rawCode);
-        setDirection(parsed.direction || "TD");
-        setNodes(attachNodeCallbacks(parsed.nodes));
-        setEdges(parsed.edges);
+      if (rawCode.startsWith("sequenceDiagram")) {
+        setDiagramType("sequence");
+        setActiveTab("code");
         setCodeError("");
-      } catch (err) {
-        setCodeError(err.message || "Failed to parse initial Mermaid code.");
+      } else if (rawCode.startsWith("classDiagram")) {
+        setDiagramType("class");
+        setActiveTab("code");
+        setCodeError("");
+      } else if (rawCode.startsWith("stateDiagram")) {
+        setDiagramType("state");
+        setActiveTab("code");
+        setCodeError("");
+      } else {
+        setDiagramType("flowchart");
+        setActiveTab("visual");
+        try {
+          const parsed = parseMermaidToFlow(rawCode);
+          setDirection(parsed.direction || "TD");
+          const initialNodes = attachNodeCallbacks(parsed.nodes);
+          setNodes(initialNodes);
+          setEdges(parsed.edges);
+          setCodeError("");
+
+          setHistory([{ nodes: JSON.parse(JSON.stringify(initialNodes)), edges: JSON.parse(JSON.stringify(parsed.edges)), direction: parsed.direction || "TD" }]);
+          setHistoryIndex(0);
+        } catch (err) {
+          setCodeError(err.message || "Failed to parse initial Mermaid code.");
+        }
       }
     } else if (!isOpen) {
       wasOpenRef.current = false;
@@ -178,17 +374,129 @@ export function MermaidVisualEditorModal({
     }
   }, [isOpen, initialCode, attachNodeCallbacks, setEdges, setNodes]);
 
+  // Handle switching diagram type template cleanly
+  const handleDiagramTypeChange = (newType) => {
+    setDiagramType(newType);
+    const templateCode = DIAGRAM_TEMPLATES[newType] || DIAGRAM_TEMPLATES.flowchart;
+    setMermaidCode(templateCode);
+    setCodeError("");
+
+    if (newType !== "flowchart") {
+      setActiveTab("code");
+    } else {
+      setActiveTab("visual");
+      try {
+        const parsed = parseMermaidToFlow(templateCode);
+        setDirection(parsed.direction || "TD");
+        const initialNodes = attachNodeCallbacks(parsed.nodes);
+        setNodes(initialNodes);
+        setEdges(parsed.edges);
+      } catch (err) {
+        console.warn("Failed to parse flowchart template:", err);
+      }
+    }
+  };
+
   // Sync code -> canvas on code edit
   const handleCodeChange = (newCode) => {
     setMermaidCode(newCode);
+    const trimmed = newCode.trim();
+
+    if (trimmed.startsWith("sequenceDiagram")) {
+      setDiagramType("sequence");
+      setCodeError("");
+      return;
+    }
+    if (trimmed.startsWith("classDiagram")) {
+      setDiagramType("class");
+      setCodeError("");
+      return;
+    }
+    if (trimmed.startsWith("stateDiagram")) {
+      setDiagramType("state");
+      setCodeError("");
+      return;
+    }
+
+    setDiagramType("flowchart");
     try {
       const parsed = parseMermaidToFlow(newCode);
       setDirection(parsed.direction || "TD");
-      setNodes(attachNodeCallbacks(parsed.nodes));
+      const updatedNodes = attachNodeCallbacks(parsed.nodes);
+      setNodes(updatedNodes);
       setEdges(parsed.edges);
       setCodeError("");
+      pushHistory(updatedNodes, parsed.edges, parsed.direction || "TD");
     } catch (err) {
-      setCodeError(err.message || "Invalid Mermaid flowchart syntax.");
+      setCodeError(err.message || "Invalid Mermaid syntax.");
+    }
+  };
+
+  // Real-time direction change (TD, LR, RL, BT) with instant Dagre re-layout
+  const handleDirectionChange = (newDir) => {
+    setDirection(newDir);
+
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: newDir, nodesep: 60, ranksep: 80 });
+    g.setDefaultEdgeLabel(() => ({}));
+
+    nodes.forEach((n) => g.setNode(n.id, { width: 150, height: 50 }));
+    edges.forEach((e) => g.setEdge(e.source, e.target));
+
+    dagre.layout(g);
+
+    const updatedNodes = nodes.map((node) => {
+      const pos = g.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: (pos?.x || 100) - 75,
+          y: (pos?.y || 100) - 25,
+        },
+      };
+    });
+
+    setNodes(updatedNodes);
+    syncCodeFromFlow(updatedNodes, edges, newDir);
+  };
+
+  // Auto layout using Dagre
+  const handleAutoLayout = () => {
+    handleDirectionChange(direction);
+  };
+
+  // Undo / Redo handlers
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      isInternalUpdateRef.current = true;
+      const targetIndex = historyIndex - 1;
+      const snapshot = history[targetIndex];
+      setDirection(snapshot.direction);
+      const updatedNodes = attachNodeCallbacks(snapshot.nodes);
+      setNodes(updatedNodes);
+      setEdges(snapshot.edges);
+      setMermaidCode(generateMermaidFromFlow(updatedNodes, snapshot.edges, snapshot.direction));
+      setHistoryIndex(targetIndex);
+      setTimeout(() => {
+        isInternalUpdateRef.current = false;
+      }, 50);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      isInternalUpdateRef.current = true;
+      const targetIndex = historyIndex + 1;
+      const snapshot = history[targetIndex];
+      setDirection(snapshot.direction);
+      const updatedNodes = attachNodeCallbacks(snapshot.nodes);
+      setNodes(updatedNodes);
+      setEdges(snapshot.edges);
+      setMermaidCode(generateMermaidFromFlow(updatedNodes, snapshot.edges, snapshot.direction));
+      setHistoryIndex(targetIndex);
+      setTimeout(() => {
+        isInternalUpdateRef.current = false;
+      }, 50);
     }
   };
 
@@ -250,37 +558,6 @@ export function MermaidVisualEditorModal({
     setSelectedElement({ type: "node", id: newId });
   };
 
-  // Change direction (TD, LR, RL, BT)
-  const handleDirectionChange = (newDir) => {
-    setDirection(newDir);
-    syncCodeFromFlow(nodesRef.current, edgesRef.current, newDir);
-  };
-
-  // Auto layout using Dagre
-  const handleAutoLayout = () => {
-    const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });
-    g.setDefaultEdgeLabel(() => ({}));
-
-    nodes.forEach((n) => g.setNode(n.id, { width: 150, height: 50 }));
-    edges.forEach((e) => g.setEdge(e.source, e.target));
-
-    dagre.layout(g);
-
-    setNodes((nds) =>
-      nds.map((node) => {
-        const pos = g.node(node.id);
-        return {
-          ...node,
-          position: {
-            x: (pos?.x || 100) - 75,
-            y: (pos?.y || 100) - 25,
-          },
-        };
-      })
-    );
-  };
-
   // Edge property updates
   const handleEdgeLabelChange = (edgeId, newLabel) => {
     setEdges((eds) => {
@@ -320,9 +597,21 @@ export function MermaidVisualEditorModal({
     setSelectedElement(null);
   };
 
+  // Copy code handler
+  const handleCopyCode = async () => {
+    try {
+      const code = diagramType === "flowchart" ? generateMermaidFromFlow(nodes, edges, direction) : mermaidCode;
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+    }
+  };
+
   // Save handler
   const handleSave = () => {
-    const finalCode = generateMermaidFromFlow(nodes, edges, direction);
+    const finalCode = diagramType === "flowchart" ? generateMermaidFromFlow(nodes, edges, direction) : mermaidCode;
     onSave?.(finalCode);
     onClose?.();
   };
@@ -331,6 +620,8 @@ export function MermaidVisualEditorModal({
   const activeSelectedEdge = selectedElement?.type === "edge" ? edges.find((e) => e.id === selectedElement.id) : null;
 
   if (!isOpen) return null;
+
+  const currentActiveCode = diagramType === "flowchart" ? generateMermaidFromFlow(nodes, edges, direction) : mermaidCode;
 
   return (
     <OverlayDialog
@@ -344,27 +635,23 @@ export function MermaidVisualEditorModal({
       size=""
       initialFocusRef={saveButtonRef}
     >
-      {/* Standard App Modal Header (matching Excalidraw) */}
+      {/* Standard App Modal Header */}
       <div className="excalidraw-modal-header mermaid-modal-header">
         <div className="modal-title-group">
           <Workflow size={16} className="modal-title-icon" />
-          <h2>Mermaid Visual Editor</h2>
+          <h2>Mermaid Editor</h2>
         </div>
 
-        {/* View Mode Tabs */}
+        {/* Clean 3 Main View Tabs */}
         <div className="mermaid-view-tabs" role="tablist">
-          <button
-            className={`tab-btn ${activeTab === "split" ? "active" : ""}`}
-            onClick={() => setActiveTab("split")}
-          >
-            <Columns size={14} />
-            Split View
-          </button>
           <button
             className={`tab-btn ${activeTab === "visual" ? "active" : ""}`}
             onClick={() => setActiveTab("visual")}
+            disabled={diagramType !== "flowchart"}
+            title={diagramType !== "flowchart" ? "Visual drag-and-drop editor supported for Flowcharts" : "Visual Canvas"}
+            style={{ opacity: diagramType !== "flowchart" ? 0.5 : 1 }}
           >
-            <Eye size={14} />
+            <Workflow size={14} />
             Visual Canvas
           </button>
           <button
@@ -374,10 +661,21 @@ export function MermaidVisualEditorModal({
             <Code2 size={14} />
             Mermaid Code
           </button>
+          <button
+            className={`tab-btn ${activeTab === "preview" ? "active" : ""}`}
+            onClick={() => setActiveTab("preview")}
+          >
+            <Eye size={14} />
+            Live Preview
+          </button>
         </div>
 
-        {/* Action buttons (matching Excalidraw) */}
+        {/* Action Buttons */}
         <div className="excalidraw-modal-actions">
+          <AppButton variant="small" onClick={handleCopyCode} title="Copy Mermaid Markdown Code">
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? "Copied" : "Copy Code"}
+          </AppButton>
           <AppButton ref={saveButtonRef} variant="primary" onClick={handleSave}>
             <Save size={14} aria-hidden="true" />
             Save Diagram
@@ -389,46 +687,73 @@ export function MermaidVisualEditorModal({
         </div>
       </div>
 
-      {/* Mermify Toolbar */}
-      <div className="mermaid-editor-toolbar">
-        <div className="toolbar-left">
-          <div className="preset-insert-group">
-            <button className="toolbar-btn primary" onClick={() => handleAddNodePreset("rectangle", "Process Step")}>
-              <Plus size={14} />
-              Add Node
-            </button>
-            <button className="toolbar-btn preset-btn" onClick={() => handleAddNodePreset("diamond", "Decision?")} title="Add Decision Node">
-              <Diamond size={12} /> Decision
-            </button>
-            <button className="toolbar-btn preset-btn" onClick={() => handleAddNodePreset("stadium", "Start / End")} title="Add Start/End Node">
-              <Circle size={12} /> Start/End
-            </button>
-          </div>
-
-          <button className="toolbar-btn" onClick={handleAutoLayout} title="Auto Align layout with Dagre">
-            <RotateCcw size={14} />
-            Auto Align
-          </button>
-
-          <div className="direction-selector">
-            <span>Layout:</span>
-            {["TD", "LR", "RL", "BT"].map((dir) => (
-              <button
-                key={dir}
-                className={`dir-btn ${direction === dir ? "active" : ""}`}
-                onClick={() => handleDirectionChange(dir)}
+      {/* Toolbar for Visual Editor View */}
+      {activeTab === "visual" && diagramType === "flowchart" && (
+        <div className="mermaid-editor-toolbar">
+          <div className="toolbar-left">
+            <div className="diagram-type-select-group" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: 500 }}>Type:</span>
+              <AppSelect
+                value={diagramType}
+                onChange={(e) => handleDiagramTypeChange(e.target.value)}
+                style={{ height: 26, fontSize: "0.78rem", padding: "0 8px" }}
               >
-                {dir}
-              </button>
-            ))}
+                <option value="flowchart">Flowchart</option>
+                <option value="sequence">Sequence Diagram</option>
+                <option value="class">Class Diagram</option>
+                <option value="state">State Diagram</option>
+              </AppSelect>
+            </div>
+
+            <div className="toolbar-divider" />
+
+            <button
+              className="toolbar-btn"
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              title="Undo last change"
+              style={{ opacity: historyIndex <= 0 ? 0.5 : 1 }}
+            >
+              <Undo size={14} />
+            </button>
+            <button
+              className="toolbar-btn"
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              title="Redo change"
+              style={{ opacity: historyIndex >= history.length - 1 ? 0.5 : 1 }}
+            >
+              <Redo size={14} />
+            </button>
+
+            <div className="toolbar-divider" />
+
+            <button className="toolbar-btn" onClick={handleAutoLayout} title="Auto Align layout with Dagre">
+              <RotateCcw size={14} />
+              Auto Align
+            </button>
+
+            <div className="direction-selector">
+              <span>Layout:</span>
+              {["TD", "LR", "RL", "BT"].map((dir) => (
+                <button
+                  key={dir}
+                  className={`dir-btn ${direction === dir ? "active" : ""}`}
+                  onClick={() => handleDirectionChange(dir)}
+                >
+                  {dir}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Modal Body / Views */}
+      {/* Modal Body / Dedicated Full-Height Views */}
       <div className={`mermaid-modal-body tab-${activeTab}`}>
-        {(activeTab === "split" || activeTab === "visual") && (
-          <div className="mermaid-panel canvas-panel" style={{ position: "relative" }}>
+        {/* Tab 1: Visual Canvas */}
+        {activeTab === "visual" && (
+          <div className="mermaid-panel canvas-panel" style={{ position: "relative", width: "100%", height: "100%" }}>
             <MermaidCanvas
               nodes={nodes}
               edges={edges}
@@ -438,9 +763,10 @@ export function MermaidVisualEditorModal({
               onNodeClick={handleNodeClick}
               onEdgeClick={handleEdgeClick}
               onPaneClick={handlePaneClick}
+              onAddNode={handleAddNodePreset}
             />
 
-            {/* Mermify Property Inspector Drawer */}
+            {/* Node Inspector Drawer */}
             {activeSelectedNode && (
               <div className="mermify-inspector-drawer">
                 <div className="drawer-header">
@@ -569,12 +895,33 @@ export function MermaidVisualEditorModal({
           </div>
         )}
 
-        {(activeTab === "split" || activeTab === "code") && (
-          <div className="mermaid-panel code-panel">
+        {/* Tab 2: Mermaid Code */}
+        {activeTab === "code" && (
+          <div className="mermaid-panel code-panel full-panel">
             <div className="code-editor-header">
-              <span>Mermaid Code</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span>Diagram Type:</span>
+                <AppSelect
+                  value={diagramType}
+                  onChange={(e) => handleDiagramTypeChange(e.target.value)}
+                  style={{ height: 24, fontSize: "0.76rem" }}
+                >
+                  <option value="flowchart">Flowchart</option>
+                  <option value="sequence">Sequence Diagram</option>
+                  <option value="class">Class Diagram</option>
+                  <option value="state">State Diagram</option>
+                </AppSelect>
+              </div>
               {codeError && <span className="code-error-badge">{codeError}</span>}
             </div>
+
+            {diagramType !== "flowchart" && (
+              <div className="diagram-type-notice" style={{ padding: "8px 14px", background: "var(--surface-elevated)", borderBottom: "1px solid var(--border-soft)", fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Info size={14} style={{ color: "var(--accent-solid)" }} />
+                <span>Editing <strong>{diagramType}</strong> syntax. Switch to <strong>Live Preview</strong> tab to see rendered diagram.</span>
+              </div>
+            )}
+
             <textarea
               value={mermaidCode}
               onChange={(e) => handleCodeChange(e.target.value)}
@@ -582,12 +929,13 @@ export function MermaidVisualEditorModal({
               className="mermaid-code-input"
               spellCheck="false"
             />
-            <div className="code-preview-footer">
-              <span className="preview-label">Live Preview:</span>
-              <div className="live-mermaid-preview">
-                <MermaidBlock code={mermaidCode} index={999} />
-              </div>
-            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Fullpage Live Preview with Zoom */}
+        {activeTab === "preview" && (
+          <div className="mermaid-panel preview-panel full-panel">
+            <FullpageMermaidPreview code={currentActiveCode} />
           </div>
         )}
       </div>

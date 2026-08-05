@@ -271,6 +271,51 @@
   overflow: hidden;
 }
 
+.fullpage-preview-container,
+.fullpage-preview-container * {
+  cursor: pointer !important;
+}
+
+.fullpage-preview-container.is-dragging,
+.fullpage-preview-container.is-dragging * {
+  cursor: grabbing !important;
+  cursor: -webkit-grabbing !important;
+}
+
+.fullpage-svg-viewport svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+  width: auto;
+}
+
+.fullpage-svg-viewport .mermaid-render {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  cursor: default !important;
+}
+
+.fullpage-preview-error {
+  padding: 16px;
+  color: var(--danger-color, #ef4444);
+  font-size: 0.88rem;
+  background: color-mix(in srgb, var(--danger-color, #ef4444) 8%, transparent);
+  border: 1px solid var(--danger-color, #ef4444);
+  border-radius: 6px;
+  margin: 20px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-soft, #e2e8f0);
+  margin: 0 4px;
+}
+
+
 .preview-label {
   font-size: 0.74rem;
   font-weight: 600;
