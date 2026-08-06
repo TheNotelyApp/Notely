@@ -6,7 +6,7 @@ import {
   parseDiagramBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
-import { readMarkdownSource, checkIsDirectory, openFolder } from "../services/electronService";
+import { readMarkdownSource, openFolder, openMediaInDefaultApp } from "../services/electronService";
 import { readImage, replaceImage, deleteImage, renameImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal } from "../services/electronService";
 import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { createImageMarkdown, normalizeImagePathForMarkdown } from "../utils/markdownUtils";

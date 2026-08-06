@@ -99,16 +99,48 @@ Rendered task checkboxes are interactive in Preview mode — click to toggle sta
 
 Use the toolbar **Image** button to pick a file from your workspace — Notely handles the path automatically.
 
-## Blockquotes
+## Blockquotes & Callouts
 
 ```markdown
-> This is a blockquote.
+> This is a standard blockquote.
 > 
 > It can span multiple paragraphs.
-
-> Nested:
->> Inner quote
 ```
+
+### GitHub-Style Callouts (Admonitions)
+
+Notely supports GitHub-style rich callout boxes using blockquote syntax:
+
+```markdown
+> [!NOTE]
+> Informational note or context.
+
+> [!WARNING]
+> Warning or caution message.
+
+> [!TIP]
+> Helpful tip or shortcut suggestion.
+
+> [!TODO]
+> Action item or pending task.
+
+> [!IMPORTANT]
+> Important highlight or priority notice.
+
+> [!CAUTION]
+> High-risk action or warning.
+```
+
+Custom titles can also be appended to the first line:
+
+```markdown
+> [!NOTE] Custom Title Header
+> Callout body content goes here.
+```
+
+::: tip Quick Insert via Slash Menu
+Type `/` anywhere in the editor to open the Notion-style Slash Commands menu, or hover/click the Callout icon (<Info size={16} />) in the Markdown toolbar.
+:::
 
 ## Code Blocks
 

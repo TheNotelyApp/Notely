@@ -22,6 +22,45 @@ ask_yes_no() {
   return 1
 }
 
+# Helper function to run a step with rerun / ignore / abort options
+run_step_with_retry() {
+  local step_name="$1"
+  local cmd="$2"
+
+  while true; do
+    echo ">>> Running ${step_name}..."
+    if eval "$cmd"; then
+      echo "✅ ${step_name} succeeded."
+      return 0
+    else
+      echo ""
+      echo "⚠️ ${step_name} failed."
+      echo "Options:"
+      echo "  [r] Rerun this step (default)"
+      echo "  [i] Ignore failure and continue"
+      echo "  [a] Abort release"
+      read -p "Select option [R/i/a]: " -r choice
+      choice="${choice:-r}"
+      case "$choice" in
+        [Rr]*)
+          echo "Retrying ${step_name}..."
+          ;;
+        [Ii]*)
+          echo "Ignoring ${step_name} failure and continuing..."
+          return 0
+          ;;
+        [Aa]*)
+          echo "Aborting release."
+          exit 1
+          ;;
+        *)
+          echo "Retrying ${step_name}..."
+          ;;
+      esac
+    fi
+  done
+}
+
 # Read current version from app-version.json
 MAJOR=$(grep -o '"major": [0-9]*' app-version.json | awk '{print $2}')
 MINOR=$(grep -o '"minor": [0-9]*' app-version.json | awk '{print $2}')
@@ -105,50 +144,22 @@ echo "--- Executing Plan ---"
 
 # 1. CI Checks
 if [ "$RUN_CI" = "true" ]; then
-  echo ">>> Running CI checks..."
-  if ! npm run ci:check; then
-    echo "CI checks failed."
-    if ! ask_yes_no "Do you want to ignore CI checks failure and continue?" "n"; then
-      echo "Aborting release."
-      exit 1
-    fi
-  fi
+  run_step_with_retry "CI checks" "npm run ci:check"
 fi
 
 # 2. Documentation Build Check
 if [ "$RUN_DOCS" = "true" ]; then
-  echo ">>> Verifying documentation build..."
-  if ! npm run docs:build; then
-    echo "Documentation build failed."
-    if ! ask_yes_no "Do you want to ignore documentation build failure and continue?" "n"; then
-      echo "Aborting release."
-      exit 1
-    fi
-  fi
+  run_step_with_retry "Documentation build" "npm run docs:build"
 fi
 
 # 3. Local Build Check
 if [ "$RUN_PACKAGING" = "true" ]; then
-  echo ">>> Running local packaging..."
-  if ! ./build-windows-exe.sh; then
-    echo "Local packaging failed."
-    if ! ask_yes_no "Do you want to ignore packaging failure and continue?" "n"; then
-      echo "Aborting release."
-      exit 1
-    fi
-  fi
+  run_step_with_retry "Local packaging" "./build-windows-exe.sh"
 fi
 
 # 4. Packaged P2P Tests Check
 if [ "$RUN_P2P" = "true" ]; then
-  echo ">>> Running packaged P2P tests..."
-  if ! npm run test:p2p:packaged; then
-    echo "Packaged P2P tests failed."
-    if ! ask_yes_no "Do you want to ignore P2P test failure and continue?" "n"; then
-      echo "Aborting release."
-      exit 1
-    fi
-  fi
+  run_step_with_retry "Packaged P2P tests" "npm run test:p2p:packaged"
 fi
 
 # 5. Version Bumping

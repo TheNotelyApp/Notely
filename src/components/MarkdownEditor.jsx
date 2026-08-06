@@ -1051,36 +1051,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
       {
-        key: "ArrowDown",
-        run(_view) {
-          if (slashMenu) {
-            setActiveSlashIndex((idx) => (idx + 1) % SLASH_COMMANDS.length);
-            return true;
-          }
-          return false;
-        },
-      },
-      {
-        key: "ArrowUp",
-        run(_view) {
-          if (slashMenu) {
-            setActiveSlashIndex((idx) => (idx - 1 + SLASH_COMMANDS.length) % SLASH_COMMANDS.length);
-            return true;
-          }
-          return false;
-        },
-      },
-      {
-        key: "Enter",
-        run(_view) {
-          if (slashMenu) {
-            triggerSlashCommand(activeSlashIndex);
-            return true;
-          }
-          return false;
-        },
-      },
-      {
         key: "Mod-Shift-z",
         run() {
           onRedo?.();
@@ -1088,7 +1058,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
     ]),
-  ], [findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion]);
+  ], [findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion, slashMenu]);
 
   return (
     <div

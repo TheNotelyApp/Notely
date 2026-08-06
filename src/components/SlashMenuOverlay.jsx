@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Heading1,
   Heading2,
@@ -13,13 +13,11 @@ import {
   Table,
   Code,
   Workflow,
-  Palette,
   Calendar,
   Minus,
   Quote,
   Sparkles,
   Wand2,
-  X,
 } from "lucide-react";
 import "../styles/SlashMenuOverlay.css";
 

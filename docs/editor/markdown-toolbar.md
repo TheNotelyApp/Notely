@@ -19,6 +19,8 @@ The Markdown toolbar sits above the editor and provides quick-insert actions for
 | **~~** | `~~strikethrough~~` | Wraps selection |
 | **\`** | `` `inline code` `` | Wraps selection |
 | **"** | `> blockquote` | Prepends to current line |
+| **Info (Callout)** | Insert Callout Box | Opens hover/click picker (`Note`, `Warning`, `Tip`, `Todo`, `Important`, `Caution`) |
+| **/** | Slash Menu Trigger | Type `/` in editor to trigger Notion-style command menu |
 
 ## Insert Buttons
 
