@@ -24,79 +24,14 @@ import { ImageCropModal } from "./ImageCropModal";
 import CodeBlockModal from "./CodeBlockModal";
 import { MarkdownTableEditor } from "./MarkdownTableEditor";
 import { MermaidVisualEditorModal } from "./mermaid/MermaidVisualEditorModal";
-
-function replaceAllLiteral(source, needle, replacement) {
-  if (!needle || needle === replacement) return source;
-  return String(source || "").split(needle).join(replacement);
-}
-
-function imageCacheKey(assetPath, variant = "thumbnail") {
-  return `${variant}:${assetPath}`;
-}
-
-function getImageActionElement(target) {
-  if (!(target instanceof HTMLElement)) return null;
-  if (target.closest?.(".excalidraw-block")) return null;
-  if (target.tagName === "IMG") return target;
-  const frame = target.closest?.(".markdown-image-frame");
-  const framedImage = frame?.querySelector?.("img");
-  return framedImage instanceof HTMLImageElement ? framedImage : null;
-}
-
-function getExcalidrawActionContext(target) {
-  if (!(target instanceof HTMLElement)) return null;
-  const block = target.closest?.(".excalidraw-block");
-  if (!block) return null;
-
-  const preview = block.querySelector?.(".excalidraw-preview-container");
-  if (!(preview instanceof HTMLElement)) return null;
-
-  const image = block.querySelector?.(".diagram-image");
-  const bounds = preview.getBoundingClientRect();
-  return {
-    block,
-    preview,
-    image: image instanceof HTMLImageElement ? image : null,
-    bounds,
-    diagramId: block.getAttribute("data-diagram-id") || "",
-    imagePath: block.getAttribute("data-diagram-image-path") || "",
-    originAssetPath: block.getAttribute("data-origin-asset-path") || "",
-    originAltText: block.getAttribute("data-origin-alt-text") || "",
-  };
-}
-
-function sanitizeAttributeValue(value) {
-  return String(value || "").replace(/"/g, "&quot;");
-}
-
-function replaceDiagramReferenceWithOriginal(content, options = {}) {
-  const source = String(content || "");
-  const {
-    diagramId,
-    diagramImagePath,
-    originAssetPath,
-    originAltText,
-  } = options;
-
-  const comparableDiagramPath = toComparableAssetPath(diagramImagePath);
-  const replacementMarkdown = createImageMarkdown(originAltText || "Image", originAssetPath || "");
-  const diagramRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*(\{[^}]*\})?/gi;
-  let replaced = false;
-
-  const nextContent = source.replace(diagramRegex, (match, imagePath, fallbackDiagramId, attributeBlock) => {
-    if (replaced) return match;
-    const explicitIdMatch = String(attributeBlock || "").match(/data-diagram-id=["“]([^"”]+)["”]/i);
-    const currentDiagramId = String(explicitIdMatch?.[1] || fallbackDiagramId || "").trim();
-    const currentComparablePath = toComparableAssetPath(imagePath);
-    const idMatch = diagramId && currentDiagramId && diagramId === currentDiagramId;
-    const pathMatch = comparableDiagramPath && comparableDiagramPath === currentComparablePath;
-    if (!idMatch && !pathMatch) return match;
-    replaced = true;
-    return replacementMarkdown;
-  });
-
-  return { nextContent, replaced };
-}
+import {
+  replaceAllLiteral,
+  imageCacheKey,
+  getImageActionElement,
+  getExcalidrawActionContext,
+  sanitizeAttributeValue,
+  replaceDiagramReferenceWithOriginal,
+} from "../utils/markdownPreviewUtils";
 
 function replaceCodeBlockAtLine(source, targetLine, newLanguage, newCode) {
   const lines = String(source || "").split("\n");
