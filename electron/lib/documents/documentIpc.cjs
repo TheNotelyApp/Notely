@@ -252,17 +252,32 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const title = String(payload?.title || "Untitled");
     const location = String(payload?.location || "");
     const persons = String(payload?.persons || "");
+    const customFields = payload?.customFields || {};
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
-    const timeStr = now.toTimeString().split(" ")[0];
+    const timeStr = now.toTimeString().split(" ")[0].slice(0, 5);
 
-    const result = templateContent
+    let result = templateContent
       .replace(/\{\{\s*title\s*\}\}/gi, title)
       .replace(/\{\{\s*date\s*\}\}/gi, dateStr)
       .replace(/\{\{\s*time\s*\}\}/gi, timeStr)
       .replace(/\{\{\s*year\s*\}\}/gi, String(now.getFullYear()))
       .replace(/\{\{\s*location\s*\}\}/gi, location)
       .replace(/\{\{\s*persons\s*\}\}/gi, persons);
+
+    if (customFields && typeof customFields === "object") {
+      for (const [key, val] of Object.entries(customFields)) {
+        const regex = new RegExp(`\\{\\{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\}\\}`, "gi");
+        result = result.replace(regex, String(val || ""));
+      }
+    }
+
+    // Normalize section structure if template did not include # Raw Notes / # Cleansed
+    const hasRaw = /#\s*rawnotes/i.test(result);
+    const hasCleansed = /#\s*cleansed/i.test(result);
+    if (!hasRaw && !hasCleansed) {
+      result = `${result.trim()}\n\n---\n\n## #RawNotes\n- Initial notes...\n\n---\n\n## #Cleansed\n- Structured notes...`;
+    }
 
     return { content: result };
   });
@@ -395,7 +410,11 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
 
   registerTrustedHandler("documents:save", (_event, payload) => {
     const notesRoot = getNotesRoot();
-    const resolved = path.resolve(payload.filePath);
+    const targetPath = typeof payload === "string" ? payload : payload?.filePath;
+    if (!targetPath || typeof targetPath !== "string") {
+      throw new Error("Document filePath is required.");
+    }
+    const resolved = path.resolve(targetPath);
     if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }

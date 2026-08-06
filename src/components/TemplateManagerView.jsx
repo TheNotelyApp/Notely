@@ -69,16 +69,43 @@ export function TemplateManagerView({ onBack, notify }) {
     setDirty(true);
   }
 
+  function handleAddCustomVariable() {
+    const customVar = window.prompt("Enter custom metadata field variable name (e.g. project, status, priority):");
+    if (customVar && customVar.trim()) {
+      const cleanKey = customVar.trim().replace(/[^a-zA-Z0-9_]/g, "");
+      setTemplateContent((prev) => `${cleanKey.charAt(0).toUpperCase() + cleanKey.slice(1)}: {{${cleanKey}}}\n` + prev);
+      setDirty(true);
+    }
+  }
+
+  function ensureSectionIntegrity(content) {
+    let result = String(content || "");
+    const hasRaw = /#\s*rawnotes/i.test(result);
+    const hasCleansed = /#\s*cleansed/i.test(result);
+    if (!hasRaw || !hasCleansed) {
+      if (!hasRaw) {
+        result += "\n\n---\n\n## #RawNotes\n- Initial notes...";
+      }
+      if (!hasCleansed) {
+        result += "\n\n---\n\n## #Cleansed\n- Structured notes...";
+      }
+    }
+    return result;
+  }
+
   async function handleSave() {
     if (!templateName.trim()) {
       notify?.("Template name is required", "warning");
       return;
     }
 
+    const validatedContent = ensureSectionIntegrity(templateContent);
+
     try {
       const targetFilePath = selected && selected !== "new" ? selected.filePath : null;
-      await saveTemplate(templateName.trim(), templateContent, targetFilePath);
+      await saveTemplate(templateName.trim(), validatedContent, targetFilePath);
       notify?.("Global template saved across workspaces!", "success");
+      setTemplateContent(validatedContent);
       setDirty(false);
       await loadTemplates();
       setSelected(null);
@@ -101,7 +128,7 @@ export function TemplateManagerView({ onBack, notify }) {
     }
   }
 
-  const variables = ["title", "date", "time", "year", "location", "persons"];
+  const variables = ["title", "date", "time", "year", "location", "persons", "tags"];
 
   const filteredTemplates = templates.filter((t) =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -289,6 +316,25 @@ export function TemplateManagerView({ onBack, notify }) {
                         <Sparkles size={12} /> {`{{${varName}}}`}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      style={{
+                        background: "var(--surface-subtle, rgba(255, 255, 255, 0.08))",
+                        border: "1px dashed var(--border-default, #cbd5e1)",
+                        color: "var(--text-primary)",
+                        borderRadius: "12px",
+                        padding: "2px 8px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                      onClick={handleAddCustomVariable}
+                    >
+                      <Plus size={12} /> Add Custom Field
+                    </button>
                   </div>
                 </div>
 

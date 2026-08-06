@@ -98,7 +98,6 @@ function buildAppMenuTemplate(win, context = {}) {
         },
         {
           label: "Manage Templates",
-          icon: "LayoutTemplate",
           click: () => sendMenuAction(win, "manage-templates")
         },
         { type: "separator" },
@@ -187,7 +186,6 @@ function buildAppMenuTemplate(win, context = {}) {
         },
         {
           label: "Manage Templates",
-          icon: "LayoutTemplate",
           click: () => sendMenuAction(win, "manage-templates")
         },
         { type: "separator" },

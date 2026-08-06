@@ -35,7 +35,7 @@ export function TemplateManagerModal({ isOpen, onClose, notify }) {
     setEditingTemplate("new");
     setTemplateName("");
     setTemplateContent(
-      `# {{title}}\n\n**Date**: {{date}} | **Time**: {{time}} | **Year**: {{year}}\n**Location**: {{location}}\n**Persons**: {{persons}}\n**Tags**: #note #template\n\n---\n\n## #RawNotes\n- Initial notes...\n\n---\n\n## #CleansedNotes\n- Structured notes...\n`
+      `# {{title}}\n\n**Date**: {{date}} | **Time**: {{time}} | **Year**: {{year}}\n**Location**: {{location}}\n**Persons**: {{persons}}\n**Tags**: #note #template\n\n---\n\n## #RawNotes\n- Initial notes...\n\n---\n\n## #Cleansed\n- Structured notes...\n`
     );
   }
 
@@ -45,15 +45,32 @@ export function TemplateManagerModal({ isOpen, onClose, notify }) {
     setTemplateContent(tpl.content);
   }
 
+  function ensureSectionIntegrity(content) {
+    let result = String(content || "");
+    const hasRaw = /#\s*rawnotes/i.test(result);
+    const hasCleansed = /#\s*cleansed/i.test(result);
+    if (!hasRaw || !hasCleansed) {
+      if (!hasRaw) {
+        result += "\n\n---\n\n## #RawNotes\n- Initial notes...";
+      }
+      if (!hasCleansed) {
+        result += "\n\n---\n\n## #Cleansed\n- Structured notes...";
+      }
+    }
+    return result;
+  }
+
   async function handleSave() {
     if (!templateName.trim()) {
       notify?.("Template name is required", "warning");
       return;
     }
 
+    const validatedContent = ensureSectionIntegrity(templateContent);
+
     try {
       const targetFilePath = editingTemplate && editingTemplate !== "new" ? editingTemplate.filePath : null;
-      await saveTemplate(templateName.trim(), templateContent, targetFilePath);
+      await saveTemplate(templateName.trim(), validatedContent, targetFilePath);
       notify?.("Global template saved across workspaces!", "success");
       await loadTemplates();
       setEditingTemplate(null);

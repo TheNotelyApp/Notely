@@ -141,6 +141,23 @@ function getDefaultDateTimeStrings() {
   return { fromStr, toStr };
 }
 
+function parseCustomHeaderFields(header) {
+  const BUILTIN_KEYS = new Set(["name", "persons", "person", "location", "time", "date", "tags", "tag", "title"]);
+  const custom = {};
+  const lines = String(header || "").split(/\r?\n/);
+  for (const line of lines) {
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      const normKey = key.toLowerCase();
+      if (!BUILTIN_KEYS.has(normKey)) {
+        custom[key] = match[2].trim();
+      }
+    }
+  }
+  return custom;
+}
+
 export function MetadataPopover({
   document,
   isOpen,
@@ -154,11 +171,12 @@ export function MetadataPopover({
   // Parse initial state from document
   const initialTitle = document?.title || "";
   const initialHeader = document?.header || "";
-  const initialName = parseHeaderField(initialHeader, "Name");
+  const initialName = parseHeaderField(initialHeader, "Name") || parseHeaderField(initialHeader, "Persons");
   const initialLocation = parseHeaderField(initialHeader, "Location");
   const initialTime = parseHeaderField(initialHeader, "Time");
   const initialTagsStr = parseHeaderField(initialHeader, "Tags");
   const initialTags = useMemo(() => parseTagList(initialTagsStr), [initialTagsStr]);
+  const initialCustomFields = useMemo(() => parseCustomHeaderFields(initialHeader), [initialHeader]);
 
   const initialParsedTime = useMemo(() => parseTimeRangeToInputs(initialTime), [initialTime]);
   const defaults = useMemo(() => getDefaultDateTimeStrings(), []);
@@ -171,12 +189,13 @@ export function MetadataPopover({
   const [timeToDraft, setTimeToDraft] = useState(initialParsedTime.to || defaults.toStr);
   const [tagsDraft, setTagsDraft] = useState(initialTags);
   const [tagInputText, setTagInputText] = useState("");
+  const [customFieldsDraft, setCustomFieldsDraft] = useState(initialCustomFields);
 
   // Sync draft state when document changes or popover opens
   useEffect(() => {
     if (isOpen) {
       setTitleDraft(document?.title || "");
-      setNameDraft(parseHeaderField(document?.header, "Name"));
+      setNameDraft(parseHeaderField(document?.header, "Name") || parseHeaderField(document?.header, "Persons"));
       setLocationDraft(parseHeaderField(document?.header, "Location"));
       const parsed = parseTimeRangeToInputs(parseHeaderField(document?.header, "Time"));
       const defs = getDefaultDateTimeStrings();
@@ -184,6 +203,7 @@ export function MetadataPopover({
       setTimeToDraft(parsed.to || defs.toStr);
       setTagsDraft(parseTagList(parseHeaderField(document?.header, "Tags")));
       setTagInputText("");
+      setCustomFieldsDraft(parseCustomHeaderFields(document?.header));
     }
   }, [isOpen, document?.title, document?.header, document?.filePath]);
 
@@ -216,13 +236,15 @@ export function MetadataPopover({
     if (locationDraft.trim() !== initialLocation.trim()) return true;
     if (timeRangeHeaderValue.trim() !== initialTime.trim()) return true;
     if (tagsDraft.join(", ") !== initialTags.join(", ")) return true;
+    if (JSON.stringify(customFieldsDraft) !== JSON.stringify(initialCustomFields)) return true;
     return false;
   }, [
     titleDraft, initialTitle,
     nameDraft, initialName,
     locationDraft, initialLocation,
     timeRangeHeaderValue, initialTime,
-    tagsDraft, initialTags
+    tagsDraft, initialTags,
+    customFieldsDraft, initialCustomFields
   ]);
 
   const timeRangeWarning = useMemo(() => {
@@ -250,15 +272,37 @@ export function MetadataPopover({
     }
   };
 
+  const handleCustomFieldChange = (key, value) => {
+    setCustomFieldsDraft((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleAddCustomField = () => {
+    const key = window.prompt("Enter new field name (e.g. Project, Priority, Status):");
+    if (key && key.trim()) {
+      const cleanKey = key.trim();
+      setCustomFieldsDraft((prev) => ({
+        ...prev,
+        [cleanKey]: "",
+      }));
+    }
+  };
+
   const handleSave = async () => {
     if (!hasChanges) return;
 
     // Apply header updates to document
     let updatedHeader = document?.header || "";
-    updatedHeader = setHeaderField(updatedHeader, "Name", nameDraft);
+    updatedHeader = setHeaderField(updatedHeader, "Persons", nameDraft);
     updatedHeader = setHeaderField(updatedHeader, "Location", locationDraft);
     updatedHeader = setHeaderField(updatedHeader, "Time", timeRangeHeaderValue);
     updatedHeader = setHeaderField(updatedHeader, "Tags", tagsDraft.join(", "));
+
+    for (const [key, val] of Object.entries(customFieldsDraft)) {
+      updatedHeader = setHeaderField(updatedHeader, key, val);
+    }
 
     const updatedDoc = {
       ...document,
@@ -446,6 +490,36 @@ export function MetadataPopover({
                 placeholder="Type tag and press Enter"
               />
             </div>
+          </div>
+
+          {/* Dynamic Custom Metadata Fields */}
+          {Object.entries(customFieldsDraft).map(([key, val]) => (
+            <div className="metadata-field-group" key={key}>
+              <label className="metadata-field-label" htmlFor={`meta-popover-custom-${key}`}>
+                <FileText size={14} />
+                <span>{key}</span>
+              </label>
+              <AppInput
+                id={`meta-popover-custom-${key}`}
+                type="text"
+                className="metadata-field-input"
+                value={val}
+                onChange={(e) => handleCustomFieldChange(key, e.target.value)}
+                placeholder={`Value for ${key}`}
+              />
+            </div>
+          ))}
+
+          {/* Add Custom Field button */}
+          <div className="metadata-field-group metadata-field-full" style={{ marginTop: "4px" }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleAddCustomField}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", width: "100%", justifyContent: "center" }}
+            >
+              + Add Custom Field
+            </button>
           </div>
         </div>
 

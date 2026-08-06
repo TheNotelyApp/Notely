@@ -66,7 +66,7 @@ class MarkdownASTParser {
           });
         });
         frontmatter.tags = tagList;
-      } else if (key === 'name' || key === 'names' || key === 'author' || key === 'attendees' || key === 'people') {
+      } else if (key === 'name' || key === 'names' || key === 'persons' || key === 'person' || key === 'author' || key === 'attendees' || key === 'people') {
         const names = valStr.split(/[,;]+/).map(n => n.trim()).filter(n => n.length > 1);
         names.forEach(n => {
           metadataEntities.push({
@@ -90,6 +90,13 @@ class MarkdownASTParser {
         frontmatter.time = valStr;
       } else {
         frontmatter[key] = valStr;
+        if (valStr.length > 1 && valStr.length < 50 && !valStr.includes('\n')) {
+          metadataEntities.push({
+            name: `${kvMatch[1].trim()}: ${valStr}`,
+            type: 'Concept',
+            relation: `has_${key}`
+          });
+        }
       }
     }
 
