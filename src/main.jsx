@@ -4,6 +4,8 @@ import App from "./App.jsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { ConfirmationProvider } from "./components/ConfirmationProvider.jsx";
 import { UIStateProvider } from "./contexts/UIStateContext.jsx";
+import { ModalRegistryProvider } from "./contexts/ModalRegistryContext.jsx";
+import { NavigationProvider } from "./contexts/NavigationContext.jsx";
 import "./styles.css";
 
 createRoot(document.getElementById("root")).render(
@@ -11,7 +13,11 @@ createRoot(document.getElementById("root")).render(
     <ErrorBoundary label="Notely">
       <ConfirmationProvider>
         <UIStateProvider>
-          <App />
+          <ModalRegistryProvider>
+            <NavigationProvider>
+              <App />
+            </NavigationProvider>
+          </ModalRegistryProvider>
         </UIStateProvider>
       </ConfirmationProvider>
     </ErrorBoundary>
