@@ -152,42 +152,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     }
   }, [activeTabPath, setActiveTabPath, setOpenTabs]);
 
-  // Pre-load all open tabs in parallel to ensure switching is instantaneous
-  useEffect(() => {
-    if (!openTabs || openTabs.length === 0) return;
 
-    const unloaded = openTabs.filter((path) => !tabStatesRef.current[path]);
-    if (unloaded.length === 0) return;
-
-    Promise.all(
-      unloaded.map(async (filePath) => {
-        try {
-          const doc = await readDocument(filePath);
-          const hash = JSON.stringify({
-            header: doc.header || "",
-            rawNotes: doc.rawNotes || "",
-            cleansed: doc.cleansed || "",
-          });
-          return { filePath, doc, hash };
-        } catch {
-          return null;
-        }
-      })
-    ).then((results) => {
-      const updates = {};
-      results.forEach((res) => {
-        if (res) {
-          updates[res.filePath] = { doc: res.doc, savedHash: res.hash };
-        }
-      });
-      if (Object.keys(updates).length > 0) {
-        setTabStates((prev) => ({
-          ...prev,
-          ...updates,
-        }));
-      }
-    });
-  }, [openTabs]);
 
   // Recursively list all folder paths in the workspace starting from the root
   const listAllFoldersInWorkspace = async (rootPath) => {

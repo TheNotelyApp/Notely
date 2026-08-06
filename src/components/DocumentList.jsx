@@ -55,7 +55,23 @@ export function DocumentList({
   const { getMetadata, updateMetadata } = useWorkspaceMetadata();
   const [pickerState, setPickerState] = useState({ isOpen: false, entry: null });
   const [contextMenu, setContextMenu] = useState(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const menuRef = useRef(null);
+
+  const handleKeyDownList = (event) => {
+    if (!documents || documents.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setFocusedIndex((prev) => (prev < documents.length - 1 ? prev + 1 : 0));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : documents.length - 1));
+    } else if (event.key === "Enter" && focusedIndex >= 0 && focusedIndex < documents.length) {
+      event.preventDefault();
+      onOpen(documents[focusedIndex]);
+    }
+  };
   const [resolvedPreviewImages, setResolvedPreviewImages] = useState({});
   const normalizedDensity = normalizeDocumentDensity(density);
   const densityProfile = getDocumentDensityProfile(normalizedDensity);
@@ -216,6 +232,8 @@ export function DocumentList({
         style={densityStyle}
         data-density={normalizedDensity}
         data-density-target-rows={densityProfile.targetRowsPerViewport}
+        tabIndex={0}
+        onKeyDown={handleKeyDownList}
       >
         <table className="document-table">
           <thead>
@@ -349,6 +367,8 @@ export function DocumentList({
       style={densityStyle}
       data-density={normalizedDensity}
       data-density-target-cards={densityProfile.targetCardsPerViewport}
+      tabIndex={0}
+      onKeyDown={handleKeyDownList}
     >
       {documents.map((doc) => {
         const meta = getMetadata(doc.filePath);

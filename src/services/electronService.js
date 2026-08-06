@@ -11,6 +11,14 @@ function getNotesApi() {
   return window.notesApi;
 }
 
+export function invokeNotesApi(methodName, fallbackValue, ...args) {
+  const api = getNotesApi();
+  if (typeof api[methodName] !== "function") {
+    return typeof fallbackValue === "function" ? fallbackValue() : fallbackValue;
+  }
+  return api[methodName](...args);
+}
+
 export function onMenuAction(callback) {
   const api = getNotesApi();
   if (typeof api.onMenuAction !== "function") {
