@@ -137,6 +137,11 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiDeletePersona: (p) => ipcRenderer.invoke("ai:persona:delete", p),
   aiImportPersona: (p) => ipcRenderer.invoke("ai:persona:import", p),
   aiExportPersona: (p) => ipcRenderer.invoke("ai:persona:export", p),
+  aiGetBacklinks: (payload) => ipcRenderer.invoke("ai:graph:get-backlinks", payload),
+  listTemplates: () => ipcRenderer.invoke("templates:list"),
+  saveTemplate: (payload) => ipcRenderer.invoke("templates:save", payload),
+  deleteTemplate: (payload) => ipcRenderer.invoke("templates:delete", payload),
+  applyTemplate: (payload) => ipcRenderer.invoke("templates:apply", payload),
   // Phase 5 — Candidate Knowledge
   aiListPendingKnowledge: () => ipcRenderer.invoke("ai:knowledge:list-pending"),
   aiApproveKnowledge: (p) => ipcRenderer.invoke("ai:knowledge:approve", p),

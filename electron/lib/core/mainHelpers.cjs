@@ -245,8 +245,8 @@ function createMainHelpers(deps) {
 
   function parseDocument(content, filePath) {
     const normalized = content.replace(/\r\n/g, "\n");
-    const rawMatch = normalized.match(/^#\s*(RawNotes|Notes|Quick Notes)\s*$/im);
-    const cleansedMatch = normalized.match(/^#\s*(Cleansed|Formal Notes|Professional Version)\s*$/im);
+    const rawMatch = normalized.match(/^#{1,3}\s*#?(RawNotes|Raw Notes|Notes|Quick Notes)\s*$/im);
+    const cleansedMatch = normalized.match(/^#{1,3}\s*#?(Cleansed|CleansedNotes|Formal Notes|Professional Version)\s*$/im);
     const firstSectionIndex = Math.min(
       ...[rawMatch?.index, cleansedMatch?.index].filter((value) => Number.isInteger(value))
     );

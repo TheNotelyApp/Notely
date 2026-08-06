@@ -183,6 +183,90 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return created;
   });
 
+  registerTrustedHandler("templates:list", () => {
+    const { app } = require("electron");
+    const globalTemplatesDir = path.join(app.getPath("userData"), "templates");
+    if (!fs.existsSync(globalTemplatesDir)) {
+      try { fs.mkdirSync(globalTemplatesDir, { recursive: true }); } catch { /* ignore */ }
+    }
+
+    const activeProject = getActiveProject();
+    const rootDir = path.resolve(activeProject?.rootPath || getNotesRoot());
+    const candidates = [
+      { dir: globalTemplatesDir, scope: "global" },
+      { dir: path.join(rootDir, "templates"), scope: "workspace" },
+      { dir: path.join(rootDir, ".notes-app", "templates"), scope: "workspace" }
+    ];
+
+    const templates = [];
+    const seenNames = new Set();
+
+    for (const { dir, scope } of candidates) {
+      if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+        try {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            if (file.endsWith(".md")) {
+              const name = path.basename(file, ".md");
+              if (!seenNames.has(name.toLowerCase())) {
+                seenNames.add(name.toLowerCase());
+                const fullPath = path.join(dir, file);
+                const content = fs.readFileSync(fullPath, "utf8");
+                templates.push({ name, filePath: fullPath, content, scope });
+              }
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+    return templates;
+  });
+
+  registerTrustedHandler("templates:save", (_event, payload) => {
+    const { app } = require("electron");
+    const globalTemplatesDir = path.join(app.getPath("userData"), "templates");
+    if (!fs.existsSync(globalTemplatesDir)) {
+      fs.mkdirSync(globalTemplatesDir, { recursive: true });
+    }
+
+    const name = String(payload?.name || "").trim().replace(/[\\/:*?"<>|]/g, "_");
+    if (!name) throw new Error("Template name is required.");
+
+    const filePath = payload?.filePath || path.join(globalTemplatesDir, `${name}.md`);
+    const content = String(payload?.content || "");
+    fs.writeFileSync(filePath, content, "utf8");
+    return { success: true, filePath, name };
+  });
+
+  registerTrustedHandler("templates:delete", (_event, payload) => {
+    const filePath = payload?.filePath;
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return { success: true };
+    }
+    return { success: false };
+  });
+
+  registerTrustedHandler("templates:apply", (_event, payload) => {
+    const templateContent = String(payload?.templateContent || "");
+    const title = String(payload?.title || "Untitled");
+    const location = String(payload?.location || "");
+    const persons = String(payload?.persons || "");
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toTimeString().split(" ")[0];
+
+    const result = templateContent
+      .replace(/\{\{\s*title\s*\}\}/gi, title)
+      .replace(/\{\{\s*date\s*\}\}/gi, dateStr)
+      .replace(/\{\{\s*time\s*\}\}/gi, timeStr)
+      .replace(/\{\{\s*year\s*\}\}/gi, String(now.getFullYear()))
+      .replace(/\{\{\s*location\s*\}\}/gi, location)
+      .replace(/\{\{\s*persons\s*\}\}/gi, persons);
+
+    return { content: result };
+  });
+
   registerTrustedHandler("folders:create", (_event, payload) => {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;

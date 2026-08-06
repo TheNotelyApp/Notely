@@ -222,6 +222,7 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_GRAPH_RESUME, handleResumeGraphWorker);
   registerHandler(IPC_EVENTS.AI_GRAPH_EXPORT_JSON, handleExportGraphAsJSON);
   registerHandler(IPC_EVENTS.AI_GRAPH_EXPORT_MD, handleExportGraphAsMarkdown);
+  registerHandler(IPC_EVENTS.AI_GRAPH_GET_BACKLINKS, handleGetBacklinks);
 
   // Embeddings Engine Subsystem
   registerHandler(IPC_EVENTS.AI_EMBEDDINGS_REBUILD, handleRebuildEmbeddings);
@@ -548,6 +549,20 @@ async function handleClearGraphData(_event, _payload) {
   } catch (error) {
     console.error('[AI IPC] Clear graph failed:', error);
     return new AIQueryResponse(false, null, error.message);
+  }
+}
+
+async function handleGetBacklinks(_event, payload) {
+  try {
+    const filePath = payload?.filePath;
+    if (!filePath || !aiService.graphDb) {
+      return new AIQueryResponse(true, []);
+    }
+    const backlinks = aiService.graphDb.getBacklinksForNote(filePath);
+    return new AIQueryResponse(true, backlinks);
+  } catch (err) {
+    console.error('[AI IPC] Get backlinks failed:', err);
+    return new AIQueryResponse(false, [], err.message);
   }
 }
 

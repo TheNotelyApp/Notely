@@ -18,6 +18,7 @@ import {
   saveDocument as saveDocumentApi,
   setNotesRootSetting,
   revealWorkspaceInExplorer,
+  applyTemplate,
 } from "../services/electronService";
 
 function normalizePathValue(value) {
@@ -669,7 +670,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     return false;
   }
 
-  async function handleCreateNote() {
+  async function handleCreateNote(templateContent = null) {
     const title = newNoteTitle.trim();
     if (!title) {
       notify("Enter a note title first.", "warning");
@@ -680,8 +681,17 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     setError("");
     try {
       const basePath = landingFolderPath || activeProject?.rootPath;
-      const created = await createDocument(title, basePath);
+      let created = await createDocument(title, basePath);
       const newPath = created.filePath;
+
+      if (templateContent) {
+        const applied = await applyTemplate(templateContent, title);
+        if (applied?.content) {
+          created = { ...created, rawNotes: applied.content };
+          await saveDocumentApi(newPath, created);
+        }
+      }
+
       setNewNoteTitle("");
       setDocuments(await listDocuments(basePath));
 

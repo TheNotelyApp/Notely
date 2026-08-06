@@ -96,6 +96,11 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Open Recent",
           submenu: openRecentSubmenu
         },
+        {
+          label: "Manage Templates",
+          icon: "LayoutTemplate",
+          click: () => sendMenuAction(win, "manage-templates")
+        },
         { type: "separator" },
         {
           label: dirty ? "Save*" : "Save",
@@ -179,6 +184,11 @@ function buildAppMenuTemplate(win, context = {}) {
         {
           label: "Open Recent",
           submenu: openRecentSubmenu
+        },
+        {
+          label: "Manage Templates",
+          icon: "LayoutTemplate",
+          click: () => sendMenuAction(win, "manage-templates")
         },
         { type: "separator" },
         {

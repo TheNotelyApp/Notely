@@ -1370,4 +1370,24 @@ export async function listTools() {
   return api.listTools();
 }
 
+export async function getBacklinks(filePath) {
+  return invokeNotesApi("aiGetBacklinks", { success: true, data: [] }, { filePath });
+}
+
+export async function listTemplates() {
+  return invokeNotesApi("listTemplates", []);
+}
+
+export async function saveTemplate(name, content, filePath = null) {
+  return invokeNotesApi("saveTemplate", { success: false }, { name, content, filePath });
+}
+
+export async function deleteTemplate(filePath) {
+  return invokeNotesApi("deleteTemplate", { success: false }, { filePath });
+}
+
+export async function applyTemplate(templateContent, title) {
+  return invokeNotesApi("applyTemplate", { content: templateContent }, { templateContent, title });
+}
+
 

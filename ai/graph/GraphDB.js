@@ -483,6 +483,36 @@ class GraphDB {
   }
 
   /**
+   * Get all notes linking to a target note path
+   */
+  getBacklinksForNote(notePath) {
+    if (!this.db || !notePath) return [];
+    try {
+      const EntityResolver = require('./EntityResolver');
+      const er = new EntityResolver(this);
+      const noteName = er.cleanName(path.basename(notePath, '.md'));
+      const targetEntityId = er.generateEntityId(noteName, 'Note');
+
+      const rows = this.db.prepare(`
+        SELECT e.id, e.name, e.note_path, r.type, r.weight
+        FROM relationships r
+        JOIN entities e ON r.source_id = e.id
+        WHERE r.target_id = ? OR LOWER(r.target_id) = LOWER(?)
+      `).all(targetEntityId, targetEntityId);
+
+      return rows.map(r => ({
+        sourceId: r.id,
+        sourceName: r.name,
+        filePath: r.note_path,
+        relation: r.type,
+        weight: r.weight
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Recursive CTE neighbor search up to depth N (default 3)
    */
   getNeighbors(entityId, maxDepth = 3) {

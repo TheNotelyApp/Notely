@@ -51,6 +51,7 @@ const GitCommitDialog = lazy(() =>
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
 import NotePreviewModal from "./components/NotePreviewModal";
+import { TemplateManagerView } from "./components/TemplateManagerView";
 
 const TasksPanel = lazy(() =>
   import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
@@ -107,6 +108,7 @@ import {
   checkForUpdates,
   aiSetPreferences,
   aiSetProviderModel,
+  listTemplates,
 } from "./services/electronService";
 import UpdateModal from "./components/UpdateModal";
 import { useToast } from "./hooks/useToast";
@@ -511,6 +513,19 @@ export default function App() {
     initialLine,
     setInitialLine,
   } = useDocumentManager({ notify, onRequireWorkspaceInitialization: handleRequireWorkspaceInitialization });
+
+  const [templateList, setTemplateList] = useState([]);
+  const [selectedTemplateContent, setSelectedTemplateContent] = useState("");
+  const [showTemplateManagerView, setShowTemplateManagerView] = useState(false);
+
+  useEffect(() => {
+    const unsub = onMenuAction((action) => {
+      if (action === "manage-templates") {
+        setShowTemplateManagerView(true);
+      }
+    });
+    return () => unsub?.();
+  }, []);
 
   const handleCopyLinkPath = useCallback((target) => {
     const filePath = typeof target === "object" ? target?.filePath : target;
@@ -3066,7 +3081,9 @@ export default function App() {
           </div>
         </div>
       ) : null}
-      {!current ? (
+      {showTemplateManagerView ? (
+        <TemplateManagerView onBack={() => setShowTemplateManagerView(false)} notify={notify} />
+      ) : !current ? (
         <>
           <LandingView
             isRootLandingView={isRootLandingView}
@@ -3291,8 +3308,25 @@ export default function App() {
                 autoFocus
               />
             </label>
+            <label className="overlay-dialog-field" style={{ marginTop: "0.75rem" }}>
+              <span>Template (optional)</span>
+              <select
+                value={selectedTemplateContent}
+                onChange={(e) => setSelectedTemplateContent(e.target.value)}
+                onFocus={() => {
+                  listTemplates().then((tpls) => setTemplateList(tpls || []));
+                }}
+              >
+                <option value="">Blank Note (No Template)</option>
+                {(templateList || []).map((tpl) => (
+                  <option key={tpl.filePath} value={tpl.content}>
+                    {tpl.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="overlay-dialog-actions">
-              <button className="primary-button" onClick={handleCreateNote} disabled={creatingNote} type="button">
+              <button className="primary-button" onClick={() => handleCreateNote(selectedTemplateContent)} disabled={creatingNote} type="button">
                 <NotebookPen size={14} />
                 {creatingNote ? "Creating..." : "Create Note"}
               </button>
