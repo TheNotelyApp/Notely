@@ -78,9 +78,9 @@ class GraphService {
             properties: ast.rootEntity.properties
           });
 
-          // Remove stale outgoing relationships before deleting evidence to preserve FK integrity
+          // Remove stale AST-extracted structural relationships before refreshing evidence (preserves LLM/GLiNER relationships)
           if (this.graphDb?.db) {
-            this.graphDb.db.prepare('DELETE FROM relationships WHERE source_id = ?').run(rootEntityId);
+            this.graphDb.db.prepare("DELETE FROM relationships WHERE source_id = ? AND extractor = 'ast_parser'").run(rootEntityId);
           }
           this.evidenceStore.deleteForSource(filePath);
 
