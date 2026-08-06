@@ -318,7 +318,6 @@ export function EditorPane({
       cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(() => {
         cachedAnchors = null;
-        if (!activeSyncSource) syncPreviewFromEditor();
       });
     };
 

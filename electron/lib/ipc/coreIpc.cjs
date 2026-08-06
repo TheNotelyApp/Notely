@@ -503,23 +503,54 @@ function registerCoreIpcHandlers(ipcMain, deps) {
 
   registerTrustedHandler("shell:open-folder", async (_event, payload) => {
     const rawPath = typeof payload === "string" ? payload : payload?.folderPath;
+    const relativeTo = typeof payload === "object" ? payload?.relativeTo : null;
     if (typeof rawPath !== "string" || !rawPath.trim()) {
       throw new Error("Invalid folderPath payload");
     }
-    let resolved = path.normalize(path.resolve(rawPath.trim()));
+    let target = rawPath.trim();
     try {
-      const stats = await fs.promises.stat(resolved);
-      if (!stats.isDirectory()) {
-        resolved = path.dirname(resolved);
-      }
+      target = decodeURIComponent(target);
     } catch {
-      resolved = path.dirname(resolved);
+      // Best effort decode
     }
-    const openResult = await shell.openPath(resolved);
-    if (openResult) {
-      throw new Error(openResult);
+
+    target = target.replace(/^file:\/\/\/?/i, "");
+
+    const isWindowsAbs = /^[A-Za-z]:[\\/]/i.test(target);
+    if (!isWindowsAbs) {
+      const cleanRel = target.replace(/^[\\/]+/, "");
+      if (relativeTo && typeof relativeTo === "string" && relativeTo.trim()) {
+        const baseDir = fs.existsSync(relativeTo) && fs.statSync(relativeTo).isDirectory() ? relativeTo : path.dirname(relativeTo);
+        target = path.resolve(baseDir, cleanRel);
+      } else if (typeof getNotesRoot === "function" && getNotesRoot()) {
+        target = path.resolve(getNotesRoot(), cleanRel);
+      }
     }
-    return { success: true };
+
+    let resolved = path.normalize(path.resolve(target));
+    try {
+      if (fs.existsSync(resolved)) {
+        const stats = await fs.promises.stat(resolved);
+        if (stats.isDirectory()) {
+          const openResult = await shell.openPath(resolved);
+          if (openResult) throw new Error(openResult);
+          return { success: true };
+        } else {
+          shell.showItemInFolder(resolved);
+          return { success: true };
+        }
+      } else {
+        const parent = path.dirname(resolved);
+        if (fs.existsSync(parent)) {
+          const openResult = await shell.openPath(parent);
+          if (openResult) throw new Error(openResult);
+          return { success: true };
+        }
+        throw new Error(`Directory or file does not exist: ${resolved}`);
+      }
+    } catch (err) {
+      throw new Error(`Failed to open folder: ${err?.message || err}`);
+    }
   });
 
   registerTrustedHandler("workspace-metadata:get-all", () => {

@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ZoomIn, ZoomOut, Maximize2, ExternalLink } from "lucide-react";
+import { X, Volume2, VolumeX, Pencil, Download, RotateCcw, ZoomIn, ZoomOut, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import PdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker";
 import { ImageCropModal } from "./ImageCropModal";
@@ -81,6 +81,7 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   const audioRef = useRef(null);
 
   const [resolvedPath, setResolvedPath] = useState(null);
+  const [mediaBlobUrl, setMediaBlobUrl] = useState(null);
   const [openingExternal, setOpeningExternal] = useState(false);
   const fileName = (mediaPath || "").split(/[\\/]/).pop() || mediaPath;
   const fileExtension = String(fileName || "").split(".").pop()?.toLowerCase() || "";
@@ -120,6 +121,27 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       cancelled = true;
     };
   }, [basePath, mediaPath, mediaType, showOriginalImages]);
+
+  useEffect(() => {
+    if ((mediaType === "video" || mediaType === "audio") && resolvedPath) {
+      if (typeof resolvedPath === "string" && resolvedPath.startsWith("data:")) {
+        const blob = dataUrlToUint8Array(resolvedPath);
+        if (blob) {
+          const mimeMatch = resolvedPath.slice(0, resolvedPath.indexOf(",")).match(/data:(.*?);/);
+          const mimeType = mimeMatch ? mimeMatch[1] : (mediaType === "video" ? "video/mp4" : "audio/mpeg");
+          const mediaBlob = new Blob([blob], { type: mimeType });
+          const objectUrl = URL.createObjectURL(mediaBlob);
+          setMediaBlobUrl(objectUrl);
+          return () => {
+            URL.revokeObjectURL(objectUrl);
+          };
+        }
+      }
+      setMediaBlobUrl(resolvedPath);
+    } else {
+      setMediaBlobUrl(null);
+    }
+  }, [resolvedPath, mediaType]);
 
   useEffect(() => {
     setError(null);
@@ -504,12 +526,14 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     }
   };
 
+  const [isExpanded, setIsExpanded] = useState(() => mediaType === "pdf" || mediaType === "video");
+
   if (!mediaPath) {
     return null;
   }
 
   return (
-    <div className="media-preview-pane">
+    <div className={`media-preview-pane ${isExpanded ? "is-expanded" : ""}`}>
       <div className="media-preview-header">
         <div className="media-preview-title">
           <span className="media-preview-icon">
@@ -524,14 +548,24 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
           </span>
           {fileExtension ? <span className="media-preview-ext">{fileExtension.toUpperCase()}</span> : null}
         </div>
-        <button
-          className="media-preview-close"
-          onClick={onClose}
-          data-tooltip="Close preview"
-          aria-label="Close media preview"
-        >
-          <X size={16} />
-        </button>
+        <div className="media-header-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            className="media-preview-close"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            data-tooltip={isExpanded ? "Exit Fullscreen" : "Fullscreen"}
+            aria-label="Toggle Fullscreen"
+          >
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+          <button
+            className="media-preview-close"
+            onClick={onClose}
+            data-tooltip="Close preview"
+            aria-label="Close media preview"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div className={`media-preview-content ${mediaType === "pdf" ? "pdf-mode" : ""}`}>
@@ -643,8 +677,8 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
 
         {mediaType === "video" && !error && (
           <div className="media-preview-video-container">
-            <video ref={videoRef} controls>
-              <source src={resolvedPath} />
+            <video ref={videoRef} controls src={mediaBlobUrl || resolvedPath} style={{ maxWidth: "100%", maxHeight: "100%" }}>
+              <source src={mediaBlobUrl || resolvedPath} />
               Your browser does not support the video tag.
             </video>
           </div>
@@ -658,8 +692,8 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
                 <div className="audio-filename">{mediaPath.split("/").pop()}</div>
               </div>
             </div>
-            <audio ref={audioRef} controls style={{ width: "100%" }}>
-              <source src={resolvedPath} />
+            <audio ref={audioRef} controls src={mediaBlobUrl || resolvedPath} style={{ width: "100%" }}>
+              <source src={mediaBlobUrl || resolvedPath} />
               Your browser does not support the audio tag.
             </audio>
             <button

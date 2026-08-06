@@ -3121,34 +3121,6 @@ export default function App() {
             onCopyLinkPath={handleCopyLinkPath}
             onReloadWorkspace={handleReloadWorkspace}
           />
-          {landingAssetsOpen ? (
-            <OverlayDialog open={landingAssetsOpen} onClose={() => setLandingAssetsOpen(false)} ariaLabel="Assets" cardClassName="assets-dialog-card">
-                <div className="overlay-dialog-header assets-dialog-header">
-                  <div className="assets-dialog-title-group">
-                    <h2>Assets Library</h2>
-                    <p>Browse assets in this folder.</p>
-                  </div>
-                  <button
-                    className="icon-button assets-close-button"
-                    onClick={() => setLandingAssetsOpen(false)}
-                    type="button"
-                    aria-label="Close assets dialog"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="assets-dialog-body">
-                  <Suspense fallback={<div className="lazy-loading">Loading media…</div>}>
-                    <MediaTab
-                      content=""
-                      basePath={`${(landingFolderPath || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
-                      onNotify={notify}
-                      onOpenDocument={handleOpenReferencedDocumentFromUI}
-                    />
-                  </Suspense>
-                </div>
-            </OverlayDialog>
-          ) : null}
         </>
       ) : (
         <Suspense fallback={<div className="lazy-loading">Loading editor…</div>}>
@@ -3797,6 +3769,35 @@ export default function App() {
             themePreference={themePreference}
           />
         </Suspense>
+      ) : null}
+
+      {landingAssetsOpen ? (
+        <OverlayDialog open={landingAssetsOpen} onClose={() => setLandingAssetsOpen(false)} ariaLabel="Assets" cardClassName="assets-dialog-card">
+          <div className="overlay-dialog-header assets-dialog-header">
+            <div className="assets-dialog-title-group">
+              <h2>Assets Library</h2>
+              <p>Browse assets in this workspace folder.</p>
+            </div>
+            <button
+              className="icon-button assets-close-button"
+              onClick={() => setLandingAssetsOpen(false)}
+              type="button"
+              aria-label="Close assets dialog"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="assets-dialog-body">
+            <Suspense fallback={<div className="lazy-loading">Loading media…</div>}>
+              <MediaTab
+                content=""
+                basePath={`${(landingFolderPath || (current?.filePath ? current.filePath.split(/[\\/]/).slice(0, -1).join("/") : "") || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
+                onNotify={notify}
+                onOpenDocument={handleOpenReferencedDocumentFromUI}
+              />
+            </Suspense>
+          </div>
+        </OverlayDialog>
       ) : null}
 
       {showUpdateModal ? (

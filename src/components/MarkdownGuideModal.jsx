@@ -20,7 +20,8 @@ const MARKDOWN_SYNTAX = [
   { id: 13, syntax: "```js\nCode block\n```", description: "Fenced code block", example: "Preformatted code block" },
   { id: 14, syntax: "> Blockquote", description: "Quoted text", example: "Indented quote text" },
   { id: 15, syntax: "---", description: "Horizontal rule", example: "Divider line" },
-  { id: 16, syntax: "| Col | Col |\n|---|---|", description: "Table", example: "Grid with rows and columns" }
+  { id: 16, syntax: "| Col | Col |\n|---|---|", description: "Table", example: "Grid with rows and columns" },
+  { id: 17, syntax: "> [!NOTE]\n> Content", description: "Callout Box (NOTE, WARNING, TIP, TODO, IMPORTANT)", example: "Styled callout container with icon" }
 ];
 
 export function MarkdownGuideModal({ open, onClose }) {

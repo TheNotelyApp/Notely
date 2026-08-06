@@ -10,6 +10,7 @@ import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } fro
 import { editorTheme } from "../utils/editorTheme";
 import { generateDiagramId } from "../utils/diagramFileUtils";
 import { useClipboardPaste } from "../hooks/useClipboardPaste";
+import SlashMenuOverlay from "./SlashMenuOverlay";
 
 function getLineStartIndex(text, lineNumber) {
   const targetLine = Math.max(lineNumber, 1);
@@ -307,62 +308,62 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const menuRef = useRef(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [slashMenu, setSlashMenu] = useState(null);
-  const [activeSlashIndex, setActiveSlashIndex] = useState(0);
   const [_activeLine, setActiveLine] = useState(1);
   const [docLength, setDocLength] = useState(String(value || "").length);
   const [activeTableInfo, setActiveTableInfo] = useState(null);
 
-  const SLASH_COMMANDS = useMemo(() => [
-    { id: "summarize", name: "Summarize Block", desc: "Summarize this block briefly", prompt: "Summarize the following text briefly. Return only the summary text without introduction: " },
-    { id: "grammar", name: "Fix Grammar", desc: "Fix spelling and grammar errors", prompt: "Fix grammar, spelling, and punctuation errors in the following text, keeping the meaning identical. Return only the corrected text: " },
-    { id: "tasks", name: "Extract Tasks", desc: "Convert text to checklist tasks", prompt: "Extract any action items or tasks from the following text and format them as a markdown task list (- [ ] task). Return only the tasks: " },
-    { id: "professional", name: "Make Professional", desc: "Change tone to professional", prompt: "Rewrite the following text in a professional, clear, and business-appropriate tone. Return only the rewritten text: " },
-    { id: "casual", name: "Make Casual", desc: "Change tone to casual", prompt: "Rewrite the following text in a casual, friendly, and conversational tone. Return only the rewritten text: " }
-  ], []);
-
-  const triggerSlashCommand = useCallback(async (index) => {
+  const handleSelectSlashCommand = useCallback(async (insertedText, cmd) => {
     if (!slashMenu || !viewRef.current) return;
-    const command = SLASH_COMMANDS[index];
     const view = viewRef.current;
-    
-    const lineText = view.state.doc.line(slashMenu.line).text;
-    const blockText = lineText.replace(/^\s*\//, '').trim();
-    
+    const lineObj = view.state.doc.line(slashMenu.line);
+    const lineText = lineObj.text;
+    const selection = view.state.selection.main;
+    const fromPos = Number.isFinite(slashMenu.slashPos) ? slashMenu.slashPos : selection.head - 1;
+    const toPos = selection.head;
+
     setSlashMenu(null);
-    
-    if (!blockText) {
-      onNotify?.("Block is empty. Type some text before running a command.", "warning");
+
+    if (cmd?.isAI) {
+      const blockText = lineText.replace(/^\s*\//, "").trim();
+      if (!blockText) {
+        onNotify?.("Type some text on this line before running an AI command.", "warning");
+        return;
+      }
+
+      onNotify?.("AI is working...", "info");
+      try {
+        const response = await window.notesApi?.aiQuery?.({
+          query: cmd.prompt + blockText,
+          context: {
+            scope: "block",
+            currentBlock: blockText,
+            systemPrompt: "You are a text editing helper. Rewrite the text based on user instructions and return ONLY the output without explanations.",
+          },
+        });
+        if (response?.success && response.data?.result) {
+          let result = response.data.result.replace(/^["']|["']$/g, "").trim();
+          view.dispatch({
+            changes: { from: lineObj.from, to: lineObj.to, insert: result },
+          });
+          onChange?.(view.state.doc.toString());
+          onNotify?.("Block updated by AI.", "success");
+        } else {
+          throw new Error(response?.error || "AI returned empty result");
+        }
+      } catch (err) {
+        onNotify?.("AI action failed: " + (err?.message || err), "error");
+      }
       return;
     }
 
-    onNotify?.("AI is working...", "info");
-    
-    try {
-      const response = await window.notesApi.aiQuery({
-        query: command.prompt + blockText,
-        context: {
-          scope: "block",
-          currentBlock: blockText,
-          systemPrompt: "You are a text editing helper. Rewrite the text based on the user instructions and return ONLY the direct output. Do not explain, do not preface."
-        }
+    if (insertedText) {
+      view.dispatch({
+        changes: { from: Math.max(0, fromPos), to: Math.max(fromPos, toPos), insert: insertedText },
+        selection: { anchor: Math.max(0, fromPos) + insertedText.length },
       });
-      
-      if (response?.success && response.data?.result) {
-        let result = response.data.result;
-        result = result.replace(/^["']|["']$/g, "").trim();
-        
-        view.dispatch({
-          changes: { from: slashMenu.from, to: slashMenu.to, insert: result }
-        });
-        onNotify?.("Block updated by AI.", "success");
-      } else {
-        throw new Error(response?.error || "AI returned empty result");
-      }
-    } catch (err) {
-      console.error("Slash command failed:", err.message);
-      onNotify?.("AI action failed: " + err.message, "error");
+      onChange?.(view.state.doc.toString());
     }
-  }, [slashMenu, viewRef, SLASH_COMMANDS, onNotify]);
+  }, [slashMenu, onChange, onNotify]);
 
   const lastScrollTopRef = useRef(0);
 
@@ -1087,7 +1088,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
     ]),
-  ], [findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion, slashMenu, activeSlashIndex, SLASH_COMMANDS, triggerSlashCommand]);
+  ], [findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion]);
 
   return (
     <div
@@ -1145,20 +1146,28 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
             textareaRef.current = createEditorAdapter(viewRef.current);
           }
 
-          if (update.docChanged) {
-            const lineText = update.state.doc.line(line).text;
-            const cursorCol = position - update.state.doc.line(line).from;
-            if (lineText.trim() === "/" && cursorCol === lineText.indexOf("/") + 1) {
-              const coords = viewRef.current.coordsAtPos(position);
-              const editorCoords = viewRef.current.dom.getBoundingClientRect();
-              setSlashMenu({
-                x: coords.left - editorCoords.left,
-                y: coords.bottom - editorCoords.top + 4,
-                line,
-                from: update.state.doc.line(line).from,
-                to: update.state.doc.line(line).to,
-              });
-              setActiveSlashIndex(0);
+          if (update.docChanged || update.selectionSet) {
+            const lineObj = update.state.doc.line(line);
+            const lineText = lineObj.text;
+            const cursorCol = position - lineObj.from;
+            const slashIndex = lineText.lastIndexOf("/", cursorCol);
+
+            if (slashIndex !== -1 && (slashIndex === 0 || /\s/.test(lineText[slashIndex - 1]))) {
+              const query = lineText.slice(slashIndex + 1, cursorCol);
+              if (!/\s/.test(query)) {
+                const coords = viewRef.current?.coordsAtPos(position);
+                if (coords) {
+                  setSlashMenu({
+                    x: Math.max(16, coords.left),
+                    y: Math.max(16, coords.bottom + 4),
+                    line,
+                    query,
+                    slashPos: lineObj.from + slashIndex,
+                  });
+                }
+              } else {
+                setSlashMenu(null);
+              }
             } else {
               setSlashMenu(null);
             }
@@ -1462,49 +1471,13 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         </div>
       ) : null}
       {slashMenu ? (
-        <div
-          className="editor-context-menu"
-          style={{
-            position: "absolute",
-            left: slashMenu.x,
-            top: slashMenu.y,
-            zIndex: 1000,
-            minWidth: "180px",
-            background: "var(--surface-bg)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "6px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            padding: "4px",
-          }}
-          role="menu"
-        >
-          <div style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase", padding: "6px 8px 4px 8px", color: "var(--text-muted)", letterSpacing: "0.05em" }}>
-            AI Block Actions
-          </div>
-          {SLASH_COMMANDS.map((cmd, i) => (
-            <button
-              key={cmd.id}
-              type="button"
-              role="menuitem"
-              onClick={() => triggerSlashCommand(i)}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                width: "100%",
-                textAlign: "left",
-                padding: "6px 8px",
-                border: "none",
-                borderRadius: "4px",
-                background: i === activeSlashIndex ? "var(--surface-accent)" : "transparent",
-                color: i === activeSlashIndex ? "var(--accent-solid)" : "var(--app-text)",
-                cursor: "pointer",
-              }}
-            >
-              <span style={{ fontSize: "11px", fontWeight: 600 }}>{cmd.name}</span>
-              <span style={{ fontSize: "9px", color: "var(--text-muted)", marginTop: "2px" }}>{cmd.desc}</span>
-            </button>
-          ))}
-        </div>
+        <SlashMenuOverlay
+          isOpen={Boolean(slashMenu)}
+          filterQuery={slashMenu.query || ""}
+          position={{ top: slashMenu.y, left: slashMenu.x }}
+          onSelectCommand={handleSelectSlashCommand}
+          onClose={() => setSlashMenu(null)}
+        />
       ) : null}
     </div>
   );

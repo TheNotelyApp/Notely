@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { createPortal } from "react-dom";
-import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw, Download } from "lucide-react";
+import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw, Download, FolderOpen } from "lucide-react";
 import {
   renderMarkdown,
   parseDiagramBlocks,
@@ -429,18 +429,19 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     setActiveLinkPopup(null);
   };
 
-  const handleDownloadFileFromPreview = async (href) => {
+  const handleDownloadFileFromPreview = (href) => {
     if (!href) return;
-    const resolvedPath = resolveMarkdownLinkPath(basePath, href) || href;
-    try {
-      if (typeof window.notesApi?.openFolder === "function") {
-        await window.notesApi.openFolder(resolvedPath);
-        onNotify?.(`Opened file location: ${resolvedPath}`, "success");
-      } else {
-        onNotify?.(`File path: ${resolvedPath}`, "info");
-      }
-    } catch (err) {
-      onNotify?.(err?.message || "Failed to open file.", "error");
+    const cleanHref = String(href || "").trim().replace(/^file:\/\/\/?/i, "");
+    const normalizedHref = cleanHref.split(/[?#]/)[0];
+    const ext = normalizedHref.split(".").pop()?.toLowerCase();
+    const mediaType = getMediaTypeFromExtension(ext) || "document";
+
+    if (typeof onMediaClick === "function") {
+      onMediaClick({ path: normalizedHref, type: mediaType });
+    } else if (basePath && typeof openMediaInDefaultApp === "function") {
+      openMediaInDefaultApp(basePath, normalizedHref).catch((err) => {
+        onNotify?.(err?.message || "Failed to open file.", "error");
+      });
     }
     setActiveLinkPopup(null);
   };
@@ -629,31 +630,12 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     };
 
     handleLinkNavigateRef.current = async (linkElement) => {
-      const rawHref = (linkElement.getAttribute("href") || "").trim();
+      const rawHref = (linkElement?.getAttribute("href") || "").trim();
+      if (!rawHref) return;
+
       if (rawHref === "." || rawHref === "./") {
         onNotify?.("Directory links like ./ are not supported here. Link a specific .md file.", "info");
         return;
-      }
-
-      if (rawHref) {
-        try {
-          const resolvedDirPath = await checkIsDirectory(rawHref, basePath);
-          if (resolvedDirPath) {
-            const confirmed = await confirm({
-              title: "Open Folder?",
-              message: `Are you sure you want to open this folder in File Explorer?\n\nPath: ${resolvedDirPath}`,
-              confirmLabel: "Open",
-              cancelLabel: "Cancel",
-              variant: "primary"
-            });
-            if (confirmed) {
-              await openFolder(resolvedDirPath);
-            }
-            return;
-          }
-        } catch (dirCheckErr) {
-          console.warn("Failed to check if link is directory:", dirCheckErr);
-        }
       }
 
       if (inlineLinkedMarkdown) {
@@ -665,18 +647,15 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         if (openedInline) return;
       }
 
-      if (rawHref) {
-        const normalizedHref = rawHref.split(/[?#]/)[0];
-        const ext = normalizedHref.split(".").pop()?.toLowerCase();
-        const mediaType = getMediaTypeFromExtension(ext);
-        if (mediaType) {
-          onMediaClick({ path: normalizedHref, type: mediaType });
-          return;
-        }
+      if (rawHref.startsWith("http://") || rawHref.startsWith("https://")) {
+        window.notesApi?.openExternal?.(rawHref);
+        return;
+      }
 
-        if (rawHref.startsWith("http://") || rawHref.startsWith("https://")) {
-          window.notesApi?.openExternal?.(rawHref);
-        }
+      try {
+        await openFolder(rawHref, basePath);
+      } catch (dirCheckErr) {
+        onNotify?.(dirCheckErr?.message || "Failed to open in File Explorer", "error");
       }
     };
 
@@ -1080,37 +1059,39 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           element: link,
           position: {
             top: rect.top - 6,
-            left: rect.left + (rect.width / 2)
-          }
+            left: rect.left + rect.width / 2,
+          },
         });
       }
     };
 
     const handleMouseOut = (e) => {
       const link = e.target?.closest?.("a");
-      if (link) {
-        if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-        linkHideTimerRef.current = setTimeout(() => {
-          if (!isPopupHoveredRef.current) {
-            setActiveLinkPopup(null);
-          }
-        }, 1200);
+      const related = e.relatedTarget;
+      // Check if mouse moved into popover or still within link
+      if (related && (link?.contains(related) || related.closest?.(".link-hover-popup"))) {
+        return;
       }
-    };
-
-    const handleScroll = () => {
-      // Don't close immediately on micro-scrolls; close only if not hovered
       if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
       linkHideTimerRef.current = setTimeout(() => {
         if (!isPopupHoveredRef.current) {
           setActiveLinkPopup(null);
         }
-      }, 400);
+      }, 200);
+    };
+
+    const handleScroll = () => {
+      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
+      linkHideTimerRef.current = setTimeout(() => {
+        if (!isPopupHoveredRef.current) {
+          setActiveLinkPopup(null);
+        }
+      }, 100);
     };
 
     previewElement.addEventListener("mouseover", handleMouseOver);
     previewElement.addEventListener("mouseout", handleMouseOut);
-    previewElement.addEventListener("scroll", handleScroll);
+    previewElement.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       previewElement.removeEventListener("mouseover", handleMouseOver);
@@ -1885,12 +1866,21 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           }
         }}
       >
-      {parts.map((part, index) =>
-        part.type === "mermaid" ? (
+      {parts.map((part, index) => {
+        const blockKey =
+          part.type === "mermaid"
+            ? `mermaid-${part.startLine}-${part.value.slice(0, 35)}`
+            : part.type === "excalidraw"
+            ? part.diagramId ? `excalidraw-${part.diagramId}` : `excalidraw-${part.startLine}-${part.imagePath}`
+            : part.type === "drawio"
+            ? part.diagramId ? `drawio-${part.diagramId}` : `drawio-${part.startLine}-${part.imagePath}`
+            : `md-${part.startLine}-${part.value.slice(0, 30)}`;
+
+        return part.type === "mermaid" ? (
           <MermaidBlock
             code={part.value}
             index={index}
-            key={`${part.type}-${index}`}
+            key={blockKey}
             onEdit={(codeToEdit) => {
               if (!readOnly) {
                 setMermaidEditState({
@@ -1903,7 +1893,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           />
         ) : part.type === "excalidraw" ? (
           readOnly ? (
-            <div key={`${part.type}-${index}`} className="excalidraw-block">
+            <div key={blockKey} className="excalidraw-block">
               <div className="excalidraw-preview-container" style={{ cursor: "default", pointerEvents: "none" }}>
                 {part.imagePath ? (
                   <div className="excalidraw-preview-thumbnail">
@@ -1926,13 +1916,13 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               documentPath={basePath?.split(/[/\\]/).slice(0, -1).join("/")}
               onNotify={onNotify}
               index={index}
-              key={`${part.type}-${index}`}
+              key={blockKey}
               onForceSaveNote={onForceSaveDocument}
             />
           )
         ) : part.type === "drawio" ? (
           readOnly ? (
-            <div key={`${part.type}-${index}`} className="drawio-block">
+            <div key={blockKey} className="drawio-block">
               {part.imagePath ? (
                 <img src={part.imagePath} alt="Draw.io diagram" style={{ maxWidth: "100%", display: "block" }} />
               ) : (
@@ -1946,21 +1936,21 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               imagePath={part.imagePath}
               diagramId={part.diagramId}
               onNotify={onNotify}
-              key={`${part.type}-${index}`}
+              key={blockKey}
               onForceSaveNote={onForceSaveDocument}
             />
           )
         ) : (
           <div
-            key={`${part.type}-${index}`}
+            key={blockKey}
             dangerouslySetInnerHTML={{
               __html: renderMarkdown(normalizeMarkdownImagePaths(part.value), {
                 sourceLineOffset: part.startLine || 0,
               }),
             }}
           />
-        )
-      )}
+        );
+      })}
       </div>
       {contextMenu ? (
         <div
@@ -2064,7 +2054,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               if (!isPopupHoveredRef.current) {
                 setActiveLinkPopup(null);
               }
-            }, 800);
+            }, 150);
           }}
         >
           <button
@@ -2084,8 +2074,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               setActiveLinkPopup(null);
             }}
           >
-            <ExternalLink size={12} style={{ marginRight: "4px" }} />
-            <span>Navigate</span>
+            <FolderOpen size={12} style={{ marginRight: "4px" }} />
+            <span>Reveal in Explorer</span>
           </button>
           {!/^https?:\/\/|^\/\//i.test(activeLinkPopup.href || "") && (
             <>

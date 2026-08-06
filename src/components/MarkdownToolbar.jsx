@@ -19,6 +19,7 @@ import {
   Workflow,
   PenTool,
   Grid,
+  Info,
 } from "lucide-react";
 import AppSelect from "./AppSelect";
 import { applySnippet, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
@@ -172,12 +173,14 @@ export function MarkdownToolbar({
   const webLinkPopoverRef = useRef(null);
   const tablePopoverRef = useRef(null);
   const validationPopoverRef = useRef(null);
+  const calloutPopoverRef = useRef(null);
   const [showMermaidBuilder, setShowMermaidBuilder] = useState(false);
   const [showAssetLinker, setShowAssetLinker] = useState(false);
   const [showReferenceLinker, setShowReferenceLinker] = useState(false);
   const [showWebLinker, setShowWebLinker] = useState(false);
   const [showTableBuilder, setShowTableBuilder] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
+  const [showCalloutPicker, setShowCalloutPicker] = useState(false);
   const [availableAssets, setAvailableAssets] = useState([]);
   const [availableReferenceNotes, setAvailableReferenceNotes] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -245,6 +248,7 @@ export function MarkdownToolbar({
     setShowWebLinker(false);
     setShowTableBuilder(false);
     setShowValidationPanel(false);
+    setShowCalloutPicker(false);
     setDiagramMode("picker");
   };
 
@@ -255,6 +259,7 @@ export function MarkdownToolbar({
     if (panel === "web") return showWebLinker;
     if (panel === "table") return showTableBuilder;
     if (panel === "validation") return showValidationPanel;
+    if (panel === "callout") return showCalloutPicker;
     return false;
   };
 
@@ -265,6 +270,7 @@ export function MarkdownToolbar({
     if (panel === "web") setShowWebLinker(true);
     if (panel === "table") setShowTableBuilder(true);
     if (panel === "validation") setShowValidationPanel(true);
+    if (panel === "callout") setShowCalloutPicker(true);
   };
 
   const toggleToolbarPanel = (panel) => {
@@ -282,7 +288,8 @@ export function MarkdownToolbar({
     showReferenceLinker ||
     showWebLinker ||
     showTableBuilder ||
-    showValidationPanel;
+    showValidationPanel ||
+    showCalloutPicker;
 
   useEffect(() => {
     if (!anyPopoverOpen) {
@@ -296,13 +303,15 @@ export function MarkdownToolbar({
       const insideWebLinker = webLinkPopoverRef.current?.contains(event.target);
       const insideTableBuilder = tablePopoverRef.current?.contains(event.target);
       const insideValidation = validationPopoverRef.current?.contains(event.target);
+      const insideCallout = calloutPopoverRef.current?.contains(event.target);
       if (
         !insideMermaid &&
         !insideAssetLinker &&
         !insideReferenceLinker &&
         !insideWebLinker &&
         !insideTableBuilder &&
-        !insideValidation
+        !insideValidation &&
+        !insideCallout
       ) {
         closeToolbarPanels();
       }
@@ -351,6 +360,7 @@ export function MarkdownToolbar({
     { key: "italic", icon: Italic, title: "Italic", before: "_", after: "_", placeholder: "italic text" },
     { key: "list", icon: List, title: "List", before: "- ", after: "", placeholder: "list item" },
     { key: "quote", icon: Quote, title: "Quote", before: "> ", after: "", placeholder: "quote" },
+    { key: "callout", icon: Info, title: "Callout (> [!NOTE])", before: "> [!NOTE]\n> ", after: "", placeholder: "callout text" },
     { key: "code", icon: Code, title: "Code", before: "`", after: "`", placeholder: "code" },
   ];
 
@@ -891,20 +901,99 @@ export function MarkdownToolbar({
         <Redo2 size={16} />
       </AppIconButton>
       {snippets.map((snippet) => (
-        <AppIconButton
+        <div
           key={snippet.key}
-          onClick={() => {
-            if (snippet.key === "code") {
-              setCodeModalOpen(true);
-            } else {
-              applySnippet(value, onChange, textareaRef, snippet.before, snippet.after, snippet.placeholder);
+          style={{ position: "relative", display: "inline-flex" }}
+          onMouseEnter={() => {
+            if (snippet.key === "callout") openPanel("callout");
+          }}
+          onMouseLeave={(e) => {
+            if (snippet.key === "callout") {
+              const related = e.relatedTarget;
+              if (calloutPopoverRef.current && calloutPopoverRef.current.contains(related)) return;
+              setShowCalloutPicker(false);
             }
           }}
-          title={snippet.title}
-          aria-label={snippet.title}
         >
-          <snippet.icon size={16} />
-        </AppIconButton>
+          <AppIconButton
+            onClick={() => {
+              if (snippet.key === "code") {
+                setCodeModalOpen(true);
+              } else if (snippet.key === "callout") {
+                toggleToolbarPanel("callout");
+              } else {
+                applySnippet(value, onChange, textareaRef, snippet.before, snippet.after, snippet.placeholder);
+              }
+            }}
+            title={snippet.title}
+            aria-label={snippet.title}
+          >
+            <snippet.icon size={16} />
+          </AppIconButton>
+          {snippet.key === "callout" && showCalloutPicker && (
+            <div
+              className="editor-context-menu callout-picker-menu"
+              ref={calloutPopoverRef}
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                marginTop: "4px",
+                zIndex: 9999,
+                background: "var(--surface-bg, #ffffff)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid var(--border-soft, #e2e8f0)",
+                borderRadius: "8px",
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                padding: "6px",
+                minWidth: "170px",
+              }}
+              role="menu"
+            >
+              <div style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", padding: "4px 8px 6px 8px", color: "var(--text-muted)", letterSpacing: "0.06em", borderBottom: "1px solid var(--border-soft, #f1f5f9)", marginBottom: "4px" }}>
+                Callout Box
+              </div>
+              {[
+                { label: "Note", icon: "ℹ️", before: "> [!NOTE]\n> " },
+                { label: "Warning", icon: "⚠️", before: "> [!WARNING]\n> " },
+                { label: "Tip", icon: "💡", before: "> [!TIP]\n> " },
+                { label: "Todo", icon: "📝", before: "> [!TODO]\n> " },
+                { label: "Important", icon: "🌟", before: "> [!IMPORTANT]\n> " },
+                { label: "Caution", icon: "🚫", before: "> [!CAUTION]\n> " },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    applySnippet(value, onChange, textareaRef, item.before, "", "Callout content");
+                    setShowCalloutPicker(false);
+                  }}
+                  className="callout-picker-item"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "7px 10px",
+                    border: "none",
+                    borderRadius: "6px",
+                    background: "transparent",
+                    color: "var(--app-text)",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    transition: "all 0.12s ease",
+                  }}
+                >
+                  <span style={{ fontSize: "15px", lineHeight: 1 }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       ))}
       <AppIconButton onClick={openTableBuilder} title="Insert table" aria-label="Insert table">
         <Table2 size={16} />

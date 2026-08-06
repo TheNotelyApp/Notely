@@ -199,13 +199,57 @@ export function normalizeMarkdownLinks(content) {
   return normalized;
 }
 
+export function renderCallouts(html) {
+  if (!html || typeof html !== "string" || !html.includes("<blockquote")) return html;
+
+  const bqRegex = /<blockquote[^>]*>\s*<p[^>]*>\s*\[!(NOTE|WARNING|TIP|TODO|IMPORTANT|CAUTION)\]([^\n<]*?)(?:<br\s*\/?>|\n)?\s*([\s\S]*?)<\/blockquote>/gi;
+
+  const calloutConfigs = {
+    NOTE: { title: "Note", icon: "ℹ️", class: "callout-note" },
+    WARNING: { title: "Warning", icon: "⚠️", class: "callout-warning" },
+    TIP: { title: "Tip", icon: "💡", class: "callout-tip" },
+    TODO: { title: "Todo", icon: "📝", class: "callout-todo" },
+    IMPORTANT: { title: "Important", icon: "🌟", class: "callout-important" },
+    CAUTION: { title: "Caution", icon: "🚫", class: "callout-caution" },
+  };
+
+  return html.replace(bqRegex, (_match, type, titleExtra, body) => {
+    const upperType = String(type).toUpperCase();
+    const config = calloutConfigs[upperType] || { title: upperType, icon: "📌", class: "callout-note" };
+
+    let displayTitle = (titleExtra || "").trim();
+    if (!displayTitle) displayTitle = config.title;
+
+    let bodyContent = (body || "").trim();
+    bodyContent = bodyContent.replace(/^<\/p>\s*/i, "").replace(/^\s*<br\s*\/?>/i, "");
+
+    if (bodyContent && !bodyContent.startsWith("<p>")) {
+      bodyContent = `<p>${bodyContent}`;
+    }
+    if (bodyContent && !bodyContent.endsWith("</p>")) {
+      bodyContent = `${bodyContent}</p>`;
+    }
+
+    return `<div class="notely-callout ${config.class}">
+      <div class="notely-callout-header">
+        <span class="notely-callout-icon">${config.icon}</span>
+        <span class="notely-callout-title">${displayTitle}</span>
+      </div>
+      <div class="notely-callout-body">
+        ${bodyContent}
+      </div>
+    </div>`;
+  });
+}
+
 export function renderMarkdown(content, options = {}) {
   const normalized = String(content || "")
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n");
   const linkNormalized = normalizeMarkdownLinks(normalized);
-  return md.render(linkNormalized, options);
+  const renderedHtml = md.render(linkNormalized, options);
+  return renderCallouts(renderedHtml);
 }
 
 /**

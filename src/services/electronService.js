@@ -1219,12 +1219,12 @@ export async function checkIsDirectory(folderPath, relativeTo) {
   return api.checkIsDirectory({ folderPath, relativeTo });
 }
 
-export async function openFolder(folderPath) {
+export async function openFolder(folderPath, relativeTo) {
   const api = getNotesApi();
   if (typeof api.openFolder !== "function") {
     throw new Error("Shell openFolder API is not available");
   }
-  return api.openFolder({ folderPath });
+  return api.openFolder({ folderPath, relativeTo });
 }
 
 export async function openExternal(url) {
