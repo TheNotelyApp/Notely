@@ -43,7 +43,7 @@ class AIConfig {
 
       // Encrypt using Electron's safeStorage
       const encrypted = safeStorage.encryptString(apiKey);
-      config[provider] = encrypted.toString('latin1');
+      config[provider] = encrypted.toString('base64');
 
       fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
       return true;
@@ -69,10 +69,15 @@ class AIConfig {
       }
 
       try {
-        // Decrypt using Electron's safeStorage
-        const encrypted = Buffer.from(config[provider], 'latin1');
-        const decrypted = safeStorage.decryptString(encrypted);
-        return decrypted;
+        // Decrypt using Electron's safeStorage (base64 with latin1 legacy fallback)
+        let encrypted;
+        try {
+          encrypted = Buffer.from(config[provider], 'base64');
+          return safeStorage.decryptString(encrypted);
+        } catch {
+          encrypted = Buffer.from(config[provider], 'latin1');
+          return safeStorage.decryptString(encrypted);
+        }
       } catch (decryptError) {
         // Auto-clean invalid/stale ciphertext so UI can recover without repeated failures.
         delete config[provider];

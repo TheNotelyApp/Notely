@@ -10,15 +10,6 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("app-menu:action", listener);
     return () => ipcRenderer.removeListener("app-menu:action", listener);
   },
-  onAppMenuAction: (callback) => {
-    if (typeof callback !== "function") {
-      return () => {};
-    }
-
-    const listener = (_event, action) => callback(action);
-    ipcRenderer.on("app-menu:action", listener);
-    return () => ipcRenderer.removeListener("app-menu:action", listener);
-  },
   notifyBootReady: () => ipcRenderer.send("app:boot-ready"),
   notifyBootProgress: (payload) => ipcRenderer.send("app:boot-progress", payload),
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),

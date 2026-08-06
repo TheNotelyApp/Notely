@@ -35,7 +35,7 @@ function ensureWorkspaceKey(value) {
   if (/^[a-f0-9]{64}$/.test(key)) {
     return key;
   }
-  return randomHex(32);
+  throw new Error("Invalid workspace key: must be a 64-character hex string.");
 }
 
 function encryptWithWorkspaceKey(workspaceKey, payload) {

@@ -71,12 +71,13 @@ class SemanticRetriever {
       return this.embeddingDB.searchTextFallback(query, topK);
     }
 
-    // Deduplicate by note_path to avoid duplicate chunks from the same note
-    const seenNotes = new Set();
+    // Allow up to 3 top chunks per note_path to retain multi-section context
+    const noteChunkCounts = new Map();
     const uniqueScored = [];
     for (const item of thresholdFiltered) {
-      if (!seenNotes.has(item.note_path)) {
-        seenNotes.add(item.note_path);
+      const currentCount = noteChunkCounts.get(item.note_path) || 0;
+      if (currentCount < 3) {
+        noteChunkCounts.set(item.note_path, currentCount + 1);
         uniqueScored.push(item);
       }
       if (uniqueScored.length >= topK) break;

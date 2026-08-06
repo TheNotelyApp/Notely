@@ -70,10 +70,9 @@ class ContextEngine {
     const tools = {
       exploreGraph: this.graphRetriever.toTool()
     };
-
-    // hybridSearchNotes intentionally omitted — hybrid_search is already registered
-    // in ApplicationToolRegistry and merged in QueryExecutor. Duplicate camelCase
-    // aliases cause the LLM to call the weaker in-process path with malformed args.
+    if (this.hybridRetriever && typeof this.hybridRetriever.toTool === 'function') {
+      tools.hybrid_search = this.hybridRetriever.toTool();
+    }
 
     log.info(`Context built for conversation=${conversationId} persona=${personaId} msgs=${messages.length}`);
 

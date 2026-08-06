@@ -6,11 +6,11 @@ describe('MarkdownChunker Tests', () => {
     const markdown = `# Header 1\nThis is paragraph 1.\n## Header 2\nThis is paragraph 2.\n- Item 1\n- Item 2`;
     const chunks = MarkdownChunker.chunk(markdown, 'notes/test-note.md', { minChunkSize: 0 });
 
-    assert.ok(chunks.length >= 3);
+    assert.ok(chunks.length >= 2);
     assert.strictEqual(chunks[0].chunk_type, 'heading');
     assert.ok(chunks[0].content.includes('Header 1'));
-    assert.strictEqual(chunks[2].chunk_type, 'heading');
-    assert.ok(chunks[2].content.includes('Header 2'));
+    assert.strictEqual(chunks[1].chunk_type, 'heading');
+    assert.ok(chunks[1].content.includes('Header 2'));
   });
 
   it('should handle empty markdown documents', () => {

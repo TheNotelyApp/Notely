@@ -61,8 +61,7 @@ if (process.platform === "win32") {
 
 // Register protocols here if needed
 
-// Skip separate GPU process — reduces cold-start overhead by ~150-200ms on Windows.
-app.commandLine.appendSwitch("in-process-gpu");
+
 
 // Expand V8 heap size to allow 512MB model buffer allocation without out-of-memory errors
 app.commandLine.appendSwitch("js-flags", "--max-old-space-size=4096");

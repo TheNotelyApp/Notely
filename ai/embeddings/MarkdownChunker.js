@@ -67,10 +67,6 @@ class MarkdownChunker {
         currentType = 'heading';
         currentChunkLines.push(line);
         currentLength += line.length;
-        // Flush header as its own chunk
-        flushChunk(lineNum);
-        startLine = lineNum + 1;
-        currentType = 'paragraph';
         continue;
       }
 

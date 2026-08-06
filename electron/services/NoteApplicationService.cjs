@@ -208,6 +208,52 @@ class NoteApplicationService {
   async deleteNote() {
     throw new Error('notes.delete capability is deferred until system maturity.');
   }
+
+  /**
+   * Create rolling ZIP snapshot backup of workspace notes.
+   */
+  async createVaultBackup(workspaceRoot, targetBackupDir) {
+    if (!workspaceRoot || !fs.existsSync(workspaceRoot)) {
+      throw new Error('Valid workspace root is required for backup.');
+    }
+    const backupDir = targetBackupDir || path.join(workspaceRoot, '.notes-app', 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const yazl = require('yazl');
+    const zipFile = new yazl.ZipFile();
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const zipPath = path.join(backupDir, `vault-backup-${stamp}.zip`);
+    const outputStream = fs.createWriteStream(zipPath);
+
+    const mdFiles = collectMarkdownFiles(workspaceRoot);
+    for (const file of mdFiles) {
+      const relPath = path.relative(workspaceRoot, file);
+      zipFile.addFile(file, relPath);
+    }
+    zipFile.end();
+
+    await new Promise((resolve, reject) => {
+      zipFile.outputStream.pipe(outputStream).on('finish', resolve).on('error', reject);
+    });
+
+    // Keep rolling last 7 backups
+    try {
+      const backups = fs.readdirSync(backupDir)
+        .filter(f => f.startsWith('vault-backup-') && f.endsWith('.zip'))
+        .map(f => ({ name: f, time: fs.statSync(path.join(backupDir, f)).mtimeMs }))
+        .sort((a, b) => b.time - a.time);
+
+      if (backups.length > 7) {
+        for (const old of backups.slice(7)) {
+          fs.unlinkSync(path.join(backupDir, old.name));
+        }
+      }
+    } catch { /* ignore retention cleanup errors */ }
+
+    return { success: true, backupPath: zipPath, filesCount: mdFiles.length };
+  }
 }
 
 module.exports = {

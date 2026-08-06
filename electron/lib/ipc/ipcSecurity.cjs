@@ -10,6 +10,13 @@ function isTrustedIpcSender(BrowserWindow, event) {
       return false;
     }
 
+    // Verify sender frame URL origin (allow app file/localhost URLs)
+    const url = String(frame?.url || "").toLowerCase();
+    const isAppProtocol = url.startsWith("file:") || url.startsWith("app:") || url.startsWith("http://localhost:") || url.startsWith("http://127.0.0.1:");
+    if (!isAppProtocol && url !== "" && url !== "about:blank") {
+      return false;
+    }
+
     return true;
   } catch {
     return false;
