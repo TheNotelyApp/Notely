@@ -24,6 +24,9 @@ const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
 const AIPersonasManager = lazy(() => import("./components/AIPersonasManager"));
 const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
 const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
+const TaskWorkspacePage = lazy(() => import("./components/TaskWorkspacePage").then((m) => ({ default: m.TaskWorkspacePage })));
+const CalendarPage = lazy(() => import("./components/CalendarPage").then((m) => ({ default: m.CalendarPage })));
+
 
 import { SettingsModal } from "./components/SettingsModal";
 import { WorkspaceModal } from "./components/WorkspaceModal";
@@ -366,6 +369,9 @@ export default function App() {
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
     trashDialogOpen, setTrashDialogOpen,
+    taskWorkspaceOpen, setTaskWorkspaceOpen,
+    taskWorkspaceContext, setTaskWorkspaceContext,
+    calendarPageOpen, setCalendarPageOpen,
     onboardingComplete, setOnboardingCompleteState,
     defaultNotesPath, setDefaultNotesPath,
     themePreference, setThemePreferenceState,
@@ -1604,7 +1610,22 @@ export default function App() {
         setHealthPageOpen(false);
         setAppLogsOpen(false);
         setGitVCOpen(false);
+        setTaskWorkspaceOpen(false);
+        setCalendarPageOpen(false);
       };
+
+      if (action === "open-tasks-workspace") {
+        closeAllFullscreenViews();
+        setTaskWorkspaceContext(null);
+        setTaskWorkspaceOpen(true);
+        return;
+      }
+
+      if (action === "open-calendar") {
+        closeAllFullscreenViews();
+        setCalendarPageOpen(true);
+        return;
+      }
 
       if (action === "open-workspace-graph") {
         closeAllFullscreenViews();
@@ -1704,7 +1725,28 @@ export default function App() {
 
 
 
+      if (action === "tasks-workspace") {
+        closeAllFullscreenViews();
+        setTaskWorkspaceContext(null);
+        setTaskWorkspaceOpen(true);
+        return;
+      }
+
+      if (action === "tasks-overdue") {
+        closeAllFullscreenViews();
+        setTaskWorkspaceContext(null);
+        setTaskWorkspaceOpen(true);
+        return;
+      }
+
+      if (action === "calendar") {
+        closeAllFullscreenViews();
+        setCalendarPageOpen(true);
+        return;
+      }
+
       if (action === "open-p2p-sync-help") {
+
         setP2PSyncHelpOpen(true);
         return;
       }
@@ -2726,6 +2768,17 @@ export default function App() {
   }
 
   function handleDashboardAction(action) {
+    if (action === "tasks-workspace" || action === "tasks-overdue") {
+      setTaskWorkspaceContext(null);
+      setTaskWorkspaceOpen(true);
+      return;
+    }
+
+    if (action === "calendar") {
+      setCalendarPageOpen(true);
+      return;
+    }
+
     if (action === "new-note") {
       setNoteDialogOpen(true);
       return;
@@ -3952,6 +4005,41 @@ export default function App() {
           </Suspense>
         </div>
       )}
+
+      {taskWorkspaceOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Task Workspace…</div>}>
+            <TaskWorkspacePage
+              onBack={() => setTaskWorkspaceOpen(false)}
+              onOpenNote={(filePath) => {
+                setTaskWorkspaceOpen(false);
+                void handleOpenReferencedDocument(filePath);
+              }}
+              noteFilter={taskWorkspaceContext?.noteFilter ?? null}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {calendarPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Calendar…</div>}>
+            <CalendarPage
+              onBack={() => setCalendarPageOpen(false)}
+              onOpenNote={(filePath) => {
+                setCalendarPageOpen(false);
+                void handleOpenReferencedDocument(filePath);
+              }}
+              onOpenTask={(task) => {
+                setCalendarPageOpen(false);
+                setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
+                setTaskWorkspaceOpen(true);
+              }}
+            />
+          </Suspense>
+        </div>
+      )}
+
 
 
       </div>

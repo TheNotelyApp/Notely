@@ -549,6 +549,17 @@ function buildAppMenuTemplate(win, context = {}) {
       label: "Workspace",
       submenu: [
         {
+          label: "Tasks",
+          accelerator: "CmdOrCtrl+Shift+T",
+          click: () => sendMenuAction(win, "open-tasks-workspace")
+        },
+        {
+          label: "Calendar",
+          accelerator: "CmdOrCtrl+Shift+L",
+          click: () => sendMenuAction(win, "open-calendar")
+        },
+        { type: "separator" },
+        {
           label: "Workspace Information",
           click: () => sendMenuAction(win, "open-workspace-info")
         },

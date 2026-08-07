@@ -1,7 +1,8 @@
-import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search, Trash2, FileText, Star, Sparkles } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search, Trash2, FileText, Star, Sparkles, Calendar, AlertTriangle } from "lucide-react";
+import { useMemo, useEffect, useState } from "react";
 import { formatDate } from "../utils/dateUtils";
 import { extractOpenTasksFromDocuments, getTaskCountsFromDocuments } from "../utils/taskUtils";
+import { listTasks } from "../services/electronService";
 
 const DASHBOARD_SECTION_LIMIT = 3;
 
@@ -82,6 +83,14 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
     );
   }
 
+  const [overdueCount, setOverdueCount] = useState(0);
+
+  useEffect(() => {
+    listTasks({ status: "overdue" })
+      .then(tasks => setOverdueCount(Array.isArray(tasks) ? tasks.length : 0))
+      .catch(() => setOverdueCount(0));
+  }, []);
+
   if (loading) return null;
 
   if (layout === "rail") {
@@ -100,6 +109,12 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
             </button>
             <button type="button" onClick={() => onAction("search")} data-tooltip="Search" aria-label="Search">
               <Search size={14} />
+            </button>
+            <button type="button" onClick={() => onAction("tasks-workspace")} data-tooltip="Tasks Workspace" aria-label="Tasks Workspace">
+              <CheckSquare size={14} />
+            </button>
+            <button type="button" onClick={() => onAction("calendar")} data-tooltip="Calendar" aria-label="Calendar">
+              <Calendar size={14} />
             </button>
             <button type="button" onClick={() => onAction("ai")} data-tooltip="AI Assistant" aria-label="AI Assistant">
               <Sparkles size={14} />
@@ -190,6 +205,18 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
           <div className="dashboard-panel-head">
             <h3>Open Tasks</h3>
             <div className="dashboard-task-head-actions">
+              {overdueCount > 0 && (
+                <button
+                  type="button"
+                  className="dashboard-task-badge dashboard-task-overdue"
+                  onClick={() => onAction("tasks-overdue")}
+                  data-tooltip={`${overdueCount} task${overdueCount > 1 ? "s" : ""} past deadline!`}
+                  style={{ cursor: "pointer", background: "var(--surface-danger)", color: "var(--status-danger-text)", border: "1px solid var(--status-danger-border)", padding: "1px 6px", borderRadius: "100px", fontSize: "10px", fontWeight: "bold", display: "inline-flex", alignItems: "center", gap: "3px" }}
+                >
+                  <AlertTriangle size={10} />
+                  <span>{overdueCount} overdue</span>
+                </button>
+              )}
               {taskCounts.total > 0 && (
                 <button
                   type="button"
@@ -275,6 +302,14 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
             <button type="button" onClick={() => onAction("search")}>
               <Search size={14} />
               Search
+            </button>
+            <button type="button" onClick={() => onAction("tasks-workspace")}>
+              <CheckSquare size={14} />
+              Tasks
+            </button>
+            <button type="button" onClick={() => onAction("calendar")}>
+              <Calendar size={14} />
+              Calendar
             </button>
             <button type="button" onClick={() => onAction("assets")}>
               <ImageIcon size={14} />

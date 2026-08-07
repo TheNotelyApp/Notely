@@ -25,6 +25,9 @@ export function UIStateProvider({ children }) {
   const [recentNotesPanelOpen, setRecentNotesPanelOpen] = useState(false);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   const [trashDialogOpen, setTrashDialogOpen] = useState(false);
+  const [taskWorkspaceOpen, setTaskWorkspaceOpen] = useState(false);
+  const [taskWorkspaceContext, setTaskWorkspaceContext] = useState(null);
+  const [calendarPageOpen, setCalendarPageOpen] = useState(false);
 
   // App Sizing / Info / Onboarding
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
@@ -60,6 +63,9 @@ export function UIStateProvider({ children }) {
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
     trashDialogOpen, setTrashDialogOpen,
+    taskWorkspaceOpen, setTaskWorkspaceOpen,
+    taskWorkspaceContext, setTaskWorkspaceContext,
+    calendarPageOpen, setCalendarPageOpen,
 
     // Export & System states
     workspaceExportOpen, setWorkspaceExportOpen,

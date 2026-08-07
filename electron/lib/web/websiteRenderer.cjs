@@ -23,6 +23,25 @@ function createWebsiteRenderer(deps) {
     getNotesRoot
   } = deps;
 
+function processCallouts(html) {
+  if (!html) return "";
+  return html.replace(
+    /<blockquote>\s*<p>\s*\[!(NOTE|WARNING|TIP|TODO|IMPORTANT|CAUTION)\][ \t]*(.*?)(?:<br\s*\/?>|\n)?([\s\S]*?)<\/p>\s*<\/blockquote>/gi,
+    (_match, type, title, rest) => {
+      const calloutType = type.toLowerCase();
+      const displayTitle = title.trim() || type;
+      const icons = { note: "📝", warning: "⚠️", tip: "💡", todo: "☑️", important: "ℹ️", caution: "🚨" };
+      const icon = icons[calloutType] || "📌";
+      const bodyHtml = rest.trim() ? `<p>${rest.trim()}</p>` : "";
+      return `<div class="notely-callout callout-${calloutType}">
+        <div class="notely-callout-header"><span class="notely-callout-icon">${icon}</span> <span>${escapeCodeHtml(displayTitle)}</span></div>
+        <div class="notely-callout-body">${bodyHtml}</div>
+      </div>`;
+    }
+  );
+}
+
+
 function escapeCodeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")

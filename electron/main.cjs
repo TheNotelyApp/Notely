@@ -45,7 +45,7 @@ const { initializeAIHandlers } = require("./ai/aiHandlers.cjs");
 const { registerGitIpcHandlers } = require("./lib/git/gitIpc.cjs");
 const gitService = require("./lib/git/gitService.cjs");
 const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
-
+const { registerTaskIpc } = require("./lib/tasks/taskIpc.cjs");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const projectRoot = app.getAppPath();
@@ -1270,4 +1270,12 @@ registerGitIpcHandlers(ipcMain, {
   assertTrustedIpcSender,
   BrowserWindow,
   getNotesRoot: () => notesRoot,
+});
+
+registerTaskIpc(ipcMain, {
+  BrowserWindow,
+  getNotesRoot: () => notesRoot,
+  getActiveProject,
+  getMetadataStore: () => metadataStore,
+  getAppDataDir: () => appDataDir,
 });

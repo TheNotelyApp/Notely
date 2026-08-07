@@ -64,6 +64,8 @@ const MENU_ICON_MAP = {
   "tile notes": Layout,
   "table notes": Layout,
 
+  "tasks": CheckSquare,
+  "calendar": Clock,
   "assets library": ImageIcon,
   "workspace": FolderOpen,
   "workspace information": Info,
@@ -141,6 +143,10 @@ function getItemIcon(item) {
       IconComponent = ZoomIn;
     } else if (rawLabel.includes("reload") || rawLabel.includes("refresh")) {
       IconComponent = RefreshCw;
+    } else if (rawLabel.includes("task")) {
+      IconComponent = CheckSquare;
+    } else if (rawLabel.includes("calendar")) {
+      IconComponent = Clock;
     } else if (rawLabel.includes("remove") || rawLabel.includes("delete") || rawLabel.includes("trash")) {
       IconComponent = Trash2;
     }
