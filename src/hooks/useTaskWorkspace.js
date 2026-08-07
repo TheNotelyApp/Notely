@@ -25,6 +25,7 @@ export function useTaskWorkspace({ noteFilter = null } = {}) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState("all");
+  const [layoutMode, setLayoutMode] = useState("list"); // 'list' or 'kanban'
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [comments, setComments] = useState([]);
@@ -157,8 +158,10 @@ export function useTaskWorkspace({ noteFilter = null } = {}) {
     persons,
     error,
     views: VIEWS,
+    layoutMode,
     // Actions
     setView,
+    setLayoutMode,
     setSearch,
     setSelectedId,
     handleCreate,

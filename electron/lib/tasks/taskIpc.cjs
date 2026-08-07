@@ -103,7 +103,7 @@ function writeTaskStatusToNote(filePath, sourceLine, newStatus) {
       const line = lines[lineIdx];
       if (newStatus === 'done' && /\[[ ]\]/.test(line)) {
         updatedLine = line.replace(/\[[ ]\]/, '[x]');
-      } else if (newStatus === 'open' && /\[[xX]\]/.test(line)) {
+      } else if ((newStatus === 'open' || newStatus === 'in_progress') && /\[[xX]\]/.test(line)) {
         updatedLine = line.replace(/\[[xX]\]/, '[ ]');
       }
     }
@@ -116,7 +116,7 @@ function writeTaskStatusToNote(filePath, sourceLine, newStatus) {
           updatedLine = line.replace(/\[[ ]\]/, '[x]');
           updatedIdx = i;
           break;
-        } else if (newStatus === 'open' && /\[[xX]\]/.test(line)) {
+        } else if ((newStatus === 'open' || newStatus === 'in_progress') && /\[[xX]\]/.test(line)) {
           updatedLine = line.replace(/\[[xX]\]/, '[ ]');
           updatedIdx = i;
           break;
@@ -210,7 +210,9 @@ function registerTaskIpc(ipcMain, deps) {
     if (!db) return null;
 
     let targetFile = payload.sourcePath;
-    if (!targetFile && root) {
+    if (payload.standalone || payload.sourcePath === "none") {
+      targetFile = null;
+    } else if (!targetFile && root) {
       targetFile = path.join(root, 'Tasks.md');
     }
 
@@ -230,7 +232,14 @@ function registerTaskIpc(ipcMain, deps) {
 
   trusted('tasks:update', (_event, { id, ...fields }) => {
     const db = getDb();
-    return db ? db.updateTask(id, fields) : null;
+    if (!db) return null;
+    const task = db.getTask(id);
+    if (!task) return null;
+    const updated = db.updateTask(id, fields);
+    if (fields.status && task.source_path) {
+      writeTaskStatusToNote(task.source_path, task.source_line, fields.status);
+    }
+    return updated;
   });
 
   trusted('tasks:complete', (_event, { id, status = 'done' }) => {
