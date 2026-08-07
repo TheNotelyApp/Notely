@@ -260,6 +260,46 @@ export function renderCallouts(html) {
   });
 }
 
+export function renderTaskLinks(html) {
+  if (!html || typeof html !== "string" || !html.includes("[") || !html.includes("]")) return html;
+
+  // Protect code blocks and figures from task replacement
+  const protectedBlocks = [];
+  const protectedHtml = html.replace(/<(figure|pre|code)[^>]*>[\s\S]*?<\/\1>/gi, (match) => {
+    const placeholder = `__PROTECTED_BLOCK_${protectedBlocks.length}__`;
+    protectedBlocks.push(match);
+    return placeholder;
+  });
+
+  // Match task checkboxes in block containers (li, p, div)
+  const taskBlockRegex = /<(li|p|div)([^>]*)>\s*\[([ xX])\]\s*([\s\S]*?)<\/\1>/gi;
+
+  let processed = protectedHtml.replace(taskBlockRegex, (fullMatch, tag, attrs, rawStatus, innerContent) => {
+    const isDone = rawStatus.toLowerCase() === "x";
+    const status = isDone ? "done" : "open";
+    const cleanText = innerContent.replace(/<[^>]+>/g, "").trim();
+    const escapedTitle = String(cleanText)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const itemClass = tag === "li" ? "task-list-item" : "task-paragraph-item";
+    const updatedAttrs = attrs.includes('class="')
+      ? attrs.replace('class="', `class="${itemClass} `)
+      : `${attrs} class="${itemClass}"`;
+
+    return `<${tag}${updatedAttrs}><button type="button" class="task-preview-link ${status}" data-task-status="${status}" data-task-title="${escapedTitle}" data-tooltip="Click to view task details" title="Click to view task details"><span class="task-checkbox-icon">${isDone ? "[x]" : "[ ]"}</span><span class="task-title-text">${innerContent}</span></button></${tag}>`;
+  });
+
+  // Restore protected blocks
+  protectedBlocks.forEach((block, index) => {
+    processed = processed.replace(`__PROTECTED_BLOCK_${index}__`, block);
+  });
+
+  return processed;
+}
+
 export function renderMarkdown(content, options = {}) {
   const normalized = String(content || "")
     .replace(/\r\n/g, "\n")
@@ -267,7 +307,8 @@ export function renderMarkdown(content, options = {}) {
     .replace(/\n{3,}/g, "\n\n");
   const linkNormalized = normalizeMarkdownLinks(normalized);
   const renderedHtml = md.render(linkNormalized, options);
-  return renderCallouts(renderedHtml);
+  const withCallouts = renderCallouts(renderedHtml);
+  return renderTaskLinks(withCallouts);
 }
 
 /**

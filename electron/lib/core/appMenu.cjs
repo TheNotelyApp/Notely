@@ -134,7 +134,7 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "reload-document")
         },
         {
-          label: "Move Note to Removed",
+          label: "Remove Note",
           accelerator: "CmdOrCtrl+Delete",
           click: () => sendMenuAction(win, "remove-document")
         },

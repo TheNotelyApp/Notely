@@ -4,12 +4,32 @@ const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 
-const TASK_DB_DIR = '.notes_app';
+const TASK_DB_DIR = '.notes-app';
 const TASK_DB_FILE = 'task-db.sqlite';
 const TASK_JSON_FILE = 'tasks.json';
 
-function hashSource(filePath, lineText) {
-  return crypto.createHash('sha1').update(`${filePath}\x00${lineText}`).digest('hex');
+function hashSource(filePath, lineText, occurrenceIndex = 1) {
+  const cleanText = String(lineText || "")
+    .replace(/^[ \t]*[-*+]?[ \t]*\[[ xX]\][ \t]*/, "")
+    .trim()
+    .toLowerCase();
+  const suffix = occurrenceIndex > 1 ? `::${occurrenceIndex}` : "";
+  return crypto.createHash('sha1').update(`${filePath}\x00${cleanText}${suffix}`).digest('hex');
+}
+
+function calculateSimilarity(str1, str2) {
+  const s1 = String(str1 || '').toLowerCase().trim();
+  const s2 = String(str2 || '').toLowerCase().trim();
+  if (s1 === s2) return 1.0;
+  if (!s1 || !s2) return 0;
+  const words1 = new Set(s1.split(/\s+/));
+  const words2 = new Set(s2.split(/\s+/));
+  let intersection = 0;
+  for (const w of words1) {
+    if (words2.has(w)) intersection++;
+  }
+  const union = new Set([...words1, ...words2]).size;
+  return union ? intersection / union : 0;
 }
 
 function randomId() {
@@ -133,33 +153,117 @@ class TaskDatabase {
     let updated = 0;
 
     if (this.db) {
-      for (const t of parsedTasks) {
-        const hash = hashSource(filePath, t.lineText);
-        const existing = this.db.prepare(
-          'SELECT id, status, user_managed FROM tasks WHERE source_hash = ?'
-        ).get(hash);
+      const existingDbTasks = this.db.prepare(
+        'SELECT * FROM tasks WHERE source_path = ? AND user_managed = 0'
+      ).all(filePath).map(r => this._deserialize(r));
 
-        if (!existing) {
-          this.db.prepare(`
-            INSERT INTO tasks (id, title, status, source_path, source_line, source_hash,
-                               user_managed, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
-          `).run(randomId(), t.title, t.status, filePath, t.line, hash, now, now);
-          inserted++;
-        } else if (!existing.user_managed && existing.status !== t.status) {
+      const matchedTaskIds = new Set();
+      const matchedParsedIndices = new Set();
+
+      // Pass 1: Exact hash match (title + filePath)
+      for (let i = 0; i < parsedTasks.length; i++) {
+        const t = parsedTasks[i];
+        const hash = hashSource(filePath, t.title);
+        const match = existingDbTasks.find(dbT => !matchedTaskIds.has(dbT.id) && dbT.source_hash === hash);
+
+        if (match) {
+          matchedTaskIds.add(match.id);
+          matchedParsedIndices.add(i);
+          if (match.status !== t.status || match.source_line !== t.line) {
+            const completedAt = t.status === 'done' ? now : (t.status === 'open' ? null : match.completed_at);
+            this.db.prepare(
+              'UPDATE tasks SET status = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+            ).run(t.status, t.line, now, completedAt, match.id);
+            updated++;
+          }
+        }
+      }
+
+      // Pass 2: Line index match for title edits on same line
+      for (let i = 0; i < parsedTasks.length; i++) {
+        if (matchedParsedIndices.has(i)) continue;
+        const t = parsedTasks[i];
+        const match = existingDbTasks.find(dbT => !matchedTaskIds.has(dbT.id) && dbT.source_line === t.line);
+
+        if (match) {
+          matchedTaskIds.add(match.id);
+          matchedParsedIndices.add(i);
+          const newHash = hashSource(filePath, t.title);
           const completedAt = t.status === 'done' ? now : null;
           this.db.prepare(
-            'UPDATE tasks SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-          ).run(t.status, now, completedAt, existing.id);
+            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+          ).run(t.title, t.status, newHash, t.line, now, completedAt, match.id);
           updated++;
         }
       }
+
+      // Pass 3: Fuzzy title / positional alignment for remaining unmatched tasks
+      const unmatchedDb = existingDbTasks.filter(dbT => !matchedTaskIds.has(dbT.id));
+      const unmatchedParsed = parsedTasks.map((t, idx) => ({ ...t, idx })).filter(t => !matchedParsedIndices.has(t.idx));
+
+      for (const p of unmatchedParsed) {
+        let bestMatch = null;
+        let bestScore = 0;
+
+        for (const dbT of unmatchedDb) {
+          if (matchedTaskIds.has(dbT.id)) continue;
+          const score = calculateSimilarity(dbT.title, p.title);
+          if (score > 0.35 && score > bestScore) {
+            bestScore = score;
+            bestMatch = dbT;
+          }
+        }
+
+        if (!bestMatch && unmatchedDb.length === 1 && unmatchedParsed.length === 1) {
+          bestMatch = unmatchedDb[0];
+        }
+
+        if (bestMatch) {
+          matchedTaskIds.add(bestMatch.id);
+          matchedParsedIndices.add(p.idx);
+          const newHash = hashSource(filePath, p.title);
+          const completedAt = p.status === 'done' ? now : null;
+          this.db.prepare(
+            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+          ).run(p.title, p.status, newHash, p.line, now, completedAt, bestMatch.id);
+          updated++;
+        } else {
+          // Insert new task safely checking if source_hash already exists
+          const hash = hashSource(filePath, p.title);
+          const existingHashMatch = this.db.prepare('SELECT id FROM tasks WHERE source_hash = ?').get(hash);
+
+          if (existingHashMatch) {
+            const completedAt = p.status === 'done' ? now : null;
+            this.db.prepare(
+              'UPDATE tasks SET status = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+            ).run(p.status, p.line, now, completedAt, existingHashMatch.id);
+            updated++;
+          } else {
+            this.db.prepare(`
+              INSERT INTO tasks (id, title, status, source_path, source_line, source_hash,
+                                 user_managed, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+            `).run(randomId(), p.title, p.status, filePath, p.line, hash, now, now);
+            inserted++;
+          }
+        }
+      }
+
+      // Pass 4: Purge orphaned DB tasks for this file
+      for (const dbT of existingDbTasks) {
+        if (!matchedTaskIds.has(dbT.id)) {
+          this.db.prepare('DELETE FROM tasks WHERE id = ?').run(dbT.id);
+        }
+      }
+
       return { inserted, updated };
     }
 
     if (this.jsonState) {
+      const activeHashSet = new Set();
       for (const t of parsedTasks) {
-        const hash = hashSource(filePath, t.lineText);
+        const hash = hashSource(filePath, t.title);
+        activeHashSet.add(hash);
         const existing = this.jsonState.tasks.find(x => x.source_hash === hash);
 
         if (!existing) {
@@ -187,11 +291,20 @@ class TaskDatabase {
           inserted++;
         } else if (!existing.user_managed && existing.status !== t.status) {
           existing.status = t.status;
+          existing.source_line = t.line;
           existing.updated_at = now;
           existing.completed_at = t.status === 'done' ? now : null;
           updated++;
+        } else if (existing.source_line !== t.line) {
+          existing.source_line = t.line;
         }
       }
+
+      // Purge orphaned tasks for this file
+      this.jsonState.tasks = this.jsonState.tasks.filter(
+        t => t.source_path !== filePath || t.user_managed === 1 || activeHashSet.has(t.source_hash)
+      );
+
       this._saveJson();
     }
 
@@ -254,7 +367,7 @@ class TaskDatabase {
         } else if (status === 'today') {
           list = list.filter(t => t.status === 'open' && t.due_date === todayStr);
         } else if (status === 'upcoming') {
-          list = list.filter(t => t.status === 'open' && (!t.due_date || t.due_date >= todayStr));
+          list = list.filter(t => t.status === 'open' && (t.due_date == null || t.due_date >= todayStr));
         } else {
           list = list.filter(t => t.status === status);
         }
@@ -307,28 +420,47 @@ class TaskDatabase {
   createTask({ title, description = '', status = 'open', priority = 0, sourcePath, sourceLine,
                dueDate, scheduledStart, scheduledEnd, isAllDay = 1,
                reminder, personTags = [], metadata = {} }) {
-    const id = randomId();
     const now = nowISO();
+    const isNoteTask = Boolean(sourcePath && sourcePath !== 'none');
+    const sourceHash = isNoteTask ? hashSource(sourcePath, title) : null;
 
     if (this.db) {
+      if (sourceHash) {
+        const existing = this.db.prepare('SELECT id FROM tasks WHERE source_hash = ?').get(sourceHash);
+        if (existing) {
+          this.updateTask(existing.id, { title, description, status, priority, dueDate, scheduledStart, scheduledEnd, isAllDay, reminder, personTags });
+          return this.getTask(existing.id);
+        }
+      }
+
+      const id = randomId();
       this.db.prepare(`
-        INSERT INTO tasks (id, title, description, status, priority, source_path, source_line,
-                           due_date, scheduled_start, scheduled_end, is_all_day, reminder,
+        INSERT INTO tasks (id, title, description, status, priority, source_path, source_line, source_hash,
+                           user_managed, due_date, scheduled_start, scheduled_end, is_all_day, reminder,
                            person_tags, metadata, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, title, description, status, priority, sourcePath ?? null, sourceLine ?? null,
-             dueDate ?? null, scheduledStart ?? null, scheduledEnd ?? null, isAllDay ? 1 : 0,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, title, description, status, priority, isNoteTask ? sourcePath : null, sourceLine ?? null, sourceHash,
+             isNoteTask ? 0 : 1, dueDate ?? null, scheduledStart ?? null, scheduledEnd ?? null, isAllDay ? 1 : 0,
              reminder ?? null, JSON.stringify(personTags), JSON.stringify(metadata), now, now);
       return this.getTask(id);
     }
 
     if (this.jsonState) {
+      if (sourceHash) {
+        const existing = this.jsonState.tasks.find(t => t.source_hash === sourceHash);
+        if (existing) {
+          this.updateTask(existing.id, { title, description, status, priority, dueDate, scheduledStart, scheduledEnd, isAllDay, reminder, personTags });
+          return this.getTask(existing.id);
+        }
+      }
+
+      const id = randomId();
       const task = {
         id, title, description, status, priority,
-        source_path: sourcePath ?? null,
+        source_path: isNoteTask ? sourcePath : null,
         source_line: sourceLine ?? null,
-        source_hash: null,
-        user_managed: 1,
+        source_hash: sourceHash,
+        user_managed: isNoteTask ? 0 : 1,
         due_date: dueDate ?? null,
         scheduled_start: scheduledStart ?? null,
         scheduled_end: scheduledEnd ?? null,

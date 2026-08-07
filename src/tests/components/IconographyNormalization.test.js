@@ -36,6 +36,7 @@ describe("Iconography normalization", () => {
 
     for (const filePath of files) {
       const source = fs.readFileSync(filePath, "utf8");
+      iconSizePattern.lastIndex = 0;
       let match = iconSizePattern.exec(source);
       while (match) {
         const size = Number(match[1]);
@@ -47,6 +48,6 @@ describe("Iconography normalization", () => {
       }
     }
 
-    expect(offenders).toEqual([]);
+    expect(offenders, offenders.join("\n")).toEqual([]);
   });
 });

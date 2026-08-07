@@ -1316,6 +1316,69 @@
   white-space: normal;
 }
 
+/* Task preview interactive link button */
+.task-preview-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--text-strong);
+  text-align: left;
+  cursor: pointer;
+  line-height: inherit;
+  transition: all var(--motion-fast);
+}
+
+.task-preview-link:hover {
+  background: var(--surface-subtle);
+  border-color: var(--border-soft);
+  color: var(--accent-solid);
+}
+
+.task-preview-link.done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.task-checkbox-icon {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--accent-solid);
+  flex-shrink: 0;
+}
+
+.task-preview-link.done .task-checkbox-icon {
+  color: var(--text-subtle);
+}
+
+.task-title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-detail-modal-card {
+  width: 90vw;
+  max-width: 720px;
+  max-height: 85vh;
+  padding: 0 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-modal-detail-pane {
+  height: 100%;
+  max-height: 85vh;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
 .note-list-panel-list {
   list-style: none;
   margin: 0;

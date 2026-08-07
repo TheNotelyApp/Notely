@@ -89,7 +89,7 @@ function appendTaskToNote(filePath, title) {
 /**
  * Write [x] or [ ] back to a note file when a task is completed via the UI.
  */
-function writeTaskStatusToNote(filePath, sourceLine, newStatus) {
+function writeTaskStatusToNote(filePath, sourceLine, newStatus, taskTitle) {
   if (!filePath || !fs.existsSync(filePath)) return false;
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -97,34 +97,40 @@ function writeTaskStatusToNote(filePath, sourceLine, newStatus) {
     const lineIdx = (sourceLine ?? 1) - 1;
 
     let updatedLine = null;
-    let updatedIdx = lineIdx;
+    let updatedIdx = -1;
 
+    // 1. Check exact line number
     if (lineIdx >= 0 && lineIdx < lines.length) {
       const line = lines[lineIdx];
       if (newStatus === 'done' && /\[[ ]\]/.test(line)) {
         updatedLine = line.replace(/\[[ ]\]/, '[x]');
+        updatedIdx = lineIdx;
       } else if ((newStatus === 'open' || newStatus === 'in_progress') && /\[[xX]\]/.test(line)) {
         updatedLine = line.replace(/\[[xX]\]/, '[ ]');
+        updatedIdx = lineIdx;
       }
     }
 
-    // Fallback: search lines if exact line number didn't match
-    if (!updatedLine) {
+    // 2. Fallback: Search lines for task title match
+    if (updatedIdx < 0 && taskTitle) {
+      const cleanTitle = String(taskTitle).trim().toLowerCase();
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (newStatus === 'done' && /\[[ ]\]/.test(line)) {
-          updatedLine = line.replace(/\[[ ]\]/, '[x]');
-          updatedIdx = i;
-          break;
-        } else if ((newStatus === 'open' || newStatus === 'in_progress') && /\[[xX]\]/.test(line)) {
-          updatedLine = line.replace(/\[[xX]\]/, '[ ]');
-          updatedIdx = i;
-          break;
+        if (line.toLowerCase().includes(cleanTitle)) {
+          if (newStatus === 'done' && /\[[ ]\]/.test(line)) {
+            updatedLine = line.replace(/\[[ ]\]/, '[x]');
+            updatedIdx = i;
+            break;
+          } else if ((newStatus === 'open' || newStatus === 'in_progress') && /\[[xX]\]/.test(line)) {
+            updatedLine = line.replace(/\[[xX]\]/, '[ ]');
+            updatedIdx = i;
+            break;
+          }
         }
       }
     }
 
-    if (!updatedLine || updatedIdx < 0) return false;
+    if (updatedIdx < 0 || !updatedLine) return false;
 
     lines[updatedIdx] = updatedLine;
     fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
@@ -237,7 +243,7 @@ function registerTaskIpc(ipcMain, deps) {
     if (!task) return null;
     const updated = db.updateTask(id, fields);
     if (fields.status && task.source_path) {
-      writeTaskStatusToNote(task.source_path, task.source_line, fields.status);
+      writeTaskStatusToNote(task.source_path, task.source_line, fields.status, task.title);
     }
     return updated;
   });
@@ -253,7 +259,7 @@ function registerTaskIpc(ipcMain, deps) {
 
     // Two-way sync: write back to source note
     if (task.source_path) {
-      writeTaskStatusToNote(task.source_path, task.source_line, status);
+      writeTaskStatusToNote(task.source_path, task.source_line, status, task.title);
     }
 
     return updated;

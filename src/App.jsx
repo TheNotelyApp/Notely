@@ -2818,6 +2818,12 @@ export default function App() {
       return [...currentFavorites, filePath];
     });
   }
+
+  const handleOpenAllTasks = useCallback((notePath) => {
+    setTaskWorkspaceContext(notePath ? { noteFilter: notePath } : null);
+    setTaskWorkspaceOpen(true);
+  }, [setTaskWorkspaceContext, setTaskWorkspaceOpen]);
+
   const rootPath = activeProject?.rootPath || notesFolderPath || "";
   const currentLandingPath = landingFolderPath || rootPath;
   const normalizedRootPath = String(rootPath || "").replace(/[\\/]+$/, "");
@@ -3221,6 +3227,7 @@ export default function App() {
             menuAction={documentMenuAction}
             onNotify={notify}
             onBack={handleGoHome}
+            onOpenAllTasks={handleOpenAllTasks}
             breadcrumbs={noteBreadcrumbSegments}
             onNavigateBreadcrumb={async (targetPath) => {
               const didLeave = await handleGoHome();
