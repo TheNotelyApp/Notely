@@ -24,41 +24,77 @@ const EVENT_TYPE_META = {
   "task-overdue":    { label: "Task Overdue",   className: "cal-event-task-overdue", Icon: AlertTriangle },
 };
 
-function buildRbcEvents(taskEvents, noteEvents) {
+function buildRbcEvents(rawResult) {
   const events = [];
 
-  for (const task of taskEvents) {
-    const meta = EVENT_TYPE_META[task._eventType] ?? EVENT_TYPE_META["task-due"];
-    const start = task.scheduled_start
-      ? new Date(task.scheduled_start)
-      : task.due_date
-        ? new Date(task.due_date + "T00:00:00")
-        : null;
+  let taskList = [];
+  let noteList = [];
+
+  if (Array.isArray(rawResult)) {
+    for (const item of rawResult) {
+      if (item.type?.startsWith("note") || item._eventType?.startsWith("note")) {
+        noteList.push(item);
+      } else {
+        taskList.push(item);
+      }
+    }
+  } else if (rawResult && typeof rawResult === "object") {
+    taskList = Array.isArray(rawResult.taskEvents) ? rawResult.taskEvents : (Array.isArray(rawResult.tasks) ? rawResult.tasks : []);
+    noteList = Array.isArray(rawResult.noteEvents) ? rawResult.noteEvents : (Array.isArray(rawResult.notes) ? rawResult.notes : []);
+    if (!taskList.length && !noteList.length && Array.isArray(rawResult.events)) {
+      for (const item of rawResult.events) {
+        if (item.type?.startsWith("note") || item._eventType?.startsWith("note")) noteList.push(item);
+        else taskList.push(item);
+      }
+    }
+  }
+
+  for (const task of taskList) {
+    const type = task.type || task._eventType || (task.due_date ? "task-due" : "task-scheduled");
+    const meta = EVENT_TYPE_META[type] ?? EVENT_TYPE_META["task-due"];
+
+    let start = task.start
+      ? new Date(task.start)
+      : task.scheduled_start
+        ? new Date(task.scheduled_start)
+        : task.due_date
+          ? new Date(task.due_date + "T00:00:00")
+          : null;
     if (!start) continue;
-    const end = task.scheduled_end ? new Date(task.scheduled_end) : new Date(start.getTime() + 60 * 60000);
+
+    let end = task.end
+      ? new Date(task.end)
+      : task.scheduled_end
+        ? new Date(task.scheduled_end)
+        : new Date(start.getTime() + 60 * 60000);
+
     events.push({
-      id: `task-${task.id}`,
+      id: task.id || `task-${Math.random()}`,
       title: task.title || "Task",
       start,
       end,
-      allDay: task.is_all_day || !task.scheduled_start,
-      resource: { ...task, _eventType: task._eventType },
+      allDay: Boolean(task.allDay || task.is_all_day || (!task.scheduled_start && task.due_date)),
+      resource: { ...task, _eventType: type },
       className: meta.className,
     });
   }
 
-  for (const note of noteEvents) {
-    if (!note.createdAt) continue;
-    const start = new Date(note.createdAt);
-    const end = new Date(start.getTime() + 30 * 60000);
-    const meta = EVENT_TYPE_META[note._eventType] ?? EVENT_TYPE_META["note-updated"];
+  for (const note of noteList) {
+    const type = note.type || note._eventType || "note-updated";
+    const startStr = note.start || note.updatedAt || note.created_at || note.createdAt;
+    if (!startStr) continue;
+
+    const start = new Date(startStr);
+    const end = note.end ? new Date(note.end) : new Date(start.getTime() + 30 * 60000);
+    const meta = EVENT_TYPE_META[type] ?? EVENT_TYPE_META["note-updated"];
+
     events.push({
-      id: note.id,
+      id: note.id || `note-${Math.random()}`,
       title: note.title || "Note",
       start,
       end,
-      allDay: false,
-      resource: { ...note, _eventType: note._eventType },
+      allDay: Boolean(note.allDay ?? true),
+      resource: { ...note, _eventType: type },
       className: meta.className,
     });
   }
@@ -149,7 +185,7 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
         format(padStart, "yyyy-MM-dd"),
         format(padEnd,   "yyyy-MM-dd")
       );
-      const built = buildRbcEvents(result.taskEvents ?? [], result.noteEvents ?? []);
+      const built = buildRbcEvents(result);
       setEvents(built);
     } catch (err) {
       setError(err.message);
@@ -186,42 +222,48 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
 
   return (
     <div className="calendar-page">
-      {/* Header */}
-      <div className="calendar-header">
-        <button className="task-back-btn" type="button" onClick={onBack} aria-label="Back to notes">
-          <ArrowLeft size={16} />
-        </button>
-        <div className="calendar-header-title">
-          <CalendarIcon size={18} />
-          <div>
-            <span>Calendar</span>
-            <span style={{ fontSize: "var(--font-size-meta)", color: "var(--text-muted)", display: "block", fontWeight: 500 }}>
-              {format(date, "MMMM yyyy")}
-            </span>
-          </div>
-        </div>
-        <div className="calendar-header-nav">
-          <button className="cal-nav-btn" type="button" onClick={() => setDate(d => subMonths(d, 1))} aria-label="Previous month">
-            <ChevronLeft size={16} />
-          </button>
-          <button className="cal-nav-today" type="button" onClick={() => setDate(new Date())}>Today</button>
-          <button className="cal-nav-btn" type="button" onClick={() => setDate(d => addMonths(d, 1))} aria-label="Next month">
-            <ChevronRight size={16} />
-          </button>
-        </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <span className="task-truth-badge" style={{ fontSize: "var(--font-size-caption)" }}>
-            {visibleEvents.length} event{visibleEvents.length !== 1 ? "s" : ""}
+      {/* App-Standard Topbar Navigation */}
+      <div className="detail-topbar">
+        <nav className="detail-breadcrumb" aria-label="Calendar location">
+          <span className="detail-breadcrumb-part">
+            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
+              Workspace
+            </button>
+            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
           </span>
-          <div className="calendar-header-view-btns">
+          <span className="detail-breadcrumb-current">Calendar</span>
+        </nav>
+
+        <div className="detail-topbar-actions">
+          {/* Month Navigator */}
+          <div className="cal-header-month-nav">
+            <button className="cal-nav-btn icon-button" type="button" onClick={() => setDate(d => subMonths(d, 1))} data-tooltip="Previous month" aria-label="Previous month">
+              <ChevronLeft size={14} />
+            </button>
+            <span className="cal-month-title">{format(date, "MMMM yyyy")}</span>
+            <button className="cal-nav-btn icon-button" type="button" onClick={() => setDate(d => addMonths(d, 1))} data-tooltip="Next month" aria-label="Next month">
+              <ChevronRight size={14} />
+            </button>
+            <button className="cal-nav-today" type="button" onClick={() => setDate(new Date())}>Today</button>
+          </div>
+
+          <div className="task-stats-pill">
+            <CalendarIcon size={12} />
+            <span>{visibleEvents.length} events</span>
+          </div>
+
+          {/* View mode toggle: Month vs Week vs Day */}
+          <div className="tab-bar cal-view-toggle-tabbar" role="tablist">
             {["month", "week", "day"].map(v => (
               <button
                 key={v}
                 type="button"
-                className={`cal-view-btn${view === v ? " active" : ""}`}
+                className={`tab-item${view === v ? " active" : ""}`}
                 onClick={() => setView(v)}
+                role="tab"
+                aria-selected={view === v}
               >
-                {v.charAt(0).toUpperCase() + v.slice(1)}
+                <span>{v.charAt(0).toUpperCase() + v.slice(1)}</span>
               </button>
             ))}
           </div>

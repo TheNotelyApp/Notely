@@ -784,7 +784,7 @@ export function TaskWorkspacePage({ onBack, onOpenNote, noteFilter = null }) {
         <nav className="detail-breadcrumb" aria-label="Tasks location">
           <span className="detail-breadcrumb-part">
             <button className="detail-breadcrumb-link" type="button" onClick={handleBackGuard}>
-              Notes
+              Workspace
             </button>
             <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
           </span>

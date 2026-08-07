@@ -356,46 +356,63 @@ function registerTaskIpc(ipcMain, deps) {
       }
     }
 
-    // Note events from metadataStore
-    try {
-      const store = getMetadataStore?.();
-      if (store) {
-        const notes = store.listNotes?.() || [];
-        for (const n of notes) {
-          const createdStr = n.created_at || n.createdAt;
-          const updatedStr = n.updated_at || n.updatedAt;
+    // Note events directly from workspace filesystem notes
+    if (root) {
+      try {
+        const walkNotes = (dir) => {
+          let entries = [];
+          try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+          for (const entry of entries) {
+            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              walkNotes(fullPath);
+            } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))) {
+              try {
+                const stat = fs.statSync(fullPath);
+                const title = entry.name.replace(/\.md$/i, '');
+                const createdStr = (stat.birthtime && !isNaN(stat.birthtime.getTime()) ? stat.birthtime : stat.ctime).toISOString();
+                const updatedStr = stat.mtime.toISOString();
+                const createdDate = createdStr.slice(0, 10);
+                const updatedDate = updatedStr.slice(0, 10);
 
-          if (createdStr && createdStr.slice(0, 10) >= startDate && createdStr.slice(0, 10) <= endDate) {
-            if (!types.length || types.includes('note-created')) {
-              events.push({
-                id: `note-created-${n.path}`,
-                title: `Created: ${n.title || path.basename(n.path, '.md')}`,
-                start: createdStr,
-                end: createdStr,
-                allDay: true,
-                type: 'note-created',
-                sourcePath: n.path,
-              });
+                if (createdDate >= startDate && createdDate <= endDate) {
+                  if (!types.length || types.includes('note-created')) {
+                    events.push({
+                      id: `note-created-${fullPath}`,
+                      title: `Created: ${title}`,
+                      start: createdStr,
+                      end: createdStr,
+                      allDay: true,
+                      type: 'note-created',
+                      sourcePath: fullPath,
+                      filePath: fullPath,
+                    });
+                  }
+                }
+
+                if (updatedDate >= startDate && updatedDate <= endDate) {
+                  if (!types.length || types.includes('note-updated')) {
+                    events.push({
+                      id: `note-updated-${fullPath}`,
+                      title: `Updated: ${title}`,
+                      start: updatedStr,
+                      end: updatedStr,
+                      allDay: true,
+                      type: 'note-updated',
+                      sourcePath: fullPath,
+                      filePath: fullPath,
+                    });
+                  }
+                }
+              } catch { /* ignore single stat error */ }
             }
           }
-
-          if (updatedStr && updatedStr.slice(0, 10) >= startDate && updatedStr.slice(0, 10) <= endDate) {
-            if (!types.length || types.includes('note-updated')) {
-              events.push({
-                id: `note-updated-${n.path}`,
-                title: `Updated: ${n.title || path.basename(n.path, '.md')}`,
-                start: updatedStr,
-                end: updatedStr,
-                allDay: true,
-                type: 'note-updated',
-                sourcePath: n.path,
-              });
-            }
-          }
-        }
+        };
+        walkNotes(root);
+      } catch (err) {
+        console.error('[taskIpc] calendar note events failed:', err.message);
       }
-    } catch (err) {
-      console.error('[taskIpc] calendar note events failed:', err.message);
     }
 
     return events;
