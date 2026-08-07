@@ -811,7 +811,7 @@ export function DocumentDetail({
     try {
       await onSave(options);
       if (document?.filePath) {
-        void syncTasksFromNote({ filePath: document.filePath, content: content || "" });
+        void syncTasksFromNote({ filePath: document.filePath, content: content || "" }).catch(() => {});
       }
     } finally {
       const shouldRestore = snapshot

@@ -1365,8 +1365,9 @@ export async function listTools() {
 // ── Tasks & Calendar ──────────────────────────────────────────────────────────
 
 export async function syncTasksFromNote(payload) {
+  if (typeof window === "undefined" || !window.notesApi) return { inserted: 0, updated: 0 };
   const api = getNotesApi();
-  if (typeof api.syncTasksFromNote !== 'function') return { inserted: 0, updated: 0 };
+  if (typeof api?.syncTasksFromNote !== 'function') return { inserted: 0, updated: 0 };
   return api.syncTasksFromNote(payload);
 }
 

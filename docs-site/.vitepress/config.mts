@@ -51,6 +51,7 @@ export default withMermaid(
         { text: "Home", link: "/" },
         { text: "Getting Started", link: "/getting-started/" },
         { text: "Editor", link: "/editor/" },
+        { text: "Workspace", link: "/workspace/" },
         { text: "Git", link: "/git/" },
         { text: "AI", link: "/ai/" },
         {
@@ -92,6 +93,7 @@ export default withMermaid(
           items: [
             { text: "Workspace Overview", link: "/workspace/" },
             { text: "Tasks", link: "/workspace/tasks" },
+            { text: "Calendar", link: "/workspace/calendar" },
             { text: "Media", link: "/workspace/media" },
             { text: "Screen Capture", link: "/workspace/screen-capture" },
             { text: "Workspace Graph", link: "/workspace/graph" },
