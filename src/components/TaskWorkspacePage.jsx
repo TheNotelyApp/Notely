@@ -93,7 +93,7 @@ function TaskRow({ task, isSelected, onSelect, onComplete, onOpenNote }) {
   );
 }
 
-function KanbanCard({ task, isSelected, onSelect, onStatusChange, onOpenNote }) {
+function KanbanCard({ task, isSelected, onSelect, _onStatusChange, onOpenNote }) {
   const isOverdue = task.due_date && task.status !== "done" && task.due_date < new Date().toISOString().slice(0, 10);
 
   const handleDragStart = (e) => {

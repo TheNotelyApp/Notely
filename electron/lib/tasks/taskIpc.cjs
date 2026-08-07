@@ -151,7 +151,7 @@ function saveAppDataPersons(appDataDir, persons) {
 }
 
 function registerTaskIpc(ipcMain, deps) {
-  const { BrowserWindow, getNotesRoot, getActiveProject, getMetadataStore, getAppDataDir } = deps;
+  const { BrowserWindow, getNotesRoot, getActiveProject, getAppDataDir } = deps;
 
   function trusted(channel, handler) {
     ipcMain.handle(channel, (event, payload) => {

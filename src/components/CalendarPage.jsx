@@ -3,7 +3,7 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { enUS } from "date-fns/locale";
 import {
-  ArrowLeft, ChevronLeft, ChevronRight, Calendar as CalendarIcon,
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   CheckCircle2, AlertTriangle, FileText, Clock,
 } from "lucide-react";
 import { getCalendarEvents } from "../services/electronService";
