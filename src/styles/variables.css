@@ -108,6 +108,10 @@
   --kg-doc-border: #ca8a04;
   --kg-url-bg: #faf5ff;
   --kg-url-border: #9333ea;
+  --border-divider: var(--border-muted);
+  --text-link: var(--accent-solid);
+  --search-match-bg: color-mix(in srgb, var(--accent-solid) 18%, var(--surface-bg));
+  --search-match-text: var(--text-strong);
   --kg-default-bg: #f3f4f6;
   --kg-default-border: #6b7280;
 

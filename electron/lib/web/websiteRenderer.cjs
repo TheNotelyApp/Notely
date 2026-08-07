@@ -370,14 +370,75 @@ function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
     activeSection = "cleansed";
   }
 
-  let bodyHtml = `<div class="doc-hero"><h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1><p class="doc-breadcrumb">${escapeHtml(relMdPath)}</p></div><div class="doc-body prose">${markdown.render(normalizedContent, { relMdPath })}</div>`;
+  function processCallouts(html) {
+    if (!html || typeof html !== "string" || !html.includes("<blockquote")) return html;
+
+    const calloutConfigs = {
+      NOTE: { title: "Note", icon: "ℹ️", class: "callout-note" },
+      INFO: { title: "Info", icon: "ℹ️", class: "callout-note" },
+      WARNING: { title: "Warning", icon: "⚠️", class: "callout-warning" },
+      TIP: { title: "Tip", icon: "💡", class: "callout-tip" },
+      HINT: { title: "Hint", icon: "💡", class: "callout-tip" },
+      TODO: { title: "Todo", icon: "📝", class: "callout-todo" },
+      IMPORTANT: { title: "Important", icon: "🌟", class: "callout-important" },
+      CAUTION: { title: "Caution", icon: "🚫", class: "callout-caution" },
+      DANGER: { title: "Danger", icon: "🚫", class: "callout-caution" },
+      ERROR: { title: "Error", icon: "🚫", class: "callout-caution" },
+      BUG: { title: "Bug", icon: "🐛", class: "callout-caution" },
+      SUCCESS: { title: "Success", icon: "✅", class: "callout-tip" },
+      QUESTION: { title: "Question", icon: "❓", class: "callout-todo" },
+      QUOTE: { title: "Quote", icon: "💬", class: "callout-note" },
+      ABSTRACT: { title: "Abstract", icon: "📋", class: "callout-important" },
+      SUMMARY: { title: "Summary", icon: "📋", class: "callout-important" },
+      EXAMPLE: { title: "Example", icon: "🔍", class: "callout-note" },
+    };
+
+    const bqRegex = /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi;
+
+    return html.replace(bqRegex, (fullMatch, innerContent) => {
+      const headerMatch = innerContent.match(/^\s*(?:<p[^>]*>\s*)?\[!([A-Za-z0-9_-]+)\]([^\n<]*)(?:<br\s*\/?>)?/i);
+      if (!headerMatch) return fullMatch;
+
+      const rawType = headerMatch[1].toUpperCase();
+      const customTitle = headerMatch[2].trim();
+      const config = calloutConfigs[rawType] || {
+        title: rawType.charAt(0) + rawType.slice(1).toLowerCase(),
+        icon: "📌",
+        class: "callout-note",
+      };
+
+      const displayTitle = customTitle || config.title;
+
+      let bodyContent = innerContent.replace(headerMatch[0], "").trim();
+      bodyContent = bodyContent.replace(/^<\/p>/i, "").trim();
+
+      if (bodyContent && !bodyContent.startsWith("<p>") && !bodyContent.startsWith("<div") && !bodyContent.startsWith("<ul") && !bodyContent.startsWith("<ol")) {
+        bodyContent = `<p>${bodyContent}`;
+      }
+      if (bodyContent && bodyContent.startsWith("<p>") && !bodyContent.endsWith("</p>")) {
+        bodyContent = `${bodyContent}</p>`;
+      }
+
+      return `<div class="notely-callout ${config.class}">
+        <div class="notely-callout-header">
+          <span class="notely-callout-icon">${config.icon}</span>
+          <span class="notely-callout-title">${displayTitle}</span>
+        </div>
+        <div class="notely-callout-body">
+          ${bodyContent}
+        </div>
+      </div>`;
+    });
+  }
+
+  let bodyHtml = `<div class="doc-hero"><h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1><p class="doc-breadcrumb">${escapeHtml(relMdPath)}</p></div><div class="doc-body prose">${processCallouts(markdown.render(normalizedContent, { relMdPath }))}</div>`;
   if (hasTabbedSections) {
     const headerHtml = buildMetadataHtml(parsed);
     const rawHtml = parsed.rawNotes
-      ? markdown.render(parsed.rawNotes, { relMdPath })
+      ? processCallouts(markdown.render(parsed.rawNotes, { relMdPath }))
       : `<p class="tab-empty">No raw notes captured yet.</p>`;
     const cleansedHtml = parsed.cleansed
-      ? markdown.render(parsed.cleansed, { relMdPath })
+      ? processCallouts(markdown.render(parsed.cleansed, { relMdPath }))
       : `<p class="tab-empty">No cleansed notes captured yet.</p>`;
 
     bodyHtml = `
@@ -499,6 +560,26 @@ function renderPdfNotePage(relMdPath, markdownContent, options = {}) {
       .content hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
       .empty { color: var(--ink-3); font-style: italic; }
 
+      /* Callout styling for website & pdf note views */
+      .notely-callout { margin: 16px 0; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #3b82f6; background-color: rgba(59, 130, 246, 0.08); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+      .notely-callout-header { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; color: #1e40af; }
+      .notely-callout-icon { font-size: 1.1em; line-height: 1; }
+      .notely-callout-body { font-size: 0.95em; line-height: 1.6; color: inherit; }
+      .notely-callout-body p:first-child { margin-top: 0; }
+      .notely-callout-body p:last-child { margin-bottom: 0; }
+      .notely-callout.callout-note { border-left-color: #3b82f6; background-color: rgba(59, 130, 246, 0.08); }
+      .notely-callout.callout-note .notely-callout-header { color: #2563eb; }
+      .notely-callout.callout-warning { border-left-color: #f59e0b; background-color: rgba(245, 158, 11, 0.08); }
+      .notely-callout.callout-warning .notely-callout-header { color: #d97706; }
+      .notely-callout.callout-tip { border-left-color: #10b981; background-color: rgba(16, 185, 129, 0.08); }
+      .notely-callout.callout-tip .notely-callout-header { color: #059669; }
+      .notely-callout.callout-todo { border-left-color: #8b5cf6; background-color: rgba(139, 92, 246, 0.08); }
+      .notely-callout.callout-todo .notely-callout-header { color: #7c3aed; }
+      .notely-callout.callout-important { border-left-color: #06b6d4; background-color: rgba(6, 182, 212, 0.08); }
+      .notely-callout.callout-important .notely-callout-header { color: #0891b2; }
+      .notely-callout.callout-caution { border-left-color: #ef4444; background-color: rgba(239, 68, 68, 0.08); }
+      .notely-callout.callout-caution .notely-callout-header { color: #dc2626; }
+
       @page { margin: 18mm 16mm; }
       @media print {
         .page { padding: 0; max-width: none; }
@@ -508,7 +589,7 @@ function renderPdfNotePage(relMdPath, markdownContent, options = {}) {
   <body>
     <main class="page">
       <article class="content">
-        ${contentToRender ? markdown.render(contentToRender, { relMdPath }) : `<p class="empty">${emptyMessage}</p>`}
+        ${contentToRender ? processCallouts(markdown.render(contentToRender, { relMdPath })) : `<p class="empty">${emptyMessage}</p>`}
       </article>
     </main>
   </body>

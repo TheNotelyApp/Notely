@@ -202,31 +202,49 @@ export function normalizeMarkdownLinks(content) {
 export function renderCallouts(html) {
   if (!html || typeof html !== "string" || !html.includes("<blockquote")) return html;
 
-  const bqRegex = /<blockquote[^>]*>\s*<p[^>]*>\s*\[!(NOTE|WARNING|TIP|TODO|IMPORTANT|CAUTION)\]([^\n<]*?)(?:<br\s*\/?>|\n)?\s*([\s\S]*?)<\/blockquote>/gi;
-
   const calloutConfigs = {
     NOTE: { title: "Note", icon: "ℹ️", class: "callout-note" },
+    INFO: { title: "Info", icon: "ℹ️", class: "callout-note" },
     WARNING: { title: "Warning", icon: "⚠️", class: "callout-warning" },
     TIP: { title: "Tip", icon: "💡", class: "callout-tip" },
+    HINT: { title: "Hint", icon: "💡", class: "callout-tip" },
     TODO: { title: "Todo", icon: "📝", class: "callout-todo" },
     IMPORTANT: { title: "Important", icon: "🌟", class: "callout-important" },
     CAUTION: { title: "Caution", icon: "🚫", class: "callout-caution" },
+    DANGER: { title: "Danger", icon: "🚫", class: "callout-caution" },
+    ERROR: { title: "Error", icon: "🚫", class: "callout-caution" },
+    BUG: { title: "Bug", icon: "🐛", class: "callout-caution" },
+    SUCCESS: { title: "Success", icon: "✅", class: "callout-tip" },
+    QUESTION: { title: "Question", icon: "❓", class: "callout-todo" },
+    QUOTE: { title: "Quote", icon: "💬", class: "callout-note" },
+    ABSTRACT: { title: "Abstract", icon: "📋", class: "callout-important" },
+    SUMMARY: { title: "Summary", icon: "📋", class: "callout-important" },
+    EXAMPLE: { title: "Example", icon: "🔍", class: "callout-note" },
   };
 
-  return html.replace(bqRegex, (_match, type, titleExtra, body) => {
-    const upperType = String(type).toUpperCase();
-    const config = calloutConfigs[upperType] || { title: upperType, icon: "📌", class: "callout-note" };
+  const bqRegex = /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi;
 
-    let displayTitle = (titleExtra || "").trim();
-    if (!displayTitle) displayTitle = config.title;
+  return html.replace(bqRegex, (fullMatch, innerContent) => {
+    const headerMatch = innerContent.match(/^\s*(?:<p[^>]*>\s*)?\[!([A-Za-z0-9_-]+)\]([^\n<]*)(?:<br\s*\/?>)?/i);
+    if (!headerMatch) return fullMatch;
 
-    let bodyContent = (body || "").trim();
-    bodyContent = bodyContent.replace(/^<\/p>\s*/i, "").replace(/^\s*<br\s*\/?>/i, "");
+    const rawType = headerMatch[1].toUpperCase();
+    const customTitle = headerMatch[2].trim();
+    const config = calloutConfigs[rawType] || {
+      title: rawType.charAt(0) + rawType.slice(1).toLowerCase(),
+      icon: "📌",
+      class: "callout-note",
+    };
 
-    if (bodyContent && !bodyContent.startsWith("<p>")) {
+    const displayTitle = customTitle || config.title;
+
+    let bodyContent = innerContent.replace(headerMatch[0], "").trim();
+    bodyContent = bodyContent.replace(/^<\/p>/i, "").trim();
+
+    if (bodyContent && !bodyContent.startsWith("<p>") && !bodyContent.startsWith("<div") && !bodyContent.startsWith("<ul") && !bodyContent.startsWith("<ol")) {
       bodyContent = `<p>${bodyContent}`;
     }
-    if (bodyContent && !bodyContent.endsWith("</p>")) {
+    if (bodyContent && bodyContent.startsWith("<p>") && !bodyContent.endsWith("</p>")) {
       bodyContent = `${bodyContent}</p>`;
     }
 
