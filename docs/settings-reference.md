@@ -112,13 +112,11 @@ Open **AI -> AI Settings**.
 
 ### Provider setup
 
-- **Text provider**: choose the AI service that writes or rewrites text for you
-- **HuggingFace token**: turns on meaning-based search and the smarter graph view
-- **Test** buttons: check that your saved sign-in details work
-
-Current UI status:
-
-- **OpenAI** and **Local LLM** are visible as planned providers and are not currently configurable
+- **Text provider**: choose the LLM service for writing, summarizing, or refactoring text (Google Gemini, Groq, or OpenAI / OpenAI-compatible).
+- **OpenAI Compatible**: connect to OpenAI (`gpt-4o`, `gpt-4o-mini`) or any compatible endpoint by specifying your API key and Base URL.
+- **Local ONNX Models**: vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph extraction (`GLiNER2-Relex`) run completely on-device and offline via `onnxruntime-node`.
+- **HuggingFace token**: optional API token for cloud-based embeddings fallback.
+- **Test** buttons: verify that your saved credentials and endpoint connections work.
 
 ### Feature toggles
 
@@ -147,3 +145,17 @@ If your workspace is also a Git folder, Notely can help keep its own support fil
 - **Ignore .notes-app: Off**: leaves Git ignore management to you
 
 Use this when your team stores notes in Git but does not want Notely's private support files committed with them.
+
+## 8. Environment Variables
+
+Notely respects system environment variables for advanced runtime configuration:
+
+| Variable | Values | Purpose |
+|---|---|---|
+| `NOTELY_TERMINAL_POLICY` | `permissive` \| `strict` | Sets execution policy for embedded terminal. `strict` enforces role and command allowlists. |
+| `NOTELY_TERMINAL_REQUIRED_ROLE` | `developer` (default) | Required user role when operating in strict terminal policy. |
+| `NOTELY_TERMINAL_ALLOWLIST` | Comma-separated strings | Allowed command executables in strict terminal mode (e.g. `git,npm,node`). |
+| `NOTELY_BASH_PATH` | File path | Explicit path to Bash binary on Windows hosts. |
+| `GIT_BASH_PATH` | File path | Fallback Git Bash executable path on Windows hosts. |
+| `NOTELY_LOG_LEVEL` | `debug` \| `info` \| `warn` \| `error` | System logging threshold for `LogDB`. |
+| `NOTES_ROOT` | Workspace path | Environment variable override for default workspace directory path. |

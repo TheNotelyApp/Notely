@@ -1,7 +1,7 @@
 ---
 title: Setting Up AI Providers
 description: Configure AI settings, API keys, local endpoints, and feature flags.
-keywords: AI settings, API key, Ollama, OpenAI, Gemini, Groq, HuggingFace, ONNX, BGE embeddings
+keywords: AI settings, API key, OpenAI, Gemini, Groq, HuggingFace, ONNX, BGE embeddings
 category: AI
 ---
 
@@ -13,12 +13,11 @@ Configure LLM provider models, API tokens, and local vector index settings insid
 
 ## 1. Text Generation Providers
 
-Notely uses the **Vercel AI SDK** and local bindings to connect to multiple LLM APIs:
-- **Local (Qwen2.5-0.5B)**: Runs completely on-device and offline. Requires downloading local GGUF weights (~400MB) via the settings dashboard.
-- **Google Gemini**: Requires a Gemini API key. Highly recommended for rich tool calling.
-- **Groq**: Requires a Groq API key (supports models like `llama-3.3-70b-specdec`).
-- **OpenAI Compatible**: Connect to OpenAI or local servers (Ollama, LM Studio) by setting a custom Base URL and Model name.
-- **Connection Diagnostics**: Click the **Test** button next to any configured provider to run a diagnostic round-trip test.
+Notely connects to cloud and custom LLM providers using the **Vercel AI SDK**:
+- **Google Gemini**: Requires a Gemini API key. Default provider (`gemini-2.0-flash`), recommended for rich tool calling.
+- **Groq**: Requires a Groq API key (supports models like `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `deepseek-r1-distill-llama-70b`).
+- **OpenAI / OpenAI-Compatible**: Connect to OpenAI (`gpt-4o`, `gpt-4o-mini`) or custom compatible endpoints by setting an API Key and custom Base URL.
+- **Connection Diagnostics**: Click the **Test** button next to any configured provider in **AI Settings** to verify connection status.
 
 ---
 

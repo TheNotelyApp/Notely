@@ -112,7 +112,7 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 * **Vector Embeddings Engine (`EmbeddingDB.js`)**: Stores 384-dimensional `BGE-small` vector chunks in `{workspace}/.notes-app/ai-embeddings.db`. Features physical vector dimension validation (`verifyModelDimensions`) to prevent dimension mismatches.
 * **Knowledge Graph Subsystem (`GraphService.js`, `GraphDB.js`)**: Maps note relations, tags, mentions, Wikilinks, Images, Local Documents, and External URLs in `{workspace}/.notes-app/ai-graph.db`. Executes relation traversals via SQLite **Recursive Common Table Expressions (CTEs)**.
 * **Agent & Tool Orchestration**: Integrates with a local embedding runtime and cloud LLMs (Gemini, Groq, OpenAI) using the Vercel AI SDK.
-* **Local GGUF Engines**: Supports local text generation and offline graph extraction via `node-llama-cpp`. `LocalModelManager` handles shared runtime loads of the Qwen GGUF model to prevent CPU/RAM overheads.
+* **Local ONNX Neural Models**: Vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph entity/relationship extraction (`gliner2-multi-v1-onnx`) run 100% on-device and offline using `onnxruntime-node`.
 
 #### AI Layer Architecture
 
@@ -235,9 +235,11 @@ graph TD
         end
         
         subgraph CacheDir ["📁 .notes-app (Hidden Cache Folder)"]
+            TDB[("task-db.sqlite<br/>(Task DB & Bi-directional Sync)")]
             VECDB[("ai-embeddings.db<br/>(384-dim Vector BLOBs)")]
             GDB[("ai-graph.db<br/>(Entities & CTE Edges)")]
             LDB[("ai-logs.db<br/>(System & App Logs)")]
+            STATE["app-state.json / metadata"]
         end
     end
     
@@ -261,7 +263,10 @@ graph TD
   * Video & Audio recordings (`.mp4`, `.webm`, `.mp3`, `.wav`, `.m4a`).
   * Document attachments (`.pdf`).
   * Excalidraw drawing files (`.excalidraw`).
-* **Hidden Subsystem Folder (`{workspace}/.notes-app/`)**: Internal SQLite caches for AI and system features:
+* **Hidden Subsystem Folder (`{workspace}/.notes-app/`)**: Internal SQLite caches for AI, tasks, and system features:
+  * `task-db.sqlite`: Stores workspace-wide task metadata, priorities, due dates, assignee tags, source note hashes, and line indices for bi-directional checklist synchronization.
   * `ai-embeddings.db`: Stores chunk text, line offsets, hashes, and 384-dimensional binary vector `BLOB`s.
   * `ai-graph.db`: Stores extracted Knowledge Graph entity nodes, Wikilinks, media links, and relationship edges.
   * `ai-logs.db`: Stores multitenant application, git, embedding, graph, and AI log entries.
+  * `app-state.json`: Caches workspace UI state, last opened note handles, and view preferences.
+

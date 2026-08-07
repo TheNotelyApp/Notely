@@ -24,7 +24,7 @@ Configure an upstream remote (like GitHub, GitLab, or a self-hosted Git server) 
 - **Pull**: Fetch and merge changes from the remote repository to update your local workspace.
 - **Push**: Upload your local commits to the remote repository.
 
-Credentials are saved securely within your system keychain.
+Authentication uses Personal Access Tokens (PAT). When performing remote actions with a PAT, Notely temporarily injects the token into the git remote URL for the operation and immediately restores the clean original URL afterwards, keeping plain-text credentials out of persistent repository settings.
 
 ---
 
