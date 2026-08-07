@@ -234,48 +234,48 @@
 }
 
 .help-doc-article-header {
-  border-bottom: 1px solid #e1ece8;
-  margin-bottom: 8px;
-  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border-muted);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
 }
 
 .help-doc-article-header h3 {
   margin: 0;
-  font-size: 15px;
-  color: #23444b;
+  font-size: var(--font-size-title);
+  color: var(--text-strong);
 }
 
 .help-doc-article-header p {
-  margin: 4px 0 0;
-  color: #557178;
-  font-size: 11px;
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
 }
 
 .help-doc-markdown h1,
 .help-doc-markdown h2,
 .help-doc-markdown h3 {
-  color: #23444b;
-  margin: 0 0 8px;
+  color: var(--text-strong);
+  margin: 0 0 var(--space-4);
 }
 
 .help-doc-markdown h1 {
-  font-size: 18px;
+  font-size: var(--font-size-heading-md);
 }
 
 .help-doc-markdown h2 {
-  font-size: 16px;
-  margin-top: 12px;
+  font-size: var(--font-size-title);
+  margin-top: var(--space-5);
 }
 
 .help-doc-markdown h3 {
-  font-size: 14px;
-  margin-top: 8px;
+  font-size: var(--font-size-body);
+  margin-top: var(--space-4);
 }
 
 .help-doc-markdown p,
 .help-doc-markdown li {
-  color: #355159;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
   line-height: 1.4;
 }
 
@@ -286,36 +286,36 @@
 }
 
 .help-doc-markdown a {
-  color: #2d5f7f;
+  color: var(--accent-solid);
 }
 
 .help-doc-markdown table {
   width: 100%;
   min-width: 620px;
-  margin: 10px 0;
+  margin: var(--space-4) 0;
   border-collapse: collapse;
-  border: 1px solid #d7e3df;
+  border: 1px solid var(--border-muted);
   background: var(--surface-bg);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
 }
 
 .help-doc-markdown th,
 .help-doc-markdown td {
-  border: 1px solid #d7e3df;
-  padding: 6px 8px;
+  border: 1px solid var(--border-muted);
+  padding: var(--space-3) var(--space-4);
   text-align: left;
   vertical-align: top;
-  color: #355159;
+  color: var(--text-muted);
 }
 
 .help-doc-markdown th {
-  background: #f2f8f6;
-  color: #23444b;
+  background: var(--surface-muted);
+  color: var(--text-strong);
   font-weight: 700;
 }
 
 .help-doc-markdown tbody tr:nth-child(even) {
-  background: #fbfdfc;
+  background: var(--surface-subtle);
 }
 
 @media (max-width: 960px) {
@@ -330,14 +330,14 @@
 
 .help-doc-empty {
   margin: 0;
-  color: #60797f;
-  font-size: 12px;
+  color: var(--text-subtle);
+  font-size: var(--font-size-label);
 }
 
 .help-center-content section {
-  border-top: 1px solid #e4ece8;
-  padding-top: 10px;
-  margin-top: 10px;
+  border-top: 1px solid var(--border-muted);
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .help-center-content section:first-child {
@@ -347,29 +347,29 @@
 }
 
 .help-center-content h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-4);
   font-size: var(--font-size-body);
-  color: #1d3d44;
+  color: var(--text-strong);
 }
 
 .help-center-content ul,
 .help-center-content ol {
   margin: 0;
   padding-left: 18px;
-  color: #314c53;
+  color: var(--text-muted);
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .help-center-lead {
-  margin: 0 0 4px;
-  color: #244147;
+  margin: 0 0 var(--space-2);
+  color: var(--text-strong);
   font-size: var(--font-size-body-sm);
 }
 
 .help-center-version {
   margin: 0;
-  color: #4b666d;
+  color: var(--text-muted);
   font-size: var(--font-size-label);
 }
 
@@ -410,12 +410,12 @@
   margin: 0;
   font-size: 24px;
   letter-spacing: 0.01em;
-  color: #1f3e45;
+  color: var(--text-strong);
 }
 
 .about-version-subscript {
   margin: 1px 0 0;
-  color: #4d676e;
+  color: var(--text-muted);
   font-size: var(--font-size-label);
 }
 
@@ -427,7 +427,7 @@
 .about-copy {
   margin: 0;
   max-width: 460px;
-  color: #3f5b63;
+  color: var(--text-muted);
   font-size: var(--font-size-body-sm);
   line-height: 1.5;
 }
@@ -436,7 +436,7 @@
   width: min(420px, 100%);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  background: #fcfdfd;
+  background: var(--surface-bg);
   display: grid;
   gap: 0;
   overflow: hidden;
@@ -449,8 +449,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #2f4a52;
-  font-size: 12px;
+  color: var(--text-strong);
+  font-size: var(--font-size-label);
   border-top: 1px solid var(--border-soft);
 }
 
@@ -464,7 +464,7 @@
 }
 
 .about-detail-row a {
-  color: #2a6177;
+  color: var(--accent-solid);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -518,12 +518,12 @@
 .splash-card h1 {
   margin: 14px 0 8px;
   font-size: var(--font-size-display);
-  color: #23424a;
+  color: var(--text-strong);
 }
 
 .splash-card p {
   margin: 0;
-  color: #46656d;
+  color: var(--text-muted);
 }
 
 .splash-progress {
@@ -531,7 +531,7 @@
   width: min(300px, 100%);
   height: 10px;
   border-radius: 999px;
-  border: 1px solid #b8d0c9;
+  border: 1px solid var(--border-soft);
   background: var(--surface-accent);
   overflow: hidden;
 }
@@ -545,14 +545,14 @@
 .splash-percent {
   margin-top: 0 !important;
   font-size: var(--font-size-body-sm);
-  color: #3f656f !important;
+  color: var(--text-strong) !important;
   font-weight: 700;
 }
 
 .splash-version {
   margin-top: 8px !important;
   font-size: var(--font-size-label);
-  color: #617b82 !important;
+  color: var(--text-muted) !important;
 }
 
 .command-palette-card {
@@ -610,7 +610,7 @@
 }
 
 .command-palette-group {
-  border-bottom: 1px solid #e5ece9;
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .command-palette-group:last-child {
@@ -634,7 +634,7 @@
 .command-palette-item {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid #edf2f0;
+  border-bottom: 1px solid var(--border-muted);
   background: var(--surface-bg);
   display: flex;
   align-items: center;
@@ -671,10 +671,10 @@
 
 .command-palette-pin-tag {
   padding: 2px 7px;
-  border: 1px solid #c8dad3;
-  border-radius: 999px;
-  background: #eef6f2;
-  color: #2d5d55;
+  border: 1px solid var(--status-success-border);
+  border-radius: var(--radius-pill);
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -684,8 +684,8 @@
 .command-palette-match {
   padding: 0 1px;
   border-radius: var(--radius-sm);
-  background: #d9ece4;
-  color: #0f2c32;
+  background: var(--search-match-bg);
+  color: var(--search-match-text);
 }
 
 .command-palette-item kbd {
@@ -1154,27 +1154,6 @@
   gap: 8px;
 }
 
-.icon-button {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--surface-bg);
-  color: var(--text-strong);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background var(--motion-fast),
-    border-color var(--motion-fast),
-    color var(--motion-fast);
-}
-
-.icon-button:hover {
-  background: var(--surface-accent);
-  border-color: #b8cec7;
-  color: var(--accent-strong);
-}
 
 .overlay-dialog-header h2 {
   margin: 0;
@@ -1302,25 +1281,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 38px;
-  font-size: 0.88rem;
+  gap: var(--space-4);
+  min-height: var(--btn-height-md);
+  font-size: var(--font-size-body-sm);
   font-weight: 500;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform var(--motion-standard, 180ms ease),
-              background var(--motion-standard, 180ms ease),
-              border-color var(--motion-standard, 180ms ease),
-              box-shadow var(--motion-standard, 180ms ease);
+  transition: background var(--motion-standard),
+              border-color var(--motion-standard),
+              box-shadow var(--motion-standard);
 }
 
 .confirmation-dialog__actions > button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .confirmation-dialog__actions > button:active {
-  transform: translateY(0);
   box-shadow: none;
 }
 
@@ -1332,14 +1308,14 @@
 
 .confirmation-dialog__actions > button.primary-button:hover {
   background: var(--accent-strong);
-  color: var(--text-on-accent, #ffffff);
-  box-shadow: 0 4px 14px rgba(47, 93, 98, 0.3);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .confirmation-dialog__actions > button.danger:hover {
-  background: #c93b44;
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(224, 69, 79, 0.35);
+  background: color-mix(in srgb, var(--accent-red) 88%, var(--text-strong));
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .workspace-export-intro {

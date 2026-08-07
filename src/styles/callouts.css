@@ -116,8 +116,13 @@
   --callout-title-color: #f87171;
 }
 
+.callout-picker-item {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
 .callout-picker-item:hover {
-  background-color: var(--accent-subtle, rgba(59, 130, 246, 0.12)) !important;
-  color: var(--accent-solid, #2563eb) !important;
+  background-color: var(--surface-accent, rgba(59, 130, 246, 0.12)) !important;
+  color: var(--text-strong) !important;
 }
 

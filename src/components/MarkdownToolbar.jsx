@@ -932,65 +932,102 @@ export function MarkdownToolbar({
           </AppIconButton>
           {snippet.key === "callout" && showCalloutPicker && (
             <div
-              className="editor-context-menu callout-picker-menu"
+              className="callout-picker-popover"
               ref={calloutPopoverRef}
               style={{
                 position: "absolute",
                 top: "100%",
                 left: 0,
                 marginTop: "4px",
-                zIndex: 9999,
-                background: "var(--surface-bg, #ffffff)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid var(--border-soft, #e2e8f0)",
-                borderRadius: "8px",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                padding: "6px",
-                minWidth: "170px",
+                background: "var(--surface-elevated)",
+                border: "1px solid var(--border-soft)",
+                borderRadius: "var(--radius-xl, 12px)",
+                boxShadow: "var(--shadow-xl)",
+                padding: "8px",
+                zIndex: 100,
+                width: "280px",
               }}
               role="menu"
             >
-              <div style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", padding: "4px 8px 6px 8px", color: "var(--text-muted)", letterSpacing: "0.06em", borderBottom: "1px solid var(--border-soft, #f1f5f9)", marginBottom: "4px" }}>
-                Callout Box
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  padding: "2px 6px 6px",
+                  color: "var(--text-muted)",
+                  letterSpacing: "0.06em",
+                  borderBottom: "1px solid var(--border-soft)",
+                  marginBottom: "6px",
+                }}
+              >
+                <span>Callout Box</span>
+                <span style={{ fontSize: "9px", opacity: 0.75, fontWeight: 500 }}>17 types</span>
               </div>
-              {[
-                { label: "Note", icon: "ℹ️", before: "> [!NOTE]\n> " },
-                { label: "Warning", icon: "⚠️", before: "> [!WARNING]\n> " },
-                { label: "Tip", icon: "💡", before: "> [!TIP]\n> " },
-                { label: "Todo", icon: "📝", before: "> [!TODO]\n> " },
-                { label: "Important", icon: "🌟", before: "> [!IMPORTANT]\n> " },
-                { label: "Caution", icon: "🚫", before: "> [!CAUTION]\n> " },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    applySnippet(value, onChange, textareaRef, item.before, "", "Callout content");
-                    setShowCalloutPicker(false);
-                  }}
-                  className="callout-picker-item"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "7px 10px",
-                    border: "none",
-                    borderRadius: "6px",
-                    background: "transparent",
-                    color: "var(--app-text)",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    transition: "all 0.12s ease",
-                  }}
-                >
-                  <span style={{ fontSize: "15px", lineHeight: 1 }}>{item.icon}</span>
-                  <span>{item.label}</span>
-                </button>
-              ))}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "3px",
+                  maxHeight: "260px",
+                  overflowY: "auto",
+                  paddingRight: "2px",
+                }}
+              >
+                {[
+                  { label: "Note", icon: "ℹ️", before: "> [!NOTE]\n> " },
+                  { label: "Info", icon: "ℹ️", before: "> [!INFO]\n> " },
+                  { label: "Warning", icon: "⚠️", before: "> [!WARNING]\n> " },
+                  { label: "Tip", icon: "💡", before: "> [!TIP]\n> " },
+                  { label: "Hint", icon: "💡", before: "> [!HINT]\n> " },
+                  { label: "Todo", icon: "📝", before: "> [!TODO]\n> " },
+                  { label: "Important", icon: "🌟", before: "> [!IMPORTANT]\n> " },
+                  { label: "Caution", icon: "🚫", before: "> [!CAUTION]\n> " },
+                  { label: "Danger", icon: "🚫", before: "> [!DANGER]\n> " },
+                  { label: "Error", icon: "🚫", before: "> [!ERROR]\n> " },
+                  { label: "Bug", icon: "🐛", before: "> [!BUG]\n> " },
+                  { label: "Success", icon: "✅", before: "> [!SUCCESS]\n> " },
+                  { label: "Question", icon: "❓", before: "> [!QUESTION]\n> " },
+                  { label: "Quote", icon: "💬", before: "> [!QUOTE]\n> " },
+                  { label: "Abstract", icon: "📋", before: "> [!ABSTRACT]\n> " },
+                  { label: "Summary", icon: "📋", before: "> [!SUMMARY]\n> " },
+                  { label: "Example", icon: "🔍", before: "> [!EXAMPLE]\n> " },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      applySnippet(value, onChange, textareaRef, item.before, "", "Callout content");
+                      setShowCalloutPicker(false);
+                    }}
+                    className="callout-picker-item"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      gap: "7px",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "5px 8px",
+                      border: "none",
+                      borderRadius: "var(--radius-md, 6px)",
+                      background: "transparent",
+                      color: "var(--app-text)",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                      transition: "background var(--motion-fast)",
+                    }}
+                  >
+                    <span style={{ fontSize: "13px", lineHeight: 1 }}>{item.icon}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

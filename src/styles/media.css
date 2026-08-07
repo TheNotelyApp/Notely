@@ -1013,70 +1013,6 @@
   overflow: visible;
 }
 
-.small-button {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0;
-  border: 1px solid #cbdad5;
-  background: #f7faf8;
-  color: #1a3a3e;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 12px;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.small-button:hover:not(:disabled) {
-  border-color: #1a3a3e;
-  background: #eef5f2;
-}
-
-.small-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.small-button.danger {
-  border-color: #e8c2c2;
-  background: #fff4f4;
-  color: #8e1b1b;
-}
-
-.small-button.danger:hover:not(:disabled) {
-  border-color: #c35c5c;
-  background: #ffeaea;
-}
-
-.small-button.icon-only {
-  width: 26px;
-  height: 26px;
-  aspect-ratio: 1 / 1;
-  padding: 0;
-  gap: 0;
-  justify-content: center;
-  border-radius: 4px;
-  flex-shrink: 0;
-  flex-grow: 0;
-}
-
-.small-button.icon-only svg {
-  display: block;
-  flex-shrink: 0;
-}
-
-.media-item-actions .small-button.icon-only {
-  width: 24px;
-  height: 24px;
-  aspect-ratio: 1 / 1;
-}
-
-.media-item-actions .small-button.icon-only svg {
-  width: 12px;
-  height: 12px;
-}
 
 .media-full-preview-overlay {
   position: fixed;
@@ -1493,28 +1429,6 @@
   color: var(--text-subtle);
 }
 
-/* Small buttons */
-:root[data-theme="dark"] .small-button {
-  background: var(--surface-elevated);
-  border-color: var(--border-default);
-  color: var(--text-strong);
-}
-
-:root[data-theme="dark"] .small-button:hover:not(:disabled) {
-  background: var(--surface-accent);
-  border-color: var(--border-soft);
-}
-
-:root[data-theme="dark"] .small-button.danger {
-  background: var(--status-danger-bg);
-  border-color: var(--status-danger-border);
-  color: var(--status-danger-text);
-}
-
-:root[data-theme="dark"] .small-button.danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--status-danger-bg) 70%, var(--surface-bg));
-  border-color: var(--status-danger-border);
-}
 
 /* Full preview modal */
 :root[data-theme="dark"] .media-full-preview-content {

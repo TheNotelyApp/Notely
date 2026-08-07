@@ -250,7 +250,68 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
     return renderImageHtmlWithAnnotation(defaultImage(tokens, idx, options, env, self), annotation);
   };
 
-  const bodyHtml = markdown.render(markdownContent || "");
+  function processCallouts(html) {
+    if (!html || typeof html !== "string" || !html.includes("<blockquote")) return html;
+
+    const calloutConfigs = {
+      NOTE: { title: "Note", icon: "ℹ️", class: "callout-note" },
+      INFO: { title: "Info", icon: "ℹ️", class: "callout-note" },
+      WARNING: { title: "Warning", icon: "⚠️", class: "callout-warning" },
+      TIP: { title: "Tip", icon: "💡", class: "callout-tip" },
+      HINT: { title: "Hint", icon: "💡", class: "callout-tip" },
+      TODO: { title: "Todo", icon: "📝", class: "callout-todo" },
+      IMPORTANT: { title: "Important", icon: "🌟", class: "callout-important" },
+      CAUTION: { title: "Caution", icon: "🚫", class: "callout-caution" },
+      DANGER: { title: "Danger", icon: "🚫", class: "callout-caution" },
+      ERROR: { title: "Error", icon: "🚫", class: "callout-caution" },
+      BUG: { title: "Bug", icon: "🐛", class: "callout-caution" },
+      SUCCESS: { title: "Success", icon: "✅", class: "callout-tip" },
+      QUESTION: { title: "Question", icon: "❓", class: "callout-todo" },
+      QUOTE: { title: "Quote", icon: "💬", class: "callout-note" },
+      ABSTRACT: { title: "Abstract", icon: "📋", class: "callout-important" },
+      SUMMARY: { title: "Summary", icon: "📋", class: "callout-important" },
+      EXAMPLE: { title: "Example", icon: "🔍", class: "callout-note" },
+    };
+
+    const bqRegex = /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi;
+
+    return html.replace(bqRegex, (fullMatch, innerContent) => {
+      const headerMatch = innerContent.match(/^\s*(?:<p[^>]*>\s*)?\[!([A-Za-z0-9_-]+)\]([^\n<]*)(?:<br\s*\/?>)?/i);
+      if (!headerMatch) return fullMatch;
+
+      const rawType = headerMatch[1].toUpperCase();
+      const customTitle = headerMatch[2].trim();
+      const config = calloutConfigs[rawType] || {
+        title: rawType.charAt(0) + rawType.slice(1).toLowerCase(),
+        icon: "📌",
+        class: "callout-note",
+      };
+
+      const displayTitle = customTitle || config.title;
+
+      let bodyContent = innerContent.replace(headerMatch[0], "").trim();
+      bodyContent = bodyContent.replace(/^<\/p>/i, "").trim();
+
+      if (bodyContent && !bodyContent.startsWith("<p>") && !bodyContent.startsWith("<div") && !bodyContent.startsWith("<ul") && !bodyContent.startsWith("<ol")) {
+        bodyContent = `<p>${bodyContent}`;
+      }
+      if (bodyContent && bodyContent.startsWith("<p>") && !bodyContent.endsWith("</p>")) {
+        bodyContent = `${bodyContent}</p>`;
+      }
+
+      return `<div class="notely-callout ${config.class}">
+        <div class="notely-callout-header">
+          <span class="notely-callout-icon">${config.icon}</span>
+          <span class="notely-callout-title">${displayTitle}</span>
+        </div>
+        <div class="notely-callout-body">
+          ${bodyContent}
+        </div>
+      </div>`;
+    });
+  }
+
+  const bodyHtml = processCallouts(markdown.render(markdownContent || ""));
 
   return `<!doctype html>
 <html lang="en">

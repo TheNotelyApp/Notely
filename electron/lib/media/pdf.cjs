@@ -305,6 +305,52 @@ function buildPdfStyles({ compact = false } = {}) {
 
     .notely-image-annotation { left: 10px; top: 10px; }
 
+    /* Callouts styling for PDF export */
+    .notely-callout {
+      margin: 14px 0;
+      padding: 12px 16px;
+      border-radius: 6px;
+      border-left: 4px solid #3b82f6;
+      background-color: rgba(59, 130, 246, 0.08);
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+    }
+    .notely-callout-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      color: #1e40af;
+    }
+    .notely-callout-icon {
+      font-size: 14px;
+      line-height: 1;
+    }
+    .notely-callout-body {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #0d1f26;
+    }
+    .notely-callout-body p:first-child { margin-top: 0; }
+    .notely-callout-body p:last-child { margin-bottom: 0; }
+
+    .notely-callout.callout-note { border-left-color: #3b82f6; background-color: rgba(59, 130, 246, 0.08); }
+    .notely-callout.callout-note .notely-callout-header { color: #2563eb; }
+    .notely-callout.callout-warning { border-left-color: #f59e0b; background-color: rgba(245, 158, 11, 0.08); }
+    .notely-callout.callout-warning .notely-callout-header { color: #d97706; }
+    .notely-callout.callout-tip { border-left-color: #10b981; background-color: rgba(16, 185, 129, 0.08); }
+    .notely-callout.callout-tip .notely-callout-header { color: #059669; }
+    .notely-callout.callout-todo { border-left-color: #8b5cf6; background-color: rgba(139, 92, 246, 0.08); }
+    .notely-callout.callout-todo .notely-callout-header { color: #7c3aed; }
+    .notely-callout.callout-important { border-left-color: #06b6d4; background-color: rgba(6, 182, 212, 0.08); }
+    .notely-callout.callout-important .notely-callout-header { color: #0891b2; }
+    .notely-callout.callout-caution { border-left-color: #ef4444; background-color: rgba(239, 68, 68, 0.08); }
+    .notely-callout.callout-caution .notely-callout-header { color: #dc2626; }
+
     @media print {
       pre,
       .markdown-code-pre {

@@ -69,7 +69,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.1s ease, color 0.1s ease;
+  transition: background var(--motion-fast), color var(--motion-fast);
   height: 24px;
   display: flex;
   align-items: center;
@@ -214,8 +214,7 @@
   color: #ffffff !important;
 }
 
-/* Make sure active windows have distinct contrast if needed */
-body.dark .titlebar-btn:hover {
+:root[data-theme="dark"] .titlebar-btn:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
