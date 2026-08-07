@@ -1443,21 +1443,21 @@
 }
 
 :root[data-theme="dark"] .dashboard-recent-list button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 :root[data-theme="dark"] .dashboard-inline-action,
 :root[data-theme="dark"] .dashboard-task-badge-button {
-  background: #1c272a !important;
-  border-color: #2b393c !important;
-  color: #e3efeb !important;
+  background: var(--surface-bg) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-strong) !important;
 }
 
 :root[data-theme="dark"] .dashboard-inline-action:hover,
 :root[data-theme="dark"] .dashboard-task-badge-button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 
@@ -1617,19 +1617,19 @@
 }
 
 :root[data-theme="dark"] .dashboard-task-list button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 :root[data-theme="dark"] .dashboard-action-grid button {
-  background: #1c272a !important;
-  border-color: #2b393c !important;
+  background: var(--surface-bg) !important;
+  border-color: var(--border-default) !important;
   color: var(--app-text) !important;
 }
 
 :root[data-theme="dark"] .dashboard-action-grid button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 /* â”€â”€ Favorite Toggle Active State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

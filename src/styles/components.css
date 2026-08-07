@@ -77,8 +77,9 @@
 .dashboard-task-badge-button:hover .task-open,
 .dashboard-task-badge-button:hover .task-closed,
 .dashboard-task-summary:hover {
-  border-color: var(--accent-solid);
-  filter: brightness(0.98);
+  border-color: var(--border-soft);
+  background: var(--surface-accent);
+  color: var(--text-strong);
 }
 
 .dashboard-task-badge span {

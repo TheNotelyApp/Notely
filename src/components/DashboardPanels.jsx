@@ -303,10 +303,6 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
               <Search size={14} />
               Search
             </button>
-            <button type="button" onClick={() => onAction("tasks-workspace")}>
-              <CheckSquare size={14} />
-              Tasks
-            </button>
             <button type="button" onClick={() => onAction("calendar")}>
               <Calendar size={14} />
               Calendar

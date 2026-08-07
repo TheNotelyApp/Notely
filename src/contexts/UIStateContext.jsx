@@ -20,8 +20,6 @@ export function UIStateProvider({ children }) {
   const [healthPageOpen, setHealthPageOpen] = useState(false);
   const [appLogsOpen, setAppLogsOpen] = useState(false);
   const [globalCommitDialogOpen, setGlobalCommitDialogOpen] = useState(false);
-  const [tasksPanelOpen, setTasksPanelOpen] = useState(false);
-  const [allTasksPanelOpen, setAllTasksPanelOpen] = useState(false);
   const [recentNotesPanelOpen, setRecentNotesPanelOpen] = useState(false);
   const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
   const [trashDialogOpen, setTrashDialogOpen] = useState(false);
@@ -58,8 +56,6 @@ export function UIStateProvider({ children }) {
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
-    tasksPanelOpen, setTasksPanelOpen,
-    allTasksPanelOpen, setAllTasksPanelOpen,
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
     trashDialogOpen, setTrashDialogOpen,

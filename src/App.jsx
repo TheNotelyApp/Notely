@@ -55,12 +55,7 @@ import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
 import NotePreviewModal from "./components/NotePreviewModal";
 
-const TasksPanel = lazy(() =>
-  import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
-);
-const AllTasksPanel = lazy(() =>
-  import("./components/AllTasksPanel").then((m) => ({ default: m.AllTasksPanel }))
-);
+
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
 );
@@ -364,8 +359,6 @@ export default function App() {
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
-    tasksPanelOpen, setTasksPanelOpen,
-    allTasksPanelOpen, setAllTasksPanelOpen,
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
     trashDialogOpen, setTrashDialogOpen,
@@ -2611,13 +2604,9 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-tasks-panel") {
-      setTasksPanelOpen(true);
-      return;
-    }
-
-    if (resolvedCommandId === "open-all-tasks") {
-      setAllTasksPanelOpen(true);
+    if (resolvedCommandId === "open-tasks-panel" || resolvedCommandId === "open-all-tasks") {
+      setTaskWorkspaceContext(null);
+      setTaskWorkspaceOpen(true);
       return;
     }
 
@@ -3143,7 +3132,10 @@ export default function App() {
             }}
             onOpenListItem={handleOpenListItem}
             onOpenReferencedDocument={(task) => handleOpenReferencedDocument(task?.filePath)}
-            onOpenAllTasks={() => setAllTasksPanelOpen(true)}
+            onOpenAllTasks={() => {
+              setTaskWorkspaceContext(null);
+              setTaskWorkspaceOpen(true);
+            }}
             onOpenRecentNotes={() => setRecentNotesPanelOpen(true)}
             onOpenFavorites={() => setFavoritesPanelOpen(true)}
             onDashboardAction={handleDashboardAction}
@@ -3723,16 +3715,7 @@ export default function App() {
       ) : null}
 
 
-      {tasksPanelOpen ? (
-        <Suspense fallback={null}>
-          <TasksPanel
-            isOpen={tasksPanelOpen}
-            documents={workspaceTaskDocuments}
-            onClose={() => setTasksPanelOpen(false)}
-            onOpenNote={(group) => handleOpenReferencedDocument(group?.filePath)}
-          />
-        </Suspense>
-      ) : null}
+
 
       {recentNotesPanelOpen ? (
         <Suspense fallback={null}>
@@ -3762,16 +3745,7 @@ export default function App() {
         </Suspense>
       ) : null}
 
-      {allTasksPanelOpen ? (
-        <Suspense fallback={null}>
-          <AllTasksPanel
-            isOpen={allTasksPanelOpen}
-            documents={workspaceTaskDocuments}
-            onClose={() => setAllTasksPanelOpen(false)}
-            onOpenNote={(group) => handleOpenReferencedDocument(group?.filePath)}
-          />
-        </Suspense>
-      ) : null}
+
 
 
 
