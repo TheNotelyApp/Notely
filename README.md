@@ -48,7 +48,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
 - Preview Mermaid diagrams and rendered Markdown content.
 - Create and edit structured technical diagrams with **Draw.io integration** directly from markdown previews, supporting drag-and-drop import for `.drawio` and `.drawio.xml` files, image export, and offline drawing.
 - Visualize the workspace as an interactive note graph.
-- Use built-in AI features powered by Vercel AI SDK (Gemini, Groq, OpenAI) with a 3-Brain Architecture (`WorkspaceBrain`, `ReasoningBrain`, `ActionBrain`), autonomous multi-step Planner, semantic domain tools, local-first Embeddings Engine (`BGE-small-en-v1.5` ONNX model), recursive SQLite Knowledge Graph, strict read-only note immutability safeguards, ReAct self-correction engine (`SelfCorrectionEngine`), and an automated diagnostic evaluation harness (`AgentHarness`).
+- Use built-in AI features powered by Vercel AI SDK (Gemini, Groq, OpenAI / OpenAI-compatible endpoints) with a 3-Brain Architecture (`WorkspaceBrain`, `ReasoningBrain`, `ActionBrain`), autonomous multi-step Planner, semantic domain tools, local-first ONNX Embeddings Engine (`BGE-small-en-v1.5`), zero-latency Context Compaction (`CompactionEngine`), local GLiNER2 ONNX Knowledge Graph Engine, strict read-only note immutability safeguards, ReAct self-correction engine (`SelfCorrectionEngine`), and an automated diagnostic evaluation harness (`AgentHarness`).
 - Aggregate tasks across notes with **Open Tasks** and **All Tasks** panels.
   - Open Tasks focuses on unchecked items.
   - All Tasks includes open + closed items with filtering and note grouping.
@@ -61,7 +61,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - Optional `.notes-app` metadata inclusion (default off)
 - View note statistics (word count, line count, reading time estimate) in the status bar.
 - Copy note content as HTML or plain text directly from the editor toolbar.
-- Execute JavaScript (`js`/`javascript`) and Python (`py`/`python`) code blocks locally with the interactive ▶ Run (Play) button in both Markdown Previews and the popup Code Editor modal. Outputs (stdout/stderr) are rendered in an integrated high-contrast dark terminal output pane.
+- Execute JavaScript (`js`/`javascript`), Python (`py`/`python`), Bash (`bash`/`sh`), PowerShell (`powershell`/`ps1`), and HTML live-preview code blocks locally with the interactive ▶ Run (Play) button in both Markdown Previews and the popup Code Editor modal. Outputs (stdout/stderr) are rendered in an integrated high-contrast dark terminal output pane.
 - Navigate nested folders with breadcrumb links for easy folder traversal.
 - Navigate active note tabs using **Ctrl+Tab** (next tab) and **Ctrl+Shift+Tab** (previous tab) standard shortcuts.
 - Copy note link paths relative to the current workspace root from right-click context menus on tabs and dashboard document list items.

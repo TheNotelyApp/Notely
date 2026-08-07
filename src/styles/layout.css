@@ -2886,8 +2886,8 @@
 }
 
 .dashboard-recent-list button:hover {
-  border-color: #b8cec7;
-  background: #eaf3ef;
+  border-color: var(--border-soft);
+  background: var(--surface-accent);
 }
 
 .dashboard-action-grid {

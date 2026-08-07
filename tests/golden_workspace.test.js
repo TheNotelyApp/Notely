@@ -79,4 +79,46 @@ describe('Golden Validation Workspace End-to-End Test Suite', () => {
     // Restore original file
     fs.writeFileSync(testFile, originalContent, 'utf8');
   });
+
+  it('3. Task synchronization and 2-way note task status persistence', async () => {
+    const { TaskDatabase } = await import('../electron/lib/tasks/TaskDatabase.cjs');
+    const taskDb = new TaskDatabase(goldenWorkspace);
+
+    const notePath = path.join(goldenWorkspace, 'notes', '01-wikilinks.md');
+    const parsedTasks = [
+      { title: 'Golden task 1', status: 'open', line: 10, lineText: '- [ ] Golden task 1' },
+      { title: 'Golden task 2', status: 'open', line: 20, lineText: '- [ ] Golden task 2' },
+    ];
+
+    // Initial sync
+    const syncRes = taskDb.syncFromNote(notePath, parsedTasks);
+    expect(syncRes.inserted).toBeGreaterThanOrEqual(1);
+
+    // Verify tasks stored cleanly in database
+    let list = taskDb.listTasks({ noteFilter: notePath });
+    expect(list.length).toBe(2);
+    expect(list[0].title).toBe('Golden task 1');
+    expect(list[0].status).toBe('open');
+
+    // Update status to done
+    const updatedTasks = [
+      { title: 'Golden task 1', status: 'done', line: 10, lineText: '- [x] Golden task 1' },
+      { title: 'Golden task 2', status: 'open', line: 20, lineText: '- [ ] Golden task 2' },
+    ];
+    taskDb.syncFromNote(notePath, updatedTasks);
+
+    list = taskDb.listTasks({ noteFilter: notePath });
+    const task1 = list.find((t) => t.title === 'Golden task 1');
+    expect(task1.status).toBe('done');
+    expect(task1.completed_at).toBeDefined();
+
+    // Verify deduplication: no extra duplicate rows created
+    expect(list.length).toBe(2);
+
+    // Clean up test tasks from golden workspace DB
+    taskDb.syncFromNote(notePath, []);
+    const emptyList = taskDb.listTasks({ noteFilter: notePath });
+    expect(emptyList.length).toBe(0);
+    taskDb.close();
+  });
 });

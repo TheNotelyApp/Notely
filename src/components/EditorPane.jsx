@@ -49,6 +49,7 @@ export function EditorPane({
   onTableEditorToggle,
   scrollSyncEnabled: propScrollSyncEnabled,
   onScrollSyncEnabledChange,
+  onOpenTaskDetails,
 }) {
   const previewRef = useRef(null);
   const splitPaneRef = useRef(null);
@@ -491,6 +492,7 @@ export function EditorPane({
             showOriginalImages={showOriginalImages}
             inlineLinkedMarkdown={inlineLinkedMarkdown}
             onForceSaveDocument={onForceSaveDocument}
+            onOpenTaskDetails={onOpenTaskDetails}
             onSearchRequest={(query) => {
               window.dispatchEvent(new CustomEvent("open-global-search-query", { detail: { query } }));
             }}
@@ -579,6 +581,7 @@ export function EditorPane({
               showOriginalImages={showOriginalImages}
               inlineLinkedMarkdown={inlineLinkedMarkdown}
               onForceSaveDocument={onForceSaveDocument}
+              onOpenTaskDetails={onOpenTaskDetails}
               onSearchRequest={(query) => {
                 window.dispatchEvent(new CustomEvent("open-global-search-query", { detail: { query } }));
               }}

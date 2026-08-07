@@ -358,5 +358,20 @@ contextBridge.exposeInMainWorld("notesApi", {
   openExternal: (url) => ipcRenderer.invoke("shell:open-external", { url }),
   executeTool: (payload) => ipcRenderer.invoke("tool:execute", payload),
   listTools: () => ipcRenderer.invoke("tool:list"),
+
+  // ── Tasks & Calendar ─────────────────────────────────────────────────────
+  syncTasksFromNote: (p) => ipcRenderer.invoke("tasks:sync-from-note", p),
+  listTasks: (p) => ipcRenderer.invoke("tasks:list", p),
+  getTask: (p) => ipcRenderer.invoke("tasks:get", p),
+  createTask: (p) => ipcRenderer.invoke("tasks:create", p),
+  updateTask: (p) => ipcRenderer.invoke("tasks:update", p),
+  completeTask: (p) => ipcRenderer.invoke("tasks:complete", p),
+  deleteTask: (p) => ipcRenderer.invoke("tasks:delete", p),
+  addTaskComment: (p) => ipcRenderer.invoke("tasks:add-comment", p),
+  getTaskComments: (p) => ipcRenderer.invoke("tasks:get-comments", p),
+  getCalendarEvents: (p) => ipcRenderer.invoke("calendar:get-events", p),
+  listPersons: () => ipcRenderer.invoke("persons:list"),
+  upsertPerson: (p) => ipcRenderer.invoke("persons:upsert", p),
+  deletePerson: (p) => ipcRenderer.invoke("persons:delete", p),
 });
 

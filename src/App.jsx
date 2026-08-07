@@ -24,6 +24,9 @@ const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
 const AIPersonasManager = lazy(() => import("./components/AIPersonasManager"));
 const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
 const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
+const TaskWorkspacePage = lazy(() => import("./components/TaskWorkspacePage").then((m) => ({ default: m.TaskWorkspacePage })));
+const CalendarPage = lazy(() => import("./components/CalendarPage").then((m) => ({ default: m.CalendarPage })));
+
 
 import { SettingsModal } from "./components/SettingsModal";
 import { WorkspaceModal } from "./components/WorkspaceModal";
@@ -52,12 +55,7 @@ import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
 import NotePreviewModal from "./components/NotePreviewModal";
 
-const TasksPanel = lazy(() =>
-  import("./components/TasksPanel").then((m) => ({ default: m.TasksPanel }))
-);
-const AllTasksPanel = lazy(() =>
-  import("./components/AllTasksPanel").then((m) => ({ default: m.AllTasksPanel }))
-);
+
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
 );
@@ -361,11 +359,12 @@ export default function App() {
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,
     globalCommitDialogOpen, setGlobalCommitDialogOpen,
-    tasksPanelOpen, setTasksPanelOpen,
-    allTasksPanelOpen, setAllTasksPanelOpen,
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
     trashDialogOpen, setTrashDialogOpen,
+    taskWorkspaceOpen, setTaskWorkspaceOpen,
+    taskWorkspaceContext, setTaskWorkspaceContext,
+    calendarPageOpen, setCalendarPageOpen,
     onboardingComplete, setOnboardingCompleteState,
     defaultNotesPath, setDefaultNotesPath,
     themePreference, setThemePreferenceState,
@@ -1604,7 +1603,22 @@ export default function App() {
         setHealthPageOpen(false);
         setAppLogsOpen(false);
         setGitVCOpen(false);
+        setTaskWorkspaceOpen(false);
+        setCalendarPageOpen(false);
       };
+
+      if (action === "open-tasks-workspace") {
+        closeAllFullscreenViews();
+        setTaskWorkspaceContext(null);
+        setTaskWorkspaceOpen(true);
+        return;
+      }
+
+      if (action === "open-calendar") {
+        closeAllFullscreenViews();
+        setCalendarPageOpen(true);
+        return;
+      }
 
       if (action === "open-workspace-graph") {
         closeAllFullscreenViews();
@@ -1704,7 +1718,28 @@ export default function App() {
 
 
 
+      if (action === "tasks-workspace") {
+        closeAllFullscreenViews();
+        setTaskWorkspaceContext(null);
+        setTaskWorkspaceOpen(true);
+        return;
+      }
+
+      if (action === "tasks-overdue") {
+        closeAllFullscreenViews();
+        setTaskWorkspaceContext(null);
+        setTaskWorkspaceOpen(true);
+        return;
+      }
+
+      if (action === "calendar") {
+        closeAllFullscreenViews();
+        setCalendarPageOpen(true);
+        return;
+      }
+
       if (action === "open-p2p-sync-help") {
+
         setP2PSyncHelpOpen(true);
         return;
       }
@@ -2569,13 +2604,9 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-tasks-panel") {
-      setTasksPanelOpen(true);
-      return;
-    }
-
-    if (resolvedCommandId === "open-all-tasks") {
-      setAllTasksPanelOpen(true);
+    if (resolvedCommandId === "open-tasks-panel" || resolvedCommandId === "open-all-tasks") {
+      setTaskWorkspaceContext(null);
+      setTaskWorkspaceOpen(true);
       return;
     }
 
@@ -2726,6 +2757,17 @@ export default function App() {
   }
 
   function handleDashboardAction(action) {
+    if (action === "tasks-workspace" || action === "tasks-overdue") {
+      setTaskWorkspaceContext(null);
+      setTaskWorkspaceOpen(true);
+      return;
+    }
+
+    if (action === "calendar") {
+      setCalendarPageOpen(true);
+      return;
+    }
+
     if (action === "new-note") {
       setNoteDialogOpen(true);
       return;
@@ -2776,6 +2818,12 @@ export default function App() {
       return [...currentFavorites, filePath];
     });
   }
+
+  const handleOpenAllTasks = useCallback((notePath) => {
+    setTaskWorkspaceContext(notePath ? { noteFilter: notePath } : null);
+    setTaskWorkspaceOpen(true);
+  }, [setTaskWorkspaceContext, setTaskWorkspaceOpen]);
+
   const rootPath = activeProject?.rootPath || notesFolderPath || "";
   const currentLandingPath = landingFolderPath || rootPath;
   const normalizedRootPath = String(rootPath || "").replace(/[\\/]+$/, "");
@@ -3090,7 +3138,10 @@ export default function App() {
             }}
             onOpenListItem={handleOpenListItem}
             onOpenReferencedDocument={(task) => handleOpenReferencedDocument(task?.filePath)}
-            onOpenAllTasks={() => setAllTasksPanelOpen(true)}
+            onOpenAllTasks={() => {
+              setTaskWorkspaceContext(null);
+              setTaskWorkspaceOpen(true);
+            }}
             onOpenRecentNotes={() => setRecentNotesPanelOpen(true)}
             onOpenFavorites={() => setFavoritesPanelOpen(true)}
             onDashboardAction={handleDashboardAction}
@@ -3176,6 +3227,7 @@ export default function App() {
             menuAction={documentMenuAction}
             onNotify={notify}
             onBack={handleGoHome}
+            onOpenAllTasks={handleOpenAllTasks}
             breadcrumbs={noteBreadcrumbSegments}
             onNavigateBreadcrumb={async (targetPath) => {
               const didLeave = await handleGoHome();
@@ -3670,16 +3722,7 @@ export default function App() {
       ) : null}
 
 
-      {tasksPanelOpen ? (
-        <Suspense fallback={null}>
-          <TasksPanel
-            isOpen={tasksPanelOpen}
-            documents={workspaceTaskDocuments}
-            onClose={() => setTasksPanelOpen(false)}
-            onOpenNote={(group) => handleOpenReferencedDocument(group?.filePath)}
-          />
-        </Suspense>
-      ) : null}
+
 
       {recentNotesPanelOpen ? (
         <Suspense fallback={null}>
@@ -3709,16 +3752,7 @@ export default function App() {
         </Suspense>
       ) : null}
 
-      {allTasksPanelOpen ? (
-        <Suspense fallback={null}>
-          <AllTasksPanel
-            isOpen={allTasksPanelOpen}
-            documents={workspaceTaskDocuments}
-            onClose={() => setAllTasksPanelOpen(false)}
-            onOpenNote={(group) => handleOpenReferencedDocument(group?.filePath)}
-          />
-        </Suspense>
-      ) : null}
+
 
 
 
@@ -3952,6 +3986,41 @@ export default function App() {
           </Suspense>
         </div>
       )}
+
+      {taskWorkspaceOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Task Workspace…</div>}>
+            <TaskWorkspacePage
+              onBack={() => setTaskWorkspaceOpen(false)}
+              onOpenNote={(filePath) => {
+                setTaskWorkspaceOpen(false);
+                void handleOpenReferencedDocument(filePath);
+              }}
+              noteFilter={taskWorkspaceContext?.noteFilter ?? null}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {calendarPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Calendar…</div>}>
+            <CalendarPage
+              onBack={() => setCalendarPageOpen(false)}
+              onOpenNote={(filePath) => {
+                setCalendarPageOpen(false);
+                void handleOpenReferencedDocument(filePath);
+              }}
+              onOpenTask={(task) => {
+                setCalendarPageOpen(false);
+                setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
+                setTaskWorkspaceOpen(true);
+              }}
+            />
+          </Suspense>
+        </div>
+      )}
+
 
 
       </div>

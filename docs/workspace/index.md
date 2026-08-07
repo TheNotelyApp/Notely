@@ -36,7 +36,15 @@ Customize how you browse your workspace contents:
 - **Comfortable Density**: Added margins and breathing room.
 - **Compact Density**: High-density display for reviewing many documents at once.
 
-Switch views from the **View** menu or the Command Palette.
+---
+
+## 4. Workspace Tools & Embedded Terminal
+
+Notely includes integrated workspace utilities for project productivity:
+- **[Tasks & Checklists](/workspace/tasks)**: Workspace-wide task tracking with bi-directional markdown sync.
+- **[Calendar & Scheduling](/workspace/calendar)**: Visual timeline, due dates, and hourly schedule grid.
+- **[Knowledge Graph](/workspace/graph)**: Interactive entity and relationship visualization.
+- **[Embedded Terminal](/workspace/terminal)**: Project-local command execution with PTY process control and security policies.
 
 ---
 

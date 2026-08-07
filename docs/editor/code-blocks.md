@@ -67,18 +67,24 @@ Click **Save** to write changes back to the note, or **Cancel** to discard.
 You can run code snippets directly from your notes:
 
 1. Hover over a code block in **Preview** mode.
-2. If the block is written in JavaScript (`js`, `javascript`) or Python (`py`, `python`), the **▶ Run** button in the hover toolbar will be active.
-3. Click **▶ Run** to execute the script locally.
-4. The output is displayed in a collapsible, high-contrast dark terminal output frame beneath the code block.
+2. If the block is written in a supported language, the **▶ Run** button in the hover toolbar will be active.
+3. Supported execution languages include:
+   - **JavaScript** (`js`, `javascript`): runs locally via `node`.
+   - **Python** (`py`, `python`): runs locally via system `python` / `python3`.
+   - **Bash** (`sh`, `bash`): runs shell scripts locally via `bash` or `sh`.
+   - **PowerShell** (`ps1`, `powershell`): runs scripts via `powershell` or `pwsh`.
+   - **HTML** (`html`): renders live HTML DOM output inside an interactive preview drawer.
+4. Click **▶ Run** to execute the script or preview output.
+5. Command outputs (stdout/stderr) are displayed in a collapsible, high-contrast dark terminal output frame beneath the code block.
 
 You can also execute code from inside the **Dedicated Code Editor** modal using the **Execute** button in the top toolbar.
 
 ::: warning Security Note
-Running code execution spawns a local process on your machine using your local `node` or `python`/`python3` installation. Only run code from trusted workspaces and sources.
+Running code execution spawns a local process on your machine using your local system environment. Only run code from trusted workspaces and sources.
 :::
 
 ::: info Execution Limits & Loops
-Code execution terminates automatically after 10 seconds. If your code hangs or enters an infinite loop, the runner will kill the subprocess safely and report a timeout error.
+Code execution terminates automatically after 10 seconds. If your code hangs or enters an infinite loop, the runner will kill the subprocess safely and report a timeout error. Buffer sizes are capped at 64KB.
 :::
 
 ## Supported Languages

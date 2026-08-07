@@ -128,5 +128,5 @@ Drop any existing `.drawio` or `.drawio.xml` file directly into the Markdown Edi
 |---|---|---|---|
 | **Best for** | Fast text-based flows, timelines | Casual sketching, wireframes | Engineering schematics, network charts |
 | **Editing** | Text syntax | Visual canvas | Visual canvas |
-| **Storage** | Plain Markdown text | XML drawing + PNG preview | XML drawing + PNG preview |
+| **Storage** | Plain Markdown text | JSON `.excalidraw` + SVG preview | XML `.drawio` + PNG preview |
 | **Offline** | ✓ | ✓ | ✓ |

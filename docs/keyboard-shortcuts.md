@@ -7,45 +7,74 @@ category: Reference
 
 # Keyboard Shortcuts
 
-Use shortcuts to navigate and edit notes quickly.
+Use shortcuts to navigate and edit notes quickly across Notely.
 
-## General Navigation
+## Global & Navigation
 
-<ShortcutTable :shortcuts="[
-  { action: 'Open Help Center', key: 'F1' },
-  { action: 'Open Keyboard Shortcuts', key: 'Ctrl + /' },
-  { action: 'Open Command Palette', key: 'Ctrl + K' },
-  { action: 'Open Workspace Selector', key: 'Ctrl + Shift + N' },
-  { action: 'Show Workspace Activity', key: 'Ctrl + Shift + A' },
-  { action: 'Switch to Next Tab', key: 'Ctrl + Tab' },
-  { action: 'Switch to Previous Tab', key: 'Ctrl + Shift + Tab' }
-]" context="General" />
+| Action | Shortcut | Scope / Notes |
+|---|---|---|
+| Open Command Palette | `Ctrl/Cmd + K` | Global |
+| Open Global Search | `Ctrl/Cmd + Shift + F` | Global |
+| Open Keyboard Shortcuts | `Ctrl/Cmd + /` | Global |
+| Open Help Center | `F1` | Global |
+| Open Markdown Guide | `Ctrl/Cmd + M` | Global |
+| Open Workspace | `Ctrl/Cmd + Shift + N` | Workspace |
+| Open Workspace Activity | `Ctrl/Cmd + Shift + A` | Workspace |
+| Open Workspace Graph | `Ctrl/Cmd + Shift + G` | Workspace |
+| Open P2P Status | `Ctrl/Cmd + Shift + P` | Sync |
+| Switch to Next Tab | `Ctrl + Tab` | Editor |
+| Switch to Previous Tab | `Ctrl + Shift + Tab` | Editor |
 
 ## Note Editor
 
-<ShortcutTable :shortcuts="[
-  { action: 'Create New Note', key: 'Ctrl + N' },
-  { action: 'Reload Current Note from Disk', key: 'Ctrl + Shift + R' },
-  { action: 'Reload Workspace from Disk', key: 'Ctrl + Alt + R' },
-  { action: 'Find in Note', key: 'Ctrl + F' },
-  { action: 'Find and Replace', key: 'Ctrl + H' },
-  { action: 'Toggle Focus Mode', key: 'Ctrl + Alt + F' },
-  { action: 'Toggle Outline Panel', key: 'Ctrl + Alt + L' },
-  { action: 'Format Code Block (Prettier)', key: 'Ctrl + Shift + I' },
-  { action: 'Trigger Autocomplete / Suggest', key: 'Ctrl + Space' }
-]" context="Editor" />
+| Action | Shortcut | Scope / Notes |
+|---|---|---|
+| Create New Note | `Ctrl/Cmd + N` | Notes |
+| Save Current Note | `Ctrl/Cmd + S` | Editor |
+| Rename Current Note | `F2` | Editor |
+| Move Note to Removed | `Ctrl/Cmd + Delete` | Editor |
+| Reload Current Note from Disk | `Ctrl/Cmd + Shift + R` | Editor |
+| Back to Notes / Close Dialog | `Esc` | Editor / Dialogs |
+| Undo | `Ctrl/Cmd + Z` | Editor |
+| Redo | `Ctrl/Cmd + Y` or `Ctrl/Cmd + Shift + Z` | Editor |
+| Toggle Split Preview | `Ctrl/Cmd + \` | Editor |
+| Switch to Edit Mode | `Ctrl/Cmd + 1` | Editor |
+| Switch to Split Mode | `Ctrl/Cmd + 2` | Editor |
+| Switch to Preview Mode | `Ctrl/Cmd + 3` | Editor |
+| Toggle Focus Mode | `Ctrl/Cmd + Alt + F` | Editor |
+| Toggle Outline Panel | `Ctrl/Cmd + Alt + L` | Editor |
+| Open Reference Note | `Ctrl/Cmd + Shift + K` | Editor |
+| Insert Reference Link | `Ctrl/Cmd + Shift + L` | Editor |
 
-## Git & Version Control
+## Search & Find Panel
 
-<ShortcutTable :shortcuts="[
-  { action: 'Toggle Version History', key: 'Ctrl + Shift + H' },
-  { action: 'Open Workspace VS Code External', key: 'Ctrl + Shift + O' },
-  { action: 'Reveal Workspace File Explorer', key: 'Ctrl + Shift + J' },
-  { action: 'Open Project Web View', key: 'Ctrl + Shift + W' }
-]" context="Git" />
+| Action | Shortcut | Scope / Notes |
+|---|---|---|
+| Find in Current Note | `Ctrl/Cmd + F` | Editor |
+| Find and Replace in Current Note | `Ctrl/Cmd + H` | Editor (Non-macOS menu accelerator) |
+| Next Find Match | `Enter` | Find Panel |
+| Previous Find Match | `Shift + Enter` | Find Panel |
 
-## Screen & Media
+## AI & Features
 
-<ShortcutTable :shortcuts="[
-  { action: 'Capture Screen Area (Windows)', key: 'Ctrl + Shift + S' }
-]" context="Media" />
+| Action | Shortcut | Scope / Notes |
+|---|---|---|
+| Open AI Palette | `Ctrl/Cmd + Shift + I` | AI (Document screens) |
+| Toggle AI Assistant Chat | `Ctrl/Cmd + J` | AI (Document screens) |
+| Open AI Settings | `Ctrl/Cmd + Shift + ,` | AI |
+
+## View, Media & Tools
+
+| Action | Shortcut | Scope / Notes |
+|---|---|---|
+| Open Versions / History | `Ctrl/Cmd + Shift + H` | Editor |
+| Export PDF | `Ctrl/Cmd + Shift + E` | Editor |
+| Open Note in VS Code | `Ctrl/Cmd + Shift + O` | Editor |
+| Open Website View | `Ctrl/Cmd + Shift + W` | Editor |
+| Capture Screen Area (Windows) | `Ctrl/Cmd + Shift + S` | Media |
+| Zoom In / Out / Reset | `Ctrl/Cmd + =` / `-` / `0` | View |
+| Open Preview Context Menu | `Shift + F10` / `ContextMenu` | Preview |
+| Image Zoom In / Out / Reset | `+` / `-` / `1` or `0` | Media Preview |
+| Landing Tile / Table View | `Ctrl/Cmd + 1` / `2` | Landing View |
+| Landing Comfortable / Compact Density | `Ctrl/Cmd + 3` / `4` | Landing View |
+

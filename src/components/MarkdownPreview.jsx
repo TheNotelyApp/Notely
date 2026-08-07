@@ -398,6 +398,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   inlineLinkedMarkdown = false,
   onSearchRequest,
   onForceSaveDocument,
+  onOpenTaskDetails,
   readOnly = false,
 }) {
   const previewRef = useRef(null);
@@ -1859,6 +1860,24 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         className="preview"
         onContextMenu={openImageContextMenu}
         onKeyDown={handlePreviewKeyDown}
+        onClick={(e) => {
+          const taskBtn = e.target.closest?.(".task-preview-link");
+          if (taskBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const rawTitle = taskBtn.getAttribute("data-task-title") || taskBtn.textContent || "";
+            const status = taskBtn.getAttribute("data-task-status") || "open";
+            const lineAttr = taskBtn.closest("[data-source-line]")?.getAttribute("data-source-line");
+            const sourceLine = lineAttr ? parseInt(lineAttr, 10) : null;
+
+            onOpenTaskDetails?.({
+              title: String(rawTitle).replace(/^\[[ xX]\]\s*/, "").trim(),
+              status,
+              sourceLine,
+              filePath: basePath,
+            });
+          }
+        }}
         ref={(node) => {
           previewRef.current = node;
           if (externalRef && typeof externalRef === "object") {

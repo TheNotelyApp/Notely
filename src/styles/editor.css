@@ -1316,6 +1316,69 @@
   white-space: normal;
 }
 
+/* Task preview interactive link button */
+.task-preview-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--text-strong);
+  text-align: left;
+  cursor: pointer;
+  line-height: inherit;
+  transition: all var(--motion-fast);
+}
+
+.task-preview-link:hover {
+  background: var(--surface-subtle);
+  border-color: var(--border-soft);
+  color: var(--accent-solid);
+}
+
+.task-preview-link.done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.task-checkbox-icon {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--accent-solid);
+  flex-shrink: 0;
+}
+
+.task-preview-link.done .task-checkbox-icon {
+  color: var(--text-subtle);
+}
+
+.task-title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-detail-modal-card {
+  width: 90vw;
+  max-width: 720px;
+  max-height: 85vh;
+  padding: 0 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-modal-detail-pane {
+  height: 100%;
+  max-height: 85vh;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
 .note-list-panel-list {
   list-style: none;
   margin: 0;
@@ -1443,21 +1506,21 @@
 }
 
 :root[data-theme="dark"] .dashboard-recent-list button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 :root[data-theme="dark"] .dashboard-inline-action,
 :root[data-theme="dark"] .dashboard-task-badge-button {
-  background: #1c272a !important;
-  border-color: #2b393c !important;
-  color: #e3efeb !important;
+  background: var(--surface-bg) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-strong) !important;
 }
 
 :root[data-theme="dark"] .dashboard-inline-action:hover,
 :root[data-theme="dark"] .dashboard-task-badge-button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 
@@ -1617,19 +1680,19 @@
 }
 
 :root[data-theme="dark"] .dashboard-task-list button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 :root[data-theme="dark"] .dashboard-action-grid button {
-  background: #1c272a !important;
-  border-color: #2b393c !important;
+  background: var(--surface-bg) !important;
+  border-color: var(--border-default) !important;
   color: var(--app-text) !important;
 }
 
 :root[data-theme="dark"] .dashboard-action-grid button:hover {
-  background: #243236 !important;
-  border-color: #4f7f8a !important;
+  background: var(--surface-accent) !important;
+  border-color: var(--border-soft) !important;
 }
 
 /* â”€â”€ Favorite Toggle Active State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

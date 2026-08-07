@@ -21,6 +21,8 @@ import {
   Maximize,
   Minimize,
   Sparkles,
+  ListChecks,
+  ExternalLink,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppIconButton from "./AppIconButton";
@@ -30,7 +32,7 @@ import { MediaTab } from "./MediaTab";
 import OverlayDialog from "./OverlayDialog";
 import DialogSelectField from "./DialogSelectField";
 
-import { downloadPdf } from "../services/electronService";
+import { downloadPdf, syncTasksFromNote } from "../services/electronService";
 import { GitNoteHistoryPanel } from "./GitNoteHistoryPanel";
 import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
@@ -39,6 +41,7 @@ import { extractTasksFromText, getTaskCountsFromText } from "../utils/taskUtils"
 import { getLineStartOffset, resolveTargetLine } from "../utils/markdownUtils";
 import { NoteTabBar } from "./NoteTabBar";
 import { MetadataPopover } from "./MetadataPopover";
+import { TaskDetailModal } from "./TaskDetailModal";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -414,6 +417,7 @@ export function DocumentDetail({
   onRevealInExplorer,
   onCopyLinkPath,
   onReloadFromDisk,
+  onOpenAllTasks,
 }) {
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
@@ -424,6 +428,7 @@ export function DocumentDetail({
   });
   const applyingHistoryRef = useRef(false);
   const [showHistoryPopover, setShowHistoryPopover] = useState(false);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState(null);
 
   const [pdfExporting, setPdfExporting] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
@@ -805,6 +810,9 @@ export function DocumentDetail({
     const snapshot = captureEditorSnapshot();
     try {
       await onSave(options);
+      if (document?.filePath) {
+        void syncTasksFromNote({ filePath: document.filePath, content: content || "" }).catch(() => {});
+      }
     } finally {
       const shouldRestore = snapshot
         && snapshot.filePath === document.filePath
@@ -1350,6 +1358,20 @@ export function DocumentDetail({
                     </div>
                   </div>
                 ) : null}
+                <div className="detail-task-popover-footer">
+                  <button
+                    type="button"
+                    className="detail-task-popover-page-link"
+                    onClick={() => {
+                      setIsTaskSummaryOpen(false);
+                      onOpenAllTasks?.(document.filePath || document.path);
+                    }}
+                  >
+                    <ListChecks size={14} />
+                    <span>Open in Tasks Page</span>
+                    <ExternalLink size={12} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1623,6 +1645,7 @@ export function DocumentDetail({
             onTableEditorToggle={onTableEditorToggle}
             scrollSyncEnabled={scrollSyncEnabled}
             onScrollSyncEnabledChange={onScrollSyncEnabledChange}
+            onOpenTaskDetails={(taskInfo) => setSelectedTaskForModal({ ...taskInfo, noteContent: content })}
           />
         </main>
 
@@ -1766,6 +1789,40 @@ export function DocumentDetail({
             </div>
         </OverlayDialog>
       ) : null}
+
+      <TaskDetailModal
+        open={Boolean(selectedTaskForModal)}
+        onClose={() => setSelectedTaskForModal(null)}
+        taskInfo={selectedTaskForModal}
+        onOpenNote={(targetPath) => {
+          setSelectedTaskForModal(null);
+          onOpenDocument?.(targetPath);
+        }}
+        onNotify={onNotify}
+        onTaskUpdated={async (updatedTask) => {
+          // 1. Save active note buffer first if dirty so no unsaved text edits are lost
+          if (dirty) {
+            try {
+              await savePreservingEditorViewport({ reason: "pre-task-update-save", silent: true });
+            } catch (saveErr) {
+              console.warn("[DocumentDetail] Pre-task-update save warning:", saveErr);
+            }
+          }
+
+          // 2. Clear disk warning flag and reload updated note content from disk without prompt
+          setChangedOnDisk(false);
+          const targetPath = updatedTask?.source_path || updatedTask?.sourcePath || document.filePath;
+          if (targetPath && targetPath === document.filePath) {
+            try {
+              if (typeof onOpenDocument === "function") {
+                await onOpenDocument(targetPath, { forceReload: true, preserveActiveTab: true });
+              } else if (typeof onReloadFromDisk === "function") {
+                await onReloadFromDisk(targetPath);
+              }
+            } catch { /* ignore reload error */ }
+          }
+        }}
+      />
 
     </div>
   );

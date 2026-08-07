@@ -1126,7 +1126,7 @@ export function GitVersionControlPage({
         <div className="detail-topbar">
           <nav className="detail-breadcrumb" aria-label="Version control location">
             <span className="detail-breadcrumb-part">
-              <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Notes</button>
+              <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
               <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
             </span>
             <span className="detail-breadcrumb-current">Version Control</span>
@@ -1146,7 +1146,7 @@ export function GitVersionControlPage({
       <div className="detail-topbar">
         <nav className="detail-breadcrumb" aria-label="Version control location">
           <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Notes</button>
+            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
             <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
           </span>
           <span className="detail-breadcrumb-current">Version Control</span>
