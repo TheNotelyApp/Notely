@@ -3,8 +3,6 @@ const fsAsync = require("fs").promises;
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
-const { pathToFileURL } = require("url");
-const { Notification } = require("electron");
 const { ZipFile } = require("yazl");
 
 const PDF_WRITE_RETRY_DELAYS_MS = [120, 320, 700];
@@ -129,10 +127,7 @@ class ExportManager {
       }
     }
 
-    // 2. Dispatch EXACTLY ONE system notification
-    this._notifyCompletion(filename);
-
-    // 3. Broadcast record-added event to all windows
+    // 2. Broadcast record-added event to all windows
     if (this.BrowserWindow) {
       const payloadRecord = record || {
         filename,
@@ -183,19 +178,6 @@ class ExportManager {
     }
 
     return { targetPath, targetName };
-  }
-
-  _notifyCompletion(filename) {
-    try {
-      if (Notification && Notification.isSupported()) {
-        new Notification({
-          title: "Export Complete",
-          body: `Saved "${filename}" to Downloads`,
-        }).show();
-      }
-    } catch (err) {
-      console.warn("[ExportManager] Notification failed:", err);
-    }
   }
 
   _sendWorkspaceExportProgress(progressPayload) {
