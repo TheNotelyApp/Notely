@@ -573,6 +573,12 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "open-assets")
         },
         {
+          label: "Downloads & Export History",
+          accelerator: "CmdOrCtrl+J",
+          action: "open-downloads-page",
+          click: () => sendMenuAction(win, "open-downloads-page")
+        },
+        {
           label: "Trash / Removed Items",
           click: () => sendMenuAction(win, "open-trash")
         },

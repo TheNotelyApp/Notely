@@ -373,5 +373,15 @@ contextBridge.exposeInMainWorld("notesApi", {
   listPersons: () => ipcRenderer.invoke("persons:list"),
   upsertPerson: (p) => ipcRenderer.invoke("persons:upsert", p),
   deletePerson: (p) => ipcRenderer.invoke("persons:delete", p),
+
+  // ── Exports & Downloads ──────────────────────────────────────────────────
+  getExportHistory: () => ipcRenderer.invoke("exports:getHistory"),
+  addExportRecord: (payload) => ipcRenderer.invoke("exports:addRecord", payload),
+  removeExportRecord: (payload) => ipcRenderer.invoke("exports:removeRecord", { id: payload }),
+  clearExportHistory: () => ipcRenderer.invoke("exports:clearHistory"),
+  showInFolder: (filePath) => ipcRenderer.invoke("exports:showInFolder", { filePath }),
+  openExportFile: (filePath) => ipcRenderer.invoke("exports:openFile", { filePath }),
+  getDefaultDownloadDir: () => ipcRenderer.invoke("exports:getDefaultDownloadDir"),
 });
+
 

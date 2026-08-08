@@ -1,0 +1,275 @@
+/* ── Downloads Page ────────────────────────────────────────────────────────── */
+
+.downloads-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--app-bg);
+  color: var(--text-strong);
+  font-family: var(--font-sans, inherit);
+  overflow: hidden;
+}
+
+.downloads-page .detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: var(--surface-bg);
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 0;
+  box-shadow: none;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.downloads-page .detail-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.downloads-page .task-stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+}
+
+.downloads-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.downloads-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.downloads-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg, 8px);
+  padding: 3px;
+}
+
+.downloads-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.downloads-tab:hover {
+  background: var(--surface-muted, rgba(127, 127, 127, 0.08));
+  color: var(--text-strong);
+}
+
+.downloads-tab.active {
+  background: var(--accent-solid);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.downloads-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--border-soft);
+  color: var(--text-strong);
+  box-sizing: border-box;
+}
+
+.downloads-tab.active .downloads-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--text-on-accent);
+}
+
+.downloads-search {
+  flex: 1;
+  max-width: 320px;
+  position: relative;
+}
+
+.downloads-search input {
+  width: 100%;
+  padding: 6px 12px 6px 34px;
+  font-size: 0.85rem;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--text-strong);
+  box-sizing: border-box;
+}
+
+.downloads-search input:focus {
+  outline: none;
+  border-color: var(--accent-solid);
+}
+
+.downloads-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.downloads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.downloads-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.downloads-card:hover {
+  border-color: var(--accent-solid);
+  box-shadow: var(--shadow-sm);
+}
+
+.downloads-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--accent-solid);
+  flex-shrink: 0;
+}
+
+.downloads-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.downloads-card-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-strong);
+}
+
+.downloads-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.downloads-card-path {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 3px;
+  opacity: 0.85;
+}
+
+.downloads-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.downloads-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.downloads-empty-icon {
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.downloads-empty h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  color: var(--text-strong);
+}
+
+.downloads-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.downloads-tag-pdf { background: rgba(243, 139, 168, 0.15); color: #f38ba8; }
+.downloads-tag-note_package { background: rgba(203, 166, 247, 0.15); color: #cba6f7; }
+.downloads-tag-html { background: rgba(250, 179, 135, 0.15); color: #fab387; }
+.downloads-tag-diagram { background: rgba(166, 227, 161, 0.15); color: #a6e3a1; }
+.downloads-tag-media { background: rgba(148, 226, 213, 0.15); color: #94e2d5; }
+.downloads-tag-zip { background: rgba(137, 180, 250, 0.15); color: #89b4fa; }
+
+.downloads-type-icon.pdf { color: #f38ba8; }
+.downloads-type-icon.note-pkg { color: #cba6f7; }
+.downloads-type-icon.html { color: #fab387; }
+.downloads-type-icon.diagram { color: #a6e3a1; }
+.downloads-type-icon.media { color: #94e2d5; }
+.downloads-type-icon.zip { color: #89b4fa; }

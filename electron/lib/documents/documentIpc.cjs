@@ -1,11 +1,9 @@
+const { app, BrowserWindow, dialog, shell } = require("electron");
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 const { buildWorkspaceGraph } = require("./workspaceGraph.cjs");
 
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
-    BrowserWindow,
-    dialog,
-    shell,
     fs,
     os,
     path,
@@ -32,11 +30,10 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     prepareDocumentPreview,
     syncWebPreviewScope,
     tryOpenInChrome,
-    getLastPdfExportPath,
-    rememberPdfExportPath,
     buildPdfExportMarkdown,
     buildPdfExportHtml,
     getAppDataDir,
+    exportHistoryStore,
   } = deps;
 
   const PDF_WRITE_RETRY_DELAYS_MS = [120, 320, 700];
@@ -419,10 +416,11 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
 
     const focusedWindow = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0] || null;
     const defaultName = `${path.basename(resolved, ".md") || "note"}.pdf`;
-    const lastPdfExportPath = getLastPdfExportPath();
-    const defaultSavePath = lastPdfExportPath
-      ? path.join(lastPdfExportPath, defaultName)
+    const downloadsDir = app ? app.getPath("downloads") : "";
+    const defaultSavePath = downloadsDir
+      ? path.join(downloadsDir, defaultName)
       : path.join(path.dirname(resolved), defaultName);
+
     const saveResult = await dialog.showSaveDialog(focusedWindow, {
       title: "Save note as PDF",
       defaultPath: defaultSavePath,
@@ -482,7 +480,20 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
           }
           throw error;
         }
-        rememberPdfExportPath(saveResult.filePath);
+
+        if (exportHistoryStore && saveResult.filePath) {
+          try {
+            const stat = fs.statSync(saveResult.filePath);
+            await exportHistoryStore.addRecord({
+              filename: path.basename(saveResult.filePath),
+              filePath: saveResult.filePath,
+              fileSize: stat.size,
+              exportType: "pdf",
+              category: "document",
+              sourceNote: path.basename(resolved)
+            });
+          } catch {}
+        }
       } finally {
         if (!pdfWindow.isDestroyed()) {
           pdfWindow.close();

@@ -1442,3 +1442,49 @@ export async function deletePerson(id) {
   if (typeof api.deletePerson !== 'function') return false;
   return api.deletePerson({ id });
 }
+
+// ── Export & Download History ──────────────────────────────────────────────
+
+export async function getExportHistory() {
+  const api = getNotesApi();
+  if (typeof api.getExportHistory !== "function") return [];
+  return api.getExportHistory();
+}
+
+export async function addExportRecord(record) {
+  const api = getNotesApi();
+  if (typeof api.addExportRecord !== "function") return null;
+  return api.addExportRecord(record);
+}
+
+export async function removeExportRecord(id) {
+  const api = getNotesApi();
+  if (typeof api.removeExportRecord !== "function") return false;
+  return api.removeExportRecord(id);
+}
+
+export async function clearExportHistory() {
+  const api = getNotesApi();
+  if (typeof api.clearExportHistory !== "function") return false;
+  return api.clearExportHistory();
+}
+
+export async function showInFolder(filePath) {
+  const api = getNotesApi();
+  if (typeof api.showInFolder !== "function") return false;
+  return api.showInFolder(filePath);
+}
+
+export async function openExportFile(filePath) {
+  const api = getNotesApi();
+  if (typeof api.openExportFile !== "function") return false;
+  return api.openExportFile(filePath);
+}
+
+export async function getDefaultDownloadDir() {
+  const api = getNotesApi();
+  if (typeof api.getDefaultDownloadDir !== "function") return "";
+  return api.getDefaultDownloadDir();
+}
+
+

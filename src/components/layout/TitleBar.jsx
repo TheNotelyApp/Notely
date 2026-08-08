@@ -67,6 +67,8 @@ const MENU_ICON_MAP = {
   "tasks": CheckSquare,
   "calendar": Clock,
   "assets library": ImageIcon,
+  "downloads & export history": Download,
+  "downloads export history": Download,
   "workspace": FolderOpen,
   "workspace information": Info,
   "workspace activity": Activity,
@@ -156,7 +158,7 @@ function getItemIcon(item) {
   return <IconComponent size={12} className="titlebar-menu-item-icon" />;
 }
 
-export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite }) {
+export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpenDownloads }) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [menuStructure, setMenuStructure] = useState([]);
   const [activeMenuIndex, setActiveMenuIndex] = useState(null);
@@ -257,7 +259,8 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite }) {
     if (item.submenu) return; // Submenus open on hover/interaction
 
     window.notesApi?.executeMenuItem?.({
-      indexPath
+      indexPath,
+      action: item.action
     });
     closeAllMenus();
   };
@@ -388,6 +391,18 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite }) {
       </div>
 
       <div className="titlebar-controls">
+        {onOpenDownloads && (
+          <button
+            className="titlebar-btn downloads-view"
+            onClick={onOpenDownloads}
+            type="button"
+            title="Downloads & Export History (Ctrl+J)"
+            aria-label="Downloads & Export History"
+            style={{ marginRight: "4px" }}
+          >
+            <Download size={14} />
+          </button>
+        )}
         {onOpenWebsite && (
           <button
             className="titlebar-btn web-view"

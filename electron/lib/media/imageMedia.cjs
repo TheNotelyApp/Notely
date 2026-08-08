@@ -27,8 +27,7 @@ function createImageMedia(deps) {
     getAppDataDir,
     emitLocalP2PSyncEvent,
     hashContent,
-    getLastPdfExportPath,
-    rememberPdfExportPath
+    exportHistoryStore
   } = deps;
 
   const THUMBNAIL_DIR_NAME = "thumbnails";
@@ -732,12 +731,12 @@ registerTrustedHandler("images:download", async (event, payload) => {
     throw new Error("Invalid download data.");
   }
 
-  const { dialog } = require("electron");
+  const { app, dialog } = require("electron");
   const fs = require("fs");
 
-  const lastPdfExportPath = typeof getLastPdfExportPath === "function" ? getLastPdfExportPath() : "";
-  const defaultSavePath = lastPdfExportPath
-    ? path.join(lastPdfExportPath, defaultFilename || "diagram.png")
+  const downloadsDir = app ? app.getPath("downloads") : "";
+  const defaultSavePath = downloadsDir
+    ? path.join(downloadsDir, defaultFilename || "diagram.png")
     : defaultFilename || "diagram.png";
 
   const { filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
@@ -756,8 +755,22 @@ registerTrustedHandler("images:download", async (event, payload) => {
   const buffer = Buffer.from(base64Data.split(",")[1], "base64");
   fs.writeFileSync(filePath, buffer);
 
-  if (typeof rememberPdfExportPath === "function") {
-    rememberPdfExportPath(filePath);
+  if (exportHistoryStore) {
+    try {
+      const filename = path.basename(filePath);
+      const isDiagram = (defaultFilename || filename).toLowerCase().includes("diagram")
+                     || (defaultFilename || filename).toLowerCase().includes("excali")
+                     || (defaultFilename || filename).toLowerCase().includes("drawio");
+      await exportHistoryStore.addRecord({
+        filename,
+        filePath,
+        fileSize: buffer.length,
+        exportType: isDiagram ? "diagram_excalidraw" : "image",
+        category: isDiagram ? "diagram" : "media"
+      });
+    } catch (err) {
+      console.error("Failed to record image download in export history:", err);
+    }
   }
 
   return { success: true, filePath };

@@ -103,20 +103,20 @@ function ensureDirSync(dirPath) {
 /**
  * Register note package IPC handlers
  */
-function registerNotePackageIpc(ipcMain, deps) {
-  const { BrowserWindow, dialog, getNotesRoot, filePathWithin, readUserSettings, getActiveProject } = deps;
+function registerNotePackageIpc(ipcMain, deps = {}) {
+  const { BrowserWindow, dialog, getNotesRoot, filePathWithin, readUserSettings, getActiveProject, exportHistoryStore } = deps;
+  const { app } = require("electron");
 
-  function handleTrusted(channel, handler) {
-    ipcMain.handle(channel, async (event, payload) => {
-      // Basic trusted sender check
+  function assertTrustedIpcSender(BrowserWindow, event, channel) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) throw new Error("Invalid sender window");
+  }
+
+  function handleTrusted(channel, fn) {
+    ipcMain.handle(channel, async (event, ...args) => {
+      assertTrustedIpcSender(BrowserWindow, event, channel);
       try {
-        const win = BrowserWindow.fromWebContents(event.sender);
-        if (!win || win.isDestroyed()) throw new Error("Invalid sender window");
-      } catch (err) {
-        return { ok: false, error: err.message };
-      }
-      try {
-        return await handler(event, payload);
+        return await fn(event, ...args);
       } catch (err) {
         console.error(`[notePackageIpc] ${channel} error:`, err);
         return { ok: false, error: err.message };
@@ -149,6 +149,15 @@ function registerNotePackageIpc(ipcMain, deps) {
     }
 
     if (!destPath) {
+      try {
+        const downloadsPath = app ? app.getPath("downloads") : "";
+        if (downloadsPath && fsSync.existsSync(downloadsPath)) {
+          destPath = downloadsPath;
+        }
+      } catch {}
+    }
+
+    if (!destPath) {
       const activeProject = typeof getActiveProject === "function" ? getActiveProject() : null;
       destPath = path.resolve(activeProject?.rootPath || notesRoot);
     }
@@ -163,9 +172,12 @@ function registerNotePackageIpc(ipcMain, deps) {
   // --- Browse Export Destination ---
   handleTrusted("note-package:browse-export-destination", async (event, { defaultFileName }) => {
     const focusedWindow = BrowserWindow.fromWebContents(event.sender);
+    let defaultDir = "";
+    try { defaultDir = app ? app.getPath("downloads") : ""; } catch {}
+    const defaultPath = defaultDir ? path.join(defaultDir, defaultFileName || "notes_package.nly") : (defaultFileName || "notes_package.nly");
     const result = await dialog.showSaveDialog(focusedWindow, {
       title: "Export Note Package",
-      defaultPath: defaultFileName || "notes_package.nly",
+      defaultPath,
       filters: [{ name: "Notely Shareable Package", extensions: ["nly", "note"] }],
     });
     if (result.canceled || !result.filePath) {
@@ -398,6 +410,21 @@ function registerNotePackageIpc(ipcMain, deps) {
         // Fallback: direct write if rename fails (e.g. cross-device)
         await fs.writeFile(finalDest, encryptedBuffer);
         try { await fs.unlink(finalDestTmp); } catch { /* ignore */ }
+      }
+
+      if (exportHistoryStore) {
+        try {
+          const stat = fsSync.statSync(finalDest);
+          await exportHistoryStore.addRecord({
+            filename: path.basename(finalDest),
+            filePath: finalDest,
+            fileSize: stat.size,
+            exportType: "note_package",
+            category: "document"
+          });
+        } catch (err) {
+          console.warn("[notePackageIpc] Failed to log export history:", err);
+        }
       }
 
       return {

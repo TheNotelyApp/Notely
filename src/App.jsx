@@ -26,6 +26,8 @@ const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
 const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
 const TaskWorkspacePage = lazy(() => import("./components/TaskWorkspacePage").then((m) => ({ default: m.TaskWorkspacePage })));
 const CalendarPage = lazy(() => import("./components/CalendarPage").then((m) => ({ default: m.CalendarPage })));
+const DownloadsPage = lazy(() => import("./components/DownloadsPage").then((m) => ({ default: m.DownloadsPage })));
+
 
 
 import { SettingsModal } from "./components/SettingsModal";
@@ -680,6 +682,8 @@ export default function App() {
     }
   }, []);
 
+  const [downloadsPageOpen, setDownloadsPageOpen] = useState(false);
+
   useEffect(() => {
     if (window.notesApi?.getWorkspaceInfo) {
       window.notesApi.getWorkspaceInfo().then((info) => {
@@ -1149,11 +1153,14 @@ export default function App() {
     const subscribe = api?.onMenuAction || api?.onAppMenuAction;
     if (!subscribe) return undefined;
     return subscribe((action) => {
+      if (!action) return;
       if (action === "restart-app") {
         void handleRestartApp();
+        return;
       }
+      void handleRunPaletteCommand(action);
     });
-  }, [handleRestartApp]);
+  }, [handleRestartApp, handleRunPaletteCommand]);
 
   useEffect(() => {
     const api = window.electronAPI || window.notesApi;
@@ -1322,6 +1329,10 @@ export default function App() {
       if (e.key && e.key.toLowerCase() === "m" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         setMarkdownGuideOpen(true);
+      }
+      if (e.key && e.key.toLowerCase() === "j" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setDownloadsPageOpen((prev) => !prev);
       }
       if (e.key === "," && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -2309,6 +2320,13 @@ export default function App() {
       aliases: "home notes list landing back",
     },
     {
+      id: "open-downloads-page",
+      label: "Open Downloads & Export History",
+      group: "Exports",
+      shortcut: "Ctrl/Cmd+J",
+      aliases: "downloads export history pdf html zip package files",
+    },
+    {
       id: "toggle-focus-mode",
       label: focusModeEnabled ? "Exit Focus Mode" : "Enter Focus Mode",
       group: "View",
@@ -2580,6 +2598,11 @@ export default function App() {
 
     if (resolvedCommandId === "export-workspace-zip") {
       await handleOpenWorkspaceExport();
+      return;
+    }
+
+    if (resolvedCommandId === "open-downloads-page" || resolvedCommandId === "open-downloads") {
+      setDownloadsPageOpen(true);
       return;
     }
 
@@ -2989,6 +3012,7 @@ export default function App() {
         title={current ? current.title : (workspaceInfoState?.name || (activeProject ? activeProject.name : "Notely"))}
         workspaceIcon={current ? null : (workspaceInfoState?.icon || "📝")}
         onOpenWebsite={current ? handleOpenWebsiteForCurrent : handleOpenWebsiteFromLanding}
+        onOpenDownloads={() => setDownloadsPageOpen(true)}
       />
       <div className="app-main-layout">
         <div className="toast-stack" aria-live="polite" aria-atomic="true">
@@ -4016,6 +4040,16 @@ export default function App() {
                 setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
                 setTaskWorkspaceOpen(true);
               }}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {downloadsPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
+            <DownloadsPage
+              onBack={() => setDownloadsPageOpen(false)}
             />
           </Suspense>
         </div>

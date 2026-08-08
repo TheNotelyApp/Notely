@@ -471,6 +471,7 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
     parseDocument,
     buildPdfExportMarkdown,
     buildPdfExportHtml,
+    exportHistoryStore,
   } = deps;
 
   function registerTrustedHandler(channel, handler) {
@@ -481,24 +482,13 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
   }
 
   function getDefaultDestinationPath() {
-    const settings = readUserSettings();
-    const lastPath = typeof settings.lastWorkspaceExportPath === "string"
-      ? settings.lastWorkspaceExportPath.trim()
-      : "";
-
-    if (lastPath) {
-      const resolved = path.resolve(lastPath);
-      if (fs.existsSync(resolved)) return resolved;
-    }
-
+    const { app } = require("electron");
+    try {
+      const downloads = app ? app.getPath("downloads") : "";
+      if (downloads && fs.existsSync(downloads)) return downloads;
+    } catch {}
     const activeProject = getActiveProject();
     return path.resolve(activeProject?.rootPath || getNotesRoot());
-  }
-
-  function rememberExportPath(destinationPath) {
-    const settings = readUserSettings();
-    settings.lastWorkspaceExportPath = path.resolve(destinationPath);
-    writeUserSettings(settings);
   }
 
   registerTrustedHandler("workspace-export:get-defaults", () => {
@@ -632,8 +622,20 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
       sendProgress({ phase: "Compressing zip", percent: 88 });
       const zipResult = await zipDirectory(fs, path, stagingRoot, outputPath, { rootFolderName: archiveRootName });
 
-      rememberExportPath(destinationPath);
       sendProgress({ phase: "Export complete", percent: 100, done: true, filePath: outputPath });
+
+      if (exportHistoryStore) {
+        try {
+          const stat = fs.statSync(outputPath);
+          await exportHistoryStore.addRecord({
+            filename: path.basename(outputPath),
+            filePath: outputPath,
+            fileSize: stat.size,
+            exportType: mode === "pdf" ? "pdf" : mode === "web" ? "html" : "workspace_zip",
+            category: "document"
+          });
+        } catch {}
+      }
 
       return {
         canceled: false,

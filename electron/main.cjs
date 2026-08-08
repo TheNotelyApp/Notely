@@ -46,8 +46,14 @@ const { registerGitIpcHandlers } = require("./lib/git/gitIpc.cjs");
 const gitService = require("./lib/git/gitService.cjs");
 const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
 const { registerTaskIpc } = require("./lib/tasks/taskIpc.cjs");
+const { ExportHistoryStore } = require("./lib/export/exportHistoryStore.cjs");
+const { registerExportHistoryIpc } = require("./lib/export/exportHistoryIpc.cjs");
 
+const exportHistoryStore = new ExportHistoryStore(app.getPath("userData"), () => notesRoot);
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+
+
+
 const projectRoot = app.getAppPath();
 const generatedVersionPath = path.join(projectRoot, "electron", "app-version.generated.json");
 const sessionDataPath = path.join(app.getPath("userData"), "session-data");
@@ -426,14 +432,6 @@ function broadcastThemeChange() {
   }
 }
 
-function getLastPdfExportPath() {
-  return mainHelpers.getLastPdfExportPath();
-}
-
-function rememberPdfExportPath(filePath) {
-  return mainHelpers.rememberPdfExportPath(filePath);
-}
-
 function resolveInitialNotesRoot() {
   return mainHelpers.resolveInitialNotesRoot();
 }
@@ -739,8 +737,7 @@ const imageMedia = createImageMedia({
   getAppDataDir: () => appDataDir,
   emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
   hashContent,
-  getLastPdfExportPath,
-  rememberPdfExportPath,
+  exportHistoryStore,
 });
 
 const {
@@ -1093,6 +1090,11 @@ ipcMain.on("window:execute-menu-item", (event, { indexPath, role, action }) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
 
+  if (action) {
+    sendMenuAction(win, action);
+    return;
+  }
+
   if (Array.isArray(indexPath)) {
     const rawTemplate = buildAppMenuTemplate(win, win.__menuContext || {});
     let currentItems = rawTemplate;
@@ -1224,11 +1226,10 @@ registerDocumentIpcHandlers(ipcMain, {
   prepareDocumentPreview: webPreview.prepareDocumentPreview,
   syncWebPreviewScope: webPreview.syncScopeToActiveProject,
   tryOpenInChrome: webPreview.tryOpenInChrome,
-  getLastPdfExportPath,
-  rememberPdfExportPath,
   buildPdfExportMarkdown,
   buildPdfExportHtml,
   getAppDataDir: () => appDataDir,
+  exportHistoryStore,
 });
 
 registerWorkspaceExportIpcHandlers(ipcMain, {
@@ -1247,6 +1248,7 @@ registerWorkspaceExportIpcHandlers(ipcMain, {
   parseDocument,
   buildPdfExportMarkdown,
   buildPdfExportHtml,
+  exportHistoryStore,
 });
 
 registerNotePackageIpc(ipcMain, {
@@ -1256,6 +1258,15 @@ registerNotePackageIpc(ipcMain, {
   filePathWithin,
   readUserSettings,
   getActiveProject,
+  exportHistoryStore,
+});
+
+registerExportHistoryIpc({
+  ipcMain,
+  BrowserWindow,
+  shell,
+  app,
+  exportHistoryStore,
 });
 
 imageMedia.registerIpcHandlers(ipcMain);
@@ -1279,3 +1290,4 @@ registerTaskIpc(ipcMain, {
   getMetadataStore: () => metadataStore,
   getAppDataDir: () => appDataDir,
 });
+
