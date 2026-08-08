@@ -731,39 +731,36 @@ registerTrustedHandler("images:download", async (event, payload) => {
     throw new Error("Invalid download data.");
   }
 
-  const { app, dialog } = require("electron");
+  const { app } = require("electron");
   const fs = require("fs");
 
-  const downloadsDir = app ? app.getPath("downloads") : "";
-  const defaultSavePath = downloadsDir
-    ? path.join(downloadsDir, defaultFilename || "diagram.png")
-    : defaultFilename || "diagram.png";
+  const downloadsDir = app ? app.getPath("downloads") : getNotesRoot();
+  const rawName = defaultFilename || "diagram.png";
+  const ext = path.extname(rawName) || ".png";
+  const base = path.basename(rawName, ext);
 
-  const { filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
-    title: "Download Diagram",
-    defaultPath: defaultSavePath,
-    filters: [
-      { name: "PNG Images", extensions: ["png"] },
-      { name: "All Files", extensions: ["*"] }
-    ]
-  });
-
-  if (!filePath) {
-    return { cancelled: true };
+  let targetName = rawName;
+  let targetFilePath = path.join(downloadsDir, targetName);
+  let counter = 1;
+  while (fs.existsSync(targetFilePath)) {
+    targetName = `${base} (${counter})${ext}`;
+    targetFilePath = path.join(downloadsDir, targetName);
+    counter++;
   }
 
-  const buffer = Buffer.from(base64Data.split(",")[1], "base64");
-  fs.writeFileSync(filePath, buffer);
+  const base64Clean = base64Data.replace(/^data:[^;]+;base64,/, "");
+  const buffer = Buffer.from(base64Clean, "base64");
+  fs.writeFileSync(targetFilePath, buffer);
 
   if (exportHistoryStore) {
     try {
-      const filename = path.basename(filePath);
+      const filename = path.basename(targetFilePath);
       const isDiagram = (defaultFilename || filename).toLowerCase().includes("diagram")
                      || (defaultFilename || filename).toLowerCase().includes("excali")
                      || (defaultFilename || filename).toLowerCase().includes("drawio");
       const record = {
         filename,
-        filePath,
+        filePath: targetFilePath,
         fileSize: buffer.length,
         exportType: isDiagram ? "diagram_excalidraw" : "image",
         category: isDiagram ? "diagram" : "media"
@@ -779,7 +776,7 @@ registerTrustedHandler("images:download", async (event, payload) => {
     }
   }
 
-  return { success: true, filePath };
+  return { success: true, filePath: targetFilePath };
 });
 
 registerTrustedHandler("images:list", (_event, payload) => {

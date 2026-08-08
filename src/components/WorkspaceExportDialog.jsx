@@ -34,7 +34,7 @@ export function WorkspaceExportDialog({
       </div>
 
       <p className="workspace-export-intro">
-        Create a portable zip bundle for this workspace. Choose the output format, metadata inclusion, destination, and filename.
+        Export a zip bundle of this workspace directly to your Downloads folder.
       </p>
 
       <div className="overlay-dialog-field">
@@ -84,27 +84,7 @@ export function WorkspaceExportDialog({
         </span>
       </label>
 
-      <label className="overlay-dialog-field" htmlFor="workspace-export-destination">
-        <span>Destination folder</span>
-        <div className="workspace-export-destination-row">
-          <AppInput
-            id="workspace-export-destination"
-            type="text"
-            value={values.destinationPath}
-            onChange={(event) => onChange({ destinationPath: event.target.value })}
-            placeholder="Choose an export destination"
-            disabled={loading}
-          />
-          <button
-            className="small-button"
-            type="button"
-            onClick={onBrowse}
-            disabled={loading}
-          >
-            Browse
-          </button>
-        </div>
-      </label>
+
 
       <label className="overlay-dialog-field" htmlFor="workspace-export-filename">
         <span>Zip file name</span>

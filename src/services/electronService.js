@@ -781,11 +781,24 @@ export async function revealWorkspaceInExplorer(folderPath) {
 
 export async function downloadPdf(payload) {
   const api = getNotesApi();
-  if (typeof api.downloadPdf !== "function") {
+  if (typeof api?.downloadPdf !== "function") {
     throw new Error("PDF download action unavailable. Please restart the app to load the latest desktop API.");
   }
 
-  return api.downloadPdf(payload);
+  const res = await api.downloadPdf(payload);
+  if (res && !res.canceled && res.filePath) {
+    if (typeof window !== "undefined") {
+      const filename = res.filePath.split(/[/\\]/).pop() || "note.pdf";
+      window.dispatchEvent(new CustomEvent("app:download-complete", { detail: { ...res, filename } }));
+      window.dispatchEvent(new CustomEvent("app:toast", {
+        detail: {
+          message: `Exported PDF: ${filename}`,
+          type: "success",
+        },
+      }));
+    }
+  }
+  return res;
 }
 
 export async function getWorkspaceExportDefaults() {
@@ -811,10 +824,24 @@ export async function browseWorkspaceExportDestination() {
 
 export async function exportWorkspaceZip(payload) {
   const api = getNotesApi();
-  if (typeof api.exportWorkspaceZip !== "function") {
+  if (typeof api?.exportWorkspaceZip !== "function") {
     throw new Error("Workspace export is unavailable. Please restart the app.");
   }
-  return api.exportWorkspaceZip(payload || {});
+
+  const res = await api.exportWorkspaceZip(payload || {});
+  if (res && !res.canceled && res.filePath) {
+    if (typeof window !== "undefined") {
+      const filename = res.filePath.split(/[/\\]/).pop() || "workspace.zip";
+      window.dispatchEvent(new CustomEvent("app:download-complete", { detail: { ...res, filename } }));
+      window.dispatchEvent(new CustomEvent("app:toast", {
+        detail: {
+          message: `Exported Workspace Zip: ${filename}`,
+          type: "success",
+        },
+      }));
+    }
+  }
+  return res;
 }
 
 export function onWorkspaceExportProgress(callback) {

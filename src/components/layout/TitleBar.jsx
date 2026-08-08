@@ -467,7 +467,6 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
                   aria-label="Downloads & Export History"
                 >
                   <Download size={14} />
-                  {hasUnreadDownload && <span className="titlebar-downloads-badge-dot" />}
                 </button>
 
                 <DownloadsPopover

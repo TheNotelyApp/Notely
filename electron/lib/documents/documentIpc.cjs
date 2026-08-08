@@ -414,21 +414,18 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       throw new Error("Select at least one section to export.");
     }
 
-    const focusedWindow = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0] || null;
+    const downloadsDir = app ? app.getPath("downloads") : path.dirname(resolved);
     const defaultName = `${path.basename(resolved, ".md") || "note"}.pdf`;
-    const downloadsDir = app ? app.getPath("downloads") : "";
-    const defaultSavePath = downloadsDir
-      ? path.join(downloadsDir, defaultName)
-      : path.join(path.dirname(resolved), defaultName);
+    const ext = ".pdf";
+    const base = path.basename(defaultName, ext);
 
-    const saveResult = await dialog.showSaveDialog(focusedWindow, {
-      title: "Save note as PDF",
-      defaultPath: defaultSavePath,
-      filters: [{ name: "PDF", extensions: ["pdf"] }]
-    });
-
-    if (saveResult.canceled || !saveResult.filePath) {
-      return { canceled: true };
+    let targetName = defaultName;
+    let saveFilePath = path.join(downloadsDir, targetName);
+    let counter = 1;
+    while (fs.existsSync(saveFilePath)) {
+      targetName = `${base} (${counter})${ext}`;
+      saveFilePath = path.join(downloadsDir, targetName);
+      counter++;
     }
 
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "notely-pdf-"));
@@ -473,20 +470,20 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
         });
 
         try {
-          await writeFileWithRetries(saveResult.filePath, pdfData);
+          await writeFileWithRetries(saveFilePath, pdfData);
         } catch (error) {
           if (isRetryableWriteError(error)) {
-            throw new Error(`Unable to save PDF because the target file is busy or locked: ${saveResult.filePath}. Close any app using it (including preview panes/OneDrive sync locks) and try again.`);
+            throw new Error(`Unable to save PDF because the target file is busy or locked: ${saveFilePath}. Close any app using it (including preview panes/OneDrive sync locks) and try again.`);
           }
           throw error;
         }
 
-        if (exportHistoryStore && saveResult.filePath) {
+        if (exportHistoryStore && saveFilePath) {
           try {
-            const stat = fs.statSync(saveResult.filePath);
+            const stat = fs.statSync(saveFilePath);
             const record = {
-              filename: path.basename(saveResult.filePath),
-              filePath: saveResult.filePath,
+              filename: path.basename(saveFilePath),
+              filePath: saveFilePath,
               fileSize: stat.size,
               exportType: "pdf",
               category: "document",
@@ -508,7 +505,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
         }
       }
 
-      return { canceled: false, filePath: saveResult.filePath };
+      return { canceled: false, filePath: saveFilePath };
     } finally {
       try {
         fs.rmSync(tempDir, { recursive: true, force: true });
