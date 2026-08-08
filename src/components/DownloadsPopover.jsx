@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from "react";
 import {
   Download,
   Folder,
-  ExternalLink,
   Archive,
   ChevronRight,
   FileText,
@@ -104,7 +103,19 @@ export function DownloadsPopover({
           </div>
         ) : (
           recentDownloads.slice(0, 5).map((item) => (
-            <div key={item.id || item.filePath} className="downloads-popover-item">
+            <div
+              key={item.id || item.filePath}
+              className="downloads-popover-item"
+              role="button"
+              tabIndex={0}
+              onClick={() => openExportFile(item.filePath)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openExportFile(item.filePath);
+                }
+              }}
+            >
               <div className="downloads-popover-item-icon">
                 {getPopoverIconForType(item.exportType)}
               </div>
@@ -122,18 +133,13 @@ export function DownloadsPopover({
                 <button
                   type="button"
                   className="downloads-popover-action-btn"
-                  onClick={() => showInFolder(item.filePath)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showInFolder(item.filePath);
+                  }}
                   title="Show in Folder"
                 >
                   <Folder size={12} />
-                </button>
-                <button
-                  type="button"
-                  className="downloads-popover-action-btn"
-                  onClick={() => openExportFile(item.filePath)}
-                  title="Open File"
-                >
-                  <ExternalLink size={14} />
                 </button>
               </div>
             </div>

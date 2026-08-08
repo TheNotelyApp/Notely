@@ -445,6 +445,8 @@
   border-bottom: 1px solid var(--border-subtle);
   box-shadow: none;
   transition: background var(--motion-fast);
+  cursor: pointer;
+  outline: none;
 }
 
 .downloads-popover-item:last-child {
@@ -453,6 +455,16 @@
 
 .downloads-popover-item:hover {
   background: var(--surface-accent);
+}
+
+.downloads-popover-item:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: -2px;
+  background: var(--surface-accent);
+}
+
+.downloads-popover-item:active {
+  background: var(--surface-muted);
 }
 
 .downloads-popover-item-icon {
