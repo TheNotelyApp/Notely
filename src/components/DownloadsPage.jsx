@@ -192,20 +192,20 @@ export function DownloadsPage({ onBack }) {
               onClick={handleOpenDownloadsFolder}
               title={`Default folder: ${defaultDir}`}
             >
-              <FolderOpen size={13} />
+              <FolderOpen size={14} />
               <span>Downloads Folder</span>
             </button>
           )}
 
           {history.length > 0 && (
             <button className="app-button secondary danger" type="button" onClick={handleClearAll} title="Clear export history records">
-              <Trash2 size={13} />
+              <Trash2 size={14} />
               <span>Clear History</span>
             </button>
           )}
 
-          <button className="icon-button" type="button" onClick={loadHistory} title="Refresh">
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          <button className="icon-button" type="button" onClick={loadHistory} data-tooltip="Refresh">
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
@@ -264,7 +264,7 @@ export function DownloadsPage({ onBack }) {
 
         {filteredHistory.length === 0 ? (
           <div className="downloads-empty">
-            <Archive size={40} className="downloads-empty-icon" />
+            <Archive size={20} className="downloads-empty-icon" />
             <h3>No exports found</h3>
             <p>Exported notes, workspace zip archives, diagrams, and rendered files will appear here.</p>
           </div>
@@ -303,7 +303,7 @@ export function DownloadsPage({ onBack }) {
                     onClick={() => handleShowInFolder(item.filePath)}
                     title="Show in File Explorer"
                   >
-                    <Folder size={13} />
+                    <Folder size={14} />
                     <span>Show in Folder</span>
                   </button>
 
@@ -312,16 +312,16 @@ export function DownloadsPage({ onBack }) {
                     onClick={() => handleOpenFile(item.filePath)}
                     title="Open File"
                   >
-                    <ExternalLink size={13} />
+                    <ExternalLink size={14} />
                     <span>Open</span>
                   </button>
 
                   <button
                     className="icon-button"
                     onClick={() => handleRemove(item.id)}
-                    title="Remove from history"
+                    data-tooltip="Remove from history"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
