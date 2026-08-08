@@ -90,7 +90,9 @@ class ExportHistoryStore {
     try {
       // Remove previous entries with exact same file_path
       this.db.prepare("DELETE FROM export_history WHERE LOWER(file_path) = LOWER(?)").run(record.filePath);
-    } catch {}
+    } catch {
+      /* ignore deletion error if entry did not exist */
+    }
 
     const stmt = this.db.prepare(`
       INSERT INTO export_history (id, filename, file_path, file_size, export_type, category, timestamp, source_note)
@@ -135,7 +137,9 @@ class ExportHistoryStore {
 
     try {
       this.db.prepare("DELETE FROM export_history WHERE id = ?").run(id);
-    } catch {}
+    } catch {
+      /* ignore record deletion error */
+    }
     return true;
   }
 
@@ -145,7 +149,9 @@ class ExportHistoryStore {
 
     try {
       this.db.prepare("DELETE FROM export_history").run();
-    } catch {}
+    } catch {
+      /* ignore clear history error */
+    }
     return true;
   }
 }

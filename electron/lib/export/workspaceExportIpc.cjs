@@ -464,8 +464,6 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
     ensureDir,
     filePathWithin,
     getMarkdownIt,
-    readUserSettings,
-    writeUserSettings,
     getNotesRoot,
     getActiveProject,
     parseDocument,
@@ -486,7 +484,9 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
     try {
       const downloads = app ? app.getPath("downloads") : "";
       if (downloads && fs.existsSync(downloads)) return downloads;
-    } catch {}
+    } catch {
+      /* ignore default downloads dir resolution error */
+    }
     const activeProject = getActiveProject();
     return path.resolve(activeProject?.rootPath || getNotesRoot());
   }
@@ -517,7 +517,6 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
     }
 
     const destinationPath = path.resolve(result.filePaths[0]);
-    rememberExportPath(destinationPath);
     return { canceled: false, destinationPath };
   });
 
@@ -634,7 +633,9 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
             exportType: mode === "pdf" ? "pdf" : mode === "web" ? "html" : "workspace_zip",
             category: "document"
           });
-        } catch {}
+        } catch {
+          /* ignore export history recording error */
+        }
       }
 
       return {

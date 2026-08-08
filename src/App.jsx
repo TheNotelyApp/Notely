@@ -1148,6 +1148,11 @@ export default function App() {
     void refreshGitWorkspaceMeta();
   }, [notesFolderPath, currentFilePath, dirty, refreshGitWorkspaceMeta]);
 
+  const handleRunPaletteCommandRef = useRef(handleRunPaletteCommand);
+  useEffect(() => {
+    handleRunPaletteCommandRef.current = handleRunPaletteCommand;
+  });
+
   useEffect(() => {
     const api = window.electronAPI || window.notesApi;
     const subscribe = api?.onMenuAction || api?.onAppMenuAction;
@@ -1158,9 +1163,9 @@ export default function App() {
         void handleRestartApp();
         return;
       }
-      void handleRunPaletteCommand(action);
+      void handleRunPaletteCommandRef.current(action);
     });
-  }, [handleRestartApp, handleRunPaletteCommand]);
+  }, [handleRestartApp]);
 
   useEffect(() => {
     const api = window.electronAPI || window.notesApi;

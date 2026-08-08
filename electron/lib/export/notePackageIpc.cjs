@@ -107,7 +107,7 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
   const { BrowserWindow, dialog, getNotesRoot, filePathWithin, readUserSettings, getActiveProject, exportHistoryStore } = deps;
   const { app } = require("electron");
 
-  function assertTrustedIpcSender(BrowserWindow, event, channel) {
+  function assertTrustedIpcSender(BrowserWindow, event, _channel) {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win || win.isDestroyed()) throw new Error("Invalid sender window");
   }
@@ -154,7 +154,9 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
         if (downloadsPath && fsSync.existsSync(downloadsPath)) {
           destPath = downloadsPath;
         }
-      } catch {}
+      } catch {
+        /* ignore fallback errors */
+      }
     }
 
     if (!destPath) {
@@ -173,7 +175,11 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
   handleTrusted("note-package:browse-export-destination", async (event, { defaultFileName }) => {
     const focusedWindow = BrowserWindow.fromWebContents(event.sender);
     let defaultDir = "";
-    try { defaultDir = app ? app.getPath("downloads") : ""; } catch {}
+    try {
+      defaultDir = app ? app.getPath("downloads") : "";
+    } catch {
+      /* ignore default dir error */
+    }
     const defaultPath = defaultDir ? path.join(defaultDir, defaultFileName || "notes_package.nly") : (defaultFileName || "notes_package.nly");
     const result = await dialog.showSaveDialog(focusedWindow, {
       title: "Export Note Package",

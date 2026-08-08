@@ -492,7 +492,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
               category: "document",
               sourceNote: path.basename(resolved)
             });
-          } catch {}
+          } catch {
+            /* ignore export history recording errors */
+          }
         }
       } finally {
         if (!pdfWindow.isDestroyed()) {
