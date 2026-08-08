@@ -143,8 +143,11 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
-.excalidraw-preview-thumbnail:hover .excalidraw-download-btn {
+.excalidraw-preview-thumbnail:hover .markdown-block-actions,
+.excalidraw-preview-thumbnail:focus-within .markdown-block-actions {
   opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .excalidraw-download-btn:hover {

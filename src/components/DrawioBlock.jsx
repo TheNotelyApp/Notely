@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 import { readDrawioImage, readDrawioSource, writeDrawioSource } from "../services/drawioService";
-import { downloadImage } from "../services/electronService";
+import { runExport } from "../services/electronService";
 import DrawioEditor from "./DrawioEditor";
 import "../styles/ExcalidrawBlock.css"; // Reuse block styles
 
@@ -56,9 +56,16 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
     if (!thumbnail) return;
     try {
       const filename = `${diagramId || "drawio-diagram"}.png`;
-      const result = await downloadImage(thumbnail, filename);
+      const result = await runExport("diagram_image", {
+        dataUrl: thumbnail,
+        filename,
+        customExportType: "diagram_drawio",
+        category: "diagram",
+      });
       if (result?.success) {
-        onNotify?.("Diagram exported successfully.", "success");
+        onNotify?.(`Diagram exported to ${result.filename}`, "success");
+      } else {
+        onNotify?.(result?.error || "Failed to export diagram.", "error");
       }
     } catch (err) {
       console.error("Failed to download diagram:", err);
@@ -117,25 +124,41 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
         
         {thumbnail && !loading ? (
           <div className="excalidraw-preview-thumbnail">
+            <div className="markdown-block-actions">
+              <button
+                type="button"
+                className="markdown-block-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsModalOpen(true);
+                }}
+                data-tooltip="Edit diagram"
+                aria-label="Edit diagram"
+              >
+                <Pencil size={12} style={{ marginRight: "4px" }} />
+                <span>Edit</span>
+              </button>
+              <span className="markdown-block-action-separator" />
+              <button
+                type="button"
+                className="markdown-block-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDownload();
+                }}
+                data-tooltip="Download diagram as PNG"
+                aria-label="Download diagram image"
+              >
+                <Download size={12} style={{ marginRight: "4px" }} />
+                <span>Download</span>
+              </button>
+            </div>
             <img 
               src={thumbnail} 
               alt="Draw.io Diagram preview" 
               className="diagram-image"
               onError={() => setThumbnail(null)}
             />
-            <button
-              className="excalidraw-download-btn"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownload();
-              }}
-              title="Download diagram as PNG"
-              aria-label="Download diagram as PNG"
-            >
-              <Download size={14} />
-            </button>
-            <span className="click-hint">(Click to edit)</span>
           </div>
         ) : !loading ? (
           <div className="excalidraw-empty-state">

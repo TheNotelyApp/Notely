@@ -241,3 +241,43 @@ export function htmlTableToMarkdown(htmlString) {
     return null;
   }
 }
+
+export function tableElementToCsv(tableElement) {
+  if (!tableElement) return "";
+  const target = tableElement.tagName === "TABLE" ? tableElement : tableElement.querySelector("table") || tableElement;
+  const rows = Array.from(target.querySelectorAll("tr"));
+  const escapeCsvCell = (cell) => {
+    const text = String(cell?.innerText || cell?.textContent || "").trim();
+    if (text.includes('"') || text.includes(',') || text.includes('\n')) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const csvRows = rows.map((row) => {
+    const cells = Array.from(row.querySelectorAll("th, td"));
+    return cells.map(escapeCsvCell).join(",");
+  });
+
+  return csvRows.join("\n");
+}
+
+export function markdownTableToCsv(markdownText) {
+  const { headers, rows } = parseMarkdownTable(markdownText);
+  if (!headers.length && !rows.length) return "";
+
+  const escapeCsvCell = (cell) => {
+    const text = String(cell || "").trim();
+    if (text.includes('"') || text.includes(',') || text.includes('\n')) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const csvRows = [
+    headers.map(escapeCsvCell).join(","),
+    ...rows.map((row) => row.map(escapeCsvCell).join(","))
+  ];
+  return csvRows.join("\n");
+}
+

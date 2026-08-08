@@ -15,6 +15,7 @@ vi.mock("../../services/electronService", () => ({
   openExportFile: vi.fn(),
   showInFolder: vi.fn(),
   getDefaultDownloadDir: vi.fn(),
+  onExportRecordAdded: vi.fn(() => () => {}),
 }));
 
 const mockRecords = [

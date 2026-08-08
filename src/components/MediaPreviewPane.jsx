@@ -13,7 +13,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, saveToDownloads } from "../services/electronService";
+import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, runExport } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it
@@ -286,10 +286,12 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
         srcPath = resolvedPath || mediaPath;
       }
 
-      await saveToDownloads({
+      await runExport("media", {
         dataUrl,
         srcPath,
         filename: name,
+        customExportType: mediaType === "pdf" ? "pdf" : mediaType === "video" ? "video" : mediaType === "audio" ? "audio" : mediaType === "image" ? "image" : fileExtension || "media",
+        category: mediaType === "pdf" || mediaType === "document" ? "document" : "media",
       });
     } catch (err) {
       console.error("[MediaPreviewPane] Download media error:", err);
@@ -597,6 +599,14 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
           {fileExtension ? <span className="media-preview-ext">{fileExtension.toUpperCase()}</span> : null}
         </div>
         <div className="media-header-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            className="media-preview-close"
+            onClick={handleDownloadMedia}
+            data-tooltip={`Download ${fileName}`}
+            aria-label="Download media file"
+          >
+            <Download size={16} />
+          </button>
           <button
             className="media-preview-close"
             onClick={() => setIsExpanded((prev) => !prev)}

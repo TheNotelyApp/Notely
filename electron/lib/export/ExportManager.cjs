@@ -571,12 +571,20 @@ class ExportManager {
 
   // --- Type 4 & 5: Diagram Image & Media Download ---
   async _exportMediaOrDiagram(payload, downloadDir, exportType) {
-    const { dataUrl, srcPath, base64Data, defaultFilename, filename } = payload;
+    const { dataUrl, srcPath, base64Data, defaultFilename, filename, customExportType, category: customCategory } = payload || {};
     const rawName = filename || defaultFilename || (exportType === "diagram_image" ? "diagram.png" : "image.png");
 
     const { targetPath, targetName } = this._resolveCollisionFreePath(downloadDir, rawName);
 
-    let resolvedSrc = srcPath && typeof srcPath === "string" ? srcPath : "";
+    let rawSrc = srcPath && typeof srcPath === "string" ? srcPath.trim() : "";
+    let effectiveDataUrl = dataUrl || base64Data || "";
+
+    if (rawSrc.startsWith("data:")) {
+      effectiveDataUrl = rawSrc;
+      rawSrc = "";
+    }
+
+    let resolvedSrc = rawSrc;
     if (resolvedSrc.startsWith("file://")) {
       try {
         const { fileURLToPath } = require("url");
@@ -585,11 +593,21 @@ class ExportManager {
         resolvedSrc = resolvedSrc.replace(/^file:\/\/\/?/, "");
       }
     }
+    resolvedSrc = resolvedSrc.split(/[?#]/)[0];
+
+    const notesRoot = typeof this.getNotesRoot === "function" ? this.getNotesRoot() : null;
+
+    if (resolvedSrc && !fs.existsSync(resolvedSrc) && notesRoot) {
+      const candidate = path.resolve(notesRoot, resolvedSrc);
+      if (fs.existsSync(candidate)) {
+        resolvedSrc = candidate;
+      }
+    }
 
     if (resolvedSrc && fs.existsSync(resolvedSrc)) {
       fs.copyFileSync(resolvedSrc, targetPath);
-    } else if (dataUrl || base64Data) {
-      const rawBase64 = (dataUrl || base64Data).replace(/^data:[^;]+;base64,/, "");
+    } else if (effectiveDataUrl) {
+      const rawBase64 = effectiveDataUrl.replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(rawBase64, "base64");
       fs.writeFileSync(targetPath, buffer);
     } else {
@@ -599,13 +617,17 @@ class ExportManager {
     let fileSize = 0;
     try { fileSize = fs.statSync(targetPath).size; } catch { /* ignore */ }
 
+    const ext = path.extname(targetName).toLowerCase().replace(/^\./, "");
+    const derivedExportType = customExportType || (exportType === "diagram_image" ? "diagram_excalidraw" : ext || "image");
+    const derivedCategory = customCategory || (exportType === "diagram_image" ? "diagram" : ["pdf", "csv", "txt", "md", "doc", "docx", "xls", "xlsx"].includes(ext) ? "document" : "media");
+
     return {
       success: true,
       targetPath,
       filename: targetName,
       fileSize,
-      exportType: exportType === "diagram_image" ? "diagram_excalidraw" : "image",
-      category: exportType === "diagram_image" ? "diagram" : "media"
+      exportType: derivedExportType,
+      category: derivedCategory
     };
   }
 
