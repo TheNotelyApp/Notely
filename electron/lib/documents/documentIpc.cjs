@@ -1,14 +1,11 @@
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { BrowserWindow, shell } = require("electron");
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 const { buildWorkspaceGraph } = require("./workspaceGraph.cjs");
 
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
     fs,
-    os,
     path,
-    pathToFileURL,
-    slugify,
     hashContent,
     filePathWithin,
     listRootEntries,
@@ -30,39 +27,8 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     prepareDocumentPreview,
     syncWebPreviewScope,
     tryOpenInChrome,
-    buildPdfExportMarkdown,
-    buildPdfExportHtml,
     getAppDataDir,
-    exportHistoryStore,
   } = deps;
-
-  const PDF_WRITE_RETRY_DELAYS_MS = [120, 320, 700];
-
-  function isRetryableWriteError(error) {
-    const code = String(error?.code || "").toUpperCase();
-    return code === "EBUSY" || code === "EPERM" || code === "EACCES";
-  }
-
-  async function writeFileWithRetries(filePath, data) {
-    let lastError = null;
-    for (let attempt = 0; attempt <= PDF_WRITE_RETRY_DELAYS_MS.length; attempt += 1) {
-      try {
-        fs.writeFileSync(filePath, data);
-        return;
-      } catch (error) {
-        if (!isRetryableWriteError(error)) {
-          throw error;
-        }
-        lastError = error;
-        if (attempt >= PDF_WRITE_RETRY_DELAYS_MS.length) {
-          break;
-        }
-        const waitMs = PDF_WRITE_RETRY_DELAYS_MS[attempt];
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-      }
-    }
-    throw lastError;
-  }
 
   function registerTrustedHandler(channel, handler) {
     ipcMain.handle(channel, (event, payload) => {
@@ -398,121 +364,10 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   });
 
   registerTrustedHandler("documents:download-pdf", async (_event, payload) => {
-    const notesRoot = getNotesRoot();
-    const resolved = path.resolve(String(payload?.filePath || ""));
-    if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
-      throw new Error("Invalid document path.");
-    }
-
-    const includeRawNotes = Boolean(payload?.includeRawNotes);
-    const includeCleansed = Boolean(payload?.includeCleansed);
-    const pdfQualityPreset = ["full", "balanced", "compact"].includes(payload?.pdfQualityPreset)
-      ? payload.pdfQualityPreset
-      : "full";
-    const downsampleImages = Boolean(payload?.downsampleImages) || pdfQualityPreset !== "full";
-    if (!includeRawNotes && !includeCleansed) {
-      throw new Error("Select at least one section to export.");
-    }
-
-    const downloadsDir = app ? app.getPath("downloads") : path.dirname(resolved);
-    const defaultName = `${path.basename(resolved, ".md") || "note"}.pdf`;
-    const ext = ".pdf";
-    const base = path.basename(defaultName, ext);
-
-    let targetName = defaultName;
-    let saveFilePath = path.join(downloadsDir, targetName);
-    let counter = 1;
-    while (fs.existsSync(saveFilePath)) {
-      targetName = `${base} (${counter})${ext}`;
-      saveFilePath = path.join(downloadsDir, targetName);
-      counter++;
-    }
-
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "notely-pdf-"));
-    const tempMarkdownPath = path.join(tempDir, `${slugify(path.basename(resolved))}-export.md`);
-    const tempHtmlPath = path.join(tempDir, `${slugify(path.basename(resolved))}-export.html`);
-    const markdownContent = buildPdfExportMarkdown(payload, { includeRawNotes, includeCleansed });
-    fs.writeFileSync(tempMarkdownPath, markdownContent, "utf8");
-
-    try {
-      const baseHref = pathToFileURL(`${path.dirname(resolved)}${path.sep}`).href;
-      const html = buildPdfExportHtml({
-        title: payload?.title || path.basename(resolved, ".md"),
-        markdownContent,
-        baseHref,
-        sourceDir: path.dirname(resolved),
-        downsampleImages,
-        pdfQualityPreset
-      });
-      fs.writeFileSync(tempHtmlPath, html, "utf8");
-
-      const pdfWindow = new BrowserWindow({
-        show: false,
-        width: 1280,
-        height: 1600,
-        backgroundColor: "#ffffff",
-        webPreferences: {
-          backgroundThrottling: false,
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-          webviewTag: false
-        }
-      });
-
-      try {
-        await pdfWindow.loadFile(tempHtmlPath);
-        await pdfWindow.webContents.executeJavaScript("document.fonts ? document.fonts.ready : Promise.resolve()");
-
-        const pdfData = await pdfWindow.webContents.printToPDF({
-          printBackground: true,
-          preferCSSPageSize: true
-        });
-
-        try {
-          await writeFileWithRetries(saveFilePath, pdfData);
-        } catch (error) {
-          if (isRetryableWriteError(error)) {
-            throw new Error(`Unable to save PDF because the target file is busy or locked: ${saveFilePath}. Close any app using it (including preview panes/OneDrive sync locks) and try again.`);
-          }
-          throw error;
-        }
-
-        if (exportHistoryStore && saveFilePath) {
-          try {
-            const stat = fs.statSync(saveFilePath);
-            const record = {
-              filename: path.basename(saveFilePath),
-              filePath: saveFilePath,
-              fileSize: stat.size,
-              exportType: "pdf",
-              category: "document",
-              sourceNote: path.basename(resolved)
-            };
-            await exportHistoryStore.addRecord(record);
-            BrowserWindow.getAllWindows().forEach((win) => {
-              if (!win.isDestroyed()) {
-                win.webContents.send("exports:record-added", record);
-              }
-            });
-          } catch {
-            /* ignore export history recording errors */
-          }
-        }
-      } finally {
-        if (!pdfWindow.isDestroyed()) {
-          pdfWindow.close();
-        }
-      }
-
-      return { canceled: false, filePath: saveFilePath };
-    } finally {
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup failures for temporary export files.
-      }
-    }
+    const { getExportManager } = require("../export/ExportManager.cjs");
+    const res = await getExportManager().runExport({ type: "pdf", payload });
+    if (!res?.success) return res;
+    return { canceled: false, filePath: res.filePath };
   });
 
 

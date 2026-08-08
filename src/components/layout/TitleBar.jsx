@@ -257,6 +257,12 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     };
   }, []);
 
+  const closeAllMenus = useCallback(() => {
+    setActiveMenuIndex(null);
+    setActiveSubmenuPath([]);
+    setShowDownloadsPopover(false);
+  }, []);
+
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -274,13 +280,7 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
-
-  const closeAllMenus = useCallback(() => {
-    setActiveMenuIndex(null);
-    setActiveSubmenuPath([]);
-    setShowDownloadsPopover(false);
-  }, []);
+  }, [closeAllMenus]);
 
   const handleMinimize = () => {
     window.notesApi?.minimizeWindow?.();

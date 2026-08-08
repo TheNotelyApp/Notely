@@ -1488,6 +1488,16 @@ async function handlePersonaImport(_event, payload) {
 async function handlePersonaExport(_event, payload) {
   try {
     const dest = _getStore().exportPersonaToFile(payload?.id, payload?.destPath);
+    try {
+      const { getExportManager } = require("../lib/export/ExportManager.cjs");
+      const exportManager = getExportManager();
+      await exportManager.runExport({
+        type: "persona",
+        payload: { destPath: dest, personaId: payload?.id }
+      });
+    } catch (exportErr) {
+      console.warn("[aiHandlers] ExportManager record warning for persona:", exportErr);
+    }
     return new AIQueryResponse(true, { path: dest });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);

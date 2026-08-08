@@ -375,6 +375,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   deletePerson: (p) => ipcRenderer.invoke("persons:delete", p),
 
   // ── Exports & Downloads ──────────────────────────────────────────────────
+  exportFile: (type, payload) => ipcRenderer.invoke("exports:run", { type, payload }),
   getExportHistory: () => ipcRenderer.invoke("exports:getHistory"),
   addExportRecord: (payload) => ipcRenderer.invoke("exports:addRecord", payload),
   saveToDownloads: (payload) => ipcRenderer.invoke("exports:saveToDownloads", payload),
@@ -383,6 +384,14 @@ contextBridge.exposeInMainWorld("notesApi", {
   showInFolder: (filePath) => ipcRenderer.invoke("exports:showInFolder", { filePath }),
   openExportFile: (filePath) => ipcRenderer.invoke("exports:openFile", { filePath }),
   getDefaultDownloadDir: () => ipcRenderer.invoke("exports:getDefaultDownloadDir"),
+  onExportRecordAdded: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+    const listener = (_event, record) => callback(record);
+    ipcRenderer.on("exports:record-added", listener);
+    return () => ipcRenderer.removeListener("exports:record-added", listener);
+  },
 });
 
 

@@ -1,7 +1,6 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
-const os = require("node:os");
 const { pathToFileURL } = require("node:url");
 const crypto = require("node:crypto");
 const http = require("node:http");
@@ -737,7 +736,6 @@ const imageMedia = createImageMedia({
   getAppDataDir: () => appDataDir,
   emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
   hashContent,
-  exportHistoryStore,
 });
 
 const {
@@ -1193,10 +1191,7 @@ registerDocumentIpcHandlers(ipcMain, {
   dialog,
   shell,
   fs,
-  os,
   path,
-  pathToFileURL,
-  slugify,
   nowStamp,
   hashContent,
   filePathWithin,
@@ -1226,29 +1221,16 @@ registerDocumentIpcHandlers(ipcMain, {
   prepareDocumentPreview: webPreview.prepareDocumentPreview,
   syncWebPreviewScope: webPreview.syncScopeToActiveProject,
   tryOpenInChrome: webPreview.tryOpenInChrome,
-  buildPdfExportMarkdown,
-  buildPdfExportHtml,
   getAppDataDir: () => appDataDir,
-  exportHistoryStore,
 });
 
 registerWorkspaceExportIpcHandlers(ipcMain, {
   BrowserWindow,
   dialog,
   fs,
-  os,
   path,
-  ensureDir,
-  filePathWithin,
-  getMarkdownIt,
-  readUserSettings,
-  writeUserSettings,
   getNotesRoot: () => notesRoot,
   getActiveProject,
-  parseDocument,
-  buildPdfExportMarkdown,
-  buildPdfExportHtml,
-  exportHistoryStore,
 });
 
 registerNotePackageIpc(ipcMain, {
@@ -1267,6 +1249,12 @@ registerExportHistoryIpc({
   shell,
   app,
   exportHistoryStore,
+  getNotesRoot: () => notesRoot,
+  filePathWithin,
+  buildPdfExportMarkdown,
+  buildPdfExportHtml,
+  parseDocument,
+  getMarkdownIt,
 });
 
 imageMedia.registerIpcHandlers(ipcMain);

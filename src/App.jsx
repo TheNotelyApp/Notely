@@ -107,6 +107,7 @@ import {
   checkForUpdates,
   aiSetPreferences,
   aiSetProviderModel,
+  onExportRecordAdded,
 } from "./services/electronService";
 import UpdateModal from "./components/UpdateModal";
 import { useToast } from "./hooks/useToast";
@@ -343,6 +344,15 @@ export default function App() {
     };
     window.addEventListener("app:toast", handleToast);
     return () => window.removeEventListener("app:toast", handleToast);
+  }, [notify]);
+
+  useEffect(() => {
+    const unsubscribe = onExportRecordAdded((record) => {
+      if (record && record.filename) {
+        notify(`Export complete: Saved "${record.filename}" to Downloads`, "success");
+      }
+    });
+    return () => unsubscribe();
   }, [notify]);
   const {
     landingAssetsOpen, setLandingAssetsOpen,

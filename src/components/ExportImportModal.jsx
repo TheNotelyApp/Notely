@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Download, Upload, X, CheckSquare, Square, FolderOpen } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppInput from "./AppInput";
-import { addExportRecord } from "../services/electronService";
 import "../styles/ExportImportModal.css";
 
 export function ExportImportModal({ isOpen, mode = "export", onClose, notify, reloadDocuments }) {
@@ -152,32 +151,20 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       notify("Please select at least one note to export.", "warning");
       return;
     }
-    if (!destinationPath) {
-      notify("Please select a save location.", "warning");
-      return;
-    }
 
     setLoading(true);
     try {
+      const { runExport } = await import("../services/electronService");
       const notePaths = Array.from(selectedNotes);
-      const outputName = fileName.endsWith(".nly") ? fileName : `${fileName}.nly`;
-      const fullOutputPath = `${destinationPath}/${outputName}`;
+      const outputName = fileName ? (fileName.endsWith(".nly") ? fileName : `${fileName}.nly`) : undefined;
 
-      const res = await window.notesApi.exportNotePackage({
+      const res = await runExport("note_package", {
         notePaths,
-        outputPath: fullOutputPath,
+        fileName: outputName,
         password: exportPassword || undefined,
       });
 
       if (res?.success) {
-        notify(`Exported ${res.exportedNotesCount} note(s) to ${res.outputPath}`, "success");
-        void addExportRecord({
-          filename: outputName,
-          filePath: res.outputPath || fullOutputPath,
-          fileSize: res.fileSize || 0,
-          exportType: "note_package",
-          category: "document",
-        });
         onClose();
       } else {
         notify("Export failed: " + (res?.error || "Unknown error"), "error");

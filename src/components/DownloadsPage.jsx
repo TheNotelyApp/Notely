@@ -21,9 +21,9 @@ import {
   openExportFile,
   showInFolder,
   getDefaultDownloadDir,
+  onExportRecordAdded,
 } from "../services/electronService.js";
 import AppButton from "./AppButton.jsx";
-import AppIconButton from "./AppIconButton.jsx";
 import { AppCard } from "./AppCard.jsx";
 import useConfirm from "../hooks/useConfirm.js";
 import "../styles/DownloadsPage.css";
@@ -106,6 +106,22 @@ export function DownloadsPage({ onBack }) {
         if (dir) setDefaultDir(dir);
       })
       .catch(() => {});
+
+    const unsubscribeIpc = onExportRecordAdded((newRecord) => {
+      setHistory((prev) => [newRecord, ...prev.filter((item) => item.id !== newRecord.id)]);
+    });
+
+    const handleCustomEvent = (e) => {
+      if (e.detail) {
+        setHistory((prev) => [e.detail, ...prev.filter((item) => item.id !== e.detail.id)]);
+      }
+    };
+    window.addEventListener("app:download-complete", handleCustomEvent);
+
+    return () => {
+      if (typeof unsubscribeIpc === "function") unsubscribeIpc();
+      window.removeEventListener("app:download-complete", handleCustomEvent);
+    };
   }, []);
 
   const handleShowInFolder = async (filePath) => {

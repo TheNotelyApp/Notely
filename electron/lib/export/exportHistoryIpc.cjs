@@ -1,14 +1,30 @@
-const fs = require("fs");
-const path = require("path");
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
+const { getExportManager } = require("./ExportManager.cjs");
 
-function registerExportHistoryIpc({ ipcMain, BrowserWindow, shell, app, exportHistoryStore }) {
+function registerExportHistoryIpc({ ipcMain, BrowserWindow, shell, app, exportHistoryStore, getNotesRoot, filePathWithin, buildPdfExportMarkdown, buildPdfExportHtml, parseDocument, getMarkdownIt }) {
+  const exportManager = getExportManager({
+    app,
+    BrowserWindow,
+    shell,
+    exportHistoryStore,
+    getNotesRoot,
+    filePathWithin,
+    buildPdfExportMarkdown,
+    buildPdfExportHtml,
+    parseDocument,
+    getMarkdownIt,
+  });
+
   function registerTrustedHandler(channel, handler) {
     ipcMain.handle(channel, (event, payload) => {
       assertTrustedIpcSender(BrowserWindow, event, channel);
       return handler(event, payload);
     });
   }
+
+  registerTrustedHandler("exports:run", async (_, { type, payload }) => {
+    return await exportManager.runExport({ type, payload });
+  });
 
   registerTrustedHandler("exports:getHistory", async () => {
     return await exportHistoryStore.getHistory();
@@ -25,77 +41,7 @@ function registerExportHistoryIpc({ ipcMain, BrowserWindow, shell, app, exportHi
   });
 
   registerTrustedHandler("exports:saveToDownloads", async (_, { dataUrl, srcPath, filename }) => {
-    try {
-      const downloadDir = app.getPath("downloads");
-      let targetName = filename || "download.png";
-      let targetPath = path.join(downloadDir, targetName);
-
-      let counter = 1;
-      const ext = path.extname(targetName) || ".png";
-      const base = path.basename(targetName, ext);
-      while (fs.existsSync(targetPath)) {
-        targetName = `${base} (${counter})${ext}`;
-        targetPath = path.join(downloadDir, targetName);
-        counter++;
-      }
-
-      let resolvedSrc = srcPath && typeof srcPath === "string" ? srcPath : "";
-      if (resolvedSrc.startsWith("file://")) {
-        try {
-          const { fileURLToPath } = require("url");
-          resolvedSrc = fileURLToPath(resolvedSrc);
-        } catch {
-          resolvedSrc = resolvedSrc.replace(/^file:\/\/\/?/, "");
-        }
-      }
-      if (resolvedSrc && !path.isAbsolute(resolvedSrc)) {
-        try {
-          const { getNotesRoot } = require("../documents/documentIpc.cjs");
-          const root = getNotesRoot ? getNotesRoot() : process.cwd();
-          resolvedSrc = path.resolve(root, resolvedSrc);
-        } catch {
-          resolvedSrc = path.resolve(process.cwd(), resolvedSrc);
-        }
-      }
-
-      if (resolvedSrc && fs.existsSync(resolvedSrc)) {
-        fs.copyFileSync(resolvedSrc, targetPath);
-      } else if (dataUrl && typeof dataUrl === "string") {
-        const base64Data = dataUrl.replace(/^data:[^;]+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-        fs.writeFileSync(targetPath, buffer);
-      } else {
-        return { success: false, error: "Invalid image source" };
-      }
-
-      let fileSize = 0;
-      try {
-        fileSize = fs.statSync(targetPath).size;
-      } catch {
-        fileSize = 0;
-      }
-
-      const record = {
-        filename: targetName,
-        filePath: targetPath,
-        fileSize,
-        exportType: "image",
-        category: "media",
-      };
-
-      await exportHistoryStore.addRecord(record);
-
-      BrowserWindow.getAllWindows().forEach((win) => {
-        if (!win.isDestroyed()) {
-          win.webContents.send("exports:record-added", record);
-        }
-      });
-
-      return { success: true, filePath: targetPath, filename: targetName, fileSize };
-    } catch (err) {
-      console.error("[exportHistoryIpc] saveToDownloads failed:", err);
-      return { success: false, error: err.message };
-    }
+    return await exportManager.runExport({ type: "media", payload: { dataUrl, srcPath, filename } });
   });
 
   registerTrustedHandler("exports:removeRecord", async (_, { id }) => {

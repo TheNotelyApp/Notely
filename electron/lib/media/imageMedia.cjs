@@ -10,7 +10,6 @@ function createImageMedia(deps) {
     crypto,
     nativeImage,
     pathToFileURL,
-    MarkdownIt,
     getMarkdownIt,
     buildPdfStyles,
     escapeHtml,
@@ -26,8 +25,7 @@ function createImageMedia(deps) {
     getNotesRoot,
     getAppDataDir,
     emitLocalP2PSyncEvent,
-    hashContent,
-    exportHistoryStore
+    hashContent
   } = deps;
 
   const THUMBNAIL_DIR_NAME = "thumbnails";
@@ -135,7 +133,7 @@ function emitImageSyncFromDisk(filePath, options = {}) {
 }
 
 function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downsampleImages = false, pdfQualityPreset = "full" }) {
-  const MarkdownItCtor = MarkdownIt || (typeof getMarkdownIt === "function" ? getMarkdownIt() : null);
+  const MarkdownItCtor = typeof getMarkdownIt === "function" ? getMarkdownIt() : null;
   if (!MarkdownItCtor) {
     throw new Error("Markdown renderer is unavailable.");
   }
@@ -726,57 +724,9 @@ registerTrustedHandler("images:save", (_event, payload) => {
 });
 
 registerTrustedHandler("images:download", async (event, payload) => {
-  const { base64Data, defaultFilename } = payload || {};
-  if (!base64Data || typeof base64Data !== "string") {
-    throw new Error("Invalid download data.");
-  }
-
-  const { app } = require("electron");
-  const fs = require("fs");
-
-  const downloadsDir = app ? app.getPath("downloads") : getNotesRoot();
-  const rawName = defaultFilename || "diagram.png";
-  const ext = path.extname(rawName) || ".png";
-  const base = path.basename(rawName, ext);
-
-  let targetName = rawName;
-  let targetFilePath = path.join(downloadsDir, targetName);
-  let counter = 1;
-  while (fs.existsSync(targetFilePath)) {
-    targetName = `${base} (${counter})${ext}`;
-    targetFilePath = path.join(downloadsDir, targetName);
-    counter++;
-  }
-
-  const base64Clean = base64Data.replace(/^data:[^;]+;base64,/, "");
-  const buffer = Buffer.from(base64Clean, "base64");
-  fs.writeFileSync(targetFilePath, buffer);
-
-  if (exportHistoryStore) {
-    try {
-      const filename = path.basename(targetFilePath);
-      const isDiagram = (defaultFilename || filename).toLowerCase().includes("diagram")
-                     || (defaultFilename || filename).toLowerCase().includes("excali")
-                     || (defaultFilename || filename).toLowerCase().includes("drawio");
-      const record = {
-        filename,
-        filePath: targetFilePath,
-        fileSize: buffer.length,
-        exportType: isDiagram ? "diagram_excalidraw" : "image",
-        category: isDiagram ? "diagram" : "media"
-      };
-      await exportHistoryStore.addRecord(record);
-      BrowserWindow.getAllWindows().forEach((win) => {
-        if (!win.isDestroyed()) {
-          win.webContents.send("exports:record-added", record);
-        }
-      });
-    } catch (err) {
-      console.error("Failed to record image download in export history:", err);
-    }
-  }
-
-  return { success: true, filePath: targetFilePath, fileSize: buffer.length };
+  const { getExportManager } = require("../export/ExportManager.cjs");
+  const exportManager = getExportManager();
+  return await exportManager.runExport({ type: "diagram_image", payload: payload || {} });
 });
 
 registerTrustedHandler("images:list", (_event, payload) => {

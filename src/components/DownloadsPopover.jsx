@@ -133,7 +133,7 @@ export function DownloadsPopover({
                   onClick={() => openExportFile(item.filePath)}
                   title="Open File"
                 >
-                  <ExternalLink size={13} />
+                  <ExternalLink size={14} />
                 </button>
               </div>
             </div>
