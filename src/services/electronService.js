@@ -946,10 +946,23 @@ export async function renameImage(basePath, assetPath, nextFileName) {
 
 export async function downloadImage(base64Data, defaultFilename) {
   const api = getNotesApi();
-  if (typeof api.downloadImage !== "function") {
+  if (typeof api?.downloadImage !== "function") {
     throw new Error("Image download action unavailable. Please restart the app.");
   }
-  return api.downloadImage({ base64Data, defaultFilename });
+  const res = await api.downloadImage({ base64Data, defaultFilename });
+  if (res && res.success && res.filePath) {
+    if (typeof window !== "undefined") {
+      const filename = res.filePath.split(/[/\\]/).pop() || defaultFilename || "diagram.png";
+      window.dispatchEvent(new CustomEvent("app:download-complete", { detail: { ...res, filename } }));
+      window.dispatchEvent(new CustomEvent("app:toast", {
+        detail: {
+          message: `Downloaded ${filename}`,
+          type: "success",
+        },
+      }));
+    }
+  }
+  return res;
 }
 
 export async function createTerminalSession(cwd, options = {}) {

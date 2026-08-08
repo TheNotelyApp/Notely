@@ -776,7 +776,7 @@ registerTrustedHandler("images:download", async (event, payload) => {
     }
   }
 
-  return { success: true, filePath: targetFilePath };
+  return { success: true, filePath: targetFilePath, fileSize: buffer.length };
 });
 
 registerTrustedHandler("images:list", (_event, payload) => {

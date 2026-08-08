@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { readDrawioImage, readDrawioSource, writeDrawioSource } from "../services/drawioService";
-import { downloadImage, addExportRecord } from "../services/electronService";
+import { downloadImage } from "../services/electronService";
 import DrawioEditor from "./DrawioEditor";
 import "../styles/ExcalidrawBlock.css"; // Reuse block styles
 
@@ -59,13 +59,6 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
       const result = await downloadImage(thumbnail, filename);
       if (result?.success) {
         onNotify?.("Diagram exported successfully.", "success");
-        void addExportRecord({
-          filename,
-          filePath: result.filePath || filename,
-          fileSize: result.fileSize || 0,
-          exportType: "diagram_drawio",
-          category: "image",
-        });
       }
     } catch (err) {
       console.error("Failed to download diagram:", err);

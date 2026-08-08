@@ -39,8 +39,27 @@ function registerExportHistoryIpc({ ipcMain, BrowserWindow, shell, app, exportHi
         counter++;
       }
 
-      if (srcPath && fs.existsSync(srcPath)) {
-        fs.copyFileSync(srcPath, targetPath);
+      let resolvedSrc = srcPath && typeof srcPath === "string" ? srcPath : "";
+      if (resolvedSrc.startsWith("file://")) {
+        try {
+          const { fileURLToPath } = require("url");
+          resolvedSrc = fileURLToPath(resolvedSrc);
+        } catch {
+          resolvedSrc = resolvedSrc.replace(/^file:\/\/\/?/, "");
+        }
+      }
+      if (resolvedSrc && !path.isAbsolute(resolvedSrc)) {
+        try {
+          const { getNotesRoot } = require("../documents/documentIpc.cjs");
+          const root = getNotesRoot ? getNotesRoot() : process.cwd();
+          resolvedSrc = path.resolve(root, resolvedSrc);
+        } catch {
+          resolvedSrc = path.resolve(process.cwd(), resolvedSrc);
+        }
+      }
+
+      if (resolvedSrc && fs.existsSync(resolvedSrc)) {
+        fs.copyFileSync(resolvedSrc, targetPath);
       } else if (dataUrl && typeof dataUrl === "string") {
         const base64Data = dataUrl.replace(/^data:[^;]+;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");

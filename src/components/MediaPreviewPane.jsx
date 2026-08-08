@@ -235,31 +235,28 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       const downloadSrc = fullImage || displayedImage || resolvedPath || mediaPath;
       if (!downloadSrc) return;
 
-      const isDataUrl = typeof downloadSrc === "string" && downloadSrc.startsWith("data:");
-      const isDiskFile = Boolean(resolvedPath && !resolvedPath.startsWith("data:") && !resolvedPath.startsWith("http"));
+      let dataUrl;
+      let srcPath;
 
-      const saved = await saveToDownloads({
-        dataUrl: isDataUrl ? downloadSrc : undefined,
-        srcPath: isDiskFile ? resolvedPath : undefined,
+      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+        dataUrl = downloadSrc;
+      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+        const resp = await fetch(downloadSrc);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else if (resolvedPath || mediaPath) {
+        srcPath = resolvedPath || mediaPath;
+      }
+
+      await saveToDownloads({
+        dataUrl,
+        srcPath,
         filename: name,
       });
-
-      if (!saved?.success) {
-        const link = document.createElement("a");
-        link.href = downloadSrc;
-        link.download = name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        await addExportRecord({
-          filename: name,
-          filePath: isDiskFile ? resolvedPath : name,
-          fileSize: imageInfo?.fileSize || fileSize || 0,
-          exportType: "image",
-          category: "media",
-        });
-      }
     } catch (err) {
       console.error("[MediaPreviewPane] Download image error:", err);
     }
@@ -272,31 +269,28 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
       const rawName = String(fileName || mediaPath || "download").replace(/\\/g, "/");
       const name = rawName.split("/").pop() || "download";
 
-      const isDataUrl = typeof downloadSrc === "string" && downloadSrc.startsWith("data:");
-      const isDiskFile = Boolean(resolvedPath && !resolvedPath.startsWith("data:") && !resolvedPath.startsWith("http"));
+      let dataUrl;
+      let srcPath;
 
-      const saved = await saveToDownloads({
-        dataUrl: isDataUrl ? downloadSrc : undefined,
-        srcPath: isDiskFile ? resolvedPath : undefined,
+      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+        dataUrl = downloadSrc;
+      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+        const resp = await fetch(downloadSrc);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else if (resolvedPath || mediaPath) {
+        srcPath = resolvedPath || mediaPath;
+      }
+
+      await saveToDownloads({
+        dataUrl,
+        srcPath,
         filename: name,
       });
-
-      if (!saved?.success) {
-        const link = document.createElement("a");
-        link.href = downloadSrc;
-        link.download = name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        await addExportRecord({
-          filename: name,
-          filePath: isDiskFile ? downloadSrc : name,
-          fileSize: fileSize || 0,
-          exportType: "media",
-          category: "media",
-        });
-      }
     } catch (err) {
       console.error("[MediaPreviewPane] Download media error:", err);
     }
