@@ -1,25 +1,31 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
+  FolderOpen,
+  Trash2,
   Download,
-  Folder,
   FileText,
   FileCode,
-  Image,
   Archive,
-  Search,
-  Trash2,
-  ExternalLink,
+  Image,
   RefreshCw,
-  FolderOpen
+  Search,
+  ExternalLink,
+  Folder,
+  X,
+  Loader2,
 } from "lucide-react";
 import {
   getExportHistory,
-  removeExportRecord,
   clearExportHistory,
-  showInFolder,
+  removeExportRecord,
   openExportFile,
-  getDefaultDownloadDir
+  showInFolder,
+  getDefaultDownloadDir,
 } from "../services/electronService.js";
+import AppButton from "./AppButton.jsx";
+import AppIconButton from "./AppIconButton.jsx";
+import { AppCard } from "./AppCard.jsx";
+import useConfirm from "../hooks/useConfirm.js";
 import "../styles/DownloadsPage.css";
 
 function formatBytes(bytes) {
@@ -74,6 +80,7 @@ function getIconForType(type) {
 }
 
 export function DownloadsPage({ onBack }) {
+  const { confirm } = useConfirm();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -94,9 +101,11 @@ export function DownloadsPage({ onBack }) {
 
   useEffect(() => {
     loadHistory();
-    getDefaultDownloadDir().then((dir) => {
-      if (dir) setDefaultDir(dir);
-    }).catch(() => {});
+    getDefaultDownloadDir()
+      .then((dir) => {
+        if (dir) setDefaultDir(dir);
+      })
+      .catch(() => {});
   }, []);
 
   const handleShowInFolder = async (filePath) => {
@@ -115,9 +124,16 @@ export function DownloadsPage({ onBack }) {
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm("Are you sure you want to clear export history? (Exported files on disk will not be deleted)")) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: "Clear Export History",
+      message:
+        "Are you sure you want to clear export history? (Exported files on disk will not be deleted)",
+      confirmText: "Clear History",
+      cancelText: "Cancel",
+      danger: true,
+    });
+    if (!isConfirmed) return;
+
     await clearExportHistory();
     setHistory([]);
   };
@@ -129,36 +145,48 @@ export function DownloadsPage({ onBack }) {
   };
 
   const docCount = useMemo(() => {
-    return history.filter((i) => ["pdf", "html", "note_package", "markdown"].includes(i.exportType)).length;
+    return history.filter((i) =>
+      ["pdf", "html", "note_package", "markdown"].includes(i.exportType)
+    ).length;
   }, [history]);
 
   const diagramCount = useMemo(() => {
-    return history.filter((i) => ["diagram_excalidraw", "diagram_drawio"].includes(i.exportType)).length;
+    return history.filter((i) =>
+      ["diagram_excalidraw", "diagram_drawio"].includes(i.exportType)
+    ).length;
   }, [history]);
 
   const mediaCount = useMemo(() => {
-    return history.filter((i) => ["image", "media"].includes(i.exportType) || i.category === "media").length;
+    return history.filter(
+      (i) => ["image", "media"].includes(i.exportType) || i.category === "media"
+    ).length;
   }, [history]);
 
   const filteredHistory = useMemo(() => {
     return history.filter((item) => {
-      // Category filter
-      if (activeTab === "documents" && !["pdf", "html", "note_package", "markdown"].includes(item.exportType)) {
+      if (
+        activeTab === "documents" &&
+        !["pdf", "html", "note_package", "markdown"].includes(item.exportType)
+      ) {
         return false;
       }
-      if (activeTab === "diagrams" && !["diagram_excalidraw", "diagram_drawio"].includes(item.exportType)) {
+      if (
+        activeTab === "diagrams" &&
+        !["diagram_excalidraw", "diagram_drawio"].includes(item.exportType)
+      ) {
         return false;
       }
-      if (activeTab === "media" && !["image", "media"].includes(item.exportType) && item.category !== "media") {
+      if (
+        activeTab === "media" &&
+        !["image", "media"].includes(item.exportType) &&
+        item.category !== "media"
+      ) {
         return false;
       }
 
-      // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const nameMatch = item.filename?.toLowerCase().includes(q);
-        const pathMatch = item.filePath?.toLowerCase().includes(q);
-        return nameMatch || pathMatch;
+        return item.filename?.toLowerCase().includes(q) || item.filePath?.toLowerCase().includes(q);
       }
 
       return true;
@@ -167,57 +195,64 @@ export function DownloadsPage({ onBack }) {
 
   return (
     <div className="downloads-page">
-      {/* Unified App-Standard Topbar Navigation & Actions */}
       <div className="detail-topbar">
         <nav className="detail-breadcrumb" aria-label="Downloads location">
           <span className="detail-breadcrumb-part">
             <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
               Workspace
             </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
+            <span className="detail-breadcrumb-separator" aria-hidden="true">
+              /
+            </span>
           </span>
           <span className="detail-breadcrumb-current">Downloads & Export History</span>
         </nav>
 
         <div className="detail-topbar-actions">
-          <div className="task-stats-pill">
+          <div className="task-stats-pill" title="Exported items">
             <Download size={12} />
             <span>{filteredHistory.length} items</span>
           </div>
 
           {defaultDir && (
-            <button
-              className="app-button secondary"
-              type="button"
+            <AppButton
+              variant="small"
               onClick={handleOpenDownloadsFolder}
               title={`Default folder: ${defaultDir}`}
             >
               <FolderOpen size={14} />
               <span>Downloads Folder</span>
-            </button>
+            </AppButton>
           )}
 
           {history.length > 0 && (
-            <button className="app-button secondary danger" type="button" onClick={handleClearAll} title="Clear export history records">
+            <AppButton
+              variant="small"
+              danger
+              onClick={handleClearAll}
+              title="Clear export history records"
+            >
               <Trash2 size={14} />
               <span>Clear History</span>
-            </button>
+            </AppButton>
           )}
 
-          <button className="icon-button" type="button" onClick={loadHistory} data-tooltip="Refresh">
+          <AppButton variant="small" onClick={loadHistory} title="Refresh history">
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          </button>
+            <span>Refresh</span>
+          </AppButton>
         </div>
       </div>
 
       <div className="downloads-body">
         <div className="downloads-controls">
-          <div className="downloads-tabs" role="tablist">
+          <div className="downloads-tabs" role="tablist" aria-label="Export history categories">
             <button
               type="button"
               className={`downloads-tab ${activeTab === "all" ? "active" : ""}`}
               onClick={() => setActiveTab("all")}
               role="tab"
+              aria-selected={activeTab === "all"}
             >
               <span>All</span>
               <span className="downloads-tab-count">{history.length}</span>
@@ -227,6 +262,7 @@ export function DownloadsPage({ onBack }) {
               className={`downloads-tab ${activeTab === "documents" ? "active" : ""}`}
               onClick={() => setActiveTab("documents")}
               role="tab"
+              aria-selected={activeTab === "documents"}
             >
               <span>Documents</span>
               <span className="downloads-tab-count">{docCount}</span>
@@ -236,6 +272,7 @@ export function DownloadsPage({ onBack }) {
               className={`downloads-tab ${activeTab === "diagrams" ? "active" : ""}`}
               onClick={() => setActiveTab("diagrams")}
               role="tab"
+              aria-selected={activeTab === "diagrams"}
             >
               <span>Diagrams</span>
               <span className="downloads-tab-count">{diagramCount}</span>
@@ -245,6 +282,7 @@ export function DownloadsPage({ onBack }) {
               className={`downloads-tab ${activeTab === "media" ? "active" : ""}`}
               onClick={() => setActiveTab("media")}
               role="tab"
+              aria-selected={activeTab === "media"}
             >
               <span>Media</span>
               <span className="downloads-tab-count">{mediaCount}</span>
@@ -258,36 +296,68 @@ export function DownloadsPage({ onBack }) {
               placeholder="Search exports..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search exports"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                className="downloads-search-clear"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
-        {filteredHistory.length === 0 ? (
+        {loading && history.length === 0 ? (
+          <div className="downloads-loading">
+            <Loader2 size={20} className="animate-spin downloads-loading-icon" />
+            <span>Loading export history...</span>
+          </div>
+        ) : filteredHistory.length === 0 ? (
           <div className="downloads-empty">
-            <Archive size={20} className="downloads-empty-icon" />
-            <h3>No exports found</h3>
-            <p>Exported notes, workspace zip archives, diagrams, and rendered files will appear here.</p>
+            {searchQuery ? (
+              <>
+                <Search size={20} className="downloads-empty-icon" />
+                <h3>No matching exports</h3>
+                <p>No export history items found matching &ldquo;{searchQuery}&rdquo;</p>
+                <AppButton variant="small" onClick={() => setSearchQuery("")} style={{ marginTop: "12px" }}>
+                  Clear Search
+                </AppButton>
+              </>
+            ) : (
+              <>
+                <Archive size={20} className="downloads-empty-icon" />
+                <h3>No exports found</h3>
+                <p>Exported notes, workspace zip archives, diagrams, and rendered files will appear here.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="downloads-list">
             {filteredHistory.map((item) => (
-              <div key={item.id} className="downloads-card">
+              <AppCard key={item.id} className="downloads-card">
                 <div className="downloads-card-icon">{getIconForType(item.exportType)}</div>
 
                 <div className="downloads-card-info">
-                  <div className="downloads-card-name" title={item.filename}>
-                    {item.filename}
-                  </div>
-                  <div className="downloads-card-meta">
+                  <div className="downloads-card-header-row">
+                    <div className="downloads-card-name" title={item.filename}>
+                      {item.filename}
+                    </div>
                     <span className={`downloads-tag downloads-tag-${item.exportType}`}>
                       {item.exportType ? item.exportType.replace("_", " ") : "file"}
                     </span>
+                  </div>
+                  <div className="downloads-card-meta">
                     <span>{formatBytes(item.fileSize)}</span>
-                    <span>•</span>
+                    <span className="downloads-meta-dot">•</span>
                     <span>{formatTimestamp(item.timestamp)}</span>
                     {item.sourceNote && (
                       <>
-                        <span>•</span>
+                        <span className="downloads-meta-dot">•</span>
                         <span title={`Source: ${item.sourceNote}`}>Note: {item.sourceNote}</span>
                       </>
                     )}
@@ -298,33 +368,35 @@ export function DownloadsPage({ onBack }) {
                 </div>
 
                 <div className="downloads-card-actions">
-                  <button
-                    className="app-button secondary"
+                  <AppButton
+                    variant="small"
                     onClick={() => handleShowInFolder(item.filePath)}
                     title="Show in File Explorer"
                   >
                     <Folder size={14} />
                     <span>Show in Folder</span>
-                  </button>
+                  </AppButton>
 
-                  <button
-                    className="app-button primary"
+                  <AppButton
+                    variant="primary"
                     onClick={() => handleOpenFile(item.filePath)}
                     title="Open File"
                   >
                     <ExternalLink size={14} />
                     <span>Open</span>
-                  </button>
+                  </AppButton>
 
-                  <button
-                    className="icon-button"
+                  <AppButton
+                    variant="small"
+                    danger
                     onClick={() => handleRemove(item.id)}
-                    data-tooltip="Remove from history"
+                    title="Remove from history"
                   >
                     <Trash2 size={14} />
-                  </button>
+                    <span>Remove</span>
+                  </AppButton>
                 </div>
-              </div>
+              </AppCard>
             ))}
           </div>
         )}
@@ -332,3 +404,5 @@ export function DownloadsPage({ onBack }) {
     </div>
   );
 }
+
+export default DownloadsPage;
