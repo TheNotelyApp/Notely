@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Minus, Square, Copy, X, Check, ChevronRight, Globe,
   FilePlus, FolderPlus, FolderOpen, Clock, Save, RefreshCw, Package, Edit2, Trash2, ArrowLeft, RotateCcw, Power,
@@ -10,6 +10,8 @@ import {
   Upload, Download
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
+import { getExportHistory } from "../../services/electronService";
+import DownloadsPopover from "../DownloadsPopover";
 
 const MENU_ICON_MAP = {
   "new": FilePlus,
@@ -162,12 +164,48 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
   const [isMaximized, setIsMaximized] = useState(false);
   const [menuStructure, setMenuStructure] = useState([]);
   const [activeMenuIndex, setActiveMenuIndex] = useState(null);
-  const [activeSubmenuPath, setActiveSubmenuPath] = useState([]); // Array of indexes tracing active submenus
+  const [activeSubmenuPath, setActiveSubmenuPath] = useState([]);
+  const [showDownloadsPopover, setShowDownloadsPopover] = useState(false);
+  const [recentDownloads, setRecentDownloads] = useState([]);
+  const [hasUnreadDownload, setHasUnreadDownload] = useState(false);
 
   const containerRef = useRef(null);
 
+  const loadRecentDownloads = useCallback(async () => {
+    try {
+      const recs = await getExportHistory();
+      if (Array.isArray(recs)) {
+        setRecentDownloads(recs.slice(0, 5));
+      }
+    } catch (err) {
+      console.error("Failed to fetch recent downloads", err);
+    }
+  }, []);
+
   useEffect(() => {
-    // Check initial maximized state
+    const handleDownloadEvent = () => {
+      loadRecentDownloads();
+      setHasUnreadDownload(true);
+      setShowDownloadsPopover(true);
+    };
+
+    window.addEventListener("app:download-complete", handleDownloadEvent);
+
+    const handleToastEvent = (e) => {
+      const msg = String(e.detail?.message || "").toLowerCase();
+      if (msg.includes("export") || msg.includes("download") || msg.includes("saved to")) {
+        handleDownloadEvent();
+      }
+    };
+    window.addEventListener("app:toast", handleToastEvent);
+
+    return () => {
+      window.removeEventListener("app:download-complete", handleDownloadEvent);
+      window.removeEventListener("app:toast", handleToastEvent);
+    };
+  }, [loadRecentDownloads]);
+
+  useEffect(() => {
     if (window.notesApi?.isWindowMaximized) {
       window.notesApi.isWindowMaximized().then(setIsMaximized).catch(() => {});
     }
@@ -178,16 +216,13 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
       }
     };
 
-    // Fetch initial dynamic menu structure
     loadMenuStructure();
 
-    // Subscribe to menu updates from main process
     let unsubscribeMenu = () => {};
     if (window.notesApi?.onMenuUpdated) {
       unsubscribeMenu = window.notesApi.onMenuUpdated(loadMenuStructure);
     }
 
-    // Subscribe to state changes from main process
     let unsubscribeMax = () => {};
     if (window.notesApi?.onWindowMaximizedChanged) {
       unsubscribeMax = window.notesApi.onWindowMaximizedChanged((maximized) => {
@@ -201,7 +236,6 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     };
   }, []);
 
-  // Handle clicking outside to close menus
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -254,9 +288,19 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     }
   };
 
+  const toggleDownloadsPopover = () => {
+    if (!showDownloadsPopover) {
+      loadRecentDownloads();
+      setHasUnreadDownload(false);
+      setShowDownloadsPopover(true);
+    } else {
+      setShowDownloadsPopover(false);
+    }
+  };
+
   const handleItemClick = (item, indexPath) => {
     if (item.enabled === false) return;
-    if (item.submenu) return; // Submenus open on hover/interaction
+    if (item.submenu) return;
 
     window.notesApi?.executeMenuItem?.({
       indexPath,
@@ -265,7 +309,6 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     closeAllMenus();
   };
 
-  // Helper to format shortcuts/accelerators (e.g. CmdOrCtrl+N -> Ctrl+N)
   const formatAccelerator = (acc) => {
     if (!acc) return "";
     const isMac = navigator.userAgent.toLowerCase().includes("mac");
@@ -298,7 +341,6 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     return "";
   };
 
-  // Recursive submenu renderer
   const renderDropdownItems = (items, path = []) => {
     return (
       <ul className="titlebar-dropdown-list">
@@ -385,35 +427,48 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
         </div>
       </div>
 
-      <div className="titlebar-title" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+      <div className="titlebar-title" style={{ display: "inline-flex", flexRow: "row", alignItems: "center", gap: "6px" }}>
         {workspaceIcon && <span className="titlebar-workspace-icon" style={{ fontSize: "13px", lineHeight: 1, display: "inline-flex", alignItems: "center" }}>{workspaceIcon}</span>}
         <span>{title}</span>
       </div>
 
       <div className="titlebar-controls">
-        {onOpenDownloads && (
-          <button
-            className="titlebar-btn downloads-view"
-            onClick={onOpenDownloads}
-            type="button"
-            title="Downloads & Export History (Ctrl+J)"
-            aria-label="Downloads & Export History"
-            style={{ marginRight: "4px" }}
-          >
-            <Download size={14} />
-          </button>
-        )}
-        {onOpenWebsite && (
-          <button
-            className="titlebar-btn web-view"
-            onClick={onOpenWebsite}
-            type="button"
-            title="Open Website View"
-            aria-label="Open Website View"
-            style={{ marginRight: "4px" }}
-          >
-            <Globe size={14} />
-          </button>
+        {(onOpenDownloads || onOpenWebsite) && (
+          <div className="titlebar-action-btns">
+            {onOpenDownloads && (
+              <div className="titlebar-downloads-container">
+                <button
+                  className={`titlebar-btn downloads-view${hasUnreadDownload ? " has-unread" : ""}${showDownloadsPopover ? " active" : ""}`}
+                  onClick={toggleDownloadsPopover}
+                  type="button"
+                  title="Downloads & Export History (Ctrl+J)"
+                  aria-label="Downloads & Export History"
+                >
+                  <Download size={14} />
+                  {hasUnreadDownload && <span className="titlebar-downloads-badge-dot" />}
+                </button>
+
+                <DownloadsPopover
+                  isOpen={showDownloadsPopover}
+                  onClose={() => setShowDownloadsPopover(false)}
+                  onOpenDownloads={onOpenDownloads}
+                  recentDownloads={recentDownloads}
+                />
+              </div>
+            )}
+
+            {onOpenWebsite && (
+              <button
+                className="titlebar-btn web-view"
+                onClick={onOpenWebsite}
+                type="button"
+                title="Open Website View"
+                aria-label="Open Website View"
+              >
+                <Globe size={14} />
+              </button>
+            )}
+          </div>
         )}
         <button
           className="titlebar-btn minimize"
@@ -443,3 +498,6 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     </header>
   );
 }
+
+export default TitleBar;
+

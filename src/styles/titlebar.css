@@ -218,8 +218,288 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.titlebar-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+  padding-right: 6px;
+  border-right: 1px solid var(--border-soft);
+  height: 18px;
+}
+
+.titlebar-btn.downloads-view,
+.titlebar-btn.web-view {
+  width: 28px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  margin: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.titlebar-btn.downloads-view:hover,
+.titlebar-btn.web-view:hover,
+.titlebar-btn.downloads-view.active,
+.titlebar-btn.web-view.active {
+  background: var(--surface-accent);
+  color: var(--text-strong);
+}
+
+.titlebar-btn.downloads-view.active {
+  color: var(--accent-solid);
+}
+
 .titlebar-menu-btn:focus-visible,
 .titlebar-btn:focus-visible {
   outline: 2px solid var(--focus-ring-color);
   outline-offset: -2px;
 }
+
+/* ── Downloads Chrome-Style Popover ───────────────────────────────────────── */
+
+.titlebar-downloads-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.titlebar-downloads-badge-dot {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent-solid);
+  border: 1px solid var(--surface-bg);
+  box-shadow: 0 0 0 2px rgba(47, 93, 98, 0.25);
+}
+
+.titlebar-downloads-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 340px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  z-index: 10005;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: downloads-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+@keyframes downloads-popover-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.downloads-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-bg);
+}
+
+.downloads-popover-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.downloads-popover-title svg {
+  color: var(--accent-solid);
+}
+
+.downloads-popover-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+}
+
+.downloads-popover-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 310px;
+  overflow-y: auto;
+  padding: 8px;
+  gap: 6px;
+  background: var(--app-bg);
+}
+
+.downloads-popover-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.downloads-popover-empty-icon {
+  color: var(--text-subtle);
+  opacity: 0.5;
+}
+
+.downloads-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.downloads-popover-item:hover {
+  background: var(--surface-accent);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+}
+
+.downloads-popover-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+
+.downloads-popover-type-icon.pdf { color: var(--status-danger-text); }
+.downloads-popover-type-icon.zip { color: var(--status-info-text); }
+.downloads-popover-type-icon.html { color: var(--status-warning-text); }
+.downloads-popover-type-icon.media { color: var(--kg-company-border); }
+.downloads-popover-type-icon.default { color: var(--accent-solid); }
+
+.downloads-popover-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.downloads-popover-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.downloads-popover-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.downloads-popover-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.downloads-popover-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+  transition: all var(--motion-fast);
+}
+
+.downloads-popover-action-btn:hover {
+  background: var(--surface-accent);
+  border-color: var(--border-default);
+  color: var(--text-strong);
+}
+
+.downloads-popover-action-btn:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+}
+
+.downloads-popover-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-bg);
+}
+
+.downloads-popover-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--text-strong);
+  cursor: pointer;
+  outline: none;
+  transition: all var(--motion-fast);
+}
+
+.downloads-popover-more-btn:hover {
+  background: var(--surface-accent);
+  border-color: var(--border-default);
+  color: var(--accent-solid);
+}
+
+.downloads-popover-more-btn:focus-visible {
+  background: var(--surface-accent);
+  border-color: var(--accent-solid);
+  color: var(--accent-solid);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+.downloads-popover-more-btn:active {
+  transform: scale(0.985);
+}
+

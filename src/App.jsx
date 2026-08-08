@@ -1435,8 +1435,20 @@ export default function App() {
     const currentPath = normalizePathLikeValue(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
     const canRemoveFolder = Boolean(rootPath && currentPath && rootPath.toLowerCase() !== currentPath.toLowerCase());
 
+    const isSubpageActive = Boolean(
+      downloadsPageOpen ||
+      calendarPageOpen ||
+      taskWorkspaceOpen ||
+      appLogsOpen ||
+      healthPageOpen ||
+      gitVCOpen ||
+      embeddingsPageOpen ||
+      graphPanelOpen ||
+      personasPageOpen
+    );
+
     updateMenuContext({
-      screen: current ? "document" : "landing",
+      screen: (current && !isSubpageActive) ? "document" : "landing",
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       typoCheckEnabled,
@@ -1457,7 +1469,7 @@ export default function App() {
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
       autosaveEnabled,
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {

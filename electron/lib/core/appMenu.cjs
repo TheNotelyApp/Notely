@@ -573,12 +573,6 @@ function buildAppMenuTemplate(win, context = {}) {
           click: () => sendMenuAction(win, "open-assets")
         },
         {
-          label: "Downloads & Export History",
-          accelerator: "CmdOrCtrl+J",
-          action: "open-downloads-page",
-          click: () => sendMenuAction(win, "open-downloads-page")
-        },
-        {
           label: "Trash / Removed Items",
           click: () => sendMenuAction(win, "open-trash")
         },
@@ -602,12 +596,6 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Export Workspace as Zip",
           accelerator: "CmdOrCtrl+Shift+E",
           click: () => sendMenuAction(win, "export-workspace-zip")
-        },
-        { type: "separator" },
-        {
-          label: screen === "document" ? "Open Current Note Website View" : "Open Project Website",
-          accelerator: "CmdOrCtrl+Shift+W",
-          click: () => sendMenuAction(win, "open-website")
         }
       ]
     },
