@@ -626,12 +626,18 @@ function registerWorkspaceExportIpcHandlers(ipcMain, deps) {
       if (exportHistoryStore) {
         try {
           const stat = fs.statSync(outputPath);
-          await exportHistoryStore.addRecord({
+          const record = {
             filename: path.basename(outputPath),
             filePath: outputPath,
             fileSize: stat.size,
             exportType: mode === "pdf" ? "pdf" : mode === "web" ? "html" : "workspace_zip",
             category: "document"
+          };
+          await exportHistoryStore.addRecord(record);
+          BrowserWindow.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) {
+              win.webContents.send("exports:record-added", record);
+            }
           });
         } catch {
           /* ignore export history recording error */

@@ -377,6 +377,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   // ── Exports & Downloads ──────────────────────────────────────────────────
   getExportHistory: () => ipcRenderer.invoke("exports:getHistory"),
   addExportRecord: (payload) => ipcRenderer.invoke("exports:addRecord", payload),
+  saveToDownloads: (payload) => ipcRenderer.invoke("exports:saveToDownloads", payload),
   removeExportRecord: (payload) => ipcRenderer.invoke("exports:removeRecord", { id: payload }),
   clearExportHistory: () => ipcRenderer.invoke("exports:clearHistory"),
   showInFolder: (filePath) => ipcRenderer.invoke("exports:showInFolder", { filePath }),

@@ -68,22 +68,14 @@ export function DownloadsPopover({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleOutsideClick = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        onClose?.();
-      }
-    };
-
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         onClose?.();
       }
     };
 
-    document.addEventListener("mousedown", handleOutsideClick);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose]);

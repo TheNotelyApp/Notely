@@ -484,13 +484,19 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
         if (exportHistoryStore && saveResult.filePath) {
           try {
             const stat = fs.statSync(saveResult.filePath);
-            await exportHistoryStore.addRecord({
+            const record = {
               filename: path.basename(saveResult.filePath),
               filePath: saveResult.filePath,
               fileSize: stat.size,
               exportType: "pdf",
               category: "document",
               sourceNote: path.basename(resolved)
+            };
+            await exportHistoryStore.addRecord(record);
+            BrowserWindow.getAllWindows().forEach((win) => {
+              if (!win.isDestroyed()) {
+                win.webContents.send("exports:record-added", record);
+              }
             });
           } catch {
             /* ignore export history recording errors */

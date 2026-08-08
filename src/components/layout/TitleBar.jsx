@@ -168,8 +168,10 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
   const [showDownloadsPopover, setShowDownloadsPopover] = useState(false);
   const [recentDownloads, setRecentDownloads] = useState([]);
   const [hasUnreadDownload, setHasUnreadDownload] = useState(false);
+  const [isAnimatingDownload, setIsAnimatingDownload] = useState(false);
 
   const containerRef = useRef(null);
+  const downloadAnimTimerRef = useRef(null);
 
   const loadRecentDownloads = useCallback(async () => {
     try {
@@ -182,28 +184,47 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     }
   }, []);
 
+  const triggerDownloadHighlight = useCallback(() => {
+    loadRecentDownloads();
+    setHasUnreadDownload(true);
+    setIsAnimatingDownload(true);
+
+    if (downloadAnimTimerRef.current) clearTimeout(downloadAnimTimerRef.current);
+    downloadAnimTimerRef.current = setTimeout(() => {
+      setIsAnimatingDownload(false);
+    }, 2400);
+  }, [loadRecentDownloads]);
+
   useEffect(() => {
     const handleDownloadEvent = () => {
-      loadRecentDownloads();
-      setHasUnreadDownload(true);
-      setShowDownloadsPopover(true);
+      triggerDownloadHighlight();
     };
 
     window.addEventListener("app:download-complete", handleDownloadEvent);
+    window.addEventListener("app:export-complete", handleDownloadEvent);
 
     const handleToastEvent = (e) => {
       const msg = String(e.detail?.message || "").toLowerCase();
-      if (msg.includes("export") || msg.includes("download") || msg.includes("saved to")) {
-        handleDownloadEvent();
+      if (
+        msg.includes("export") ||
+        msg.includes("download") ||
+        msg.includes("saved to") ||
+        msg.includes("pdf") ||
+        msg.includes("package") ||
+        msg.includes("zip")
+      ) {
+        triggerDownloadHighlight();
       }
     };
     window.addEventListener("app:toast", handleToastEvent);
 
     return () => {
       window.removeEventListener("app:download-complete", handleDownloadEvent);
+      window.removeEventListener("app:export-complete", handleDownloadEvent);
       window.removeEventListener("app:toast", handleToastEvent);
+      if (downloadAnimTimerRef.current) clearTimeout(downloadAnimTimerRef.current);
     };
-  }, [loadRecentDownloads]);
+  }, [triggerDownloadHighlight]);
 
   useEffect(() => {
     if (window.notesApi?.isWindowMaximized) {
@@ -255,10 +276,11 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
     };
   }, []);
 
-  const closeAllMenus = () => {
+  const closeAllMenus = useCallback(() => {
     setActiveMenuIndex(null);
     setActiveSubmenuPath([]);
-  };
+    setShowDownloadsPopover(false);
+  }, []);
 
   const handleMinimize = () => {
     window.notesApi?.minimizeWindow?.();
@@ -438,7 +460,7 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
             {onOpenDownloads && (
               <div className="titlebar-downloads-container">
                 <button
-                  className={`titlebar-btn downloads-view${hasUnreadDownload ? " has-unread" : ""}${showDownloadsPopover ? " active" : ""}`}
+                  className={`titlebar-btn downloads-view${hasUnreadDownload ? " has-unread" : ""}${showDownloadsPopover ? " active" : ""}${isAnimatingDownload ? " download-animating" : ""}`}
                   onClick={toggleDownloadsPopover}
                   type="button"
                   title="Downloads & Export History (Ctrl+J)"

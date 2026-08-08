@@ -421,12 +421,18 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
       if (exportHistoryStore) {
         try {
           const stat = fsSync.statSync(finalDest);
-          await exportHistoryStore.addRecord({
+          const record = {
             filename: path.basename(finalDest),
             filePath: finalDest,
             fileSize: stat.size,
             exportType: "note_package",
             category: "document"
+          };
+          await exportHistoryStore.addRecord(record);
+          BrowserWindow.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) {
+              win.webContents.send("exports:record-added", record);
+            }
           });
         } catch (err) {
           console.warn("[notePackageIpc] Failed to log export history:", err);

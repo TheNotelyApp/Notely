@@ -761,12 +761,18 @@ registerTrustedHandler("images:download", async (event, payload) => {
       const isDiagram = (defaultFilename || filename).toLowerCase().includes("diagram")
                      || (defaultFilename || filename).toLowerCase().includes("excali")
                      || (defaultFilename || filename).toLowerCase().includes("drawio");
-      await exportHistoryStore.addRecord({
+      const record = {
         filename,
         filePath,
         fileSize: buffer.length,
         exportType: isDiagram ? "diagram_excalidraw" : "image",
         category: isDiagram ? "diagram" : "media"
+      };
+      await exportHistoryStore.addRecord(record);
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send("exports:record-added", record);
+        }
       });
     } catch (err) {
       console.error("Failed to record image download in export history:", err);

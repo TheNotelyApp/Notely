@@ -1452,9 +1452,67 @@ export async function getExportHistory() {
 }
 
 export async function addExportRecord(record) {
+  if (!record) return null;
   const api = getNotesApi();
-  if (typeof api.addExportRecord !== "function") return null;
-  return api.addExportRecord(record);
+  const rawPath = String(record.filePath || record.filename || "download").replace(/\\/g, "/");
+  const cleanPath = rawPath.startsWith("data:") || rawPath.startsWith("blob:")
+    ? (record.filename || "download")
+    : rawPath;
+  const filename = record.filename || cleanPath.split("/").pop() || "download";
+
+  const cleanRecord = {
+    filename,
+    filePath: cleanPath,
+    fileSize: record.fileSize || 0,
+    exportType: record.exportType || "media",
+    category: record.category || "media",
+    sourceNote: record.sourceNote || "",
+  };
+
+  let res = null;
+  if (typeof api?.addExportRecord === "function") {
+    try {
+      res = await api.addExportRecord(cleanRecord);
+    } catch (err) {
+      console.warn("[addExportRecord] IPC error:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("app:download-complete", { detail: cleanRecord }));
+    window.dispatchEvent(new CustomEvent("app:toast", {
+      detail: {
+        message: `Downloaded ${filename}`,
+        type: "success",
+      },
+    }));
+  }
+  return res;
+}
+
+export async function saveToDownloads({ dataUrl, srcPath, filename }) {
+  const api = getNotesApi();
+  let res = null;
+  if (typeof api?.saveToDownloads === "function") {
+    try {
+      res = await api.saveToDownloads({ dataUrl, srcPath, filename });
+    } catch (err) {
+      console.warn("[saveToDownloads] IPC error:", err);
+    }
+  }
+
+  if (res?.success) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("app:download-complete", { detail: res }));
+      window.dispatchEvent(new CustomEvent("app:toast", {
+        detail: {
+          message: `Downloaded ${res.filename}`,
+          type: "success",
+        },
+      }));
+    }
+  }
+  return res;
 }
 
 export async function removeExportRecord(id) {

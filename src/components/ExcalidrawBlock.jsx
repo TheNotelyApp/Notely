@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { readDiagramImage, readDiagramSource, writeDiagramSource } from "../services/diagramService";
-import { downloadImage } from "../services/electronService";
+import { downloadImage, addExportRecord } from "../services/electronService";
 import ExcalidrawComponent from "./ExcalidrawEditor";
 import "../styles/ExcalidrawBlock.css";
 
@@ -56,9 +56,17 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
   const handleDownload = async () => {
     if (!thumbnail) return;
     try {
-      const result = await downloadImage(thumbnail, `${diagramId || "diagram"}.png`);
+      const filename = `${diagramId || "diagram"}.png`;
+      const result = await downloadImage(thumbnail, filename);
       if (result?.success) {
         onNotify?.("Diagram exported successfully.", "success");
+        void addExportRecord({
+          filename,
+          filePath: result.filePath || filename,
+          fileSize: result.fileSize || 0,
+          exportType: "diagram_excalidraw",
+          category: "image",
+        });
       }
     } catch (err) {
       console.error("Failed to download diagram:", err);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Download, Upload, X, CheckSquare, Square, FolderOpen } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppInput from "./AppInput";
+import { addExportRecord } from "../services/electronService";
 import "../styles/ExportImportModal.css";
 
 export function ExportImportModal({ isOpen, mode = "export", onClose, notify, reloadDocuments }) {
@@ -170,6 +171,13 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
 
       if (res?.success) {
         notify(`Exported ${res.exportedNotesCount} note(s) to ${res.outputPath}`, "success");
+        void addExportRecord({
+          filename: outputName,
+          filePath: res.outputPath || fullOutputPath,
+          fileSize: res.fileSize || 0,
+          exportType: "note_package",
+          category: "document",
+        });
         onClose();
       } else {
         notify("Export failed: " + (res?.error || "Unknown error"), "error");

@@ -13,7 +13,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp } from "../services/electronService";
+import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, addExportRecord, saveToDownloads } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it
@@ -228,24 +228,78 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   };
 
   const handleDownloadImage = async () => {
-    const fullImage = await readFullImage();
-    if (!fullImage) return;
-    const link = document.createElement("a");
-    link.href = fullImage;
-    link.download = mediaPath.split("/").pop() || "image.png";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const fullImage = await readFullImage();
+      const rawName = String(fileName || mediaPath || "image.png").replace(/\\/g, "/");
+      const name = rawName.split("/").pop() || "image.png";
+      const downloadSrc = fullImage || displayedImage || resolvedPath || mediaPath;
+      if (!downloadSrc) return;
+
+      const isDataUrl = typeof downloadSrc === "string" && downloadSrc.startsWith("data:");
+      const isDiskFile = Boolean(resolvedPath && !resolvedPath.startsWith("data:") && !resolvedPath.startsWith("http"));
+
+      const saved = await saveToDownloads({
+        dataUrl: isDataUrl ? downloadSrc : undefined,
+        srcPath: isDiskFile ? resolvedPath : undefined,
+        filename: name,
+      });
+
+      if (!saved?.success) {
+        const link = document.createElement("a");
+        link.href = downloadSrc;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        await addExportRecord({
+          filename: name,
+          filePath: isDiskFile ? resolvedPath : name,
+          fileSize: imageInfo?.fileSize || fileSize || 0,
+          exportType: "image",
+          category: "media",
+        });
+      }
+    } catch (err) {
+      console.error("[MediaPreviewPane] Download image error:", err);
+    }
   };
 
-  const handleDownloadMedia = () => {
-    if (!resolvedPath) return;
-    const link = document.createElement("a");
-    link.href = resolvedPath;
-    link.download = fileName || "download";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadMedia = async () => {
+    try {
+      const downloadSrc = resolvedPath || mediaPath;
+      if (!downloadSrc) return;
+      const rawName = String(fileName || mediaPath || "download").replace(/\\/g, "/");
+      const name = rawName.split("/").pop() || "download";
+
+      const isDataUrl = typeof downloadSrc === "string" && downloadSrc.startsWith("data:");
+      const isDiskFile = Boolean(resolvedPath && !resolvedPath.startsWith("data:") && !resolvedPath.startsWith("http"));
+
+      const saved = await saveToDownloads({
+        dataUrl: isDataUrl ? downloadSrc : undefined,
+        srcPath: isDiskFile ? resolvedPath : undefined,
+        filename: name,
+      });
+
+      if (!saved?.success) {
+        const link = document.createElement("a");
+        link.href = downloadSrc;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        await addExportRecord({
+          filename: name,
+          filePath: isDiskFile ? downloadSrc : name,
+          fileSize: fileSize || 0,
+          exportType: "media",
+          category: "media",
+        });
+      }
+    } catch (err) {
+      console.error("[MediaPreviewPane] Download media error:", err);
+    }
   };
 
   const handleOpenInDefaultApp = async () => {
