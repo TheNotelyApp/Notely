@@ -460,7 +460,7 @@
 .preview .markdown-table-dropdown-item {
   border: none;
   background: transparent;
-  color: var(--text-strong, #f8fafc);
+  color: var(--tooltip-text, #f0f8f5);
   font-size: 11px;
   font-weight: 500;
   padding: 6px 10px;

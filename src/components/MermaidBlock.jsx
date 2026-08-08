@@ -71,7 +71,7 @@ export function MermaidBlock({ code, onEdit, onNotify }) {
 
     try {
       setIsExporting(true);
-      const svgElement = containerRef.current?.querySelector?.("svg");
+      const svgElement = containerRef.current?.querySelector?.(".mermaid-render svg") || containerRef.current?.querySelector?.("svg:not(.lucide)");
       if (!svgElement) {
         throw new Error("Rendered diagram SVG not found.");
       }

@@ -607,9 +607,18 @@ class ExportManager {
     if (resolvedSrc && fs.existsSync(resolvedSrc)) {
       fs.copyFileSync(resolvedSrc, targetPath);
     } else if (effectiveDataUrl) {
-      const rawBase64 = effectiveDataUrl.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(rawBase64, "base64");
-      fs.writeFileSync(targetPath, buffer);
+      if (effectiveDataUrl.includes(";base64,")) {
+        const rawBase64 = effectiveDataUrl.replace(/^data:[^;]+;base64,/, "");
+        const buffer = Buffer.from(rawBase64, "base64");
+        fs.writeFileSync(targetPath, buffer);
+      } else if (effectiveDataUrl.startsWith("data:")) {
+        const commaIdx = effectiveDataUrl.indexOf(",");
+        const rawContent = commaIdx >= 0 ? effectiveDataUrl.slice(commaIdx + 1) : effectiveDataUrl;
+        const decodedContent = decodeURIComponent(rawContent);
+        fs.writeFileSync(targetPath, decodedContent, "utf8");
+      } else {
+        fs.writeFileSync(targetPath, effectiveDataUrl, "utf8");
+      }
     } else {
       throw new Error("Invalid image or media source provided for export.");
     }
