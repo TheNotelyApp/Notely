@@ -22,4 +22,5 @@ Open the export window from **File → Export Workspace as Zip**:
 ## 2. Advanced Options
 
 - **App Data Toggle**: Choose whether to include the `.notes-app` support folder (containing version control commits and metadata). Recommended to leave disabled unless creating full recovery backups.
-- **Remembered Destination**: Notely remembers your last export folder. You can customize the filename before starting the process.
+- **Default Location**: All exported workspace archives default directly to your system **Downloads** directory (`~/Downloads`).
+- **History Tracking**: View and manage all past workspace exports anytime via **Workspace → Downloads & Export History** (`Ctrl/Cmd + J`).

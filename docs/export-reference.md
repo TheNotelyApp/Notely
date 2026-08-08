@@ -25,12 +25,31 @@ Exports the currently active markdown note as a standalone rendered document.
 * Renders the note through a **Headless Chromium** window with the active Notely theme CSS applied.
 * **Local media resolved**: Embedded images and diagrams are referenced via their absolute file:// paths before rendering.
 * **Mermaid diagrams** and **LaTeX equations** are rendered as vector SVG and KaTeX HTML inside the PDF.
-* Output path defaults to the last-used export directory. The app remembers the path (`getLastPdfExportPath`).
+* Output path defaults directly to your system **Downloads** folder (`~/Downloads`).
 * PDF write failures (EPERM, EBUSY on OneDrive paths) are automatically retried up to 3 times with increasing delays (120ms → 320ms → 700ms).
 
 ### HTML Export
 * Produces a self-contained HTML file with inline CSS and resolved media references.
 * Suitable for publishing notes to static web servers or opening in any browser without Notely.
+
+---
+
+## 2. Downloads & Export History Manager
+
+Access via top **Workspace → Downloads & Export History** menu item or press **`Ctrl/Cmd + J`**.
+
+Notely automatically tracks and logs all file exports and diagram renders to a local workspace database (`.notes-app/export-history.db`).
+
+### Features & Capabilities
+
+* **Unified Tracking**: Tracks PDF exports, `.note` packages, workspace `.zip` archives, Excalidraw diagrams, Draw.io diagrams, and exported media files.
+* **Category Tabs**: Filter by **All**, **Documents**, **Diagrams**, or **Media** with live item count badges.
+* **Instant Actions**:
+  * **Show in Folder**: Reveals the exported file directly in OS File Explorer (Windows) or Finder (macOS).
+  * **Open**: Launches the file in its default system application.
+  * **Downloads Folder**: Direct shortcut button to open your system Downloads directory.
+* **Live File Status**: Automatically detects if an exported file has been moved or deleted from disk.
+* **SQLite Persistence**: Stored per-workspace in `{workspace}/.notes-app/export-history.db` using Node's native `DatabaseSync` (`node:sqlite`). Reconnects dynamically on workspace switching.
 
 ---
 
