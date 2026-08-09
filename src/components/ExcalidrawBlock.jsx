@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 import { readDiagramImage, readDiagramSource, writeDiagramSource } from "../services/diagramService";
-import { downloadImage } from "../services/electronService";
+import { runExport } from "../services/electronService";
 import ExcalidrawComponent from "./ExcalidrawEditor";
 import "../styles/ExcalidrawBlock.css";
 
@@ -56,9 +56,17 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
   const handleDownload = async () => {
     if (!thumbnail) return;
     try {
-      const result = await downloadImage(thumbnail, `${diagramId || "diagram"}.png`);
+      const filename = `${diagramId || "excalidraw-diagram"}.png`;
+      const result = await runExport("diagram_image", {
+        dataUrl: thumbnail,
+        filename,
+        customExportType: "diagram_excalidraw",
+        category: "diagram",
+      });
       if (result?.success) {
-        onNotify?.("Diagram exported successfully.", "success");
+        onNotify?.(`Diagram exported to ${result.filename}`, "success");
+      } else {
+        onNotify?.(result?.error || "Failed to export diagram.", "error");
       }
     } catch (err) {
       console.error("Failed to download diagram:", err);
@@ -120,25 +128,41 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
         
         {thumbnail && !loading ? (
           <div className="excalidraw-preview-thumbnail">
+            <div className="markdown-block-actions">
+              <button
+                type="button"
+                className="markdown-block-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsModalOpen(true);
+                }}
+                data-tooltip="Edit diagram"
+                aria-label="Edit diagram"
+              >
+                <Pencil size={12} style={{ marginRight: "4px" }} />
+                <span>Edit</span>
+              </button>
+              <span className="markdown-block-action-separator" />
+              <button
+                type="button"
+                className="markdown-block-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDownload();
+                }}
+                data-tooltip="Download diagram as PNG"
+                aria-label="Download diagram image"
+              >
+                <Download size={12} style={{ marginRight: "4px" }} />
+                <span>Download</span>
+              </button>
+            </div>
             <img 
               src={thumbnail} 
               alt="Diagram preview" 
               className="diagram-image"
               onError={() => setThumbnail(null)}
             />
-            <button
-              className="excalidraw-download-btn"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownload();
-              }}
-              title="Download diagram as PNG"
-              aria-label="Download diagram as PNG"
-            >
-              <Download size={14} />
-            </button>
-            <span className="click-hint">(Click to edit)</span>
           </div>
         ) : !loading ? (
           <div className="excalidraw-empty-state">

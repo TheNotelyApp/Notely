@@ -137,11 +137,41 @@ md.renderer.rules.table_open = (tokens, idx, options, env) => {
   const attrLine = Number(token.attrGet("data-source-line")) || 0;
   const sourceStartLine = mappedLine || attrLine;
   const lineAttr = sourceStartLine > 0 ? ` data-source-line="${sourceStartLine}"` : "";
-  return `<div class="markdown-table-wrapper"${lineAttr} role="button" tabindex="0" title="Click to edit table"><table>`;
+  return `<div class="markdown-table-wrapper"${lineAttr} role="button" tabindex="0" title="Click to edit table"><div class="markdown-block-actions"><button type="button" class="markdown-block-action-btn" data-table-action="edit" aria-label="Edit table" data-tooltip="Edit table"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span>Edit</span></button><span class="markdown-block-action-separator"></span><button type="button" class="markdown-block-action-btn" data-table-action="export-image" aria-label="Download table image" data-tooltip="Download table image (PNG)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><span>Download Image</span></button><span class="markdown-block-action-separator"></span><button type="button" class="markdown-block-action-btn" data-table-action="export-csv" aria-label="Download table CSV" data-tooltip="Download table CSV"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg><span>Download CSV</span></button></div><table>`;
 };
 
 md.renderer.rules.table_close = () => {
   return `</table></div>`;
+};
+
+const defaultLinkOpenRenderer = md.renderer.rules.link_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+const defaultLinkCloseRenderer = md.renderer.rules.link_close || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+
+md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  const openHtml = defaultLinkOpenRenderer(tokens, idx, options, env, self);
+  return `<span class="markdown-link-wrapper">${openHtml}`;
+};
+
+md.renderer.rules.link_close = (tokens, idx, options, env, self) => {
+  let href = "";
+  for (let i = idx - 1; i >= 0; i--) {
+    if (tokens[i].type === "link_open") {
+      href = tokens[i].attrGet("href") || "";
+      break;
+    }
+  }
+  const isWebUrl = /^https?:\/\/|^\/\//i.test(href);
+  const closeHtml = defaultLinkCloseRenderer(tokens, idx, options, env, self);
+  const safeHref = escapeHtml(href);
+
+  const copyBtn = `<button type="button" class="link-hover-popup-btn" data-link-action="copy" data-href="${safeHref}" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copy</span></button>`;
+  const revealBtn = `<span class="link-hover-popup-separator"></span><button type="button" class="link-hover-popup-btn" data-link-action="reveal" data-href="${safeHref}" aria-label="Reveal in Explorer"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Reveal in Explorer</span></button>`;
+  const openFileBtn = !isWebUrl ? `<span class="link-hover-popup-separator"></span><button type="button" class="link-hover-popup-btn" data-link-action="open-file" data-href="${safeHref}" aria-label="Open file"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg><span>Open File</span></button>` : "";
+  const downloadBtn = !isWebUrl ? `<span class="link-hover-popup-separator"></span><button type="button" class="link-hover-popup-btn" data-link-action="download" data-href="${safeHref}" aria-label="Download file"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Download</span></button>` : "";
+
+  const popoverHtml = `<span class="markdown-link-popover">${copyBtn}${revealBtn}${openFileBtn}${downloadBtn}</span>`;
+
+  return `${closeHtml}${popoverHtml}</span>`;
 };
 
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
@@ -152,7 +182,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
   }
   const label = getImageDisplayName(src, token.content || token.attrGet("alt") || "Image");
   const imageHtml = defaultImageRenderer(tokens, idx, options, env, self);
-  return `<span class="markdown-image-frame">${imageHtml}<span class="markdown-image-actions"><button type="button" class="markdown-image-action" data-image-action="view" aria-label="View image">View</button><button type="button" class="markdown-image-action" data-image-action="edit" aria-label="Annotate image">Annotate</button></span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
+  return `<span class="markdown-image-frame">${imageHtml}<span class="markdown-image-actions"><button type="button" class="markdown-image-action" data-image-action="view" aria-label="View image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><span>View</span></button><span class="markdown-image-action-separator"></span><button type="button" class="markdown-image-action" data-image-action="annotate" aria-label="Annotate image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Annotate</span></button><span class="markdown-image-action-separator"></span><button type="button" class="markdown-image-action" data-image-action="edit" aria-label="Edit image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span>Edit</span></button><span class="markdown-image-action-separator"></span><button type="button" class="markdown-image-action" data-image-action="download" aria-label="Download image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Download</span></button></span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
 };
 
 /**

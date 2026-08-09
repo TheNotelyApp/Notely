@@ -13,7 +13,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp } from "../services/electronService";
+import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, runExport, saveToDownloads } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it
@@ -228,24 +228,74 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
   };
 
   const handleDownloadImage = async () => {
-    const fullImage = await readFullImage();
-    if (!fullImage) return;
-    const link = document.createElement("a");
-    link.href = fullImage;
-    link.download = mediaPath.split("/").pop() || "image.png";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const fullImage = await readFullImage();
+      const rawName = String(fileName || mediaPath || "image.png").replace(/\\/g, "/");
+      const name = rawName.split("/").pop() || "image.png";
+      const downloadSrc = fullImage || displayedImage || resolvedPath || mediaPath;
+      if (!downloadSrc) return;
+
+      let dataUrl;
+      let srcPath;
+
+      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+        dataUrl = downloadSrc;
+      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+        const resp = await fetch(downloadSrc);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else if (resolvedPath || mediaPath) {
+        srcPath = resolvedPath || mediaPath;
+      }
+
+      await saveToDownloads({
+        dataUrl,
+        srcPath,
+        filename: name,
+      });
+    } catch (err) {
+      console.error("[MediaPreviewPane] Download image error:", err);
+    }
   };
 
-  const handleDownloadMedia = () => {
-    if (!resolvedPath) return;
-    const link = document.createElement("a");
-    link.href = resolvedPath;
-    link.download = fileName || "download";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadMedia = async () => {
+    try {
+      const downloadSrc = resolvedPath || mediaPath;
+      if (!downloadSrc) return;
+      const rawName = String(fileName || mediaPath || "download").replace(/\\/g, "/");
+      const name = rawName.split("/").pop() || "download";
+
+      let dataUrl;
+      let srcPath;
+
+      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+        dataUrl = downloadSrc;
+      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+        const resp = await fetch(downloadSrc);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else if (resolvedPath || mediaPath) {
+        srcPath = resolvedPath || mediaPath;
+      }
+
+      await runExport("media", {
+        dataUrl,
+        srcPath,
+        filename: name,
+        customExportType: mediaType === "pdf" ? "pdf" : mediaType === "video" ? "video" : mediaType === "audio" ? "audio" : mediaType === "image" ? "image" : fileExtension || "media",
+        category: mediaType === "pdf" || mediaType === "document" ? "document" : "media",
+      });
+    } catch (err) {
+      console.error("[MediaPreviewPane] Download media error:", err);
+    }
   };
 
   const handleOpenInDefaultApp = async () => {
@@ -549,6 +599,14 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
           {fileExtension ? <span className="media-preview-ext">{fileExtension.toUpperCase()}</span> : null}
         </div>
         <div className="media-header-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            className="media-preview-close"
+            onClick={handleDownloadMedia}
+            data-tooltip={`Download ${fileName}`}
+            aria-label="Download media file"
+          >
+            <Download size={16} />
+          </button>
           <button
             className="media-preview-close"
             onClick={() => setIsExpanded((prev) => !prev)}

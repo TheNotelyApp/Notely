@@ -263,12 +263,19 @@
   top: 10px;
   z-index: 4;
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   opacity: 0;
   transform: translateY(-4px);
   transition:
     opacity 0.16s ease,
     transform 0.16s ease;
+  background: var(--tooltip-bg, rgba(20, 30, 33, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md, 6px);
+  padding: 3px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
 }
 
 .preview .markdown-image-frame:hover .markdown-image-actions,
@@ -278,20 +285,28 @@
 }
 
 .preview .markdown-image-action {
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  background: rgba(10, 28, 32, 0.82);
-  color: #ffffff;
+  border: none;
+  background: transparent;
+  color: var(--tooltip-text, #ffffff);
   font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 6px 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm, 4px);
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .preview .markdown-image-action:hover,
 .preview .markdown-image-action:focus-visible {
-  background: rgba(20, 52, 58, 0.92);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.preview .markdown-image-action-separator {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .preview .markdown-image-name {
@@ -338,6 +353,132 @@
   outline: none;
   border-color: var(--accent-solid, #3b82f6);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid, #3b82f6) 35%, transparent);
+}
+
+/* Compact Hover Action Bar for Tables and Mermaid Blocks */
+.preview .markdown-block-actions {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  pointer-events: none;
+  background: var(--tooltip-bg, rgba(20, 30, 33, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md, 6px);
+  padding: 3px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.preview .markdown-table-wrapper:hover .markdown-block-actions,
+.preview .markdown-table-wrapper:focus-within .markdown-block-actions,
+.preview .mermaid-block-container:hover .markdown-block-actions,
+.preview .mermaid-block-container:focus-within .markdown-block-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.preview .markdown-block-action-btn {
+  border: none;
+  background: transparent;
+  color: var(--tooltip-text, #ffffff);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: background 0.14s ease;
+}
+
+.preview .markdown-block-action-btn:hover:not(:disabled),
+.preview .markdown-block-action-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.preview .markdown-block-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.preview .markdown-block-action-separator {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  display: inline-block;
+  align-self: center;
+}
+
+/* Table Download Popover Dropdown */
+.preview .markdown-table-download-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.preview .markdown-table-dropdown-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 135px;
+  padding: 4px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.2));
+  border-radius: var(--radius-md, 6px);
+  background: var(--tooltip-bg, rgba(10, 28, 32, 0.92));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s;
+  pointer-events: none;
+}
+
+.preview .markdown-table-download-menu:hover .markdown-table-dropdown-popover,
+.preview .markdown-table-download-menu:focus-within .markdown-table-dropdown-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.preview .markdown-table-dropdown-item {
+  border: none;
+  background: transparent;
+  color: var(--tooltip-text, #f0f8f5);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  width: 100%;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.preview .markdown-table-dropdown-item:hover,
+.preview .markdown-table-dropdown-item:focus-visible {
+  background: var(--surface-accent, rgba(59, 130, 246, 0.15));
+  color: var(--accent-solid, #3b82f6);
 }
 
 .preview .markdown-image-annotation {

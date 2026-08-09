@@ -1,7 +1,6 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
-const os = require("node:os");
 const { pathToFileURL } = require("node:url");
 const crypto = require("node:crypto");
 const http = require("node:http");
@@ -46,8 +45,14 @@ const { registerGitIpcHandlers } = require("./lib/git/gitIpc.cjs");
 const gitService = require("./lib/git/gitService.cjs");
 const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
 const { registerTaskIpc } = require("./lib/tasks/taskIpc.cjs");
+const { ExportHistoryStore } = require("./lib/export/exportHistoryStore.cjs");
+const { registerExportHistoryIpc } = require("./lib/export/exportHistoryIpc.cjs");
 
+const exportHistoryStore = new ExportHistoryStore(app.getPath("userData"), () => notesRoot);
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+
+
+
 const projectRoot = app.getAppPath();
 const generatedVersionPath = path.join(projectRoot, "electron", "app-version.generated.json");
 const sessionDataPath = path.join(app.getPath("userData"), "session-data");
@@ -426,14 +431,6 @@ function broadcastThemeChange() {
   }
 }
 
-function getLastPdfExportPath() {
-  return mainHelpers.getLastPdfExportPath();
-}
-
-function rememberPdfExportPath(filePath) {
-  return mainHelpers.rememberPdfExportPath(filePath);
-}
-
 function resolveInitialNotesRoot() {
   return mainHelpers.resolveInitialNotesRoot();
 }
@@ -739,8 +736,6 @@ const imageMedia = createImageMedia({
   getAppDataDir: () => appDataDir,
   emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
   hashContent,
-  getLastPdfExportPath,
-  rememberPdfExportPath,
 });
 
 const {
@@ -1093,6 +1088,11 @@ ipcMain.on("window:execute-menu-item", (event, { indexPath, role, action }) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return;
 
+  if (action) {
+    sendMenuAction(win, action);
+    return;
+  }
+
   if (Array.isArray(indexPath)) {
     const rawTemplate = buildAppMenuTemplate(win, win.__menuContext || {});
     let currentItems = rawTemplate;
@@ -1191,10 +1191,7 @@ registerDocumentIpcHandlers(ipcMain, {
   dialog,
   shell,
   fs,
-  os,
   path,
-  pathToFileURL,
-  slugify,
   nowStamp,
   hashContent,
   filePathWithin,
@@ -1224,10 +1221,6 @@ registerDocumentIpcHandlers(ipcMain, {
   prepareDocumentPreview: webPreview.prepareDocumentPreview,
   syncWebPreviewScope: webPreview.syncScopeToActiveProject,
   tryOpenInChrome: webPreview.tryOpenInChrome,
-  getLastPdfExportPath,
-  rememberPdfExportPath,
-  buildPdfExportMarkdown,
-  buildPdfExportHtml,
   getAppDataDir: () => appDataDir,
 });
 
@@ -1235,18 +1228,9 @@ registerWorkspaceExportIpcHandlers(ipcMain, {
   BrowserWindow,
   dialog,
   fs,
-  os,
   path,
-  ensureDir,
-  filePathWithin,
-  getMarkdownIt,
-  readUserSettings,
-  writeUserSettings,
   getNotesRoot: () => notesRoot,
   getActiveProject,
-  parseDocument,
-  buildPdfExportMarkdown,
-  buildPdfExportHtml,
 });
 
 registerNotePackageIpc(ipcMain, {
@@ -1256,6 +1240,21 @@ registerNotePackageIpc(ipcMain, {
   filePathWithin,
   readUserSettings,
   getActiveProject,
+  exportHistoryStore,
+});
+
+registerExportHistoryIpc({
+  ipcMain,
+  BrowserWindow,
+  shell,
+  app,
+  exportHistoryStore,
+  getNotesRoot: () => notesRoot,
+  filePathWithin,
+  buildPdfExportMarkdown,
+  buildPdfExportHtml,
+  parseDocument,
+  getMarkdownIt,
 });
 
 imageMedia.registerIpcHandlers(ipcMain);
@@ -1279,3 +1278,4 @@ registerTaskIpc(ipcMain, {
   getMetadataStore: () => metadataStore,
   getAppDataDir: () => appDataDir,
 });
+

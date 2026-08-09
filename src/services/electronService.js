@@ -779,13 +779,20 @@ export async function revealWorkspaceInExplorer(folderPath) {
 }
 
 
-export async function downloadPdf(payload) {
+export async function runExport(type, payload = {}) {
   const api = getNotesApi();
-  if (typeof api.downloadPdf !== "function") {
-    throw new Error("PDF download action unavailable. Please restart the app to load the latest desktop API.");
+  if (typeof api?.exportFile === "function") {
+    const res = await api.exportFile(type, payload);
+    if (res?.success && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("app:download-complete", { detail: res }));
+    }
+    return res;
   }
+  throw new Error(`Export service is unavailable for type: ${type}`);
+}
 
-  return api.downloadPdf(payload);
+export async function downloadPdf(payload) {
+  return runExport("pdf", payload);
 }
 
 export async function getWorkspaceExportDefaults() {
@@ -810,11 +817,7 @@ export async function browseWorkspaceExportDestination() {
 }
 
 export async function exportWorkspaceZip(payload) {
-  const api = getNotesApi();
-  if (typeof api.exportWorkspaceZip !== "function") {
-    throw new Error("Workspace export is unavailable. Please restart the app.");
-  }
-  return api.exportWorkspaceZip(payload || {});
+  return runExport("workspace_zip", payload);
 }
 
 export function onWorkspaceExportProgress(callback) {
@@ -918,11 +921,7 @@ export async function renameImage(basePath, assetPath, nextFileName) {
 }
 
 export async function downloadImage(base64Data, defaultFilename) {
-  const api = getNotesApi();
-  if (typeof api.downloadImage !== "function") {
-    throw new Error("Image download action unavailable. Please restart the app.");
-  }
-  return api.downloadImage({ base64Data, defaultFilename });
+  return runExport("diagram_image", { base64Data, defaultFilename });
 }
 
 export async function createTerminalSession(cwd, options = {}) {
@@ -1442,3 +1441,88 @@ export async function deletePerson(id) {
   if (typeof api.deletePerson !== 'function') return false;
   return api.deletePerson({ id });
 }
+
+// ── Export & Download History ──────────────────────────────────────────────
+
+export async function getExportHistory() {
+  const api = getNotesApi();
+  if (typeof api.getExportHistory !== "function") return [];
+  return api.getExportHistory();
+}
+
+export async function addExportRecord(record) {
+  if (!record) return null;
+  const api = getNotesApi();
+  const rawPath = String(record.filePath || record.filename || "download").replace(/\\/g, "/");
+  const cleanPath = rawPath.startsWith("data:") || rawPath.startsWith("blob:")
+    ? (record.filename || "download")
+    : rawPath;
+  const filename = record.filename || cleanPath.split("/").pop() || "download";
+
+  const cleanRecord = {
+    filename,
+    filePath: cleanPath,
+    fileSize: record.fileSize || 0,
+    exportType: record.exportType || "media",
+    category: record.category || "media",
+    sourceNote: record.sourceNote || "",
+  };
+
+  let res = null;
+  if (typeof api?.addExportRecord === "function") {
+    try {
+      res = await api.addExportRecord(cleanRecord);
+    } catch (err) {
+      console.warn("[addExportRecord] IPC error:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("app:download-complete", { detail: cleanRecord }));
+  }
+  return res;
+}
+
+export async function saveToDownloads({ dataUrl, srcPath, filename }) {
+  return runExport("media", { dataUrl, srcPath, filename });
+}
+
+export async function removeExportRecord(id) {
+  const api = getNotesApi();
+  if (typeof api.removeExportRecord !== "function") return false;
+  return api.removeExportRecord(id);
+}
+
+export async function clearExportHistory() {
+  const api = getNotesApi();
+  if (typeof api.clearExportHistory !== "function") return false;
+  return api.clearExportHistory();
+}
+
+export async function showInFolder(filePath) {
+  const api = getNotesApi();
+  if (typeof api.showInFolder !== "function") return false;
+  return api.showInFolder(filePath);
+}
+
+export async function openExportFile(filePath) {
+  const api = getNotesApi();
+  if (typeof api.openExportFile !== "function") return false;
+  return api.openExportFile(filePath);
+}
+
+export async function getDefaultDownloadDir() {
+  const api = getNotesApi();
+  if (typeof api.getDefaultDownloadDir !== "function") return "";
+  return api.getDefaultDownloadDir();
+}
+
+export function onExportRecordAdded(callback) {
+  const api = getNotesApi();
+  if (typeof api?.onExportRecordAdded === "function") {
+    return api.onExportRecordAdded(callback);
+  }
+  return () => {};
+}
+
+

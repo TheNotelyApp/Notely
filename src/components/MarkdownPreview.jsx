@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import { createPortal } from "react-dom";
-import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw, Download, FolderOpen } from "lucide-react";
+import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw } from "lucide-react";
 import {
   renderMarkdown,
   parseDiagramBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
-import { readMarkdownSource, openFolder, openMediaInDefaultApp } from "../services/electronService";
+import { readMarkdownSource, openFolder, openMediaInDefaultApp, runExport } from "../services/electronService";
 import { readImage, replaceImage, deleteImage, renameImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal } from "../services/electronService";
 import { readFileAsDataUrl } from "../utils/mediaTypeUtils";
 import { createImageMarkdown, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
 import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUtils";
 import { writeDiagramSource, writeDiagramImage } from "../services/diagramService";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
+import { tableElementToPngDataUrl } from "../utils/exportUtils";
+import { tableElementToCsv } from "../utils/tableUtils";
 import { formatImageDeleteResult } from "../utils/imageDeleteResult";
 import { removeImageReferenceFromMarkdown, toComparableAssetPath, replaceFirstImageReferenceWithDiagram } from "../utils/imageMarkdownReferences";
 import useConfirm from "../hooks/useConfirm";
@@ -378,6 +379,63 @@ function resolveMarkdownLinkPath(basePath, href) {
   return absolute.replace(/\//g, "\\");
 }
 
+function resolveAnyLocalLinkPath(basePath, href) {
+  const cleaned = String(href || "").trim();
+  if (!cleaned || /^(https?:|data:|blob:|mailto:|#)/i.test(cleaned)) {
+    return "";
+  }
+
+  let withoutQuery = cleaned.split(/[?#]/)[0];
+  let decoded = withoutQuery;
+  try {
+    decoded = decodeURIComponent(withoutQuery);
+  } catch { /* keep original */ }
+
+  if (/^file:/i.test(decoded)) {
+    try {
+      const parsed = new URL(decoded);
+      let pathname = parsed.pathname || "";
+      if (/^\/[A-Za-z]:\//.test(pathname)) {
+        pathname = pathname.slice(1);
+      }
+      return decodeURIComponent(pathname || "").replace(/\//g, "\\");
+    } catch {
+      return decoded.replace(/^file:\/\/\/?/i, "").replace(/\//g, "\\");
+    }
+  }
+
+  if (/^[a-zA-Z]:[/\\]/.test(decoded)) {
+    return decoded.replace(/\//g, "\\");
+  }
+
+  if (decoded.startsWith("/")) {
+    return decoded;
+  }
+
+  if (basePath) {
+    const normalizedBase = String(basePath).replace(/\//g, "\\");
+    const lastSlash = normalizedBase.lastIndexOf("\\");
+    const dir = lastSlash >= 0 ? normalizedBase.slice(0, lastSlash) : normalizedBase;
+    const parts = decoded.replace(/\//g, "\\").split("\\");
+    const dirParts = dir.split("\\").filter(Boolean);
+
+    for (const part of parts) {
+      if (part === ".") continue;
+      if (part === "..") {
+        if (dirParts.length > 0) dirParts.pop();
+      } else if (part) {
+        dirParts.push(part);
+      }
+    }
+
+    const driveMatch = normalizedBase.match(/^([a-zA-Z]:)/);
+    const prefix = driveMatch ? driveMatch[1] : "";
+    return (prefix ? "" : "") + dirParts.join("\\");
+  }
+
+  return decoded.replace(/\//g, "\\");
+}
+
 function clearInlineLinkedPreview(linkElement) {
   const next = linkElement?.nextElementSibling;
   if (next instanceof HTMLElement && next.classList.contains("inline-linked-note")) {
@@ -418,34 +476,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     annotationOnly: false,
   });
   const [contextMenu, setContextMenu] = useState(null);
-  const [activeLinkPopup, setActiveLinkPopup] = useState(null);
-  const linkHideTimerRef = useRef(null);
-  const isPopupHoveredRef = useRef(false);
   const handleLinkNavigateRef = useRef(null);
 
-  const handleCopyLinkFromPreview = (href) => {
-    if (!href) return;
-    navigator.clipboard.writeText(href);
-    onNotify?.(`Copied link path: ${href}`, "success");
-    setActiveLinkPopup(null);
-  };
-
-  const handleDownloadFileFromPreview = (href) => {
-    if (!href) return;
-    const cleanHref = String(href || "").trim().replace(/^file:\/\/\/?/i, "");
-    const normalizedHref = cleanHref.split(/[?#]/)[0];
-    const ext = normalizedHref.split(".").pop()?.toLowerCase();
-    const mediaType = getMediaTypeFromExtension(ext) || "document";
-
-    if (typeof onMediaClick === "function") {
-      onMediaClick({ path: normalizedHref, type: mediaType });
-    } else if (basePath && typeof openMediaInDefaultApp === "function") {
-      openMediaInDefaultApp(basePath, normalizedHref).catch((err) => {
-        onNotify?.(err?.message || "Failed to open file.", "error");
-      });
-    }
-    setActiveLinkPopup(null);
-  };
 
   const [menuIndex, setMenuIndex] = useState(0);
   const [cropSaving, setCropSaving] = useState(false);
@@ -674,7 +706,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       onMediaClick({ path: src, type: mediaType });
     };
 
-    const openImageEditor = async (imageElement, event) => {
+    const openImageEditor = async (imageElement, event, options = {}) => {
+      const { annotationOnly = false } = options;
       const assetPath = imageElement.getAttribute("data-asset-path") || "";
       const isWorkspaceImage = Boolean(basePath && assetPath && !/^(https?:|data:|blob:)/i.test(assetPath));
       if (!isWorkspaceImage) {
@@ -729,7 +762,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         imageLabel: imageElement.getAttribute("alt") || assetPath,
         annotation,
         hasOriginal,
-        annotationOnly: true,
+        annotationOnly,
       });
     };
 
@@ -853,6 +886,117 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         }
       }
     };
+    const handleCopyLinkFromPreview = (href) => {
+      if (!href) return;
+      navigator.clipboard.writeText(href);
+      onNotify?.(`Copied link path: ${href}`, "success");
+    };
+
+    const handleDownloadFileFromPreview = (href) => {
+      if (!href) return;
+      const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
+      const ext = resolvedPath.split(".").pop()?.toLowerCase();
+      const mediaType = getMediaTypeFromExtension(ext) || "document";
+
+      if (typeof onMediaClick === "function") {
+        onMediaClick({ path: resolvedPath, type: mediaType });
+      } else if (basePath && typeof openMediaInDefaultApp === "function") {
+        openMediaInDefaultApp(basePath, resolvedPath).catch((err) => {
+          onNotify?.(err?.message || "Failed to open file.", "error");
+        });
+      }
+    };
+
+    const handleDirectDownloadFileFromPreview = async (href) => {
+      if (!href) return;
+      try {
+        const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
+        const filename = resolvedPath.split(/[/\\]/).pop() || "file";
+
+        let downloadSrc = resolvedPath;
+        if (basePath && downloadSrc && !/^(https?:|data:|blob:)/i.test(downloadSrc)) {
+          try {
+            const loaded = await readImage(basePath, downloadSrc);
+            if (loaded) downloadSrc = loaded;
+          } catch { /* keep resolvedPath */ }
+        }
+
+        let dataUrl;
+        let srcPath;
+
+        if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+          dataUrl = downloadSrc;
+        } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+          const resp = await fetch(downloadSrc);
+          const blob = await resp.blob();
+          dataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          srcPath = downloadSrc;
+        }
+
+        const result = await runExport("media", {
+          dataUrl,
+          srcPath,
+          filename,
+        });
+
+        if (result?.success) {
+          onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
+        } else {
+          onNotify?.(result?.error || "Failed to download file.", "error");
+        }
+      } catch (err) {
+        onNotify?.(err?.message || "Failed to download file.", "error");
+      }
+    };
+
+    const handleExportTableImage = async (tableWrapper) => {
+      if (!tableWrapper) return;
+      try {
+        const dataUrl = await tableElementToPngDataUrl(tableWrapper);
+        const result = await runExport("media", {
+          dataUrl,
+          filename: "table.png",
+          customExportType: "image",
+          category: "media",
+        });
+        if (result?.success) {
+          onNotify?.(`Table image exported to ${result.filename}`, "success");
+        } else {
+          onNotify?.(result?.error || "Export failed", "error");
+        }
+      } catch (err) {
+        onNotify?.(`Failed to export table image: ${err?.message || "Unknown error"}`, "error");
+      }
+    };
+
+    const handleExportTableCsv = async (tableWrapper) => {
+      if (!tableWrapper) return;
+      try {
+        const csvContent = tableElementToCsv(tableWrapper);
+        if (!csvContent) {
+          throw new Error("Table content is empty.");
+        }
+        const dataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`;
+        const result = await runExport("media", {
+          dataUrl,
+          filename: "table.csv",
+          customExportType: "csv",
+          category: "document",
+        });
+        if (result?.success) {
+          onNotify?.(`Table CSV exported to ${result.filename}`, "success");
+        } else {
+          onNotify?.(result?.error || "Export failed", "error");
+        }
+      } catch (err) {
+        onNotify?.(`Failed to export table CSV: ${err?.message || "Unknown error"}`, "error");
+      }
+    };
 
     const handleMediaClick = async (event) => {
       const target = event.target;
@@ -909,9 +1053,28 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
+      const exportImgBtn = target.closest('[data-table-action="export-image"]');
+      if (exportImgBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const tableWrapper = exportImgBtn.closest(".markdown-table-wrapper");
+        void handleExportTableImage(tableWrapper);
+        return;
+      }
+
+      const exportCsvBtn = target.closest('[data-table-action="export-csv"]');
+      if (exportCsvBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const tableWrapper = exportCsvBtn.closest(".markdown-table-wrapper");
+        void handleExportTableCsv(tableWrapper);
+        return;
+      }
+
       const tableWrapper = target.closest(".markdown-table-wrapper");
       if (tableWrapper) {
-        if (target.closest("a, button, input, select, textarea")) return;
+        if (target.closest(".markdown-table-dropdown-popover")) return;
+        if (target.closest("a, input, select, textarea")) return;
         event.preventDefault();
         event.stopPropagation();
         
@@ -977,8 +1140,69 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         const imageElement = getImageActionElement(imageAction);
         if (!imageElement) return;
 
+        if (imageAction.dataset.imageAction === "annotate") {
+          void openImageEditor(imageElement, event, { annotationOnly: true });
+          return;
+        }
+
         if (imageAction.dataset.imageAction === "edit") {
-          void openImageEditor(imageElement, event);
+          void openImageEditor(imageElement, event, { annotationOnly: false });
+          return;
+        }
+
+        if (imageAction.dataset.imageAction === "download") {
+          event.preventDefault();
+          event.stopPropagation();
+          const assetPath = imageElement.getAttribute("data-asset-path") || imageElement.getAttribute("src") || "";
+          const altText = imageElement.getAttribute("alt") || "image.png";
+          const rawName = (assetPath || altText).split(/[?#]/)[0].split(/[/\\]/).pop() || "image.png";
+
+          (async () => {
+            try {
+              let downloadSrc = assetPath;
+              if (basePath && assetPath && !/^(https?:|data:|blob:)/i.test(assetPath)) {
+                try {
+                  downloadSrc = (await readImage(basePath, assetPath)) || assetPath;
+                } catch { /* fallback */ }
+              }
+              if (!downloadSrc) {
+                downloadSrc = imageElement.currentSrc || imageElement.src || "";
+              }
+
+              let dataUrl;
+              let srcPath;
+
+              if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+                dataUrl = downloadSrc;
+              } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("http") || downloadSrc.startsWith("blob:"))) {
+                const resp = await fetch(downloadSrc);
+                const blob = await resp.blob();
+                dataUrl = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+              } else {
+                srcPath = downloadSrc;
+              }
+
+              const result = await runExport("media", {
+                dataUrl,
+                srcPath,
+                filename: rawName,
+                customExportType: "image",
+                category: "media",
+              });
+
+              if (result?.success) {
+                onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
+              } else {
+                onNotify?.(result?.error || "Failed to download image.", "error");
+              }
+            } catch (err) {
+              onNotify?.(`Image download failed: ${err.message}`, "error");
+            }
+          })();
           return;
         }
 
@@ -986,8 +1210,30 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
+      const linkActionBtn = target.closest('[data-link-action]');
+      if (linkActionBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const action = linkActionBtn.getAttribute("data-link-action");
+        const href = linkActionBtn.getAttribute("data-href") || "";
+        const wrapper = linkActionBtn.closest(".markdown-link-wrapper");
+        const linkElement = wrapper?.querySelector("a") || target.closest("a");
+
+        if (action === "copy") {
+          handleCopyLinkFromPreview(href);
+        } else if (action === "reveal") {
+          if (linkElement) handleLinkNavigateRef.current?.(linkElement);
+        } else if (action === "open-file") {
+          handleDownloadFileFromPreview(href);
+        } else if (action === "download") {
+          handleDirectDownloadFileFromPreview(href);
+        }
+        return;
+      }
+
       const linkElement = target.closest("a");
       if (linkElement instanceof HTMLAnchorElement) {
+        if (target.closest('[data-link-action]')) return;
         event.preventDefault();
         event.stopPropagation();
         handleLinkNavigateRef.current?.(linkElement);
@@ -1038,69 +1284,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     };
   }, [basePath, inlineLinkedMarkdown, onMediaClick, onNotify, content, onContentChange, confirm]);
 
-  useEffect(() => {
-    const previewElement = previewRef.current;
-    if (!previewElement) return;
 
-    const handleMouseOver = (e) => {
-      const link = e.target?.closest?.("a");
-      if (link && previewElement.contains(link)) {
-        if (linkHideTimerRef.current) {
-          clearTimeout(linkHideTimerRef.current);
-          linkHideTimerRef.current = null;
-        }
-        const href = link.getAttribute("href");
-        if (!href) return;
-
-        const rect = link.getBoundingClientRect();
-
-        setActiveLinkPopup({
-          href,
-          text: link.innerText,
-          element: link,
-          position: {
-            top: rect.top - 6,
-            left: rect.left + rect.width / 2,
-          },
-        });
-      }
-    };
-
-    const handleMouseOut = (e) => {
-      const link = e.target?.closest?.("a");
-      const related = e.relatedTarget;
-      // Check if mouse moved into popover or still within link
-      if (related && (link?.contains(related) || related.closest?.(".link-hover-popup"))) {
-        return;
-      }
-      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-      linkHideTimerRef.current = setTimeout(() => {
-        if (!isPopupHoveredRef.current) {
-          setActiveLinkPopup(null);
-        }
-      }, 200);
-    };
-
-    const handleScroll = () => {
-      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-      linkHideTimerRef.current = setTimeout(() => {
-        if (!isPopupHoveredRef.current) {
-          setActiveLinkPopup(null);
-        }
-      }, 100);
-    };
-
-    previewElement.addEventListener("mouseover", handleMouseOver);
-    previewElement.addEventListener("mouseout", handleMouseOut);
-    previewElement.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      previewElement.removeEventListener("mouseover", handleMouseOver);
-      previewElement.removeEventListener("mouseout", handleMouseOut);
-      previewElement.removeEventListener("scroll", handleScroll);
-      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-    };
-  }, [content, basePath]);
 
   useEffect(() => {
     if (!contextMenu) return undefined;
@@ -1900,6 +2084,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
             code={part.value}
             index={index}
             key={blockKey}
+            onNotify={onNotify}
             onEdit={(codeToEdit) => {
               if (!readOnly) {
                 setMermaidEditState({
@@ -2051,67 +2236,6 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           }
         }}
       />
-      {activeLinkPopup && createPortal(
-        <div
-          className="link-hover-popup"
-          style={{
-            top: activeLinkPopup.position.top,
-            left: activeLinkPopup.position.left,
-            zIndex: 999999,
-          }}
-          onMouseEnter={() => {
-            isPopupHoveredRef.current = true;
-            if (linkHideTimerRef.current) {
-              clearTimeout(linkHideTimerRef.current);
-              linkHideTimerRef.current = null;
-            }
-          }}
-          onMouseLeave={() => {
-            isPopupHoveredRef.current = false;
-            if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-            linkHideTimerRef.current = setTimeout(() => {
-              if (!isPopupHoveredRef.current) {
-                setActiveLinkPopup(null);
-              }
-            }, 150);
-          }}
-        >
-          <button
-            type="button"
-            className="link-hover-popup-btn"
-            onClick={() => handleCopyLinkFromPreview(activeLinkPopup.href)}
-          >
-            <Copy size={12} style={{ marginRight: "4px" }} />
-            <span>Copy</span>
-          </button>
-          <div className="link-hover-popup-separator" />
-          <button
-            type="button"
-            className="link-hover-popup-btn"
-            onClick={() => {
-              handleLinkNavigateRef.current?.(activeLinkPopup.element);
-              setActiveLinkPopup(null);
-            }}
-          >
-            <FolderOpen size={12} style={{ marginRight: "4px" }} />
-            <span>Reveal in Explorer</span>
-          </button>
-          {!/^https?:\/\/|^\/\//i.test(activeLinkPopup.href || "") && (
-            <>
-              <div className="link-hover-popup-separator" />
-              <button
-                type="button"
-                className="link-hover-popup-btn"
-                onClick={() => handleDownloadFileFromPreview(activeLinkPopup.href)}
-              >
-                <Download size={12} style={{ marginRight: "4px" }} />
-                <span>Open File</span>
-              </button>
-            </>
-          )}
-        </div>,
-        document.body
-      )}
       {tableEditState.open && (
         <MarkdownTableEditor
           initialMarkdown={tableEditState.initialMarkdown}

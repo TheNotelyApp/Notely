@@ -151,25 +151,20 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       notify("Please select at least one note to export.", "warning");
       return;
     }
-    if (!destinationPath) {
-      notify("Please select a save location.", "warning");
-      return;
-    }
 
     setLoading(true);
     try {
+      const { runExport } = await import("../services/electronService");
       const notePaths = Array.from(selectedNotes);
-      const outputName = fileName.endsWith(".nly") ? fileName : `${fileName}.nly`;
-      const fullOutputPath = `${destinationPath}/${outputName}`;
+      const outputName = fileName ? (fileName.endsWith(".nly") ? fileName : `${fileName}.nly`) : undefined;
 
-      const res = await window.notesApi.exportNotePackage({
+      const res = await runExport("note_package", {
         notePaths,
-        outputPath: fullOutputPath,
+        fileName: outputName,
         password: exportPassword || undefined,
       });
 
       if (res?.success) {
-        notify(`Exported ${res.exportedNotesCount} note(s) to ${res.outputPath}`, "success");
         onClose();
       } else {
         notify("Export failed: " + (res?.error || "Unknown error"), "error");

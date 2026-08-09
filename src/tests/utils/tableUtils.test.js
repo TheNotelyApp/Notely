@@ -81,4 +81,20 @@ describe("tableUtils", () => {
       "|x|y|",
     ].join("\n"));
   });
+
+  it("converts markdown table to CSV string correctly", () => {
+    const { markdownTableToCsv } = require("../../utils/tableUtils");
+    const markdown = [
+      "| Name | Role | Location |",
+      "| --- | --- | --- |",
+      "| Alice | Dev | NYC |",
+      '| Bob | "Lead, UX" | SF |',
+    ].join("\n");
+
+    const csv = markdownTableToCsv(markdown);
+    expect(csv).toContain("Name,Role,Location");
+    expect(csv).toContain("Alice,Dev,NYC");
+    expect(csv).toContain('Bob,"""Lead, UX""",SF');
+  });
 });
+

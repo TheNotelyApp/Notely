@@ -3,7 +3,6 @@ const fsSync = require("fs");
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
-const { ZipFile } = require("yazl");
 const yauzl = require("yauzl");
 
 // Static app key for seamless Notely-to-Notely imports
@@ -103,20 +102,20 @@ function ensureDirSync(dirPath) {
 /**
  * Register note package IPC handlers
  */
-function registerNotePackageIpc(ipcMain, deps) {
-  const { BrowserWindow, dialog, getNotesRoot, filePathWithin, readUserSettings, getActiveProject } = deps;
+function registerNotePackageIpc(ipcMain, deps = {}) {
+  const { BrowserWindow, dialog, getNotesRoot, readUserSettings, getActiveProject } = deps;
+  const { app } = require("electron");
 
-  function handleTrusted(channel, handler) {
-    ipcMain.handle(channel, async (event, payload) => {
-      // Basic trusted sender check
+  function assertTrustedIpcSender(BrowserWindow, event, _channel) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) throw new Error("Invalid sender window");
+  }
+
+  function handleTrusted(channel, fn) {
+    ipcMain.handle(channel, async (event, ...args) => {
+      assertTrustedIpcSender(BrowserWindow, event, channel);
       try {
-        const win = BrowserWindow.fromWebContents(event.sender);
-        if (!win || win.isDestroyed()) throw new Error("Invalid sender window");
-      } catch (err) {
-        return { ok: false, error: err.message };
-      }
-      try {
-        return await handler(event, payload);
+        return await fn(event, ...args);
       } catch (err) {
         console.error(`[notePackageIpc] ${channel} error:`, err);
         return { ok: false, error: err.message };
@@ -149,6 +148,17 @@ function registerNotePackageIpc(ipcMain, deps) {
     }
 
     if (!destPath) {
+      try {
+        const downloadsPath = app ? app.getPath("downloads") : "";
+        if (downloadsPath && fsSync.existsSync(downloadsPath)) {
+          destPath = downloadsPath;
+        }
+      } catch {
+        /* ignore fallback errors */
+      }
+    }
+
+    if (!destPath) {
       const activeProject = typeof getActiveProject === "function" ? getActiveProject() : null;
       destPath = path.resolve(activeProject?.rootPath || notesRoot);
     }
@@ -163,9 +173,16 @@ function registerNotePackageIpc(ipcMain, deps) {
   // --- Browse Export Destination ---
   handleTrusted("note-package:browse-export-destination", async (event, { defaultFileName }) => {
     const focusedWindow = BrowserWindow.fromWebContents(event.sender);
+    let defaultDir = "";
+    try {
+      defaultDir = app ? app.getPath("downloads") : "";
+    } catch {
+      /* ignore default dir error */
+    }
+    const defaultPath = defaultDir ? path.join(defaultDir, defaultFileName || "notes_package.nly") : (defaultFileName || "notes_package.nly");
     const result = await dialog.showSaveDialog(focusedWindow, {
       title: "Export Note Package",
-      defaultPath: defaultFileName || "notes_package.nly",
+      defaultPath,
       filters: [{ name: "Notely Shareable Package", extensions: ["nly", "note"] }],
     });
     if (result.canceled || !result.filePath) {
@@ -190,230 +207,8 @@ function registerNotePackageIpc(ipcMain, deps) {
 
   // --- Export Note Package ---
   handleTrusted("note-package:export", async (_event, payload = {}) => {
-    const { noteFilePaths, destinationPath, fileName, password, notePaths, outputPath } = payload;
-    const notesRoot = getNotesRoot();
-    if (!notesRoot) throw new Error("No notes root configured.");
-
-    const pathsToExport = noteFilePaths || notePaths || [];
-    let finalDest = "";
-    if (outputPath) {
-      finalDest = path.resolve(outputPath);
-      fsSync.mkdirSync(path.dirname(finalDest), { recursive: true });
-    } else {
-      const exportFileName = fileName || `export_${Date.now()}.nly`;
-      const resolvedDest = path.resolve(destinationPath || notesRoot);
-      fsSync.mkdirSync(resolvedDest, { recursive: true });
-      finalDest = path.join(resolvedDest, exportFileName);
-    }
-
-    // Staging dirs
-    const tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), "notely-note-export-"));
-    const stagingNotesDir = path.join(tempDir, "notes");
-    const stagingMediaDir = path.join(tempDir, "media");
-    const stagingExcaliDir = path.join(tempDir, "excalidraw");
-    const stagingDrawioDir = path.join(tempDir, "drawio");
-
-    fsSync.mkdirSync(stagingNotesDir);
-    fsSync.mkdirSync(stagingMediaDir);
-    fsSync.mkdirSync(stagingExcaliDir);
-    fsSync.mkdirSync(stagingDrawioDir);
-
-    let passwordSalt = "";
-    let passwordHash = "";
-    if (password) {
-      passwordSalt = crypto.randomBytes(16).toString("hex");
-      passwordHash = crypto.createHash("sha256").update(password + passwordSalt).digest("hex");
-    }
-
-    const manifest = {
-      version: 1,
-      notes: [],
-      media: [],
-      excalidraw: [],
-      drawio: [],
-      files: {}, // relative path in zip -> SHA-256 hash
-      passwordSalt,
-      passwordHash
-    };
-
-    const allMediaPaths = new Set();
-    const allExcalidrawIds = new Set();
-    const allDrawioIds = new Set();
-
-    try {
-      // 1. Gather all note contents and parse dependencies
-      for (const inputPath of pathsToExport) {
-        // inputPath may be absolute or relative — normalise to absolute first
-        const absolutePath = path.isAbsolute(inputPath)
-          ? inputPath
-          : path.resolve(notesRoot, inputPath);
-        if (!filePathWithin(notesRoot, absolutePath) || !fsSync.existsSync(absolutePath)) {
-          continue;
-        }
-        // Always use a root-relative path inside the zip / staging dirs
-        const relPath = path.relative(notesRoot, absolutePath).replace(/\\/g, "/");
-
-        const content = await fs.readFile(absolutePath, "utf8");
-        const depsResult = scanNoteDependencies(content);
-
-        depsResult.images.forEach(img => allMediaPaths.add(img));
-        depsResult.excalidrawIds.forEach(id => allExcalidrawIds.add(id));
-        depsResult.drawioIds.forEach(id => allDrawioIds.add(id));
-
-        // Copy note to staging
-        const stagingNotePath = path.join(stagingNotesDir, relPath);
-        fsSync.mkdirSync(path.dirname(stagingNotePath), { recursive: true });
-        await fs.writeFile(stagingNotePath, content, "utf8");
-
-        manifest.notes.push(relPath);
-      }
-
-      // 2. Package standard media files
-      for (const relMediaPath of allMediaPaths) {
-        // Sanitize: strip leading slash (paths may be stored as /media/images/... in markdown),
-        // strip query/fragment, normalise to forward slashes
-        const cleanRelPath = relMediaPath.replace(/^\/+/, "").replace(/[?#].*$/, "").trim().replace(/\\/g, "/");
-        if (!cleanRelPath) continue;
-        const absPath = path.resolve(notesRoot, cleanRelPath);
-        if (!filePathWithin(notesRoot, absPath) || !fsSync.existsSync(absPath)) continue;
-        const stagingPath = path.join(stagingMediaDir, cleanRelPath);
-        try {
-          fsSync.mkdirSync(path.dirname(stagingPath), { recursive: true });
-          await fs.copyFile(absPath, stagingPath);
-          manifest.media.push(cleanRelPath);
-        } catch {
-          // Skip assets that can't be read (locked, missing, permission denied)
-        }
-      }
-
-      // 3. Package Excalidraw diagrams
-      for (const id of allExcalidrawIds) {
-        if (!id) continue;
-        const excaliSrcDir = path.join(notesRoot, ".notes-app", "excali-diagrams", id);
-        const excaliDestDir = path.join(stagingExcaliDir, id);
-        if (!fsSync.existsSync(excaliSrcDir)) continue;
-        try {
-          fsSync.mkdirSync(excaliDestDir, { recursive: true });
-          const files = await fs.readdir(excaliSrcDir);
-          for (const file of files) {
-            try {
-              await fs.copyFile(path.join(excaliSrcDir, file), path.join(excaliDestDir, file));
-            } catch {
-              // Skip unreadable excalidraw asset file
-            }
-          }
-          manifest.excalidraw.push(id);
-        } catch {
-          // Skip entire diagram if unreadable
-        }
-      }
-
-      // 4. Package Draw.io diagrams
-      for (const id of allDrawioIds) {
-        if (!id) continue;
-        const drawioSrcDir = path.join(notesRoot, "media", "draw.io");
-        const drawioDestDir = stagingDrawioDir;
-        const filesToCopy = [`${id}.drawio`, `${id}.png`];
-        let hasDiagram = false;
-        for (const file of filesToCopy) {
-          const srcPath = path.join(drawioSrcDir, file);
-          const destPath = path.join(drawioDestDir, file);
-          if (!fsSync.existsSync(srcPath)) continue;
-          try {
-            await fs.copyFile(srcPath, destPath);
-            hasDiagram = true;
-          } catch {
-            // Skip unreadable draw.io asset
-          }
-        }
-        if (hasDiagram) manifest.drawio.push(id);
-      }
-
-      // 5. Generate file hashes and build final manifest.json
-      const zipFile = new ZipFile();
-      const zipEntries = [];
-
-      // Helper to add files to ZIP and record manifest hash
-      async function addStagedFile(localStagedPath, zipRelativePath) {
-        const hash = await calculateHash(localStagedPath);
-        manifest.files[zipRelativePath] = hash;
-        zipEntries.push({ localStagedPath, zipRelativePath });
-      }
-
-      // Add notes, media, and diagrams to hashes
-      const walkAndStage = async (dir, relativePrefix) => {
-        if (!fsSync.existsSync(dir)) return;
-        const entries = await fs.readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const fullPath = path.join(dir, entry.name);
-          const zipPath = path.join(relativePrefix, entry.name).replace(/\\/g, "/");
-          if (entry.isDirectory()) {
-            await walkAndStage(fullPath, zipPath);
-          } else {
-            await addStagedFile(fullPath, zipPath);
-          }
-        }
-      };
-
-      await walkAndStage(stagingNotesDir, "notes");
-      await walkAndStage(stagingMediaDir, "media");
-      await walkAndStage(stagingExcaliDir, "excalidraw");
-      await walkAndStage(stagingDrawioDir, "drawio");
-
-      // Write manifest
-      const manifestPath = path.join(tempDir, "metadata.json");
-      await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-      // Add manifest itself to the zip (without self-hash)
-      zipEntries.push({ localStagedPath: manifestPath, zipRelativePath: "metadata.json" });
-
-      // Build ZIP in memory/tmp
-      const zipOutputPath = path.join(tempDir, "temp.zip");
-      const zipStream = fsSync.createWriteStream(zipOutputPath);
-
-      await new Promise((resolve, reject) => {
-        zipStream.on("close", resolve);
-        zipFile.outputStream.on("error", reject);
-        zipStream.on("error", reject);
-        zipFile.outputStream.pipe(zipStream);
-
-        for (const entry of zipEntries) {
-          zipFile.addFile(entry.localStagedPath, entry.zipRelativePath);
-        }
-        zipFile.end();
-      });
-
-      // Encrypt zip file and write to final destination
-      // Write to a .tmp sibling first then rename to avoid OneDrive / AV file-lock EPERM
-      const zipBuffer = await fs.readFile(zipOutputPath);
-      const encryptedBuffer = encryptBuffer(zipBuffer);
-      const finalDestTmp = finalDest + ".tmp";
-      await fs.writeFile(finalDestTmp, encryptedBuffer);
-      try {
-        // Remove existing file before rename (Windows requires this)
-        if (fsSync.existsSync(finalDest)) {
-          await fs.unlink(finalDest);
-        }
-        await fs.rename(finalDestTmp, finalDest);
-      } catch {
-        // Fallback: direct write if rename fails (e.g. cross-device)
-        await fs.writeFile(finalDest, encryptedBuffer);
-        try { await fs.unlink(finalDestTmp); } catch { /* ignore */ }
-      }
-
-      return {
-        success: true,
-        destination: finalDest,
-        outputPath: finalDest,
-        exportedNotesCount: manifest.notes.length,
-      };
-    } finally {
-      // Cleanup temp
-      try {
-        fsSync.rmSync(tempDir, { recursive: true, force: true });
-      } catch {
-        // ignore cleanup error
-      }
-    }
+    const { getExportManager } = require("./ExportManager.cjs");
+    return await getExportManager().runExport({ type: "note_package", payload });
   });
 
   // --- Import Note Package ---

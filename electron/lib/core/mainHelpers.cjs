@@ -51,34 +51,7 @@ function createMainHelpers(deps) {
     fs.writeFileSync(userConfigPath, JSON.stringify(nextSettings, null, 2), "utf8");
   }
 
-  function getLastPdfExportPath() {
-    const settings = readUserSettings();
-    const rawLastPath = typeof settings?.lastPdfExportPath === "string"
-      ? settings.lastPdfExportPath.trim()
-      : "";
-    if (!rawLastPath) return "";
 
-    try {
-      const resolvedLastPath = path.resolve(rawLastPath);
-      const lastExportDir = path.extname(resolvedLastPath).toLowerCase() === ".pdf"
-        ? path.dirname(resolvedLastPath)
-        : resolvedLastPath;
-      if (fs.existsSync(lastExportDir)) {
-        return lastExportDir;
-      }
-    } catch {
-      return "";
-    }
-
-    return "";
-  }
-
-  function rememberPdfExportPath(filePath) {
-    if (!filePath || typeof filePath !== "string") return;
-    const settings = readUserSettings();
-    settings.lastPdfExportPath = path.dirname(path.resolve(filePath));
-    writeUserSettings(settings);
-  }
 
   function resolveInitialNotesRoot() {
     const envNotesRoot = process.env.NOTES_ROOT;
@@ -291,8 +264,6 @@ function createMainHelpers(deps) {
   return {
     readUserSettings,
     writeUserSettings,
-    getLastPdfExportPath,
-    rememberPdfExportPath,
     resolveInitialNotesRoot,
     readP2PStatusSnapshot,
     listProjectsState,

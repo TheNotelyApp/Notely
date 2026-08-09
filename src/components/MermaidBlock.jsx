@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Pencil, Download } from "lucide-react";
+import { runExport } from "../services/electronService";
+import { svgElementToPngDataUrl } from "../utils/exportUtils";
 
-export function MermaidBlock({ code, onEdit }) {
+export function MermaidBlock({ code, onEdit, onNotify }) {
   const [svg, setSvg] = useState("");
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -59,6 +64,36 @@ export function MermaidBlock({ code, onEdit }) {
     };
   }, [code]);
 
+  const handleDownloadImage = async (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (isExporting) return;
+
+    try {
+      setIsExporting(true);
+      const svgElement = containerRef.current?.querySelector?.(".mermaid-render svg") || containerRef.current?.querySelector?.("svg:not(.lucide)");
+      if (!svgElement) {
+        throw new Error("Rendered diagram SVG not found.");
+      }
+
+      const dataUrl = await svgElementToPngDataUrl(svgElement);
+      const result = await runExport("diagram_image", {
+        dataUrl,
+        filename: "mermaid-diagram.png",
+      });
+
+      if (result?.success) {
+        onNotify?.(`Diagram exported to ${result.filename}`, "success");
+      } else {
+        onNotify?.(result?.error || "Export failed", "error");
+      }
+    } catch (err) {
+      onNotify?.(`Diagram export failed: ${err.message}`, "error");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (error) {
     return (
       <div
@@ -81,18 +116,56 @@ export function MermaidBlock({ code, onEdit }) {
 
   return (
     <div
-      className="mermaid-render"
-      onClick={() => onEdit?.(code)}
-      style={{
-        cursor: onEdit ? "pointer" : "default",
-        minHeight: "40px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-      }}
-      title={onEdit ? "Click to edit Mermaid diagram visually" : ""}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+      ref={containerRef}
+      className="mermaid-block-container"
+      style={{ position: "relative", width: "100%", margin: "1rem 0" }}
+    >
+      <div className="markdown-block-actions">
+        {onEdit ? (
+          <>
+            <button
+              type="button"
+              className="markdown-block-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(code);
+              }}
+              data-tooltip="Edit diagram visually"
+              aria-label="Edit diagram"
+            >
+              <Pencil size={12} style={{ marginRight: "4px" }} />
+              <span>Edit</span>
+            </button>
+            <span className="markdown-block-action-separator" />
+          </>
+        ) : null}
+        <button
+          type="button"
+          className="markdown-block-action-btn"
+          onClick={handleDownloadImage}
+          disabled={isExporting}
+          data-tooltip="Export diagram as image (PNG)"
+          aria-label="Download diagram image"
+        >
+          <Download size={12} style={{ marginRight: "4px" }} />
+          <span>{isExporting ? "Exporting..." : "Download"}</span>
+        </button>
+      </div>
+      <div
+        className="mermaid-render"
+        onClick={() => onEdit?.(code)}
+        style={{
+          cursor: onEdit ? "pointer" : "default",
+          minHeight: "40px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+        }}
+        title={onEdit ? "Click to edit Mermaid diagram visually" : ""}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    </div>
   );
 }
+

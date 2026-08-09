@@ -97,6 +97,7 @@ export default withMermaid(
             { text: "Media", link: "/workspace/media" },
             { text: "Screen Capture", link: "/workspace/screen-capture" },
             { text: "Workspace Graph", link: "/workspace/graph" },
+            { text: "Downloads & History", link: "/workspace/downloads" },
             { text: "Export", link: "/workspace/export" },
           ],
         },
@@ -105,6 +106,7 @@ export default withMermaid(
           collapsed: false,
           items: [
             { text: "Export Reference", link: "/export-reference" },
+            { text: "Downloads Manager", link: "/workspace/downloads" },
             { text: "Website View", link: "/web-view" },
             { text: "Note Packages", link: "/export-import" },
           ],

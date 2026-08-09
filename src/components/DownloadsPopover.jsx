@@ -1,0 +1,142 @@
+import React, { useEffect, useRef } from "react";
+import {
+  Download,
+  Folder,
+  Archive,
+  ChevronRight,
+  FileText,
+  FileCode,
+  Image as ImageIcon,
+} from "lucide-react";
+import { openExportFile, showInFolder } from "../services/electronService.js";
+
+import { formatBytes, formatTimestamp } from "../utils/formatUtils.js";
+
+function getPopoverIconForType(type) {
+  switch (type) {
+    case "pdf":
+      return <FileText size={14} className="downloads-popover-type-icon pdf" />;
+    case "note_package":
+    case "zip":
+      return <Archive size={14} className="downloads-popover-type-icon zip" />;
+    case "html":
+      return <FileCode size={14} className="downloads-popover-type-icon html" />;
+    case "diagram_excalidraw":
+    case "diagram_drawio":
+    case "image":
+    case "media":
+      return <ImageIcon size={14} className="downloads-popover-type-icon media" />;
+    default:
+      return <FileText size={14} className="downloads-popover-type-icon default" />;
+  }
+}
+
+export function DownloadsPopover({
+  isOpen,
+  onClose,
+  onOpenDownloads,
+  recentDownloads = [],
+}) {
+  const popoverRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose?.();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={popoverRef}
+      className="titlebar-downloads-popover"
+      role="dialog"
+      aria-label="Recent Downloads"
+    >
+      <div className="downloads-popover-header">
+        <div className="downloads-popover-title">
+          <Download size={14} />
+          <span>Downloads</span>
+        </div>
+      </div>
+
+      <div className="downloads-popover-body">
+        {recentDownloads.length === 0 ? (
+          <div className="downloads-popover-empty">
+            <Archive size={18} className="downloads-popover-empty-icon" />
+            <span>No recent downloads</span>
+          </div>
+        ) : (
+          recentDownloads.slice(0, 5).map((item) => (
+            <div
+              key={item.id || item.filePath}
+              className="downloads-popover-item"
+              role="button"
+              tabIndex={0}
+              onClick={() => openExportFile(item.filePath)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openExportFile(item.filePath);
+                }
+              }}
+            >
+              <div className="downloads-popover-item-icon">
+                {getPopoverIconForType(item.exportType)}
+              </div>
+              <div className="downloads-popover-item-info">
+                <div className="downloads-popover-item-name" title={item.filename}>
+                  {item.filename}
+                </div>
+                <div className="downloads-popover-item-meta">
+                  <span>{formatBytes(item.fileSize)}</span>
+                  <span>•</span>
+                  <span>{formatTimestamp(item.timestamp)}</span>
+                </div>
+              </div>
+              <div className="downloads-popover-item-actions">
+                <button
+                  type="button"
+                  className="downloads-popover-action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showInFolder(item.filePath);
+                  }}
+                  title="Show in Folder"
+                >
+                  <Folder size={12} />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="downloads-popover-footer">
+        <button
+          type="button"
+          className="downloads-popover-more-btn"
+          onClick={() => {
+            onClose?.();
+            onOpenDownloads?.();
+          }}
+        >
+          <span>View All Downloads</span>
+          <ChevronRight size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default DownloadsPopover;

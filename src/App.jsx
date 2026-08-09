@@ -26,6 +26,8 @@ const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
 const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
 const TaskWorkspacePage = lazy(() => import("./components/TaskWorkspacePage").then((m) => ({ default: m.TaskWorkspacePage })));
 const CalendarPage = lazy(() => import("./components/CalendarPage").then((m) => ({ default: m.CalendarPage })));
+const DownloadsPage = lazy(() => import("./components/DownloadsPage").then((m) => ({ default: m.DownloadsPage })));
+
 
 
 import { SettingsModal } from "./components/SettingsModal";
@@ -105,6 +107,7 @@ import {
   checkForUpdates,
   aiSetPreferences,
   aiSetProviderModel,
+  onExportRecordAdded,
 } from "./services/electronService";
 import UpdateModal from "./components/UpdateModal";
 import { useToast } from "./hooks/useToast";
@@ -341,6 +344,15 @@ export default function App() {
     };
     window.addEventListener("app:toast", handleToast);
     return () => window.removeEventListener("app:toast", handleToast);
+  }, [notify]);
+
+  useEffect(() => {
+    const unsubscribe = onExportRecordAdded((record) => {
+      if (record && record.filename) {
+        notify(`Export complete: Saved "${record.filename}" to Downloads`, "success");
+      }
+    });
+    return () => unsubscribe();
   }, [notify]);
   const {
     landingAssetsOpen, setLandingAssetsOpen,
@@ -679,6 +691,8 @@ export default function App() {
       return () => unsub();
     }
   }, []);
+
+  const [downloadsPageOpen, setDownloadsPageOpen] = useState(false);
 
   useEffect(() => {
     if (window.notesApi?.getWorkspaceInfo) {
@@ -1144,14 +1158,22 @@ export default function App() {
     void refreshGitWorkspaceMeta();
   }, [notesFolderPath, currentFilePath, dirty, refreshGitWorkspaceMeta]);
 
+  const handleRunPaletteCommandRef = useRef(handleRunPaletteCommand);
+  useEffect(() => {
+    handleRunPaletteCommandRef.current = handleRunPaletteCommand;
+  });
+
   useEffect(() => {
     const api = window.electronAPI || window.notesApi;
     const subscribe = api?.onMenuAction || api?.onAppMenuAction;
     if (!subscribe) return undefined;
     return subscribe((action) => {
+      if (!action) return;
       if (action === "restart-app") {
         void handleRestartApp();
+        return;
       }
+      void handleRunPaletteCommandRef.current(action);
     });
   }, [handleRestartApp]);
 
@@ -1323,6 +1345,10 @@ export default function App() {
         e.preventDefault();
         setMarkdownGuideOpen(true);
       }
+      if (e.key && e.key.toLowerCase() === "j" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setDownloadsPageOpen((prev) => !prev);
+      }
       if (e.key === "," && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         openSettings("general");
@@ -1419,8 +1445,20 @@ export default function App() {
     const currentPath = normalizePathLikeValue(landingFolderPath || rootPath).replace(/[\\/]+$/, "");
     const canRemoveFolder = Boolean(rootPath && currentPath && rootPath.toLowerCase() !== currentPath.toLowerCase());
 
+    const isSubpageActive = Boolean(
+      downloadsPageOpen ||
+      calendarPageOpen ||
+      taskWorkspaceOpen ||
+      appLogsOpen ||
+      healthPageOpen ||
+      gitVCOpen ||
+      embeddingsPageOpen ||
+      graphPanelOpen ||
+      personasPageOpen
+    );
+
     updateMenuContext({
-      screen: current ? "document" : "landing",
+      screen: (current && !isSubpageActive) ? "document" : "landing",
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       typoCheckEnabled,
@@ -1441,7 +1479,7 @@ export default function App() {
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
       autosaveEnabled,
     });
-  }, [current, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
@@ -2309,6 +2347,13 @@ export default function App() {
       aliases: "home notes list landing back",
     },
     {
+      id: "open-downloads-page",
+      label: "Open Downloads & Export History",
+      group: "Exports",
+      shortcut: "Ctrl/Cmd+J",
+      aliases: "downloads export history pdf html zip package files",
+    },
+    {
       id: "toggle-focus-mode",
       label: focusModeEnabled ? "Exit Focus Mode" : "Enter Focus Mode",
       group: "View",
@@ -2580,6 +2625,11 @@ export default function App() {
 
     if (resolvedCommandId === "export-workspace-zip") {
       await handleOpenWorkspaceExport();
+      return;
+    }
+
+    if (resolvedCommandId === "open-downloads-page" || resolvedCommandId === "open-downloads") {
+      setDownloadsPageOpen(true);
       return;
     }
 
@@ -2989,6 +3039,7 @@ export default function App() {
         title={current ? current.title : (workspaceInfoState?.name || (activeProject ? activeProject.name : "Notely"))}
         workspaceIcon={current ? null : (workspaceInfoState?.icon || "📝")}
         onOpenWebsite={current ? handleOpenWebsiteForCurrent : handleOpenWebsiteFromLanding}
+        onOpenDownloads={() => setDownloadsPageOpen(true)}
       />
       <div className="app-main-layout">
         <div className="toast-stack" aria-live="polite" aria-atomic="true">
@@ -4016,6 +4067,16 @@ export default function App() {
                 setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
                 setTaskWorkspaceOpen(true);
               }}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {downloadsPageOpen && (
+        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
+          <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
+            <DownloadsPage
+              onBack={() => setDownloadsPageOpen(false)}
             />
           </Suspense>
         </div>

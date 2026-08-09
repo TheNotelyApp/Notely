@@ -596,12 +596,6 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Export Workspace as Zip",
           accelerator: "CmdOrCtrl+Shift+E",
           click: () => sendMenuAction(win, "export-workspace-zip")
-        },
-        { type: "separator" },
-        {
-          label: screen === "document" ? "Open Current Note Website View" : "Open Project Website",
-          accelerator: "CmdOrCtrl+Shift+W",
-          click: () => sendMenuAction(win, "open-website")
         }
       ]
     },

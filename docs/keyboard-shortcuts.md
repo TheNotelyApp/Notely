@@ -60,7 +60,7 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Action | Shortcut | Scope / Notes |
 |---|---|---|
 | Open AI Palette | `Ctrl/Cmd + Shift + I` | AI (Document screens) |
-| Toggle AI Assistant Chat | `Ctrl/Cmd + J` | AI (Document screens) |
+| Open Downloads & Export History | `Ctrl/Cmd + J` | Global |
 | Open AI Settings | `Ctrl/Cmd + Shift + ,` | AI |
 
 ## View, Media & Tools
