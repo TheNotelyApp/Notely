@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import { createPortal } from "react-dom";
-import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw, Download, FolderOpen } from "lucide-react";
+import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw } from "lucide-react";
 import {
   renderMarkdown,
   parseDiagramBlocks,
@@ -479,117 +478,6 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   const [contextMenu, setContextMenu] = useState(null);
   const handleLinkNavigateRef = useRef(null);
 
-  const handleCopyLinkFromPreview = (href) => {
-    if (!href) return;
-    navigator.clipboard.writeText(href);
-    onNotify?.(`Copied link path: ${href}`, "success");
-  };
-
-  const handleDownloadFileFromPreview = (href) => {
-    if (!href) return;
-    const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
-    const ext = resolvedPath.split(".").pop()?.toLowerCase();
-    const mediaType = getMediaTypeFromExtension(ext) || "document";
-
-    if (typeof onMediaClick === "function") {
-      onMediaClick({ path: resolvedPath, type: mediaType });
-    } else if (basePath && typeof openMediaInDefaultApp === "function") {
-      openMediaInDefaultApp(basePath, resolvedPath).catch((err) => {
-        onNotify?.(err?.message || "Failed to open file.", "error");
-      });
-    }
-  };
-
-  const handleDirectDownloadFileFromPreview = async (href) => {
-    if (!href) return;
-    try {
-      const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
-      const filename = resolvedPath.split(/[/\\]/).pop() || "file";
-
-      let downloadSrc = resolvedPath;
-      if (basePath && downloadSrc && !/^(https?:|data:|blob:)/i.test(downloadSrc)) {
-        try {
-          const loaded = await readImage(basePath, downloadSrc);
-          if (loaded) downloadSrc = loaded;
-        } catch { /* keep resolvedPath */ }
-      }
-
-      let dataUrl;
-      let srcPath;
-
-      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
-        dataUrl = downloadSrc;
-      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
-        const resp = await fetch(downloadSrc);
-        const blob = await resp.blob();
-        dataUrl = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(blob);
-        });
-      } else {
-        srcPath = downloadSrc;
-      }
-
-      const result = await runExport("media", {
-        dataUrl,
-        srcPath,
-        filename,
-      });
-
-      if (result?.success) {
-        onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-      } else {
-        onNotify?.(result?.error || "Failed to download file.", "error");
-      }
-    } catch (err) {
-      onNotify?.(err?.message || "Failed to download file.", "error");
-    }
-  };
-
-  const handleExportTableImage = async (tableWrapper) => {
-    if (!tableWrapper) return;
-    try {
-      const dataUrl = await tableElementToPngDataUrl(tableWrapper);
-      const result = await runExport("media", {
-        dataUrl,
-        filename: "table.png",
-        customExportType: "image",
-        category: "media",
-      });
-      if (result?.success) {
-        onNotify?.(`Table image exported to ${result.filename}`, "success");
-      } else {
-        onNotify?.(result?.error || "Export failed", "error");
-      }
-    } catch (err) {
-      onNotify?.(`Failed to export table image: ${err?.message || "Unknown error"}`, "error");
-    }
-  };
-
-  const handleExportTableCsv = async (tableWrapper) => {
-    if (!tableWrapper) return;
-    try {
-      const csvContent = tableElementToCsv(tableWrapper);
-      if (!csvContent) {
-        throw new Error("Table content is empty.");
-      }
-      const dataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`;
-      const result = await runExport("media", {
-        dataUrl,
-        filename: "table.csv",
-        customExportType: "csv",
-        category: "document",
-      });
-      if (result?.success) {
-        onNotify?.(`Table CSV exported to ${result.filename}`, "success");
-      } else {
-        onNotify?.(result?.error || "Export failed", "error");
-      }
-    } catch (err) {
-      onNotify?.(`Failed to export table CSV: ${err?.message || "Unknown error"}`, "error");
-    }
-  };
 
   const [menuIndex, setMenuIndex] = useState(0);
   const [cropSaving, setCropSaving] = useState(false);
@@ -996,6 +884,117 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           pre.textContent = err.message || "Failed to execute code block.";
           pre.style.color = "#e06c75";
         }
+      }
+    };
+    const handleCopyLinkFromPreview = (href) => {
+      if (!href) return;
+      navigator.clipboard.writeText(href);
+      onNotify?.(`Copied link path: ${href}`, "success");
+    };
+
+    const handleDownloadFileFromPreview = (href) => {
+      if (!href) return;
+      const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
+      const ext = resolvedPath.split(".").pop()?.toLowerCase();
+      const mediaType = getMediaTypeFromExtension(ext) || "document";
+
+      if (typeof onMediaClick === "function") {
+        onMediaClick({ path: resolvedPath, type: mediaType });
+      } else if (basePath && typeof openMediaInDefaultApp === "function") {
+        openMediaInDefaultApp(basePath, resolvedPath).catch((err) => {
+          onNotify?.(err?.message || "Failed to open file.", "error");
+        });
+      }
+    };
+
+    const handleDirectDownloadFileFromPreview = async (href) => {
+      if (!href) return;
+      try {
+        const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
+        const filename = resolvedPath.split(/[/\\]/).pop() || "file";
+
+        let downloadSrc = resolvedPath;
+        if (basePath && downloadSrc && !/^(https?:|data:|blob:)/i.test(downloadSrc)) {
+          try {
+            const loaded = await readImage(basePath, downloadSrc);
+            if (loaded) downloadSrc = loaded;
+          } catch { /* keep resolvedPath */ }
+        }
+
+        let dataUrl;
+        let srcPath;
+
+        if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+          dataUrl = downloadSrc;
+        } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+          const resp = await fetch(downloadSrc);
+          const blob = await resp.blob();
+          dataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          srcPath = downloadSrc;
+        }
+
+        const result = await runExport("media", {
+          dataUrl,
+          srcPath,
+          filename,
+        });
+
+        if (result?.success) {
+          onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
+        } else {
+          onNotify?.(result?.error || "Failed to download file.", "error");
+        }
+      } catch (err) {
+        onNotify?.(err?.message || "Failed to download file.", "error");
+      }
+    };
+
+    const handleExportTableImage = async (tableWrapper) => {
+      if (!tableWrapper) return;
+      try {
+        const dataUrl = await tableElementToPngDataUrl(tableWrapper);
+        const result = await runExport("media", {
+          dataUrl,
+          filename: "table.png",
+          customExportType: "image",
+          category: "media",
+        });
+        if (result?.success) {
+          onNotify?.(`Table image exported to ${result.filename}`, "success");
+        } else {
+          onNotify?.(result?.error || "Export failed", "error");
+        }
+      } catch (err) {
+        onNotify?.(`Failed to export table image: ${err?.message || "Unknown error"}`, "error");
+      }
+    };
+
+    const handleExportTableCsv = async (tableWrapper) => {
+      if (!tableWrapper) return;
+      try {
+        const csvContent = tableElementToCsv(tableWrapper);
+        if (!csvContent) {
+          throw new Error("Table content is empty.");
+        }
+        const dataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`;
+        const result = await runExport("media", {
+          dataUrl,
+          filename: "table.csv",
+          customExportType: "csv",
+          category: "document",
+        });
+        if (result?.success) {
+          onNotify?.(`Table CSV exported to ${result.filename}`, "success");
+        } else {
+          onNotify?.(result?.error || "Export failed", "error");
+        }
+      } catch (err) {
+        onNotify?.(`Failed to export table CSV: ${err?.message || "Unknown error"}`, "error");
       }
     };
 

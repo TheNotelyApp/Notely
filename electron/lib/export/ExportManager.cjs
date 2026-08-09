@@ -3,7 +3,7 @@ const fsAsync = require("fs").promises;
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
-const { pathToFileURL, fileURLToPath } = require("node:url");
+const { pathToFileURL } = require("node:url");
 const { ZipFile } = require("yazl");
 
 const PDF_WRITE_RETRY_DELAYS_MS = [120, 320, 700];
@@ -552,7 +552,7 @@ class ExportManager {
     copyDir(sourceRoot, targetRoot);
   }
 
-  async _exportPdfWorkspace({ notesRoot, stagingRoot, contentMode }) {
+  async _exportPdfWorkspace({ notesRoot, stagingRoot, _contentMode }) {
     const markdownFiles = this._walkFiles(notesRoot, {
       excludeDirs: [".notes-app", "node_modules", ".git", ".artifacts", "dist", "build"],
     }).filter((filePath) => path.extname(filePath).toLowerCase() === ".md");
@@ -623,7 +623,7 @@ class ExportManager {
     }
   }
 
-  _exportWebWorkspace({ notesRoot, stagingRoot, contentMode }) {
+  _exportWebWorkspace({ notesRoot, stagingRoot, _contentMode }) {
     const allFiles = this._walkFiles(notesRoot, {
       excludeDirs: [".notes-app", "node_modules", ".git", ".artifacts", "dist", "build"],
     });
