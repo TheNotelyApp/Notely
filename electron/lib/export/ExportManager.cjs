@@ -594,6 +594,11 @@ class ExportManager {
       }
     }
     resolvedSrc = resolvedSrc.split(/[?#]/)[0];
+    try {
+      resolvedSrc = decodeURIComponent(resolvedSrc);
+    } catch {
+      /* keep original */
+    }
 
     const notesRoot = typeof this.getNotesRoot === "function" ? this.getNotesRoot() : null;
 
@@ -620,7 +625,10 @@ class ExportManager {
         fs.writeFileSync(targetPath, effectiveDataUrl, "utf8");
       }
     } else {
-      throw new Error("Invalid image or media source provided for export.");
+      return {
+        success: false,
+        error: `File not found on disk or invalid media source: ${rawSrc || "unknown"}`
+      };
     }
 
     let fileSize = 0;

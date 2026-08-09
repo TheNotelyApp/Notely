@@ -380,6 +380,63 @@ function resolveMarkdownLinkPath(basePath, href) {
   return absolute.replace(/\//g, "\\");
 }
 
+function resolveAnyLocalLinkPath(basePath, href) {
+  const cleaned = String(href || "").trim();
+  if (!cleaned || /^(https?:|data:|blob:|mailto:|#)/i.test(cleaned)) {
+    return "";
+  }
+
+  let withoutQuery = cleaned.split(/[?#]/)[0];
+  let decoded = withoutQuery;
+  try {
+    decoded = decodeURIComponent(withoutQuery);
+  } catch { /* keep original */ }
+
+  if (/^file:/i.test(decoded)) {
+    try {
+      const parsed = new URL(decoded);
+      let pathname = parsed.pathname || "";
+      if (/^\/[A-Za-z]:\//.test(pathname)) {
+        pathname = pathname.slice(1);
+      }
+      return decodeURIComponent(pathname || "").replace(/\//g, "\\");
+    } catch {
+      return decoded.replace(/^file:\/\/\/?/i, "").replace(/\//g, "\\");
+    }
+  }
+
+  if (/^[a-zA-Z]:[/\\]/.test(decoded)) {
+    return decoded.replace(/\//g, "\\");
+  }
+
+  if (decoded.startsWith("/")) {
+    return decoded;
+  }
+
+  if (basePath) {
+    const normalizedBase = String(basePath).replace(/\//g, "\\");
+    const lastSlash = normalizedBase.lastIndexOf("\\");
+    const dir = lastSlash >= 0 ? normalizedBase.slice(0, lastSlash) : normalizedBase;
+    const parts = decoded.replace(/\//g, "\\").split("\\");
+    const dirParts = dir.split("\\").filter(Boolean);
+
+    for (const part of parts) {
+      if (part === ".") continue;
+      if (part === "..") {
+        if (dirParts.length > 0) dirParts.pop();
+      } else if (part) {
+        dirParts.push(part);
+      }
+    }
+
+    const driveMatch = normalizedBase.match(/^([a-zA-Z]:)/);
+    const prefix = driveMatch ? driveMatch[1] : "";
+    return (prefix ? "" : "") + dirParts.join("\\");
+  }
+
+  return decoded.replace(/\//g, "\\");
+}
+
 function clearInlineLinkedPreview(linkElement) {
   const next = linkElement?.nextElementSibling;
   if (next instanceof HTMLElement && next.classList.contains("inline-linked-note")) {
@@ -420,44 +477,63 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     annotationOnly: false,
   });
   const [contextMenu, setContextMenu] = useState(null);
-  const [activeLinkPopup, setActiveLinkPopup] = useState(null);
-  const linkHideTimerRef = useRef(null);
-  const isPopupHoveredRef = useRef(false);
   const handleLinkNavigateRef = useRef(null);
 
   const handleCopyLinkFromPreview = (href) => {
     if (!href) return;
     navigator.clipboard.writeText(href);
     onNotify?.(`Copied link path: ${href}`, "success");
-    setActiveLinkPopup(null);
   };
 
   const handleDownloadFileFromPreview = (href) => {
     if (!href) return;
-    const cleanHref = String(href || "").trim().replace(/^file:\/\/\/?/i, "");
-    const normalizedHref = cleanHref.split(/[?#]/)[0];
-    const ext = normalizedHref.split(".").pop()?.toLowerCase();
+    const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
+    const ext = resolvedPath.split(".").pop()?.toLowerCase();
     const mediaType = getMediaTypeFromExtension(ext) || "document";
 
     if (typeof onMediaClick === "function") {
-      onMediaClick({ path: normalizedHref, type: mediaType });
+      onMediaClick({ path: resolvedPath, type: mediaType });
     } else if (basePath && typeof openMediaInDefaultApp === "function") {
-      openMediaInDefaultApp(basePath, normalizedHref).catch((err) => {
+      openMediaInDefaultApp(basePath, resolvedPath).catch((err) => {
         onNotify?.(err?.message || "Failed to open file.", "error");
       });
     }
-    setActiveLinkPopup(null);
   };
 
   const handleDirectDownloadFileFromPreview = async (href) => {
     if (!href) return;
     try {
-      const resolvedPath = resolveMarkdownLinkPath(basePath, href);
-      const cleanPath = resolvedPath || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
-      const filename = cleanPath.split(/[/\\]/).pop() || "file";
+      const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
+      const filename = resolvedPath.split(/[/\\]/).pop() || "file";
+
+      let downloadSrc = resolvedPath;
+      if (basePath && downloadSrc && !/^(https?:|data:|blob:)/i.test(downloadSrc)) {
+        try {
+          const loaded = await readImage(basePath, downloadSrc);
+          if (loaded) downloadSrc = loaded;
+        } catch { /* keep resolvedPath */ }
+      }
+
+      let dataUrl;
+      let srcPath;
+
+      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+        dataUrl = downloadSrc;
+      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
+        const resp = await fetch(downloadSrc);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        srcPath = downloadSrc;
+      }
 
       const result = await runExport("media", {
-        srcPath: cleanPath,
+        dataUrl,
+        srcPath,
         filename,
       });
 
@@ -468,8 +544,6 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       }
     } catch (err) {
       onNotify?.(err?.message || "Failed to download file.", "error");
-    } finally {
-      setActiveLinkPopup(null);
     }
   };
 
@@ -1137,8 +1211,30 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
+      const linkActionBtn = target.closest('[data-link-action]');
+      if (linkActionBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const action = linkActionBtn.getAttribute("data-link-action");
+        const href = linkActionBtn.getAttribute("data-href") || "";
+        const wrapper = linkActionBtn.closest(".markdown-link-wrapper");
+        const linkElement = wrapper?.querySelector("a") || target.closest("a");
+
+        if (action === "copy") {
+          handleCopyLinkFromPreview(href);
+        } else if (action === "reveal") {
+          if (linkElement) handleLinkNavigateRef.current?.(linkElement);
+        } else if (action === "open-file") {
+          handleDownloadFileFromPreview(href);
+        } else if (action === "download") {
+          handleDirectDownloadFileFromPreview(href);
+        }
+        return;
+      }
+
       const linkElement = target.closest("a");
       if (linkElement instanceof HTMLAnchorElement) {
+        if (target.closest('[data-link-action]')) return;
         event.preventDefault();
         event.stopPropagation();
         handleLinkNavigateRef.current?.(linkElement);
@@ -1189,69 +1285,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     };
   }, [basePath, inlineLinkedMarkdown, onMediaClick, onNotify, content, onContentChange, confirm]);
 
-  useEffect(() => {
-    const previewElement = previewRef.current;
-    if (!previewElement) return;
 
-    const handleMouseOver = (e) => {
-      const link = e.target?.closest?.("a");
-      if (link && previewElement.contains(link)) {
-        if (linkHideTimerRef.current) {
-          clearTimeout(linkHideTimerRef.current);
-          linkHideTimerRef.current = null;
-        }
-        const href = link.getAttribute("href");
-        if (!href) return;
-
-        const rect = link.getBoundingClientRect();
-
-        setActiveLinkPopup({
-          href,
-          text: link.innerText,
-          element: link,
-          position: {
-            top: rect.top - 6,
-            left: rect.left + rect.width / 2,
-          },
-        });
-      }
-    };
-
-    const handleMouseOut = (e) => {
-      const link = e.target?.closest?.("a");
-      const related = e.relatedTarget;
-      // Check if mouse moved into popover or still within link
-      if (related && (link?.contains(related) || related.closest?.(".link-hover-popup"))) {
-        return;
-      }
-      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-      linkHideTimerRef.current = setTimeout(() => {
-        if (!isPopupHoveredRef.current) {
-          setActiveLinkPopup(null);
-        }
-      }, 200);
-    };
-
-    const handleScroll = () => {
-      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-      linkHideTimerRef.current = setTimeout(() => {
-        if (!isPopupHoveredRef.current) {
-          setActiveLinkPopup(null);
-        }
-      }, 100);
-    };
-
-    previewElement.addEventListener("mouseover", handleMouseOver);
-    previewElement.addEventListener("mouseout", handleMouseOut);
-    previewElement.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      previewElement.removeEventListener("mouseover", handleMouseOver);
-      previewElement.removeEventListener("mouseout", handleMouseOut);
-      previewElement.removeEventListener("scroll", handleScroll);
-      if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-    };
-  }, [content, basePath]);
 
   useEffect(() => {
     if (!contextMenu) return undefined;
@@ -2203,76 +2237,6 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           }
         }}
       />
-      {activeLinkPopup && createPortal(
-        <div
-          className="link-hover-popup"
-          style={{
-            top: activeLinkPopup.position.top,
-            left: activeLinkPopup.position.left,
-            zIndex: 999999,
-          }}
-          onMouseEnter={() => {
-            isPopupHoveredRef.current = true;
-            if (linkHideTimerRef.current) {
-              clearTimeout(linkHideTimerRef.current);
-              linkHideTimerRef.current = null;
-            }
-          }}
-          onMouseLeave={() => {
-            isPopupHoveredRef.current = false;
-            if (linkHideTimerRef.current) clearTimeout(linkHideTimerRef.current);
-            linkHideTimerRef.current = setTimeout(() => {
-              if (!isPopupHoveredRef.current) {
-                setActiveLinkPopup(null);
-              }
-            }, 150);
-          }}
-        >
-          <button
-            type="button"
-            className="link-hover-popup-btn"
-            onClick={() => handleCopyLinkFromPreview(activeLinkPopup.href)}
-          >
-            <Copy size={12} style={{ marginRight: "4px" }} />
-            <span>Copy</span>
-          </button>
-          <div className="link-hover-popup-separator" />
-          <button
-            type="button"
-            className="link-hover-popup-btn"
-            onClick={() => {
-              handleLinkNavigateRef.current?.(activeLinkPopup.element);
-              setActiveLinkPopup(null);
-            }}
-          >
-            <FolderOpen size={12} style={{ marginRight: "4px" }} />
-            <span>Reveal in Explorer</span>
-          </button>
-          {!/^https?:\/\/|^\/\//i.test(activeLinkPopup.href || "") && (
-            <>
-              <div className="link-hover-popup-separator" />
-              <button
-                type="button"
-                className="link-hover-popup-btn"
-                onClick={() => handleDownloadFileFromPreview(activeLinkPopup.href)}
-              >
-                <ExternalLink size={12} style={{ marginRight: "4px" }} />
-                <span>Open File</span>
-              </button>
-              <div className="link-hover-popup-separator" />
-              <button
-                type="button"
-                className="link-hover-popup-btn"
-                onClick={() => handleDirectDownloadFileFromPreview(activeLinkPopup.href)}
-              >
-                <Download size={12} style={{ marginRight: "4px" }} />
-                <span>Download</span>
-              </button>
-            </>
-          )}
-        </div>,
-        document.body
-      )}
       {tableEditState.open && (
         <MarkdownTableEditor
           initialMarkdown={tableEditState.initialMarkdown}

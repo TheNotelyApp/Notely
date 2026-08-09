@@ -144,6 +144,36 @@ md.renderer.rules.table_close = () => {
   return `</table></div>`;
 };
 
+const defaultLinkOpenRenderer = md.renderer.rules.link_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+const defaultLinkCloseRenderer = md.renderer.rules.link_close || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options));
+
+md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  const openHtml = defaultLinkOpenRenderer(tokens, idx, options, env, self);
+  return `<span class="markdown-link-wrapper">${openHtml}`;
+};
+
+md.renderer.rules.link_close = (tokens, idx, options, env, self) => {
+  let href = "";
+  for (let i = idx - 1; i >= 0; i--) {
+    if (tokens[i].type === "link_open") {
+      href = tokens[i].attrGet("href") || "";
+      break;
+    }
+  }
+  const isWebUrl = /^https?:\/\/|^\/\//i.test(href);
+  const closeHtml = defaultLinkCloseRenderer(tokens, idx, options, env, self);
+  const safeHref = escapeHtml(href);
+
+  const copyBtn = `<button type="button" class="link-hover-popup-btn" data-link-action="copy" data-href="${safeHref}" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copy</span></button>`;
+  const revealBtn = `<span class="link-hover-popup-separator"></span><button type="button" class="link-hover-popup-btn" data-link-action="reveal" data-href="${safeHref}" aria-label="Reveal in Explorer"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Reveal in Explorer</span></button>`;
+  const openFileBtn = !isWebUrl ? `<span class="link-hover-popup-separator"></span><button type="button" class="link-hover-popup-btn" data-link-action="open-file" data-href="${safeHref}" aria-label="Open file"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg><span>Open File</span></button>` : "";
+  const downloadBtn = !isWebUrl ? `<span class="link-hover-popup-separator"></span><button type="button" class="link-hover-popup-btn" data-link-action="download" data-href="${safeHref}" aria-label="Download file"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Download</span></button>` : "";
+
+  const popoverHtml = `<span class="markdown-link-popover">${copyBtn}${revealBtn}${openFileBtn}${downloadBtn}</span>`;
+
+  return `${closeHtml}${popoverHtml}</span>`;
+};
+
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const token = tokens[idx];
   const src = token.attrGet("src") || "";

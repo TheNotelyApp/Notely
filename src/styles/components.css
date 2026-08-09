@@ -4788,10 +4788,17 @@
   margin-left: 8px;
 }
 
-/* Link Hover Popup */
-.link-hover-popup {
-  position: fixed;
-  transform: translate(-50%, -100%);
+/* Link Hover Popup (Pure CSS Container) */
+.markdown-link-wrapper {
+  position: relative;
+  display: inline;
+  vertical-align: baseline;
+}
+
+.markdown-link-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
   background: var(--tooltip-bg, rgba(20, 30, 33, 0.96));
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
@@ -4801,17 +4808,29 @@
   gap: 4px;
   z-index: 1000;
   box-shadow: var(--shadow-sm);
-  animation: fadeIn 0.12s ease-out;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  white-space: nowrap;
 }
 
-.link-hover-popup::after {
+.markdown-link-popover::before {
   content: "";
   position: absolute;
-  bottom: -10px;
+  top: -10px;
   left: 0;
   right: 0;
   height: 12px;
   background: transparent;
+}
+
+.markdown-link-wrapper:hover .markdown-link-popover,
+.markdown-link-wrapper:focus-within .markdown-link-popover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(2px);
 }
 
 .link-hover-popup-btn {
