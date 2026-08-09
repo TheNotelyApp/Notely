@@ -32,6 +32,11 @@ Exports the currently active markdown note as a standalone rendered document.
 * Produces a self-contained HTML file with inline CSS and resolved media references.
 * Suitable for publishing notes to static web servers or opening in any browser without Notely.
 
+### Block-Level Exports (Tables & Diagrams)
+* **Table Image Export (`Download Image`)**: Exports any rendered table as a high-resolution, unclipped PNG image with clean padding and solid background styling via `ExportManager`.
+* **Table CSV Export (`Download CSV`)**: Exports raw markdown table rows and columns as a clean UTF-8 encoded `.csv` file with a byte order mark (`\uFEFF`) for immediate compatibility with Excel and spreadsheet tools.
+* **Mermaid Diagram Export (`Download`)**: Converts rendered Mermaid SVG diagrams into high-resolution PNG image files via `ExportManager`.
+
 ---
 
 ## 2. Downloads & Export History Manager

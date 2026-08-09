@@ -54,6 +54,13 @@ graph TD
     E -- No --> G[Stay local]
 ```
 
+### Interactive Diagram Actions
+
+In Preview and Split modes, hovering over any rendered Mermaid diagram reveals the top action bar:
+
+* **Edit**: Opens the Mermaid visual editor modal to modify diagram elements visually.
+* **Download**: Renders and exports the Mermaid diagram as a high-resolution PNG image saved directly to your system Downloads folder.
+
 ### Troubleshooting Mermaid
 
 If your diagram does not render:

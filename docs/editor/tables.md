@@ -97,6 +97,18 @@ While the table editor is open, background page scrolling is locked. The table c
 
 When you edit a table that already exists in your note, Notely preserves the original Markdown formatting style (column spacing and delimiter style) where the table shape hasn't changed.
 
+## Export Table as Image or CSV
+
+In Preview mode and Split View, hovering over any rendered Markdown table displays the action bar with direct 1-click export buttons:
+
+| Action | Icon | Result |
+|---|---|---|
+| **Edit** | `✏️` | Opens the inline visual table editor modal |
+| **Download Image** | `🖼️` | Exports the table as a high-resolution, unclipped PNG image with white background and clean padding |
+| **Download CSV** | `📄` | Exports raw tabular data as a clean UTF-8 encoded `.csv` file |
+
+Exported tables are saved directly to your system Downloads folder and automatically logged in the [Downloads & Export History Manager](/export-reference#2-downloads--export-history-manager).
+
 ## Tips
 
 ::: tip Large Tables & Full Screen Mode
