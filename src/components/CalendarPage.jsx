@@ -220,6 +220,13 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
     className: `cal-rbc-event ${event.className ?? ""}`,
   }), []);
 
+  const handleSelectSlot = useCallback((slotInfo) => {
+    if (slotInfo?.start && onOpenTask) {
+      const dateStr = format(slotInfo.start, "yyyy-MM-dd");
+      onOpenTask({ due_date: dateStr, scheduled_start: slotInfo.start.toISOString() });
+    }
+  }, [onOpenTask]);
+
   return (
     <div className="calendar-page">
       {/* App-Standard Topbar Navigation */}
@@ -286,9 +293,11 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
           events={visibleEvents}
           date={date}
           view={view}
+          selectable={true}
           onNavigate={setDate}
           onView={setView}
           onSelectEvent={handleSelectEvent}
+          onSelectSlot={handleSelectSlot}
           eventPropGetter={eventPropGetter}
           toolbar={false}
           popup

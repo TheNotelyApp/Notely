@@ -12,5 +12,6 @@ release/
 electron/app-version.generated.json
 docs-site-dist/
 docs-site/.vitepress/cache/
+docs-site/.vitepress/.temp/
 docs-site/.vitepress/theme/tokens.css
 

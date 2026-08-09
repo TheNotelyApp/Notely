@@ -26,6 +26,8 @@ export function useTaskWorkspace({ noteFilter = null } = {}) {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState("all");
   const [layoutMode, setLayoutMode] = useState("list"); // 'list' or 'kanban'
+  const [kanbanGroupBy, setKanbanGroupBy] = useState("status"); // 'status' | 'priority' | 'category'
+  const [quickFilter, setQuickFilter] = useState("all"); // 'all' | 'due_next_7' | 'high_priority' | 'unassigned'
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [comments, setComments] = useState([]);
@@ -159,9 +161,13 @@ export function useTaskWorkspace({ noteFilter = null } = {}) {
     error,
     views: VIEWS,
     layoutMode,
+    kanbanGroupBy,
+    quickFilter,
     // Actions
     setView,
     setLayoutMode,
+    setKanbanGroupBy,
+    setQuickFilter,
     setSearch,
     setSelectedId,
     handleCreate,

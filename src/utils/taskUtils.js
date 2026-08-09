@@ -15,6 +15,19 @@ function getDocumentTaskSource(document) {
     .join("\n");
 }
 
+export function extractTagsFromText(text) {
+  const source = String(text || "");
+  const tagRegex = /#([\w-]+)/g;
+  const tags = [];
+  let match;
+  while ((match = tagRegex.exec(source)) !== null) {
+    if (!tags.includes(match[1])) {
+      tags.push(match[1]);
+    }
+  }
+  return tags;
+}
+
 function extractTaskMatches(text, regex, status) {
   const source = String(text || "");
   const tasks = [];
@@ -23,10 +36,12 @@ function extractTaskMatches(text, regex, status) {
   let match;
   while ((match = regex.exec(source)) !== null) {
     const line = source.slice(0, match.index).split(/\r?\n/).length;
+    const taskText = String(match[1] || "").trim();
     tasks.push({
       id: `${status}:${match.index}`,
       status,
-      text: String(match[1] || "").trim(),
+      text: taskText,
+      tags: extractTagsFromText(taskText),
       index: match.index,
       line,
     });

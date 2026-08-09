@@ -24,10 +24,17 @@ const VIEW_META = {
   all:      { label: "All Tasks", Icon: ListChecks,    desc: "Every task" },
 };
 
-const KANBAN_COLUMNS = [
+const KANBAN_STATUS_COLUMNS = [
   { id: "open", label: "To Do", color: "var(--accent-solid)", icon: Circle },
   { id: "in_progress", label: "In Progress", color: "#f59e0b", icon: Clock },
   { id: "done", label: "Completed", color: "#10b981", icon: CheckCircle2 },
+];
+
+const KANBAN_PRIORITY_COLUMNS = [
+  { id: "3", label: "High Priority", color: "#ef4444", icon: Flag },
+  { id: "2", label: "Medium Priority", color: "#f59e0b", icon: Flag },
+  { id: "1", label: "Low Priority", color: "#3b82f6", icon: Flag },
+  { id: "0", label: "No Priority", color: "var(--text-muted)", icon: Flag },
 ];
 
 function TaskStatusIcon({ status }) {
@@ -144,8 +151,28 @@ function KanbanCard({ task, isSelected, onSelect, _onStatusChange, onOpenNote })
   );
 }
 
-function KanbanBoard({ tasks, selectedId, onSelect, onStatusChange, onOpenNote, onNewTask }) {
+function KanbanBoard({ tasks, selectedId, groupBy = "status", onSelect, onStatusChange, onPriorityChange, onOpenNote, onNewTask }) {
   const [dragOverCol, setDragOverCol] = useState(null);
+
+  let columns = [];
+  if (groupBy === "priority") {
+    columns = KANBAN_PRIORITY_COLUMNS;
+  } else if (groupBy === "category") {
+    // Extract unique tags from tasks
+    const tagSet = new Set();
+    tasks.forEach(t => {
+      if (Array.isArray(t.tags)) {
+        t.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    const detectedTags = Array.from(tagSet).sort();
+    columns = [
+      ...detectedTags.map(tag => ({ id: `tag:${tag}`, label: `#${tag}`, color: "var(--accent-solid)", icon: FileText })),
+      { id: "tag:untagged", label: "Untagged", color: "var(--text-muted)", icon: Circle }
+    ];
+  } else {
+    columns = KANBAN_STATUS_COLUMNS;
+  }
 
   const handleDragOver = (e, colId) => {
     e.preventDefault();
@@ -161,15 +188,29 @@ function KanbanBoard({ tasks, selectedId, onSelect, onStatusChange, onOpenNote, 
     e.preventDefault();
     setDragOverCol(null);
     const taskId = e.dataTransfer.getData("text/plain");
-    if (taskId) {
-      onStatusChange(taskId, colId);
+    if (!taskId) return;
+
+    if (groupBy === "priority") {
+      onPriorityChange?.(taskId, Number(colId));
+    } else if (groupBy === "status") {
+      onStatusChange?.(taskId, colId);
     }
   };
 
   return (
     <div className="kanban-board">
-      {KANBAN_COLUMNS.map(col => {
+      {columns.map(col => {
         const colTasks = tasks.filter(t => {
+          if (groupBy === "priority") {
+            return String(t.priority ?? 0) === col.id;
+          }
+          if (groupBy === "category") {
+            if (col.id === "tag:untagged") {
+              return !t.tags || t.tags.length === 0;
+            }
+            const tag = col.id.replace("tag:", "");
+            return Array.isArray(t.tags) && t.tags.includes(tag);
+          }
           if (col.id === "open") return t.status === "open" || !t.status;
           return t.status === col.id;
         });
@@ -193,7 +234,7 @@ function KanbanBoard({ tasks, selectedId, onSelect, onStatusChange, onOpenNote, 
               <button
                 type="button"
                 className="kanban-add-btn icon-button"
-                onClick={() => onNewTask(col.id)}
+                onClick={() => onNewTask(groupBy === "status" ? col.id : "open")}
                 title={`Add task to ${col.label}`}
               >
                 <Plus size={14} />
@@ -815,6 +856,20 @@ export function TaskWorkspacePage({ onBack, onOpenNote, noteFilter = null }) {
             ))}
           </AppSelect>
 
+          {/* Kanban Group By Selector (when in Kanban mode) */}
+          {ws.layoutMode === "kanban" && (
+            <AppSelect
+              className="task-header-groupby-select"
+              value={ws.kanbanGroupBy}
+              onChange={e => ws.setKanbanGroupBy(e.target.value)}
+              aria-label="Group Kanban columns by"
+            >
+              <option value="status">Group: Status</option>
+              <option value="priority">Group: Priority</option>
+              <option value="category">Group: #Tags</option>
+            </AppSelect>
+          )}
+
           <div className="task-stats-pill">
             <Database size={12} />
             <span>{ws.tasks.length}</span>
@@ -875,8 +930,10 @@ export function TaskWorkspacePage({ onBack, onOpenNote, noteFilter = null }) {
             <KanbanBoard
               tasks={ws.tasks}
               selectedId={ws.selectedId}
+              groupBy={ws.kanbanGroupBy}
               onSelect={handleSelectTask}
               onStatusChange={(id, status) => ws.handleUpdate(id, { status })}
+              onPriorityChange={(id, priority) => ws.handleUpdate(id, { priority })}
               onOpenNote={onOpenNote}
               onNewTask={status => handleOpenNewTaskModal(status)}
             />
