@@ -13,7 +13,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, runExport } from "../services/electronService";
+import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, runExport, saveToDownloads } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it

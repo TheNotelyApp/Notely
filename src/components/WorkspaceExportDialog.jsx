@@ -10,7 +10,6 @@ export function WorkspaceExportDialog({
   progress,
   onClose,
   onChange,
-  _onBrowse,
   onExport,
 }) {
   if (!isOpen) return null;

@@ -3,6 +3,7 @@ const fsAsync = require("fs").promises;
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
+const { pathToFileURL, fileURLToPath } = require("node:url");
 const { ZipFile } = require("yazl");
 
 const PDF_WRITE_RETRY_DELAYS_MS = [120, 320, 700];
@@ -501,12 +502,231 @@ class ExportManager {
     }
   }
 
+  _walkFiles(rootDir, options = {}) {
+    const exclude = new Set(options.excludeDirs || []);
+    const files = [];
+
+    const visit = (currentDir) => {
+      if (!fs.existsSync(currentDir)) return;
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const nextPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          if (exclude.has(entry.name)) continue;
+          visit(nextPath);
+          continue;
+        }
+        if (entry.isFile()) {
+          files.push(nextPath);
+        }
+      }
+    };
+
+    visit(rootDir);
+    return files;
+  }
+
+  _copyDirRecursive(sourceRoot, targetRoot, options = {}) {
+    const exclude = new Set(options.excludeDirs || []);
+
+    const copyDir = (currentSource, currentTarget) => {
+      fs.mkdirSync(currentTarget, { recursive: true });
+      const entries = fs.readdirSync(currentSource, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && exclude.has(entry.name)) continue;
+        const sourcePath = path.join(currentSource, entry.name);
+        const targetPath = path.join(currentTarget, entry.name);
+
+        if (entry.isDirectory()) {
+          copyDir(sourcePath, targetPath);
+          continue;
+        }
+
+        if (entry.isFile()) {
+          fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+          try { fs.copyFileSync(sourcePath, targetPath); } catch { /* ignore */ }
+        }
+      }
+    };
+
+    copyDir(sourceRoot, targetRoot);
+  }
+
+  async _exportPdfWorkspace({ notesRoot, stagingRoot, contentMode }) {
+    const markdownFiles = this._walkFiles(notesRoot, {
+      excludeDirs: [".notes-app", "node_modules", ".git", ".artifacts", "dist", "build"],
+    }).filter((filePath) => path.extname(filePath).toLowerCase() === ".md");
+
+    const tempHtmlDir = path.join(stagingRoot, "_pdf-html");
+    fs.mkdirSync(tempHtmlDir, { recursive: true });
+
+    const outputRoot = path.join(stagingRoot, "pdf");
+    fs.mkdirSync(outputRoot, { recursive: true });
+
+    for (const markdownPath of markdownFiles) {
+      const content = fs.readFileSync(markdownPath, "utf8");
+      const parsed = typeof this.parseDocument === "function" ? this.parseDocument(content, markdownPath) : { title: path.basename(markdownPath, ".md") };
+      const relativeMdPath = path.relative(notesRoot, markdownPath);
+
+      const markdownContent = typeof this.buildPdfExportMarkdown === "function"
+        ? this.buildPdfExportMarkdown(parsed, { includeRawNotes: true, includeCleansed: true })
+        : content;
+      const html = typeof this.buildPdfExportHtml === "function"
+        ? this.buildPdfExportHtml({
+            title: parsed.title || path.basename(markdownPath, ".md"),
+            markdownContent,
+            baseHref: pathToFileURL(`${path.dirname(markdownPath)}${path.sep}`).href,
+            sourceDir: path.dirname(markdownPath),
+            downsampleImages: false,
+            pdfQualityPreset: "full",
+          })
+        : `<html><body>${markdownContent}</body></html>`;
+
+      const relativePdfPath = relativeMdPath.replace(/\.md$/i, ".pdf");
+      const htmlTempPath = path.join(tempHtmlDir, `${relativePdfPath.replace(/[\\/]/g, "__")}.html`);
+      const pdfOutputPath = path.join(outputRoot, relativePdfPath);
+
+      fs.mkdirSync(path.dirname(pdfOutputPath), { recursive: true });
+      fs.writeFileSync(htmlTempPath, html, "utf8");
+
+      if (this.BrowserWindow) {
+        const pdfWindow = new this.BrowserWindow({
+          show: false,
+          width: 1280,
+          height: 1600,
+          backgroundColor: "#ffffff",
+          webPreferences: {
+            backgroundThrottling: false,
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+            webviewTag: false,
+          },
+        });
+
+        try {
+          await pdfWindow.loadFile(htmlTempPath);
+          await pdfWindow.webContents.executeJavaScript("document.fonts ? document.fonts.ready : Promise.resolve()", true);
+
+          const pdfData = await pdfWindow.webContents.printToPDF({
+            printBackground: true,
+            preferCSSPageSize: true,
+          });
+
+          await writeFileWithRetries(pdfOutputPath, pdfData);
+        } finally {
+          if (!pdfWindow.isDestroyed()) {
+            pdfWindow.close();
+          }
+        }
+      }
+    }
+  }
+
+  _exportWebWorkspace({ notesRoot, stagingRoot, contentMode }) {
+    const allFiles = this._walkFiles(notesRoot, {
+      excludeDirs: [".notes-app", "node_modules", ".git", ".artifacts", "dist", "build"],
+    });
+    const markdownFiles = allFiles.filter((filePath) => path.extname(filePath).toLowerCase() === ".md");
+    const nonMarkdownFiles = allFiles.filter((filePath) => path.extname(filePath).toLowerCase() !== ".md");
+
+    const webRoot = path.join(stagingRoot, "web");
+    fs.mkdirSync(webRoot, { recursive: true });
+
+    const mdToHtmlMap = new Map();
+    for (const markdownPath of markdownFiles) {
+      const relMdPath = path.relative(notesRoot, markdownPath).replace(/\\/g, "/");
+      const relHtmlPath = relMdPath.replace(/\.md$/i, ".html");
+      mdToHtmlMap.set(relMdPath, relHtmlPath);
+    }
+
+    let markdownIt = null;
+    if (typeof this.getMarkdownIt === "function") {
+      try {
+        const MarkdownItCtor = this.getMarkdownIt();
+        markdownIt = new MarkdownItCtor({ html: false, linkify: true, typographer: true });
+      } catch { /* fallback */ }
+    }
+
+    const indexLinks = [];
+
+    for (const markdownPath of markdownFiles) {
+      const relMdPath = path.relative(notesRoot, markdownPath).replace(/\\/g, "/");
+      const relHtmlPath = mdToHtmlMap.get(relMdPath);
+      const htmlPath = path.join(webRoot, relHtmlPath);
+      const content = fs.readFileSync(markdownPath, "utf8");
+
+      const title = path.basename(markdownPath, ".md");
+      const renderedHtml = markdownIt ? markdownIt.render(content) : `<pre>${content}</pre>`;
+      const pageHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+    <style>
+      body { margin: 0; padding: 28px; font-family: "Segoe UI", Arial, sans-serif; color: #12323a; background: #f5f8f8; }
+      .page { max-width: 980px; margin: 0 auto; background: #ffffff; border: 1px solid #d9e3e4; border-radius: 12px; padding: 24px; }
+      h1, h2, h3 { color: #163e46; }
+      pre { background: #11242b; color: #e3f2f2; border-radius: 8px; padding: 12px; overflow-x: auto; }
+      code { font-family: Consolas, "Cascadia Code", monospace; }
+      img { max-width: 100%; height: auto; }
+      a { color: #0f5f76; }
+      ul { padding-left: 20px; }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>${title}</h1>
+      ${renderedHtml}
+    </main>
+  </body>
+</html>`;
+
+      fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
+      fs.writeFileSync(htmlPath, pageHtml, "utf8");
+      indexLinks.push({ title, href: relHtmlPath });
+    }
+
+    for (const assetPath of nonMarkdownFiles) {
+      const relPath = path.relative(notesRoot, assetPath);
+      const targetPath = path.join(webRoot, relPath);
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      try { fs.copyFileSync(assetPath, targetPath); } catch { /* ignore unreadable */ }
+    }
+
+    indexLinks.sort((left, right) => left.title.localeCompare(right.title));
+    const indexHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Notely Workspace Export</title>
+    <style>
+      body { margin: 0; padding: 28px; font-family: "Segoe UI", Arial, sans-serif; color: #12323a; background: #f5f8f8; }
+      .page { max-width: 980px; margin: 0 auto; background: #ffffff; border: 1px solid #d9e3e4; border-radius: 12px; padding: 24px; }
+      h1 { color: #163e46; }
+      a { color: #0f5f76; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      li { margin: 6px 0; }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>Workspace Notes</h1>
+      <ul>${indexLinks.map((entry) => `<li><a href="${entry.href}">${entry.title}</a></li>`).join("")}</ul>
+    </main>
+  </body>
+</html>`;
+    fs.writeFileSync(path.join(webRoot, "index.html"), indexHtml, "utf8");
+  }
+
   // --- Type 3: Workspace ZIP Backup ---
   async _exportWorkspaceZip(payload, downloadDir) {
     const notesRoot = typeof this.getNotesRoot === "function" ? this.getNotesRoot() : null;
     if (!notesRoot) throw new Error("No notes root configured.");
 
-    const mode = payload.mode || "raw";
+    const mode = ["raw", "pdf", "web"].includes(payload.mode) ? payload.mode : "raw";
+    const contentMode = payload.contentMode || "combined";
     const includeMetadata = Boolean(payload.includeMetadata);
     const requestedFileName = typeof payload.fileName === "string" ? payload.fileName.trim() : "";
     const folderName = path.basename(notesRoot) || "workspace";
@@ -517,56 +737,84 @@ class ExportManager {
     const defaultName = requestedFileName || `${folderName}_backup.zip`;
     const { targetPath, targetName } = this._resolveCollisionFreePath(destinationPath, defaultName);
 
-    this._sendWorkspaceExportProgress({ phase: "Preparing export", percent: 5 });
-
-    const zipfile = new ZipFile();
-    let entryCount = 0;
     const start = Date.now();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "notely-workspace-export-"));
+    const stagingRoot = path.join(tempRoot, "staging");
+    fs.mkdirSync(stagingRoot, { recursive: true });
 
-    const walk = (dir) => {
-      const list = fs.readdirSync(dir);
-      for (const item of list) {
-        if (item === ".git" || item === "node_modules" || item === "dist") continue;
-        if (!includeMetadata && item === ".notes-app") continue;
-        const fullPath = path.join(dir, item);
-        const stat = fs.statSync(fullPath);
-        if (stat.isDirectory()) {
-          walk(fullPath);
-        } else {
-          const relPath = path.relative(notesRoot, fullPath).replace(/\\/g, "/");
-          zipfile.addFile(fullPath, relPath);
-          entryCount += 1;
+    try {
+      this._sendWorkspaceExportProgress({ phase: "Preparing export", percent: 5 });
+
+      if (mode === "raw") {
+        this._sendWorkspaceExportProgress({ phase: "Collecting workspace files", percent: 20 });
+        const defaultExcludes = ["node_modules", ".git", "dist", ".artifacts", "build"];
+        const excludeDirs = includeMetadata ? defaultExcludes : [".notes-app", ...defaultExcludes];
+        this._copyDirRecursive(notesRoot, stagingRoot, { excludeDirs });
+        this._sendWorkspaceExportProgress({ phase: "Workspace files staged", percent: 70 });
+      } else if (mode === "pdf") {
+        this._sendWorkspaceExportProgress({ phase: "Rendering PDF files", percent: 15 });
+        await this._exportPdfWorkspace({ notesRoot, stagingRoot, contentMode });
+        this._sendWorkspaceExportProgress({ phase: "PDF files rendered", percent: 75 });
+
+        if (includeMetadata) {
+          const metadataPath = path.join(notesRoot, ".notes-app");
+          if (fs.existsSync(metadataPath)) {
+            this._sendWorkspaceExportProgress({ phase: "Adding metadata", percent: 80 });
+            this._copyDirRecursive(metadataPath, path.join(stagingRoot, ".notes-app"));
+          }
+        }
+      } else {
+        this._sendWorkspaceExportProgress({ phase: "Rendering web pages", percent: 15 });
+        this._exportWebWorkspace({ notesRoot, stagingRoot, contentMode });
+        this._sendWorkspaceExportProgress({ phase: "Web pages rendered", percent: 75 });
+
+        if (includeMetadata) {
+          const metadataPath = path.join(notesRoot, ".notes-app");
+          if (fs.existsSync(metadataPath)) {
+            this._sendWorkspaceExportProgress({ phase: "Adding metadata", percent: 80 });
+            this._copyDirRecursive(metadataPath, path.join(stagingRoot, ".notes-app"));
+          }
         }
       }
-    };
 
-    this._sendWorkspaceExportProgress({ phase: "Collecting workspace files", percent: 25 });
-    walk(notesRoot);
-    this._sendWorkspaceExportProgress({ phase: "Compressing workspace archive", percent: 70 });
+      this._sendWorkspaceExportProgress({ phase: "Compressing zip", percent: 85 });
+      const zipfile = new ZipFile();
+      let entryCount = 0;
 
-    await new Promise((resolve, reject) => {
-      const writeStream = fs.createWriteStream(targetPath);
-      zipfile.outputStream.pipe(writeStream);
-      zipfile.outputStream.on("end", resolve);
-      zipfile.outputStream.on("error", reject);
-      zipfile.end();
-    });
+      const stagedFiles = this._walkFiles(stagingRoot);
+      for (const absFile of stagedFiles) {
+        const relPath = path.relative(stagingRoot, absFile).replace(/\\/g, "/");
+        const archivedPath = folderName ? `${folderName}/${relPath}` : relPath;
+        zipfile.addFile(absFile, archivedPath);
+        entryCount += 1;
+      }
 
-    this._sendWorkspaceExportProgress({ phase: "Export complete", percent: 100, done: true, filePath: targetPath });
+      await new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(targetPath);
+        zipfile.outputStream.pipe(writeStream);
+        zipfile.outputStream.on("end", resolve);
+        zipfile.outputStream.on("error", reject);
+        zipfile.end();
+      });
 
-    let fileSize = 0;
-    try { fileSize = fs.statSync(targetPath).size; } catch { /* ignore */ }
+      this._sendWorkspaceExportProgress({ phase: "Export complete", percent: 100, done: true, filePath: targetPath });
 
-    return {
-      success: true,
-      targetPath,
-      filename: targetName,
-      fileSize,
-      exportType: mode === "pdf" ? "pdf" : mode === "web" ? "html" : "workspace_zip",
-      category: "document",
-      entryCount,
-      elapsedMs: Date.now() - start
-    };
+      let fileSize = 0;
+      try { fileSize = fs.statSync(targetPath).size; } catch { /* ignore */ }
+
+      return {
+        success: true,
+        targetPath,
+        filename: targetName,
+        fileSize,
+        exportType: mode === "pdf" ? "pdf" : mode === "web" ? "html" : "workspace_zip",
+        category: "document",
+        entryCount,
+        elapsedMs: Date.now() - start
+      };
+    } finally {
+      try { fs.rmSync(tempRoot, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
   }
 
   // --- Type 4 & 5: Diagram Image & Media Download ---

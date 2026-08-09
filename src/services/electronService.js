@@ -788,17 +788,6 @@ export async function runExport(type, payload = {}) {
     }
     return res;
   }
-
-  // Fallbacks for legacy/web environment
-  if (type === "pdf" && typeof api?.downloadPdf === "function") {
-    return api.downloadPdf(payload);
-  }
-  if (type === "workspace_zip" && typeof api?.exportWorkspaceZip === "function") {
-    return api.exportWorkspaceZip(payload);
-  }
-  if ((type === "media" || type === "diagram_image") && typeof api?.saveToDownloads === "function") {
-    return api.saveToDownloads(payload);
-  }
   throw new Error(`Export service is unavailable for type: ${type}`);
 }
 
@@ -1490,12 +1479,6 @@ export async function addExportRecord(record) {
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("app:download-complete", { detail: cleanRecord }));
-    window.dispatchEvent(new CustomEvent("app:toast", {
-      detail: {
-        message: `Downloaded ${filename}`,
-        type: "success",
-      },
-    }));
   }
   return res;
 }

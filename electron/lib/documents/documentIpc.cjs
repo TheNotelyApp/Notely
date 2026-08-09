@@ -363,12 +363,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     };
   });
 
-  registerTrustedHandler("documents:download-pdf", async (_event, payload) => {
-    const { getExportManager } = require("../export/ExportManager.cjs");
-    const res = await getExportManager().runExport({ type: "pdf", payload });
-    if (!res?.success) return res;
-    return { canceled: false, filePath: res.filePath };
-  });
+
 
 
 

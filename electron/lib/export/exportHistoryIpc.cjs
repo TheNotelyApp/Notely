@@ -32,11 +32,13 @@ function registerExportHistoryIpc({ ipcMain, BrowserWindow, shell, app, exportHi
 
   registerTrustedHandler("exports:addRecord", async (_, record) => {
     const res = await exportHistoryStore.addRecord(record);
-    BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) {
-        win.webContents.send("exports:record-added", record);
-      }
-    });
+    if (res && BrowserWindow) {
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send("exports:record-added", res);
+        }
+      });
+    }
     return res;
   });
 
