@@ -711,22 +711,22 @@ class TaskDatabase {
   };
 }
 
-const _instances = new Map();
+const instances = new Map();
 
 function getTaskDatabase(workspaceRoot) {
   if (!workspaceRoot) return null;
   const key = String(workspaceRoot).toLowerCase();
-  if (!_instances.has(key)) {
-    _instances.set(key, new TaskDatabase(workspaceRoot));
+  if (!instances.has(key)) {
+    instances.set(key, new TaskDatabase(workspaceRoot));
   }
-  return _instances.get(key);
+  return instances.get(key);
 }
 
 function closeTaskDatabase(workspaceRoot) {
   if (!workspaceRoot) return;
   const key = String(workspaceRoot).toLowerCase();
-  const db = _instances.get(key);
-  if (db) { db.close(); _instances.delete(key); }
+  const db = instances.get(key);
+  if (db) { db.close(); instances.delete(key); }
 }
 
 module.exports = { TaskDatabase, getTaskDatabase, closeTaskDatabase, hashSource };

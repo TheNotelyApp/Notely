@@ -87,7 +87,7 @@ class PatternDetector {
     });
 
     // Calculate averages
-    for (const [_type, data] of Object.entries(queryPatterns)) {
+    for (const data of Object.values(queryPatterns)) {
       data.avgTokens = data.count > 0 ? data.totalTokens / data.count : 0;
     }
 

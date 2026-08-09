@@ -41,10 +41,6 @@ function buildAppMenuTemplate(win, context = {}) {
   const themePreference = ["auto", "light", "dark"].includes(context?.themePreference)
     ? context.themePreference
     : "auto";
-  const _terminalOpen = context?.terminalOpen === true;
-  const _terminalShell = context?.terminalShell === "bash" || context?.terminalShell === "cmd"
-    ? context.terminalShell
-    : "auto";
   const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
   const canRemoveFolder = Boolean(context?.canRemoveFolder);

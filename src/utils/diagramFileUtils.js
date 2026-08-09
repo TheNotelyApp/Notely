@@ -129,7 +129,7 @@ export async function generateDiagramPNG(_diagramData) {
  * @param {object} diagramData - Excalidraw diagram data
  * @returns {string} Markdown with embedded data
  */
-export function createDiagramMarkdown(docSlug, diagramId, _diagramData) {
+export function createDiagramMarkdown(docSlug, diagramId) {
   const imagePath = getDiagramImagePath(docSlug, diagramId);
   
   // Create markdown that references the image

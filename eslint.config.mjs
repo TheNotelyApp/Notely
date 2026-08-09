@@ -50,7 +50,7 @@ export default [
       "react/prop-types": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }]
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }]
     }
   },
 
@@ -63,7 +63,7 @@ export default [
       globals: { ...globals.node }
     },
     rules: {
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }]
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }]
     }
   },
 
@@ -76,7 +76,7 @@ export default [
       globals: { ...globals.node }
     },
     rules: {
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }]
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }]
     }
   },
 

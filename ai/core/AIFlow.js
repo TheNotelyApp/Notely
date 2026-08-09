@@ -415,7 +415,7 @@ class AIFlow {
 
       // ── Stage 5: Memory Persistence & Telemetry Logging ───────────────────
       const s5Start = Date.now();
-      const _s5SpanId = traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
+      traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
 
       // Calculate composite pipeline health score (0-100)
       const retrievalScore = Math.round((orchRes?.confidenceScore || 0.9) * 100);
@@ -445,7 +445,6 @@ class AIFlow {
       } catch (err) {
         log.warn(`[Flow:${flowId}] Memory persistence warning:`, err.message);
       }
-      const _s5End = Date.now();
 
       stages.push({
         stage: 5,
@@ -839,7 +838,7 @@ class AIFlow {
 
       // Stage 5: Persistence
       const s5Start = Date.now();
-      const _s5SpanId = traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
+      traceSession.startSpan('Memory Persistence & Telemetry Logging', 'Memory', traceSession.rootSpanId, { component: 'ConversationStore' });
 
       if (this.agent.conversationStore && result.result && result.type !== 'aborted') {
         try {

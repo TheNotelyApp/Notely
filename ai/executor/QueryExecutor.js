@@ -188,7 +188,7 @@ class QueryExecutor {
   async execute(query, context = {}) {
     try {
       const { generateText, jsonSchema } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace: _orchestratorTrace, _retrievedEvidence } = await this._prepareConfig(query, context);
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
 
       if (this.agent && typeof this.agent.logPrompt === 'function') {
         this.agent.logPrompt(query, systemPrompt, {
@@ -272,8 +272,8 @@ class QueryExecutor {
         } catch { /* ignore summary error */ }
       }
 
-      const trace = Array.isArray(_orchestratorTrace)
-        ? _orchestratorTrace.map(t => ({
+      const trace = Array.isArray(orchestratorTrace)
+        ? orchestratorTrace.map(t => ({
             name: t.name || t.toolName || 'tool',
             toolName: t.toolName || t.name || 'tool',
             args: t.args || t.parameters || {},
@@ -405,7 +405,7 @@ class QueryExecutor {
   async stream(query, context = {}, onChunk, abortSignal) {
     try {
       const { streamText } = await import('ai');
-      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace, _retrievedEvidence } = await this._prepareConfig(query, context);
+      const { model, systemPrompt, messages, mergedTools, llm, toolChoice, orchestratorTrace } = await this._prepareConfig(query, context);
 
       // Check provider capability before attempting streaming.
       // Providers that set supportsStreaming: false (e.g. those with known

@@ -478,7 +478,7 @@ function resolveImageAssetPath(basePath, assetPath) {
       // excali-diagrams/<doc-slug>/<diagram-id>/diagram.png
       // Current storage is: .notes-app/excali-diagrams/<diagram-id>/diagram.png
       if (legacyDiagramMatch) {
-        const [, _legacyDocSlug, diagramId] = legacyDiagramMatch;
+        const [, , diagramId] = legacyDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
         candidates.push(path.resolve(baseDir, `excali-diagrams/${diagramId}/diagram.png`));
         candidates.push(path.resolve(getNotesRoot(), `.notes-app/excali-diagrams/${diagramId}/diagram.png`));

@@ -1532,7 +1532,7 @@ async function handleKnowledgeReject(_event, payload) {
   }
 }
 
-let _logDbInstance = null;
+let logDbInstance = null;
 function getLogDbInstance() {
   // Prefer the agent's already-initialized LogDB — same file, no duplicate connection.
   const agentLogDb = aiService?.agent?.logDb;
@@ -1541,29 +1541,29 @@ function getLogDbInstance() {
   // Fallback: standalone instance (covers cases where agent isn't up yet but workspaceRoot is known).
   const workspaceRoot = aiService.workspaceRoot;
   if (!workspaceRoot) return null;
-  if (!_logDbInstance || _logDbInstance.workspaceRoot !== workspaceRoot) {
-    if (_logDbInstance) try { _logDbInstance.close(); } catch { /* ignore */ }
+  if (!logDbInstance || logDbInstance.workspaceRoot !== workspaceRoot) {
+    if (logDbInstance) try { logDbInstance.close(); } catch { /* ignore */ }
     const { LogDB } = require('../../ai/logs');
-    _logDbInstance = new LogDB(workspaceRoot);
-    _logDbInstance.initialize();
+    logDbInstance = new LogDB(workspaceRoot);
+    logDbInstance.initialize();
   }
-  return _logDbInstance;
+  return logDbInstance;
 }
 
-let _telemetryDbInstance = null;
+let telemetryDbInstance = null;
 function getTelemetryDbInstance() {
   const agentTelDb = aiService?.agent?.telemetryDb;
   if (agentTelDb?.isInitialized) return agentTelDb;
 
   const workspaceRoot = aiService.workspaceRoot;
   if (!workspaceRoot) return null;
-  if (!_telemetryDbInstance || _telemetryDbInstance.workspaceRoot !== workspaceRoot) {
-    if (_telemetryDbInstance) try { _telemetryDbInstance.close(); } catch { /* ignore */ }
+  if (!telemetryDbInstance || telemetryDbInstance.workspaceRoot !== workspaceRoot) {
+    if (telemetryDbInstance) try { telemetryDbInstance.close(); } catch { /* ignore */ }
     const { TelemetryDB } = require('../../ai/telemetry');
-    _telemetryDbInstance = new TelemetryDB(workspaceRoot);
-    _telemetryDbInstance.initialize();
+    telemetryDbInstance = new TelemetryDB(workspaceRoot);
+    telemetryDbInstance.initialize();
   }
-  return _telemetryDbInstance;
+  return telemetryDbInstance;
 }
 
 try {

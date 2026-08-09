@@ -400,7 +400,7 @@ export default function App() {
   const [workspaceExportOptions, setWorkspaceExportOptions] = useState(
     normalizeWorkspaceExportOptions(null)
   );
-  const [_appInfoLoading, setAppInfoLoading] = useState(true);
+  const [, setAppInfoLoading] = useState(true);
   const bootReadyNotifiedRef = useRef(false);
   const [appInfo, setAppInfo] = useState({
     appName: "Notely",
@@ -485,7 +485,6 @@ export default function App() {
     openDocument,
     saveDocument,
     handleReloadCurrentFromDisk,
-    reloadDocument: _reloadDocument,
     handleReloadWorkspace,
     handleDeleteCurrentDocument,
     handleDeleteCurrentFolder,

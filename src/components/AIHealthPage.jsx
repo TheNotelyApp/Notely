@@ -824,7 +824,7 @@ export default function AIHealthPage({ onBack }) {
   const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
   const [convSearch, setConvSearch] = useState('');
-  const [_loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
