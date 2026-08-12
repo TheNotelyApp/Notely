@@ -99,7 +99,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
-    const requestedFolderPath = String(payload?.folderPath || "").trim();
+    const requestedFolderPath = String(
+      (typeof payload === "string" ? payload : payload?.folderPath) || ""
+    ).trim();
     const targetDir = path.resolve(requestedFolderPath || projectRoot);
 
     if (!filePathWithin(projectRoot, targetDir)) {

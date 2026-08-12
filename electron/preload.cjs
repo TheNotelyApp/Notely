@@ -192,7 +192,11 @@ contextBridge.exposeInMainWorld("notesApi", {
   getWorkspaceActivity: (payload) => ipcRenderer.invoke("activity:get-workspace", payload),
   openWorkspaceInEditor: (payload) => ipcRenderer.invoke("workspace:open-in-editor", payload),
   revealWorkspaceInExplorer: (payload) => ipcRenderer.invoke("workspace:reveal-in-explorer", payload),
-  listDocuments: (payload) => ipcRenderer.invoke("documents:list", payload),
+  listDocuments: (payload) =>
+    ipcRenderer.invoke(
+      "documents:list",
+      typeof payload === "string" ? { folderPath: payload } : payload
+    ),
   listWorkspaceTaskDocuments: () => ipcRenderer.invoke("documents:list-task-sources"),
   getDashboardCache: () => ipcRenderer.invoke("documents:get-dashboard-cache"),
   createDocument: (payload) => ipcRenderer.invoke("documents:create", payload),
