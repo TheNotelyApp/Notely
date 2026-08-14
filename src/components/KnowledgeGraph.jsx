@@ -935,7 +935,7 @@ export default function KnowledgeGraph({ onBack }) {
               <div className="kg-details-card animate-fade-in" style={{ marginTop: 'auto', borderTop: '1px solid var(--border-default)' }}>
                 <div className="kg-details-head">
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sparkles size={13} style={{ color: 'var(--accent-solid)' }} />
+                    <Sparkles size={14} style={{ color: 'var(--accent-solid)' }} />
                     Entity Inspector
                   </h4>
                   <button className="kg-details-close" onClick={() => setSelectedNode(null)} title="Close inspector">✕</button>
@@ -1086,7 +1086,7 @@ export default function KnowledgeGraph({ onBack }) {
                   boxShadow: 'var(--shadow-sm)'
                 }}
               >
-                <Search size={11} style={{ color: 'var(--accent-solid)' }} />
+                <Search size={12} style={{ color: 'var(--accent-solid)' }} />
                 <span>Matches: <strong>{filteredNodes.length}</strong> / {nodes.length}</span>
               </div>
             )}

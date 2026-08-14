@@ -9,6 +9,7 @@ import "../styles/ExcalidrawEditor.css"; // Reuse modal styling
 export function DrawioEditor({
   initialData, // XML string
   diagramId,
+  documentPath,
   onClose,
   onSave,
 }) {
@@ -104,8 +105,8 @@ export function DrawioEditor({
             const xmlContent = msg.xml || lastSavedXmlRef.current;
 
             if (diagramId) {
-              await writeDrawioSource(diagramId, xmlContent);
-              await writeDrawioImage(diagramId, pngDataUrl);
+              await writeDrawioSource(diagramId, xmlContent, documentPath);
+              await writeDrawioImage(diagramId, pngDataUrl, documentPath);
             }
 
             lastSavedXmlRef.current = xmlContent;

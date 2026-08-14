@@ -2117,7 +2117,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
               diagramId={part.diagramId}
               originAssetPath={part.originAssetPath}
               originAltText={part.originAltText}
-              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join("/")}
+              documentPath={basePath}
               onNotify={onNotify}
               index={index}
               key={blockKey}
@@ -2139,6 +2139,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
             <DrawioBlock
               imagePath={part.imagePath}
               diagramId={part.diagramId}
+              documentPath={basePath}
               onNotify={onNotify}
               key={blockKey}
               onForceSaveNote={onForceSaveDocument}

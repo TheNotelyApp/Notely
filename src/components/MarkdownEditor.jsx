@@ -967,8 +967,8 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
               const xmlContent = await file.text();
               const diagramId = generateDiagramId();
               if (window.notesApi?.drawioWriteSource) {
-                await window.notesApi.drawioWriteSource({ diagramId, data: xmlContent });
-                insertedBlocks.push(`![Draw.io Diagram](media/draw.io/${diagramId}.png){data-diagram-id="${diagramId}"}`);
+                await window.notesApi.drawioWriteSource({ diagramId, data: xmlContent, documentPath: basePath });
+                insertedBlocks.push(`![Draw.io Diagram](.notes-app/drawio-diagrams/${diagramId}.png){data-diagram-id="${diagramId}"}`);
               }
             }
 
