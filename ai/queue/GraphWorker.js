@@ -88,8 +88,64 @@ class GraphWorker {
 
       const content = fs.readFileSync(job.note_path, 'utf8');
 
-      if (this.graphService && typeof this.graphService.processNote === 'function') {
-        await this.graphService.processNote(job.note_path, content);
+      if (job.note_path.endsWith('.md')) {
+        if (this.graphService && typeof this.graphService.processNote === 'function') {
+          await this.graphService.processNote(job.note_path, content);
+        }
+      } else {
+        // Non-markdown source incremental processing
+        const KnowledgeSourceRegistry = require('../graph/KnowledgeSourceRegistry');
+        const ExcalidrawKnowledgeSource = require('../graph/sources/ExcalidrawKnowledgeSource');
+        const DrawioKnowledgeSource = require('../graph/sources/DrawioKnowledgeSource');
+        const MermaidKnowledgeSource = require('../graph/sources/MermaidKnowledgeSource');
+        const EvidenceStore = require('../graph/EvidenceStore');
+
+        const registry = new KnowledgeSourceRegistry();
+        const excSrc = new ExcalidrawKnowledgeSource();
+        const drwSrc = new DrawioKnowledgeSource();
+        const mrmSrc = new MermaidKnowledgeSource();
+
+        let source = null;
+        if (excSrc.supports(job.note_path)) source = excSrc;
+        else if (drwSrc.supports(job.note_path)) source = drwSrc;
+        else if (mrmSrc.supports(job.note_path)) source = mrmSrc;
+
+        if (source && this.graphDb) {
+          const { entities, relationships, evidence } = await registry.extract(source, job.note_path, content);
+          const evStore = new EvidenceStore(this.graphDb);
+          evStore.deleteForSource(job.note_path);
+
+          for (const ent of entities) {
+            const id = this.graphService?.entityResolver
+              ? this.graphService.entityResolver.generateEntityId(ent.name, ent.type || 'Entity')
+              : `ent-${source.sourceType()}-${String(ent.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            this.graphDb.upsertEntity({ id, name: ent.name, canonical_name: ent.name, type: ent.type || 'Entity', properties: ent.properties || {} });
+          }
+          for (const rel of relationships) {
+            const srcId = this.graphService?.entityResolver
+              ? this.graphService.entityResolver.generateEntityId(rel.source_name, rel.source_type || 'Entity')
+              : `ent-${source.sourceType()}-${String(rel.source_name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            const tgtId = this.graphService?.entityResolver
+              ? this.graphService.entityResolver.generateEntityId(rel.target_name, rel.target_type || 'Entity')
+              : `ent-${source.sourceType()}-${String(rel.target_name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            if (srcId !== tgtId) {
+              this.graphDb.upsertRelationship({ source_id: srcId, target_id: tgtId, type: rel.type, weight: rel.weight, confidence: rel.confidence, extractor: source.sourceType() });
+            }
+          }
+          if (Array.isArray(evidence)) {
+            for (const ev of evidence) {
+              evStore.addEvidence({
+                sourceId: job.note_path,
+                extractor: source.sourceType(),
+                subjectText: ev.subjectText || ev.subject_text || job.note_path,
+                predicateText: ev.predicateText || ev.predicate_text || 'related_to',
+                objectText: ev.objectText || ev.object_text || '',
+                rawSentence: ev.rawSentence || ev.raw_sentence || job.note_path,
+                confidence: ev.confidence || 1.0
+              });
+            }
+          }
+        }
       }
 
       this.queue.updateStatus(job.id, 'done');

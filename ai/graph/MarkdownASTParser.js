@@ -346,7 +346,7 @@ class MarkdownASTParser {
       .replace(/^>\s*/gm, '')                                 // 9. Blockquotes
       .replace(/^\|.*\|$/gm, '')                              // 10. Complete Markdown table rows
       .replace(/\|.*\|/g, '')                                 // 10b. Table fragments
-      .replace(/^[a-zA-Z0-9_\s]+:\s*.*$/gm, '')               // 11. Key-value metadata lines (Name: Bikash, Time: 10:04)
+      .replace(/^(?:tags?|names?|authors?|attendees|people|locations?|venue|place|city|time|date|datetime):\s*.*$/gmi, '') // 11. Specific metadata lines
       .replace(/\[(.*?)\]\((.*?)\)/g, '$1')                   // 12. Standard links -> label
       .replace(/\[\[(.*?)\]\]/g, (m, inner) => inner.includes('|') ? inner.split('|')[1].trim() : inner.trim()) // 13. Wikilinks
       .replace(/^\s*#{1,6}\s+/gm, '')                         // 14. Headings

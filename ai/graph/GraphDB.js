@@ -223,7 +223,7 @@ class GraphDB {
    */
   runTransaction(fn) {
     if (!this.db) throw new Error('Database not initialized');
-    this.db.exec('BEGIN;');
+    this.db.exec('BEGIN IMMEDIATE;');
     try {
       const result = fn();
       this.db.exec('COMMIT;');

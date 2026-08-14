@@ -78,11 +78,28 @@ class GraphService {
             properties: ast.rootEntity.properties
           });
 
-          // Remove stale outgoing relationships before deleting evidence to preserve FK integrity
+          // Remove stale relationships (outgoing note edges & concept edges tied to note evidence) before deleting evidence
           if (this.graphDb?.db) {
-            this.graphDb.db.prepare('DELETE FROM relationships WHERE source_id = ?').run(rootEntityId);
+            try {
+              this.graphDb.db.prepare(`
+                DELETE FROM relationships 
+                WHERE (source_id = ? AND extractor IN ('ast_parser', 'deterministic_miner', 'gliner2-relex'))
+                   OR evidence_id IN (SELECT id FROM evidence WHERE source_id = ? AND extractor IN ('ast_parser', 'deterministic_miner', 'gliner2-relex'))
+                   OR id IN (SELECT relationship_id FROM relationship_evidence re JOIN evidence e ON re.evidence_id = e.id WHERE e.source_id = ? AND e.extractor IN ('ast_parser', 'deterministic_miner', 'gliner2-relex'))
+              `).run(rootEntityId, filePath, filePath);
+            } catch {
+              try { this.graphDb.db.prepare("DELETE FROM relationships WHERE source_id = ? AND extractor IN ('ast_parser', 'deterministic_miner', 'gliner2-relex')").run(rootEntityId); } catch { /* ignore */ }
+            }
           }
-          this.evidenceStore.deleteForSource(filePath);
+          if (this.graphDb?.db) {
+            try {
+              this.graphDb.db.prepare("DELETE FROM evidence WHERE source_id = ? AND extractor IN ('ast_parser', 'deterministic_miner', 'gliner2-relex')").run(filePath);
+            } catch {
+              this.evidenceStore.deleteForSource(filePath);
+            }
+          } else {
+            this.evidenceStore.deleteForSource(filePath);
+          }
 
           // 1a. Wikilinks [[Target]]
           for (const link of ast.links) {
@@ -435,8 +452,9 @@ class GraphService {
             this._mentionIndexTime = Date.now();
           }
 
+          const lowerContent = (cleansedContent || '').toLowerCase();
           this._mentionIndex.forEach((otherId, otherName) => {
-            if (otherId !== rootEntityId && otherName.length >= 5) {
+            if (otherId !== rootEntityId && otherName.length >= 5 && lowerContent.includes(otherName)) {
               const esc = otherName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
               const re = new RegExp(`\\b${esc}\\b`, 'i');
               if (re.test(cleansedContent)) {

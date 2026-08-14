@@ -53,7 +53,7 @@ class EntityResolver {
         const existing = this.graphDb.db.prepare('SELECT id, name, canonical_name, type FROM entities WHERE id = ?').get(bestMatch);
         if (existing) {
           log.info(`Vector concept merged "${clean}" -> "${existing.canonical_name}" (similarity: ${highestSimilarity.toFixed(3)})`);
-          this.addAlias(clean, existing.id, parseFloat(highestSimilarity.toFixed(3)));
+          this.addAlias(existing.id, clean, parseFloat(highestSimilarity.toFixed(3)));
           return {
             id: existing.id,
             name: existing.name,

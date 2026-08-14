@@ -20,6 +20,10 @@ class ExcalidrawKnowledgeSource extends KnowledgeSource {
     return 0.90;
   }
 
+  supports(filePath) {
+    return typeof filePath === 'string' && filePath.endsWith('.excalidraw');
+  }
+
   discover(workspaceRoot) {
     if (!workspaceRoot || !fs.existsSync(workspaceRoot)) return [];
     const files = [];
