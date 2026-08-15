@@ -1058,7 +1058,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
     ]),
-  ], [findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion, slashMenu]);
+  ], [basePath, findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion, slashMenu]);
 
   return (
     <div

@@ -130,7 +130,7 @@ export function DrawioEditor({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [diagramId, hasUnsavedChanges, onSave, handleClose, triggerSave]);
+  }, [diagramId, documentPath, hasUnsavedChanges, onSave, handleClose, triggerSave]);
 
   return (
     <OverlayDialog

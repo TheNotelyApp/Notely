@@ -1,6 +1,5 @@
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import {
-  Save,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -15,14 +14,7 @@ import {
   ListTree,
   Clipboard,
   Code2,
-  CheckSquare,
-  Square,
   Type,
-  Maximize,
-  Minimize,
-  Sparkles,
-  ListChecks,
-  ExternalLink,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppIconButton from "./AppIconButton";

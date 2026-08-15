@@ -8,7 +8,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
   const [tab, setTab] = useState(mode); // "export" or "import"
   const [availableNotes, setAvailableNotes] = useState([]);
   const [selectedNotes, setSelectedNotes] = useState(new Set());
-  const [destinationPath, setDestinationPath] = useState("");
   const [fileName, setFileName] = useState("");
   const [importFilePath, setImportFilePath] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,11 +22,10 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     setExportPassword("");
     setImportPassword("");
     setRequireImportPassword(false);
-  }, [mode, isOpen]);
+  }, [mode]);
 
   // Reset password fields if import file changes
   useEffect(() => {
-    setImportPassword("");
     setRequireImportPassword(false);
   }, [importFilePath]);
 
@@ -37,7 +35,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     const loadDefaults = async () => {
       try {
         const defaults = await window.notesApi.getNotePackageDefaults();
-        if (defaults?.destinationPath) setDestinationPath(defaults.destinationPath);
         if (defaults?.fileName) setFileName(defaults.fileName);
       } catch {
         // ignore — user can still browse manually
@@ -126,28 +123,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       next.add(filePath);
     }
     setSelectedNotes(next);
-  };
-
-  const handleBrowseExport = async () => {
-    try {
-      const fn = window.notesApi?.selectExportPackageFolder || window.notesApi?.browseExportDestination;
-      const res = await fn?.({ defaultFileName: fileName });
-      if (!res || res.canceled) return;
-      const selected = typeof res === "string" ? res : res.filePath;
-      if (selected) {
-        if (selected.endsWith(".nly") || selected.endsWith(".note")) {
-          const parts = selected.replace(/\\/g, "/").split("/");
-          const file = parts.pop();
-          const dir = parts.join("/");
-          if (dir) setDestinationPath(dir);
-          if (file) setFileName(file);
-        } else {
-          setDestinationPath(selected);
-        }
-      }
-    } catch (err) {
-      notify("Failed to choose folder: " + err.message, "error");
-    }
   };
 
   const handleBrowseImport = async () => {

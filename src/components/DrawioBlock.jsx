@@ -50,7 +50,7 @@ export function DrawioBlock({ imagePath, diagramId, documentPath, onUpdate, onNo
     return () => {
       cancelled = true;
     };
-  }, [diagramId, imagePath]);
+  }, [diagramId, documentPath, imagePath]);
 
   const handleDownload = async () => {
     if (!thumbnail) return;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -6,9 +6,7 @@ import {
   useNodesState,
   useEdgesState,
   Handle,
-  Position,
-  ReactFlowProvider,
-  useReactFlow
+  Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -28,12 +26,7 @@ import {
   Code,
   PanelLeftClose,
   PanelLeftOpen,
-  Maximize2,
-  Compass,
-  Sliders,
-  Sparkles,
-  ChevronRight,
-  ArrowRight
+  Sparkles
 } from 'lucide-react';
 import {
   aiGetGraph,

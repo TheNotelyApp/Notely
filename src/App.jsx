@@ -2,13 +2,9 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { NotebookPen, Terminal, X, CheckCircle2, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { OverlayDialog } from "./components/OverlayDialog";
-import GlobalTooltip from "./components/GlobalTooltip";
 import { applyDocumentListQuery } from "./utils/documentListQuery";
 
 // Heavy / rarely-used surfaces are code-split so they don't bloat startup.
-const MediaTab = lazy(() =>
-  import("./components/MediaTab").then((m) => ({ default: m.MediaTab }))
-);
 const DocumentDetail = lazy(() =>
   import("./components/DocumentDetail").then((m) => ({ default: m.DocumentDetail }))
 );
@@ -36,8 +32,8 @@ const GlobalSearchOverlay = lazy(() =>
 const KeyboardShortcutsModal = lazy(() =>
   import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
 );
-const GitCommitDialog = lazy(() =>
-  import("./components/GitCommitDialog").then((m) => ({ default: m.GitCommitDialog }))
+const AIChatPanel = lazy(() =>
+  import("./components/AIChatPanel").then((m) => ({ default: m.default || m.AIChatPanel }))
 );
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
@@ -69,14 +65,9 @@ import {
   openWorkspaceInEditor,
   revealWorkspaceInExplorer,
   getOnboardingComplete,
-  setOnboardingComplete,
   getNotesRootSetting,
-  setNotesRootSetting,
   gitGetStatus,
-  gitCommit,
   checkForUpdates,
-  aiSetPreferences,
-  aiSetProviderModel,
   onExportRecordAdded,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
@@ -85,7 +76,6 @@ import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
 import { useWorkspaceScopedStorage } from "./hooks/useWorkspaceScopedStorage";
 import { useUIState } from "./contexts/UIStateContext";
-import { setupDemoWorkspace } from "./utils/demoWorkspace";
 
 function getPaletteUsageKey(commandId) {
   const rawId = resolvePaletteCommandId(commandId);
@@ -338,26 +328,23 @@ export default function App() {
     personasPageOpen, setPersonasPageOpen,
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,
-    globalCommitDialogOpen, setGlobalCommitDialogOpen,
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
     trashDialogOpen, setTrashDialogOpen,
     taskWorkspaceOpen, setTaskWorkspaceOpen,
     taskWorkspaceContext, setTaskWorkspaceContext,
     calendarPageOpen, setCalendarPageOpen,
-    onboardingComplete, setOnboardingCompleteState,
-    defaultNotesPath, setDefaultNotesPath,
+    setOnboardingCompleteState,
+    setDefaultNotesPath,
     themePreference, setThemePreferenceState,
     effectiveTheme, setEffectiveTheme,
     zoomFactor, setZoomFactorState,
   } = useUIState();
 
-  const [globalNotePreviewTarget, setGlobalNotePreviewTarget] = useState({ open: false, filePath: null, lineNum: null });
-
   const handlePreviewNote = useCallback((filePath, lineNum = null) => {
     if (!filePath) return;
-    setGlobalNotePreviewTarget({ open: true, filePath, lineNum });
-  }, []);
+    void handleOpenReferencedDocument(filePath, lineNum);
+  }, [handleOpenReferencedDocument]);
 
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -1377,8 +1364,7 @@ export default function App() {
         }
       })
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setDefaultNotesPath, setOnboardingCompleteState]);
 
   useEffect(() => {
     const root = document?.documentElement;
@@ -1663,7 +1649,8 @@ export default function App() {
       }
 
       if (action === "git-commit") {
-        setGlobalCommitDialogOpen(true);
+        setGitVCInitialTab("commit");
+        setGitVCOpen(true);
         return;
       }
 
@@ -2909,64 +2896,6 @@ export default function App() {
     () => getFavoriteDashboardNotes(favoriteNotes, recentDashboardNotes, continueDashboardNotes),
     [favoriteNotes, recentDashboardNotes, continueDashboardNotes]
   );
-
-  const handleOnboardingComplete = async ({ workspacePath, theme, setupDemo, aiEnabled, aiProvider, enableEmbeddings }) => {
-    try {
-      const themeResult = await persistThemePreference(theme);
-      const appliedPreference = ["auto", "light", "dark"].includes(themeResult?.themePreference)
-        ? themeResult.themePreference
-        : theme;
-      const appliedTheme = themeResult?.effectiveTheme === "dark" ? "dark" : "light";
-      setThemePreferenceState(appliedPreference);
-      setEffectiveTheme(appliedTheme);
-
-      // Save AI onboarding preferences
-      try {
-        await aiSetPreferences({
-          aiEnabled: aiEnabled !== false,
-          enableEmbeddings: enableEmbeddings !== false,
-          enablePatternLearning: true,
-          enableRelationshipDiscovery: true,
-          maxTokensPerQuery: 2048,
-          temperature: 0.7
-        });
-        if (aiEnabled && aiProvider) {
-          await aiSetProviderModel(aiProvider, '');
-        }
-        await refreshAIConfiguration();
-      } catch (aiErr) {
-        console.error("Failed to save AI onboarding preferences:", aiErr);
-      }
-
-      if (workspacePath) {
-        await setNotesRootSetting(workspacePath);
-        if (setupDemo) {
-          try {
-            await setupDemoWorkspace(workspacePath);
-          } catch (demoErr) {
-            console.error("Demo setup failed:", demoErr);
-          }
-        }
-        await loadDocumentsData();
-      }
-
-      await setOnboardingComplete(true);
-      setOnboardingCompleteState(true);
-      notify("Onboarding complete! Welcome to Notely.", "success");
-    } catch (err) {
-      notify(err?.message || "Failed to complete onboarding setup.", "error");
-    }
-  };
-
-  const handleResetOnboarding = async () => {
-    try {
-      await setOnboardingComplete(false);
-      setOnboardingCompleteState(false);
-      notify("Onboarding reset. Re-loading flow...", "info");
-    } catch {
-      notify("Failed to reset onboarding.", "error");
-    }
-  };
 
   const aiSidebarComponent = aiPanelVisible && isAIConfigured ? (
     <ErrorBoundary label="AI chat">
