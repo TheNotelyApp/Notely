@@ -9,9 +9,7 @@ export function LandingListControls({
   onSortByChange,
   visibleCount,
   totalCount,
-  visibleFolderCount,
   totalFolderCount,
-  visibleNoteCount,
   totalNoteCount,
 }) {
   return (

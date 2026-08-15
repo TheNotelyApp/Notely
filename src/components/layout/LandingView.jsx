@@ -29,9 +29,7 @@ export function LandingView({
   landingSortMode,
   setLandingSortMode,
   visibleDocuments,
-  visibleFolderCount,
   folderCount,
-  visibleNoteCount,
   noteCount,
   notesViewMode,
   notesDensityMode,
@@ -227,9 +225,7 @@ export function LandingView({
             onSortByChange={setLandingSortMode}
             visibleCount={visibleDocuments.length}
             totalCount={documents.length}
-            visibleFolderCount={visibleFolderCount}
             totalFolderCount={folderCount}
-            visibleNoteCount={visibleNoteCount}
             totalNoteCount={noteCount}
             onCreateNote={() => onDashboardAction("new-note")}
             onReloadWorkspace={onReloadWorkspace}

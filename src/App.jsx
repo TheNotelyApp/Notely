@@ -3085,9 +3085,7 @@ export default function App() {
             landingSortMode={landingSortMode}
             setLandingSortMode={setLandingSortMode}
             visibleDocuments={visibleDocuments}
-            visibleFolderCount={visibleFolderCount}
             folderCount={folderCount}
-            visibleNoteCount={visibleNoteCount}
             noteCount={noteCount}
             notesViewMode={notesViewMode}
             density={notesDensityMode}
