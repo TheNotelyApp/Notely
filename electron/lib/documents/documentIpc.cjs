@@ -46,7 +46,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       if (watchedPath === resolved) {
         try {
           fs.unwatchFile(watchedPath);
-          console.log(`[Watcher] Stopped watch on: "${watchedPath}"`);
         } catch (e) {
           console.error("[Watcher] Unwatch error:", e);
         }
@@ -55,7 +54,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     } else if (watchedPath) {
       try {
         fs.unwatchFile(watchedPath);
-        console.log(`[Watcher] Stopped watch on: "${watchedPath}"`);
       } catch (e) {
         console.error("[Watcher] Unwatch error:", e);
       }
@@ -66,20 +64,16 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   function startWatching(filePath, webContents) {
     stopWatching();
     watchedPath = path.resolve(filePath);
-    console.log(`[Watcher] Starting poll watch on: "${watchedPath}"`);
 
     try {
       fs.watchFile(watchedPath, { interval: 500 }, (curr, prev) => {
         if (curr.mtimeMs !== prev.mtimeMs) {
-          console.log(`[Watcher] File mod time changed: ${prev.mtime} -> ${curr.mtime}`);
           try {
             if (fs.existsSync(watchedPath)) {
               const content = fs.readFileSync(watchedPath, "utf8");
               const currentHash = hashContent(content);
               const knownHash = lastAppHashes.get(watchedPath);
-              console.log(`[Watcher] File hash check: current="${currentHash}", known="${knownHash}"`);
               if (knownHash && currentHash !== knownHash) {
-                console.log(`[Watcher] Hash mismatch detected! Sending notification for: "${watchedPath}"`);
                 if (webContents && !webContents.isDestroyed()) {
                   webContents.send("document:changed-on-disk", { filePath: watchedPath });
                 }

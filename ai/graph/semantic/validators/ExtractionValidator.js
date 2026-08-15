@@ -119,7 +119,7 @@ class ExtractionValidator {
       warningsCount: decisions.warnings.length
     };
 
-    log.info('ExtractionValidator validation pass completed:', decisions.telemetry);
+    log.debug('ExtractionValidator validation pass completed:', decisions.telemetry);
     return decisions;
   }
 }

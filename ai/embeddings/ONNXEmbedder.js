@@ -5,13 +5,50 @@ const { createLogger } = require('../core/logger');
 const log = createLogger('ONNXEmbedder');
 
 class ONNXEmbedder {
-  constructor(appDataDir) {
+  constructor(appDataDir, idleTimeoutMs = 5 * 60 * 1000) {
     this.modelDir = path.join(appDataDir, 'notely', 'ai-model');
     this.session = null;
     this.tokenizer = null;
     this.isLoaded = false;
     this.ort = null;
     this.isInitialized = false;
+    this.idleTimeoutMs = idleTimeoutMs;
+    this.idleTimer = null;
+    this.activeRequests = 0;
+  }
+
+  resetIdleTimer() {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    if (this.idleTimeoutMs > 0 && this.isLoaded && this.activeRequests === 0) {
+      this.idleTimer = setTimeout(() => {
+        this.unload().catch(err => log.error('Failed to idle unload ONNX session', err));
+      }, this.idleTimeoutMs);
+    }
+  }
+
+  async unload() {
+    if (this.activeRequests > 0) {
+      this.resetIdleTimer();
+      return;
+    }
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    if (this.session) {
+      try {
+        if (typeof this.session.release === 'function') {
+          await this.session.release().catch(() => {});
+        }
+      } catch { /* ignore session release error */ }
+      this.session = null;
+    }
+    this.vocab = null;
+    this.isLoaded = false;
+    log.info('ONNX embedding model unloaded from memory due to idle timeout.');
   }
 
   async load() {
@@ -39,6 +76,7 @@ class ONNXEmbedder {
       this.vocab = fs.readFileSync(vocabPath, 'utf8').split('\n');
       this.isLoaded = true;
       this.isInitialized = true;
+      this.resetIdleTimer();
       log.info('ONNX embedding model loaded successfully.');
     } catch (err) {
       this.isInitialized = false;
@@ -68,11 +106,17 @@ class ONNXEmbedder {
    * @returns {Promise<Array<number>>}
    */
   async generateEmbedding(text) {
-    if (!this.isLoaded) {
-      await this.load();
+    this.activeRequests++;
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
     }
 
     try {
+      if (!this.isLoaded || !this.session) {
+        await this.load();
+      }
+
       const tokens = this.tokenize(text);
       const inputIds = new BigInt64Array(tokens.map(t => BigInt(t)));
       const attentionMask = new BigInt64Array(tokens.map(() => 1n));
@@ -109,6 +153,9 @@ class ONNXEmbedder {
     } catch (err) {
       log.error('Embedding generation failed', err);
       throw err;
+    } finally {
+      this.activeRequests = Math.max(0, this.activeRequests - 1);
+      this.resetIdleTimer();
     }
   }
 

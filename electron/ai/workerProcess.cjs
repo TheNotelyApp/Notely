@@ -26,6 +26,7 @@ function scanMarkdownFiles(dir) {
 let embeddingDb = null;
 let indexWorker = null;
 let queue = null;
+let localEmbedder = null;
 
 let graphDb = null;
 let graphQueue = null;
@@ -49,7 +50,7 @@ if (process.parentPort) {
 
         queue = new IndexQueue(embeddingDb);
 
-        const localEmbedder = new ONNXEmbedder(appDataDir);
+        localEmbedder = new ONNXEmbedder(appDataDir);
         await localEmbedder.load().catch(() => {});
 
         const activeModelName = localEmbedder.model || localEmbedder.name || 'local-bge-small';
@@ -250,6 +251,10 @@ if (process.parentPort) {
             pipeline.isInitialized = false;
             await pipeline.load().catch(() => {});
           }
+        }
+      } else if (type === 'unloadModel') {
+        if (localEmbedder && typeof localEmbedder.unload === 'function') {
+          await localEmbedder.unload().catch(() => {});
         }
       } else if (type === 'shutdown') {
         if (indexWorker) indexWorker.pause();

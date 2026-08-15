@@ -20,13 +20,17 @@ class GraphMaintenance {
    */
   async runMaintenance() {
     if (!this.graphDb?.db) return { purgedOrphans: 0, decayedEdges: 0 };
-    log.info('Starting background GraphMaintenance run...');
+    log.debug('Starting background GraphMaintenance run...');
 
     const purgedOrphans = this.purgeOrphans();
     const decayedEdges = this.decayStaleEdges();
     const mergedAliases = this.deduplicateAliases();
 
-    log.info(`GraphMaintenance finished: Purged ${purgedOrphans} orphans, decayed ${decayedEdges} edges, merged ${mergedAliases} aliases.`);
+    if (purgedOrphans > 0 || decayedEdges > 0 || mergedAliases > 0) {
+      log.info(`GraphMaintenance finished: Purged ${purgedOrphans} orphans, decayed ${decayedEdges} edges, merged ${mergedAliases} aliases.`);
+    } else {
+      log.debug('GraphMaintenance finished with 0 modifications.');
+    }
     return { purgedOrphans, decayedEdges, mergedAliases };
   }
 

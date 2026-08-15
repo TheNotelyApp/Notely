@@ -18,23 +18,12 @@ const WorkspaceActivityPanel = lazy(() =>
 const ConflictResolutionPanel = lazy(() =>
   import("./components/ConflictResolutionPanel").then((m) => ({ default: m.ConflictResolutionPanel }))
 );
-const AIChatPanel = lazy(() => import("./components/AIChatPanel"));
-const KnowledgeGraph = lazy(() => import("./components/KnowledgeGraph"));
-const EmbeddingsPage = lazy(() => import("./components/EmbeddingsPage"));
-const AIPersonasManager = lazy(() => import("./components/AIPersonasManager"));
-const AIHealthPage = lazy(() => import("./components/AIHealthPage"));
-const AppLogsPage = lazy(() => import("./components/AppLogsPage"));
-const TaskWorkspacePage = lazy(() => import("./components/TaskWorkspacePage").then((m) => ({ default: m.TaskWorkspacePage })));
-const CalendarPage = lazy(() => import("./components/CalendarPage").then((m) => ({ default: m.CalendarPage })));
-const DownloadsPage = lazy(() => import("./components/DownloadsPage").then((m) => ({ default: m.DownloadsPage })));
-
-
-
+import { AppSubpageViews } from "./components/layout/AppSubpageViews";
+import { AppModalsContainer } from "./components/modals/AppModalsContainer";
 import { SettingsModal } from "./components/SettingsModal";
 import { WorkspaceModal } from "./components/WorkspaceModal";
 import { LandingView } from "./components/layout/LandingView";
 import { TitleBar } from "./components/layout/TitleBar";
-import { TrashDialog } from "./components/TrashDialog";
 const EmbeddedTerminal = lazy(() =>
   import("./components/EmbeddedTerminal").then((m) => ({ default: m.EmbeddedTerminal }))
 );
@@ -47,37 +36,18 @@ const GlobalSearchOverlay = lazy(() =>
 const KeyboardShortcutsModal = lazy(() =>
   import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
 );
-const GitVersionControlPage = lazy(() =>
-  import("./components/GitVersionControlPage").then((m) => ({ default: m.GitVersionControlPage }))
-);
 const GitCommitDialog = lazy(() =>
   import("./components/GitCommitDialog").then((m) => ({ default: m.GitCommitDialog }))
 );
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
-import NotePreviewModal from "./components/NotePreviewModal";
-
 
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
 );
-const MarkdownGuideModal = lazy(() =>
-  import("./components/MarkdownGuideModal").then((m) => ({ default: m.MarkdownGuideModal }))
-);
-const AboutModal = lazy(() =>
-  import("./components/AboutModal").then((m) => ({ default: m.AboutModal }))
-);
-const FeedbackModal = lazy(() =>
-  import("./components/FeedbackModal").then((m) => ({ default: m.FeedbackModal }))
-);
-const HelpConfirmationModal = lazy(() =>
-  import("./components/HelpConfirmationModal").then((m) => ({ default: m.HelpConfirmationModal }))
-);
 const WorkspaceExportDialog = lazy(() =>
   import("./components/WorkspaceExportDialog").then((m) => ({ default: m.WorkspaceExportDialog }))
 );
-const DictionaryModal = lazy(() => import("./components/DictionaryModal"));
-const ExportImportModal = lazy(() => import("./components/ExportImportModal"));
 import {
   onMenuAction,
   notifyBootReady,
@@ -109,13 +79,11 @@ import {
   aiSetProviderModel,
   onExportRecordAdded,
 } from "./services/electronService";
-import UpdateModal from "./components/UpdateModal";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
 import { useWorkspaceScopedStorage } from "./hooks/useWorkspaceScopedStorage";
-import { OnboardingFlow } from "./components/OnboardingFlow";
 import { useUIState } from "./contexts/UIStateContext";
 import { setupDemoWorkspace } from "./utils/demoWorkspace";
 
@@ -3806,295 +3774,72 @@ export default function App() {
 
 
 
-      {markdownGuideOpen ? (
-        <Suspense fallback={null}>
-          <MarkdownGuideModal
-            open={markdownGuideOpen}
-            onClose={() => setMarkdownGuideOpen(false)}
-          />
-        </Suspense>
-      ) : null}
-
-      {dictionaryOpen ? (
-        <Suspense fallback={null}>
-          <DictionaryModal
-            open={dictionaryOpen}
-            onClose={() => setDictionaryOpen(false)}
-            ignoredSpellingWords={ignoredSpellingWords}
-            onAddWord={handleAddDictionaryWord}
-            onRemoveWord={handleRemoveDictionaryWord}
-          />
-        </Suspense>
-      ) : null}
-
-      {trashDialogOpen ? (
-        <TrashDialog
-          isOpen={trashDialogOpen}
-          onClose={() => setTrashDialogOpen(false)}
-          onRestored={loadDocumentsData}
-        />
-      ) : null}
-
-      {aboutOpen ? (
-        <Suspense fallback={<div className="lazy-loading">Loading about…</div>}>
-          <AboutModal
-            open={aboutOpen}
-            onClose={() => setAboutOpen(false)}
-            appInfo={appInfo}
-          />
-        </Suspense>
-      ) : null}
-
-      {feedbackOpen ? (
-        <Suspense fallback={null}>
-          <FeedbackModal
-            open={feedbackOpen}
-            onClose={() => setFeedbackOpen(false)}
-            themePreference={themePreference}
-          />
-        </Suspense>
-      ) : null}
-
-      {landingAssetsOpen ? (
-        <OverlayDialog open={landingAssetsOpen} onClose={() => setLandingAssetsOpen(false)} ariaLabel="Assets" cardClassName="assets-dialog-card">
-          <div className="overlay-dialog-header assets-dialog-header">
-            <div className="assets-dialog-title-group">
-              <h2>Assets Library</h2>
-              <p>Browse assets in this workspace folder.</p>
-            </div>
-            <button
-              className="icon-button assets-close-button"
-              onClick={() => setLandingAssetsOpen(false)}
-              type="button"
-              aria-label="Close assets dialog"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="assets-dialog-body">
-            <Suspense fallback={<div className="lazy-loading">Loading media…</div>}>
-              <MediaTab
-                content=""
-                basePath={`${(landingFolderPath || (current?.filePath ? current.filePath.split(/[\\/]/).slice(0, -1).join("/") : "") || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
-                onNotify={notify}
-                onOpenDocument={handleOpenReferencedDocumentFromUI}
-              />
-            </Suspense>
-          </div>
-        </OverlayDialog>
-      ) : null}
-
-      {showUpdateModal ? (
-        <UpdateModal
-          isOpen={showUpdateModal}
-          onClose={() => setShowUpdateModal(false)}
-          status={updateStatus}
-          details={updateDetails}
-        />
-      ) : null}
-
-      {helpConfirmationOpen ? (
-        <Suspense fallback={null}>
-          <HelpConfirmationModal
-            open={helpConfirmationOpen}
-            onClose={() => setHelpConfirmationOpen(false)}
-          />
-        </Suspense>
-      ) : null}
-
-      {exportImportOpen && (
-        <Suspense fallback={null}>
-          <ExportImportModal
-            isOpen={exportImportOpen}
-            mode={exportImportMode}
-            onClose={() => setExportImportOpen(false)}
-            notify={notify}
-            reloadDocuments={loadDocumentsData}
-          />
-        </Suspense>
-      )}
-
-      {!onboardingComplete && (
-        <OnboardingFlow
-          onComplete={handleOnboardingComplete}
-          defaultNotesPath={defaultNotesPath}
-          themePreference={themePreference}
-          onThemeChange={(theme) => {
-            const isDark = theme === "dark" || (theme === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-            setEffectiveTheme(isDark ? "dark" : "light");
-            setThemePreferenceState(theme);
-          }}
-          appInfo={appInfo}
-          canClose={Boolean(notesFolderPath)}
-        />
-      )}
-
-      {!appInfo.isPackaged && (
-        <button
-          type="button"
-          onClick={handleResetOnboarding}
-          style={{
-            position: "fixed",
-            bottom: "32px",
-            left: "12px",
-            zIndex: 10000,
-            background: "var(--status-danger-bg)",
-            color: "var(--status-danger-text)",
-            border: "1px solid var(--status-danger-border)",
-            padding: "var(--space-2) var(--space-4)",
-            borderRadius: "var(--radius-sm)",
-            cursor: "pointer",
-            fontSize: "var(--font-size-caption)",
-            fontWeight: "bold",
-            boxShadow: "var(--shadow-md)"
-          }}
-        >
-          Dev: Reset Onboarding
-        </button>
-      )}
-
-      {gitVCOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
-            <GitVersionControlPage
-              workspacePath={notesFolderPath}
-              onBack={() => setGitVCOpen(false)}
-              onNotify={notify}
-              onGitStateChange={handleGitStateChange}
-              currentFilePath={current?.filePath}
-              initialTab={gitVCInitialTab}
-              documents={documents}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {globalCommitDialogOpen && (
-        <Suspense fallback={null}>
-          <GitCommitDialog
-            open={globalCommitDialogOpen}
-            onClose={() => setGlobalCommitDialogOpen(false)}
-            onCommit={async (payload) => {
-              const result = await gitCommit({ workspacePath: notesFolderPath, ...payload });
-              if (!result?.ok) throw new Error(result?.error || "Commit failed.");
-              notify("Committed successfully.", "success");
-              void refreshGitWorkspaceMeta();
-            }}
-            stagedFiles={gitWorkspaceMeta.files || []}
-            workspacePath={notesFolderPath}
-            currentFilePath={current?.filePath}
-          />
-        </Suspense>
-      )}
-
-      {graphPanelOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Knowledge Graph…</div>}>
-            <KnowledgeGraph
-              onBack={() => setGraphPanelOpen(false)}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {embeddingsPageOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Embeddings Engine…</div>}>
-            <EmbeddingsPage
-              onBack={() => setEmbeddingsPageOpen(false)}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {personasPageOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Personas…</div>}>
-            <AIPersonasManager
-              onBack={() => setPersonasPageOpen(false)}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {healthPageOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
-            <AIHealthPage
-              onBack={() => setHealthPageOpen(false)}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {appLogsOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading System & Application Logs…</div>}>
-            <AppLogsPage
-              onBack={() => setAppLogsOpen(false)}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {taskWorkspaceOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Task Workspace…</div>}>
-            <TaskWorkspacePage
-              onBack={() => setTaskWorkspaceOpen(false)}
-              onOpenNote={(filePath) => {
-                setTaskWorkspaceOpen(false);
-                void handleOpenReferencedDocument(filePath);
-              }}
-              noteFilter={taskWorkspaceContext?.noteFilter ?? null}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {calendarPageOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Calendar…</div>}>
-            <CalendarPage
-              onBack={() => setCalendarPageOpen(false)}
-              onOpenNote={(filePath) => {
-                setCalendarPageOpen(false);
-                void handleOpenReferencedDocument(filePath);
-              }}
-              onOpenTask={(task) => {
-                setCalendarPageOpen(false);
-                setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
-                setTaskWorkspaceOpen(true);
-              }}
-            />
-          </Suspense>
-        </div>
-      )}
-
-      {downloadsPageOpen && (
-        <div style={{ position: "fixed", top: "32px", right: 0, bottom: "28px", left: 0, zIndex: 1000, display: "flex", flexDirection: "column", background: "var(--app-bg)", color: "var(--app-text)" }}>
-          <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
-            <DownloadsPage
-              onBack={() => setDownloadsPageOpen(false)}
-            />
-          </Suspense>
-        </div>
-      )}
-
-
-
-      </div>
-      <NotePreviewModal
-        open={globalNotePreviewTarget.open}
-        filePath={globalNotePreviewTarget.filePath}
-        lineNum={globalNotePreviewTarget.lineNum}
-        onClose={() => setGlobalNotePreviewTarget({ open: false, filePath: null, lineNum: null })}
-        onOpenDocument={(path, line) => {
-          handleOpenReferencedDocumentFromUI(path, line);
-          setGlobalNotePreviewTarget({ open: false, filePath: null, lineNum: null });
-        }}
+      <AppSubpageViews
+        gitVCOpen={gitVCOpen}
+        setGitVCOpen={setGitVCOpen}
+        notesFolderPath={notesFolderPath}
+        notify={notify}
+        handleGitStateChange={handleGitStateChange}
+        current={current}
+        gitVCInitialTab={gitVCInitialTab}
+        documents={documents}
+        graphPanelOpen={graphPanelOpen}
+        setGraphPanelOpen={setGraphPanelOpen}
+        embeddingsPageOpen={embeddingsPageOpen}
+        setEmbeddingsPageOpen={setEmbeddingsPageOpen}
+        personasPageOpen={personasPageOpen}
+        setPersonasPageOpen={setPersonasPageOpen}
+        healthPageOpen={healthPageOpen}
+        setHealthPageOpen={setHealthPageOpen}
+        appLogsOpen={appLogsOpen}
+        setAppLogsOpen={setAppLogsOpen}
+        taskWorkspaceOpen={taskWorkspaceOpen}
+        setTaskWorkspaceOpen={setTaskWorkspaceOpen}
+        taskWorkspaceContext={taskWorkspaceContext}
+        setTaskWorkspaceContext={setTaskWorkspaceContext}
+        handleOpenReferencedDocument={handleOpenReferencedDocument}
+        calendarPageOpen={calendarPageOpen}
+        setCalendarPageOpen={setCalendarPageOpen}
+        downloadsPageOpen={downloadsPageOpen}
+        setDownloadsPageOpen={setDownloadsPageOpen}
       />
-      <GlobalTooltip />
+
+      <AppModalsContainer
+        markdownGuideOpen={markdownGuideOpen}
+        setMarkdownGuideOpen={setMarkdownGuideOpen}
+        dictionaryOpen={dictionaryOpen}
+        setDictionaryOpen={setDictionaryOpen}
+        ignoredSpellingWords={ignoredSpellingWords}
+        handleAddDictionaryWord={handleAddDictionaryWord}
+        handleRemoveDictionaryWord={handleRemoveDictionaryWord}
+        trashDialogOpen={trashDialogOpen}
+        setTrashDialogOpen={setTrashDialogOpen}
+        loadDocumentsData={loadDocumentsData}
+        aboutOpen={aboutOpen}
+        setAboutOpen={setAboutOpen}
+        appInfo={appInfo}
+        feedbackOpen={feedbackOpen}
+        setFeedbackOpen={setFeedbackOpen}
+        themePreference={themePreference}
+        landingAssetsOpen={landingAssetsOpen}
+        setLandingAssetsOpen={setLandingAssetsOpen}
+        landingFolderPath={landingFolderPath}
+        current={current}
+        activeProject={activeProject}
+        notesFolderPath={notesFolderPath}
+        notify={notify}
+        handleOpenReferencedDocumentFromUI={handleOpenReferencedDocumentFromUI}
+        showUpdateModal={showUpdateModal}
+        setShowUpdateModal={setShowUpdateModal}
+        updateStatus={updateStatus}
+        updateDetails={updateDetails}
+        helpConfirmationOpen={helpConfirmationOpen}
+        setHelpConfirmationOpen={setHelpConfirmationOpen}
+        exportImportOpen={exportImportOpen}
+        exportImportMode={exportImportMode}
+        setExportImportOpen={setExportImportOpen}
+      />
+      </div>
     </div>
   );
 }

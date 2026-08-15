@@ -164,7 +164,7 @@ class SemanticExtractionEngine {
     if (this.telemetryEvents.length > 100) {
       this.telemetryEvents.shift();
     }
-    log.info('[Telemetry]', JSON.stringify(telemetryObj));
+    log.debug('[Telemetry]', JSON.stringify(telemetryObj));
   }
 
   getRecentTelemetry() {
