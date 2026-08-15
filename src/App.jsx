@@ -341,11 +341,6 @@ export default function App() {
     zoomFactor, setZoomFactorState,
   } = useUIState();
 
-  const handlePreviewNote = useCallback((filePath, lineNum = null) => {
-    if (!filePath) return;
-    void handleOpenReferencedDocument(filePath, lineNum);
-  }, [handleOpenReferencedDocument]);
-
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [exportImportOpen, setExportImportOpen] = useState(false);
@@ -476,6 +471,11 @@ export default function App() {
     initialLine,
     setInitialLine,
   } = useDocumentManager({ notify, onRequireWorkspaceInitialization: handleRequireWorkspaceInitialization });
+
+  const handlePreviewNote = useCallback((filePath, lineNum = null) => {
+    if (!filePath) return;
+    void handleOpenReferencedDocument(filePath, lineNum);
+  }, [handleOpenReferencedDocument]);
 
   const handleCopyLinkPath = useCallback((target) => {
     const filePath = typeof target === "object" ? target?.filePath : target;
