@@ -5,6 +5,9 @@ export const editorTheme = EditorView.theme({
     height: "100%",
     backgroundColor: "transparent",
   },
+  "&.cm-focused": {
+    outline: "none !important",
+  },
   ".cm-scroller": {
     overflow: "auto",
     fontFamily: '"Cascadia Code", Consolas, ui-monospace, monospace',
