@@ -3011,9 +3011,6 @@ export default function App() {
             </button>
           </div>
           <div className="terminal-status-right" aria-label="Terminal metadata">
-            <span className="terminal-meta-pill" data-tooltip="Current workspace scope">
-              {activeProject?.isRoot ? "Root" : activeProject?.name || "Project"}
-            </span>
             <GitStatusBar
               gitState={{
                 gitAvailable: gitWorkspaceMeta.isGitRoot || gitWorkspaceMeta.branch !== "",
@@ -3027,36 +3024,23 @@ export default function App() {
             <AIStatusBar onClick={() => setAiSettingsOpen(true)} />
             {current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
-                <span className="terminal-meta-pill" data-tooltip="Editor mode and active tab">
-                  {mode === "split" ? "Split" : mode === "preview" ? "Preview" : "Edit"} | {activeTab === "raw" ? "Raw" : "Formal"}
-                </span>
-                <span className={`terminal-meta-pill ${dirty ? "warn" : ""}`} data-tooltip="Document save status">
-                  {dirty ? "Unsaved" : "Saved"}
-                </span>
                 {documentStats ? (
-                  <>
-                    <span className="terminal-meta-pill" data-tooltip="Word count for active tab">
-                      {documentStats.wordCount} words
-                    </span>
-                    <span className="terminal-meta-pill" data-tooltip="Line count for active tab">
-                      {documentStats.lineCount} lines
-                    </span>
-                    <span className="terminal-meta-pill" data-tooltip="Estimated reading time">
-                      ~{documentStats.readMinutes} min read
-                    </span>
-                    <span className="terminal-meta-pill" data-tooltip="Graph database edges for this note">
-                      {noteAIStats.edgeCount} edges
-                    </span>
-                    <span className="terminal-meta-pill" data-tooltip="Embedding database chunks for this note">
-                      {noteAIStats.chunkCount} chunks
-                    </span>
-                  </>
+                  <span
+                    className="terminal-meta-pill"
+                    data-tooltip={`Words: ${documentStats.wordCount} | Lines: ${documentStats.lineCount} | Chars: ${documentStats.charCount || (documentStats.wordCount * 5)} | ~${documentStats.readMinutes} min read`}
+                  >
+                    ~{documentStats.readMinutes} min read · {documentStats.lineCount} lines
+                  </span>
+                ) : null}
+                {noteAIStats && (noteAIStats.edgeCount > 0 || noteAIStats.chunkCount > 0) ? (
+                  <span
+                    className="terminal-meta-pill"
+                    data-tooltip={`Graph database: ${noteAIStats.edgeCount} edges | Embeddings: ${noteAIStats.chunkCount} chunks`}
+                  >
+                    AI: {noteAIStats.edgeCount} edges · {noteAIStats.chunkCount} chunks
+                  </span>
                 ) : null}
               </>
-            ) : !current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
-              <span className="terminal-meta-pill" data-tooltip="Total note files in current view">
-                {(documents || []).filter(d => d && d.entryType !== 'folder' && !d.isDirectory).length} notes
-              </span>
             ) : null}
           </div>
         </div>

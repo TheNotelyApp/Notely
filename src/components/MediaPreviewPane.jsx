@@ -13,7 +13,7 @@ import {
   getImageFileSize,
   formatFileSize,
 } from "../utils/imageProcessingUtils";
-import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, runExport, saveToDownloads } from "../services/electronService";
+import { readImage, replaceImage, getImageAnnotation, setImageAnnotation, getImageOriginalStatus, restoreImageOriginal, openMediaInDefaultApp, runExport } from "../services/electronService";
 import "../styles/mediaPreview.css";
 
 // Initialize the pdf.js worker once via a Vite-bundled module worker so it
@@ -225,41 +225,6 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
     }
 
     return await readImage(basePath, mediaPath);
-  };
-
-  const handleDownloadImage = async () => {
-    try {
-      const fullImage = await readFullImage();
-      const rawName = String(fileName || mediaPath || "image.png").replace(/\\/g, "/");
-      const name = rawName.split("/").pop() || "image.png";
-      const downloadSrc = fullImage || displayedImage || resolvedPath || mediaPath;
-      if (!downloadSrc) return;
-
-      let dataUrl;
-      let srcPath;
-
-      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
-        dataUrl = downloadSrc;
-      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("blob:") || downloadSrc.startsWith("http"))) {
-        const resp = await fetch(downloadSrc);
-        const blob = await resp.blob();
-        dataUrl = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(blob);
-        });
-      } else if (resolvedPath || mediaPath) {
-        srcPath = resolvedPath || mediaPath;
-      }
-
-      await saveToDownloads({
-        dataUrl,
-        srcPath,
-        filename: name,
-      });
-    } catch (err) {
-      console.error("[MediaPreviewPane] Download image error:", err);
-    }
   };
 
   const handleDownloadMedia = async () => {
@@ -684,14 +649,6 @@ export function MediaPreviewPane({ mediaPath, mediaType, basePath, showOriginalI
                     <span>{restoringOriginal ? "Restoring..." : "Restore Original"}</span>
                   </button>
                 ) : null}
-                <button
-                  className="image-action-button icon-only"
-                  onClick={handleDownloadImage}
-                  data-tooltip="Download image"
-                  aria-label="Download image"
-                >
-                  <Download size={14} />
-                </button>
               </div>
             </div>
 

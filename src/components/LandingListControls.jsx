@@ -1,4 +1,3 @@
-import { FileText, Folder } from "lucide-react";
 import AppSelect from "./AppSelect";
 
 export function LandingListControls({
@@ -60,32 +59,12 @@ export function LandingListControls({
           {visibleCount !== totalCount ? (
             <>Showing <strong>{visibleCount}</strong> of <strong>{totalCount}</strong> items</>
           ) : (
-            <><strong>{totalCount}</strong> items</>
+            <>
+              <strong>{totalFolderCount}</strong> {totalFolderCount === 1 ? "folder" : "folders"}
+              <span className="landing-list-count-separator" style={{ margin: "0 6px" }}>·</span>
+              <strong>{totalNoteCount}</strong> {totalNoteCount === 1 ? "note" : "notes"}
+            </>
           )}
-        </span>
-        <span className="landing-list-count-separator" aria-hidden="true">|</span>
-        <span className="landing-list-count-item landing-list-count-icon-item">
-          <Folder size={14} aria-hidden="true" />
-          {visibleFolderCount !== totalFolderCount ? (
-            <>
-              <strong>{visibleFolderCount}</strong>
-              <span>/</span>
-            </>
-          ) : null}
-          <span>{totalFolderCount}</span>
-          <em>Folders</em>
-        </span>
-        <span className="landing-list-count-separator" aria-hidden="true">|</span>
-        <span className="landing-list-count-item landing-list-count-icon-item">
-          <FileText size={14} aria-hidden="true" />
-          {visibleNoteCount !== totalNoteCount ? (
-            <>
-              <strong>{visibleNoteCount}</strong>
-              <span>/</span>
-            </>
-          ) : null}
-          <span>{totalNoteCount}</span>
-          <em>Notes</em>
         </span>
       </div>
     </div>
