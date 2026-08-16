@@ -129,16 +129,19 @@ class SemanticExtractionEngine {
       ? parseFloat((confidences.reduce((a, b) => a + b, 0) / confidences.length).toFixed(3))
       : 0.0;
 
+    const cleanEntities = validation.sanitizedEntities || rawResult.entities;
+    const cleanRelations = validation.sanitizedRelations || rawResult.relations;
+
     const finalResult = new ExtractionResult({
-      entities: rawResult.entities,
-      relations: rawResult.relations,
+      entities: cleanEntities,
+      relations: cleanRelations,
       evidence: rawResult.evidence,
       metadata: {
         event: 'semantic_extraction_completed',
         docId,
         model: adapter.modelId || this.config.model,
-        entities: rawResult.entities.length,
-        relations: rawResult.relations.length,
+        entities: cleanEntities.length,
+        relations: cleanRelations.length,
         evidenceCount: rawResult.evidence.length,
         durationMs,
         avgConfidence,
@@ -161,7 +164,7 @@ class SemanticExtractionEngine {
     if (this.telemetryEvents.length > 100) {
       this.telemetryEvents.shift();
     }
-    log.info('[Telemetry]', JSON.stringify(telemetryObj));
+    log.debug('[Telemetry]', JSON.stringify(telemetryObj));
   }
 
   getRecentTelemetry() {

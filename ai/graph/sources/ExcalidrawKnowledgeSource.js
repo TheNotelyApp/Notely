@@ -20,9 +20,27 @@ class ExcalidrawKnowledgeSource extends KnowledgeSource {
     return 0.90;
   }
 
+  supports(filePath) {
+    return typeof filePath === 'string' && filePath.endsWith('.excalidraw');
+  }
+
   discover(workspaceRoot) {
     if (!workspaceRoot || !fs.existsSync(workspaceRoot)) return [];
     const files = [];
+
+    // 1. Check .notes-app/excali-diagrams
+    const excaliAppDir = path.join(workspaceRoot, '.notes-app', 'excali-diagrams');
+    if (fs.existsSync(excaliAppDir)) {
+      try {
+        const subdirs = fs.readdirSync(excaliAppDir, { withFileTypes: true });
+        for (const sub of subdirs) {
+          if (sub.isDirectory()) {
+            const diagFile = path.join(excaliAppDir, sub.name, 'diagram.excalidraw');
+            if (fs.existsSync(diagFile)) files.push(diagFile);
+          }
+        }
+      } catch { /* ignore */ }
+    }
 
     const scan = (dir) => {
       const base = path.basename(dir);
@@ -42,7 +60,7 @@ class ExcalidrawKnowledgeSource extends KnowledgeSource {
     };
 
     scan(workspaceRoot);
-    return files;
+    return Array.from(new Set(files));
   }
 
   async extractEntities(filePath) {

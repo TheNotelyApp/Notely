@@ -123,6 +123,8 @@ class GraphBuilder {
                 ? this.graphService.entityResolver.generateEntityId(rel.target_name, rel.target_type || 'Entity')
                 : `ent-${item.source.sourceType()}-${String(rel.target_name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
               if (srcId !== tgtId) {
+                this.graphDb.upsertEntity({ id: srcId, name: rel.source_name, canonical_name: rel.source_name, type: rel.source_type || 'Entity' });
+                this.graphDb.upsertEntity({ id: tgtId, name: rel.target_name, canonical_name: rel.target_name, type: rel.target_type || 'Entity' });
                 this.graphDb.upsertRelationship({ source_id: srcId, target_id: tgtId, type: rel.type, weight: rel.weight, confidence: rel.confidence });
               }
             }

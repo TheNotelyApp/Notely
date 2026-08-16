@@ -8,7 +8,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
   const [tab, setTab] = useState(mode); // "export" or "import"
   const [availableNotes, setAvailableNotes] = useState([]);
   const [selectedNotes, setSelectedNotes] = useState(new Set());
-  const [destinationPath, setDestinationPath] = useState("");
   const [fileName, setFileName] = useState("");
   const [importFilePath, setImportFilePath] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,11 +22,10 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     setExportPassword("");
     setImportPassword("");
     setRequireImportPassword(false);
-  }, [mode, isOpen]);
+  }, [mode]);
 
   // Reset password fields if import file changes
   useEffect(() => {
-    setImportPassword("");
     setRequireImportPassword(false);
   }, [importFilePath]);
 
@@ -37,7 +35,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     const loadDefaults = async () => {
       try {
         const defaults = await window.notesApi.getNotePackageDefaults();
-        if (defaults?.destinationPath) setDestinationPath(defaults.destinationPath);
         if (defaults?.fileName) setFileName(defaults.fileName);
       } catch {
         // ignore — user can still browse manually
@@ -46,36 +43,54 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
     loadDefaults();
   }, [isOpen]);
 
-  // Load all markdown notes in the workspace for selection
+  // Load all markdown notes in the workspace for selection (including subfolders)
   useEffect(() => {
     if (!isOpen || tab !== "export") return;
 
     const loadNotes = async () => {
       setLoading(true);
       try {
-        const files = [];
-        const visited = new Set();
-        const seenFiles = new Set();
-        const queue = ["ROOT"];
+        let files = [];
 
-        while (queue.length > 0) {
-          const nextFolder = queue.shift();
-          const folderArg = nextFolder === "ROOT" ? undefined : nextFolder;
-          const entries = await window.notesApi.listDocuments(folderArg);
+        // Primary approach: listWorkspaceTaskDocuments gets all workspace markdown notes across subfolders recursively
+        if (typeof window.notesApi?.listWorkspaceTaskDocuments === "function") {
+          const docs = await window.notesApi.listWorkspaceTaskDocuments();
+          if (Array.isArray(docs) && docs.length > 0) {
+            files = docs.filter(
+              (d) =>
+                d?.entryType === "file" &&
+                (d.fileName?.endsWith(".md") || d.filePath?.endsWith(".md"))
+            );
+          }
+        }
 
-          for (const entry of entries || []) {
-            const key = String(entry?.filePath || "").toLowerCase();
-            if (!key) continue;
-            if (entry?.entryType === "folder") {
-              if (visited.has(key)) continue;
-              visited.add(key);
-              queue.push(entry.filePath);
-              continue;
-            }
-            if (seenFiles.has(key)) continue;
-            seenFiles.add(key);
-            if (entry.fileName?.endsWith(".md") || entry.filePath?.endsWith(".md")) {
-              files.push(entry);
+        // Fallback approach: BFS walk using listDocuments with proper folderPath payload
+        if (files.length === 0 && typeof window.notesApi?.listDocuments === "function") {
+          const visited = new Set();
+          const seenFiles = new Set();
+          const queue = ["ROOT"];
+
+          while (queue.length > 0) {
+            const nextFolder = queue.shift();
+            const folderArg = nextFolder === "ROOT" ? undefined : nextFolder;
+            const entries = await window.notesApi.listDocuments(
+              typeof folderArg === "string" ? { folderPath: folderArg } : folderArg
+            );
+
+            for (const entry of entries || []) {
+              const key = String(entry?.filePath || "").toLowerCase();
+              if (!key) continue;
+              if (entry?.entryType === "folder") {
+                if (visited.has(key)) continue;
+                visited.add(key);
+                queue.push(entry.filePath);
+                continue;
+              }
+              if (seenFiles.has(key)) continue;
+              seenFiles.add(key);
+              if (entry.fileName?.endsWith(".md") || entry.filePath?.endsWith(".md")) {
+                files.push(entry);
+              }
             }
           }
         }
@@ -108,28 +123,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
       next.add(filePath);
     }
     setSelectedNotes(next);
-  };
-
-  const handleBrowseExport = async () => {
-    try {
-      const fn = window.notesApi?.selectExportPackageFolder || window.notesApi?.browseExportDestination;
-      const res = await fn?.({ defaultFileName: fileName });
-      if (!res || res.canceled) return;
-      const selected = typeof res === "string" ? res : res.filePath;
-      if (selected) {
-        if (selected.endsWith(".nly") || selected.endsWith(".note")) {
-          const parts = selected.replace(/\\/g, "/").split("/");
-          const file = parts.pop();
-          const dir = parts.join("/");
-          if (dir) setDestinationPath(dir);
-          if (file) setFileName(file);
-        } else {
-          setDestinationPath(selected);
-        }
-      }
-    } catch (err) {
-      notify("Failed to choose folder: " + err.message, "error");
-    }
   };
 
   const handleBrowseImport = async () => {
@@ -288,29 +281,6 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
           </div>
 
           <div className="overlay-dialog-field">
-            <span>Save Location</span>
-            <div className="browse-row">
-              <AppInput
-                type="text"
-                readOnly
-                placeholder="Choose destination path..."
-                value={destinationPath ? `${destinationPath}/${fileName}` : ""}
-                disabled={loading}
-              />
-              <button
-                className="small-button"
-                type="button"
-                onClick={handleBrowseExport}
-                disabled={loading}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
-              >
-                <FolderOpen size={14} />
-                <span>Browse</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="overlay-dialog-field">
             <span>Password (Optional)</span>
             <AppInput
               type="password"
@@ -336,7 +306,7 @@ export function ExportImportModal({ isOpen, mode = "export", onClose, notify, re
               className="primary-button"
               type="button"
               onClick={handleExport}
-              disabled={loading || selectedNotes.size === 0 || !destinationPath}
+              disabled={loading || selectedNotes.size === 0}
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "32px", minHeight: "32px" }}
             >
               <Upload size={14} />

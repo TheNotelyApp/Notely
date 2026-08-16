@@ -9,7 +9,25 @@ import {
   Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Search, RefreshCw, Layers, ShieldAlert, Database, Pause, Play, CheckSquare, Square, Trash2, RotateCw, ExternalLink, FileText, Code } from 'lucide-react';
+import {
+  Search,
+  RefreshCw,
+  Layers,
+  ShieldAlert,
+  Database,
+  Pause,
+  Play,
+  CheckSquare,
+  Square,
+  Trash2,
+  RotateCw,
+  ExternalLink,
+  FileText,
+  Code,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sparkles
+} from 'lucide-react';
 import {
   aiGetGraph,
   aiBuildGraph,
@@ -31,26 +49,104 @@ import * as d3Force from 'd3-force';
 import '../styles/KnowledgeGraph.css';
 
 // Custom Node component
-const CustomNode = ({ data }) => {
+const CustomNode = ({ data, selected }) => {
+  const isHub = (data.degree || 0) >= 5;
+  const typeColor = data.typeColor || { border: '#6366f1', background: 'rgba(99, 102, 241, 0.1)', text: '#6366f1' };
+  const name = data.raw?.name || data.raw?.canonical_name || 'Node';
+
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxSizing: 'border-box'
-    }}>
-      <Handle type="target" position={Position.Top} style={{ background: 'transparent', border: 'none', top: '50%', left: '50%', pointerEvents: 'none' }} />
-      {data.label}
-      <Handle type="source" position={Position.Bottom} style={{ background: 'transparent', border: 'none', top: '50%', left: '50%', pointerEvents: 'none' }} />
+    <div
+      className={`kg-node-pill ${isHub ? 'kg-node-hub' : ''} ${selected ? 'kg-node-selected' : ''}`}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '3px',
+        boxSizing: 'border-box',
+        position: 'relative'
+      }}
+      title={`${name} (${data.raw?.type || 'Entity'}) — ${data.degree || 0} connections`}
+    >
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none', top: '50%', left: '50%' }} />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1.5px', pointerEvents: 'none' }}>
+        <span
+          style={{
+            width: isHub ? '5.5px' : '4px',
+            height: isHub ? '5.5px' : '4px',
+            borderRadius: '50%',
+            background: typeColor.border,
+            display: 'inline-block',
+            boxShadow: `0 0 5px ${typeColor.border}`
+          }}
+        />
+        <span
+          style={{
+            fontSize: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.4px',
+            fontWeight: 800,
+            color: typeColor.border,
+            lineHeight: 1
+          }}
+        >
+          {data.raw?.type || 'Entity'}
+        </span>
+      </div>
+
+      <span
+        style={{
+          fontWeight: 700,
+          fontSize: (data.nodeSize || 50) > 70 ? '10px' : '8px',
+          color: 'var(--text-strong)',
+          textAlign: 'center',
+          lineHeight: 1.15,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          wordBreak: 'break-word',
+          maxWidth: '94%',
+          pointerEvents: 'none'
+        }}
+      >
+        {name}
+      </span>
+
+      {(data.degree || 0) > 0 && (
+        <span
+          className="kg-node-degree-badge"
+          style={{
+            position: 'absolute',
+            bottom: '-4px',
+            right: '-4px',
+            background: 'var(--surface-elevated)',
+            border: `1px solid ${typeColor.border}55`,
+            borderRadius: '8px',
+            padding: '1px 3.5px',
+            fontSize: '6.5px',
+            fontWeight: 800,
+            color: 'var(--text-secondary)',
+            boxShadow: 'var(--shadow-xs)',
+            lineHeight: 1
+          }}
+        >
+          {data.degree}
+        </span>
+      )}
+
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none', top: '50%', left: '50%' }} />
     </div>
   );
 };
 
 const nodeTypes = {
   customNode: CustomNode,
+  default: CustomNode
 };
 
 const TYPE_COLORS = {
@@ -139,6 +235,9 @@ export default function KnowledgeGraph({ onBack }) {
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
 
+  const [showEdgeLabels, setShowEdgeLabels] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [rawRelationships, setRawRelationships] = useState([]);
   const [chargeStrength] = useState(-280);
   const [linkDistance] = useState(150);
   const [collideRadius] = useState(80);
@@ -206,6 +305,7 @@ export default function KnowledgeGraph({ onBack }) {
 
       if (graphRes.success && graphRes.data) {
         const { entities, relationships } = graphRes.data;
+        setRawRelationships(relationships || []);
 
         const degrees = {};
         entities.forEach(e => { degrees[e.id] = 0; });
@@ -251,39 +351,36 @@ export default function KnowledgeGraph({ onBack }) {
         const formattedNodes = forceNodes.map(node => {
           const entity = node.entity;
           const degree = degrees[entity.id] || 0;
-          const nodeSize = Math.max(45, Math.min(90, 45 + degree * 6));
+          const nodeSize = Math.max(48, Math.min(96, 48 + degree * 5.5));
           const typeColors = TYPE_COLORS[entity.type] || DEFAULT_COLOR;
+          const isHub = degree >= 5;
 
           return {
             id: entity.id,
             type: 'default',
             data: {
-              label: (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                  <span style={{ fontSize: '6px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 800, color: typeColors.border }}>{entity.type}</span>
-                  <span style={{ fontWeight: 700, fontSize: nodeSize > 70 ? '10px' : '8px', color: 'var(--text-strong)', textAlign: 'center', margin: '1px 2px 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebKitLineClamp: 2, WebKitBoxOrient: 'vertical' }}>
-                    {entity.name}
-                  </span>
-                </div>
-              ),
               raw: entity,
               degree,
+              nodeSize,
+              typeColor: typeColors,
               relationships: relationships.filter(r => r.source_id === entity.id || r.target_id === entity.id)
             },
             position: { x: node.x, y: node.y },
             style: {
               background: typeColors.background,
-              border: `2px solid ${typeColors.border}`,
-              borderRadius: '8px',
+              border: `1.5px solid ${typeColors.border}`,
+              borderRadius: isHub ? '50%' : '12px',
               width: nodeSize,
               height: nodeSize,
               padding: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: `0 0 12px ${typeColors.border}22, var(--shadow-sm)`,
+              boxShadow: isHub 
+                ? `0 0 16px ${typeColors.border}33, var(--shadow-sm)`
+                : `0 0 8px ${typeColors.border}1a, var(--shadow-xs)`,
               cursor: 'pointer',
-              transition: 'opacity var(--motion-standard), transform var(--motion-standard)'
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
             }
           };
         });
@@ -292,24 +389,26 @@ export default function KnowledgeGraph({ onBack }) {
           const relTypeUpper = String(rel.type || 'RELATION').toUpperCase();
           const relColor = RELATIONSHIP_COLORS[relTypeUpper] || RELATIONSHIP_COLORS.DEFAULT;
           const isMentions = rel.type === 'mentions';
+          const cleanLabel = (rel.type && !isMentions) ? String(rel.type).replace(/_/g, ' ').toLowerCase() : undefined;
 
           return {
             id: `edge-${rel.id}-${rel.source_id}-${rel.target_id}`,
             source: rel.source_id,
             target: rel.target_id,
-            label: isMentions ? undefined : rel.type,
+            rawLabel: cleanLabel,
+            label: cleanLabel,
             type: 'smoothstep',
             style: {
               stroke: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor,
-              strokeWidth: isMentions ? 1.0 : 1.8,
+              strokeWidth: isMentions ? 1.0 : 1.5,
               strokeDasharray: isMentions ? '3 3' : undefined,
               transition: 'opacity var(--motion-standard)'
             },
-            labelStyle: { fill: 'var(--text-strong)', fontSize: 8, fontWeight: 700 },
-            labelBgStyle: { fill: 'var(--surface-bg)', stroke: relColor, strokeWidth: 1, fillOpacity: 0.95 },
-            labelBgPadding: [3, 5],
-            labelBgBorderRadius: 4,
-            markerEnd: { type: 'arrowclosed', color: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor, width: 10, height: 10 },
+            labelStyle: { fill: 'var(--text-muted)', fontSize: 6.5, fontWeight: 600, letterSpacing: '0.2px' },
+            labelBgStyle: { fill: 'var(--surface-bg)', stroke: 'var(--border-default)', strokeWidth: 0.5, fillOpacity: 0.9 },
+            labelBgPadding: [1.5, 3],
+            labelBgBorderRadius: 3,
+            markerEnd: { type: 'arrowclosed', color: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor, width: 8, height: 8 },
             animated: relTypeUpper === 'DEPENDS_ON' || relTypeUpper === 'USES'
           };
         });
@@ -463,6 +562,7 @@ export default function KnowledgeGraph({ onBack }) {
         }
         return {
           ...edge,
+          label: showEdgeLabels ? edge.rawLabel : undefined,
           style: { ...edge.style, opacity },
           labelStyle: { ...edge.labelStyle, opacity },
           labelBgStyle: { ...edge.labelBgStyle, opacity }
@@ -473,7 +573,7 @@ export default function KnowledgeGraph({ onBack }) {
       filteredNodes: visibleNodes.filter(n => n.style.display !== 'none'),
       filteredEdges: visibleEdges
     };
-  }, [nodes, edges, searchQuery, selectedTypes, hoveredNodeId]);
+  }, [nodes, edges, searchQuery, selectedTypes, hoveredNodeId, showEdgeLabels]);
 
   const sizeMB = (graphStatus.sizeBytes / (1024 * 1024)).toFixed(2);
 
@@ -636,7 +736,22 @@ export default function KnowledgeGraph({ onBack }) {
         {/* Main Body */}
         <div className="kg-body">
           {/* Sidebar */}
-          <div className="kg-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
+          <div
+            className="kg-sidebar"
+            style={{
+              width: sidebarOpen ? '280px' : '0px',
+              minWidth: sidebarOpen ? '280px' : '0px',
+              opacity: sidebarOpen ? 1 : 0,
+              pointerEvents: sidebarOpen ? 'auto' : 'none',
+              borderRight: sidebarOpen ? '1px solid var(--border-default)' : 'none',
+              transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0,
+              height: '100%',
+              overflow: 'hidden'
+            }}
+          >
             <div className="kg-sidebar-section-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
               {/* Entity Types Checklist */}
               <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -731,10 +846,21 @@ export default function KnowledgeGraph({ onBack }) {
                   <h4 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
                     Arrow & Colors
                   </h4>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontFamily: 'monospace', background: 'var(--surface-muted)', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--border-soft)', color: 'var(--text-muted)' }}>
-                    <span>Source</span>
-                    <span style={{ color: 'var(--accent-solid)', fontWeight: 'bold' }}>──►</span>
-                    <span>Target</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9px', color: 'var(--text-secondary)', cursor: 'pointer' }} title="Toggle edge relationship text labels on graph">
+                      <input
+                        type="checkbox"
+                        checked={showEdgeLabels}
+                        onChange={(e) => setShowEdgeLabels(e.target.checked)}
+                        style={{ margin: 0, accentColor: 'var(--accent-solid)', cursor: 'pointer', width: '11px', height: '11px' }}
+                      />
+                      <span>Labels</span>
+                    </label>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontFamily: 'monospace', background: 'var(--surface-muted)', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--border-soft)', color: 'var(--text-muted)' }}>
+                      <span>Source</span>
+                      <span style={{ color: 'var(--accent-solid)', fontWeight: 'bold' }}>──►</span>
+                      <span>Target</span>
+                    </div>
                   </div>
                 </div>
 
@@ -799,15 +925,18 @@ export default function KnowledgeGraph({ onBack }) {
 
             {/* Selected Node Inspector */}
             {selectedNode && (
-              <div className="kg-details-card animate-fade-in" style={{ marginTop: '12px' }}>
+              <div className="kg-details-card animate-fade-in" style={{ marginTop: 'auto', borderTop: '1px solid var(--border-default)' }}>
                 <div className="kg-details-head">
-                  <h4>Entity Details</h4>
-                  <button className="kg-details-close" onClick={() => setSelectedNode(null)}>✕</button>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={14} style={{ color: 'var(--accent-solid)' }} />
+                    Entity Inspector
+                  </h4>
+                  <button className="kg-details-close" onClick={() => setSelectedNode(null)} title="Close inspector">✕</button>
                 </div>
                 <div className="kg-details-body">
                   <div className="kg-detail-row">
                     <span className="label">Name</span>
-                    <strong>{selectedNode.name}</strong>
+                    <strong>{selectedNode.name || selectedNode.canonical_name}</strong>
                   </div>
                   <div className="kg-detail-row">
                     <span className="label">Category</span>
@@ -818,13 +947,68 @@ export default function KnowledgeGraph({ onBack }) {
                       fontSize: '10px',
                       padding: '2px 6px',
                       borderRadius: '4px',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      alignSelf: 'flex-start'
                     }}>
                       {selectedNode.type}
                     </span>
                   </div>
+
+                  {/* Connected Neighbors List */}
+                  {(() => {
+                    const connected = rawRelationships.filter(r => r.source_id === selectedNode.id || r.target_id === selectedNode.id);
+                    if (connected.length === 0) return null;
+
+                    return (
+                      <div className="kg-detail-row" style={{ marginTop: '4px' }}>
+                        <span className="label">Connected Neighbors ({connected.length})</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '130px', overflowY: 'auto', paddingRight: '2px' }}>
+                          {connected.map((rel, idx) => {
+                            const isOutgoing = rel.source_id === selectedNode.id;
+                            const otherId = isOutgoing ? rel.target_id : rel.source_id;
+                            const otherNode = nodes.find(n => n.id === otherId)?.data?.raw;
+                            const otherName = otherNode?.name || otherId.replace(/^ent-[^-]+-/, '');
+                            const relUpper = String(rel.type || 'RELATION').toUpperCase();
+                            const relColor = RELATIONSHIP_COLORS[relUpper] || RELATIONSHIP_COLORS.DEFAULT;
+
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  if (otherNode) setSelectedNode(otherNode);
+                                }}
+                                className="kg-neighbor-item"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  background: 'var(--surface-muted)',
+                                  border: '1px solid var(--border-soft)',
+                                  borderRadius: '5px',
+                                  padding: '3px 6px',
+                                  fontSize: '10px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title={`Inspect ${otherName}`}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, overflow: 'hidden' }}>
+                                  <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{isOutgoing ? '→' : '←'}</span>
+                                  <span style={{ fontWeight: 600, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{otherName}</span>
+                                </div>
+                                <span style={{ fontSize: '8px', fontWeight: 700, color: relColor, background: `${relColor}18`, padding: '1px 4px', borderRadius: '3px', whiteSpace: 'nowrap', textTransform: 'lowercase' }}>
+                                  {String(rel.type).replace(/_/g, ' ')}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {selectedNode.note_path && (
-                    <div className="kg-detail-row" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                    <div className="kg-detail-row" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                       <button
                         className="btn btn-primary"
                         onClick={async () => {
@@ -840,7 +1024,7 @@ export default function KnowledgeGraph({ onBack }) {
                             console.error('[KG] Failed to open note:', err);
                           }
                         }}
-                        style={{ width: '100%', padding: '6px 12px', fontSize: '11px', display: 'flex', justifyContent: 'center', height: '32px' }}
+                        style={{ width: '100%', padding: '6px 12px', fontSize: '11px', display: 'flex', justifyContent: 'center', height: '30px' }}
                       >
                         Open Note
                       </button>
@@ -853,6 +1037,53 @@ export default function KnowledgeGraph({ onBack }) {
 
           {/* Full-Height Graph Canvas Viewport */}
           <div className="kg-canvas-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
+            {/* Sidebar toggle button */}
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setSidebarOpen(prev => !prev)}
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                zIndex: 5,
+                width: '32px',
+                height: '32px',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+            </button>
+
+            {/* Quick search match counter pill */}
+            {searchQuery.trim() && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 12,
+                  left: 52,
+                  zIndex: 5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'var(--surface-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: '16px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  color: 'var(--text-strong)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                <Search size={12} style={{ color: 'var(--accent-solid)' }} />
+                <span>Matches: <strong>{filteredNodes.length}</strong> / {nodes.length}</span>
+              </div>
+            )}
+
             {error && (
               <div className="kg-error-overlay">
                 <ShieldAlert size={20} />

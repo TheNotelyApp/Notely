@@ -2782,7 +2782,7 @@
 .dashboard-continue-card {
   width: 100%;
   border: 1px solid #d5e0dc;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   padding: 10px;
   display: grid;

@@ -712,33 +712,35 @@ class GLiNER2RelexAdapter extends ModelAdapter {
                 );
 
                 if (decodedRels.length > 0) {
-                  const bestRel = decodedRels[0];
-                  for (let i = 0; i < sentEnts.length; i++) {
-                    for (let j = 0; j < sentEnts.length; j++) {
-                      if (i === j) continue;
-                      const e1 = sentEnts[i];
-                      const e2 = sentEnts[j];
+                  for (const rel of decodedRels) {
+                    // Match relation to the most appropriate entity pair in the sentence
+                    for (let i = 0; i < sentEnts.length; i++) {
+                      for (let j = i + 1; j < sentEnts.length; j++) {
+                        const e1 = sentEnts[i];
+                        const e2 = sentEnts[j];
 
-                      const ev = new Evidence({
-                        sourceFile: docId || metadata.sourceFile || 'doc',
-                        lineNumber: sentIdx + 1,
-                        paragraphId: `p-${sentIdx + 1}`,
-                        rawSnippet: sent.text,
-                        extractionModel: 'gliner2-relex',
-                        timestamp: new Date().toISOString(),
-                        confidence: bestRel.confidence
-                      });
-                      rawEvidenceList.push(ev);
+                        // Create directed relation from e1 to e2 once per matching pair
+                        const ev = new Evidence({
+                          sourceFile: docId || metadata.sourceFile || 'doc',
+                          lineNumber: sentIdx + 1,
+                          paragraphId: `p-${sentIdx + 1}`,
+                          rawSnippet: sent.text,
+                          extractionModel: 'gliner2-relex',
+                          timestamp: new Date().toISOString(),
+                          confidence: rel.confidence
+                        });
+                        rawEvidenceList.push(ev);
 
-                      extractedRelations.push(new Relationship({
-                        sourceEntityId: e1.id,
-                        targetEntityId: e2.id,
-                        relationType: bestRel.type,
-                        confidence: bestRel.confidence,
-                        sourceEvidence: ev,
-                        sourceText: e1.text,
-                        targetText: e2.text
-                      }));
+                        extractedRelations.push(new Relationship({
+                          sourceEntityId: e1.id,
+                          targetEntityId: e2.id,
+                          relationType: rel.type,
+                          confidence: rel.confidence,
+                          sourceEvidence: ev,
+                          sourceText: e1.text,
+                          targetText: e2.text
+                        }));
+                      }
                     }
                   }
                 }
@@ -752,7 +754,7 @@ class GLiNER2RelexAdapter extends ModelAdapter {
       }
     }
 
-    if (extractedRelations.length === 0 && extractedEntities.length >= 2 && targetRelationTypes.length > 0) {
+    if (this.isMockMode && extractedRelations.length === 0 && extractedEntities.length >= 2 && targetRelationTypes.length > 0) {
       this._mockGenerateRelations(extractedEntities, targetRelationTypes, content, docId, metadata, rawEvidenceList, extractedRelations);
     }
 

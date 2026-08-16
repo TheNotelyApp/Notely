@@ -406,3 +406,90 @@
 .kg-legend-arrow-demo strong {
   color: var(--accent-solid);
 }
+
+/* Micro-badge Edge Label Styling */
+.react-flow__edge-text {
+  font-size: 6.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.2px !important;
+  fill: var(--text-muted) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.react-flow__edge-textbg {
+  fill: var(--surface-bg) !important;
+  stroke: var(--border-default) !important;
+  stroke-width: 0.5px !important;
+  rx: 3px !important;
+  ry: 3px !important;
+  fill-opacity: 0.9 !important;
+}
+
+/* Modern Node Styling */
+.kg-node-pill {
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.18s ease;
+  user-select: none;
+}
+
+.react-flow__node:hover .kg-node-pill {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.kg-node-hub {
+  position: relative;
+}
+
+.kg-node-hub::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--accent-solid);
+  opacity: 0.35;
+  animation: hubRotate 12s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes hubRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.kg-node-selected {
+  outline: 2px solid var(--accent-solid) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 16px var(--accent-solid) !important;
+}
+
+/* Interactive Neighbor List Items in Inspector */
+.kg-neighbor-item:hover {
+  background: var(--surface-bg) !important;
+  border-color: var(--accent-solid) !important;
+  transform: translateX(2px);
+}
+
+/* Polished ReactFlow Canvas Controls */
+.react-flow__controls {
+  box-shadow: var(--shadow-md) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls-button {
+  background: var(--surface-elevated) !important;
+  border-bottom: 1px solid var(--border-soft) !important;
+  color: var(--text-strong) !important;
+  fill: var(--text-strong) !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--surface-muted) !important;
+}

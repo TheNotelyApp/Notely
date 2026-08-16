@@ -349,7 +349,7 @@ export function parseDiagramBlocks(content) {
   const chunks = [];
   const mermaidRegex = /```mermaid\s*([\s\S]*?)```/gi;
   const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
-  const drawioRegex = /!\[(?:Drawio|Draw\.io|draw\.io) Diagram\]\((media\/draw\.io\/([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
+  const drawioRegex = /!\[(?:Drawio|Draw\.io|draw\.io) Diagram\]\(((?:\.notes-app\/drawio-diagrams\/|media\/draw\.io\/)([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
   const positions = [];
   let match;
 

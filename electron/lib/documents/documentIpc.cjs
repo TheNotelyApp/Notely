@@ -1,6 +1,7 @@
 const { BrowserWindow, shell } = require("electron");
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 const { buildWorkspaceGraph } = require("./workspaceGraph.cjs");
+const { transferDocumentWorkspace } = require("../core/noteMover.cjs");
 
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
@@ -46,7 +47,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       if (watchedPath === resolved) {
         try {
           fs.unwatchFile(watchedPath);
-          console.log(`[Watcher] Stopped watch on: "${watchedPath}"`);
         } catch (e) {
           console.error("[Watcher] Unwatch error:", e);
         }
@@ -55,7 +55,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     } else if (watchedPath) {
       try {
         fs.unwatchFile(watchedPath);
-        console.log(`[Watcher] Stopped watch on: "${watchedPath}"`);
       } catch (e) {
         console.error("[Watcher] Unwatch error:", e);
       }
@@ -66,20 +65,16 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   function startWatching(filePath, webContents) {
     stopWatching();
     watchedPath = path.resolve(filePath);
-    console.log(`[Watcher] Starting poll watch on: "${watchedPath}"`);
 
     try {
       fs.watchFile(watchedPath, { interval: 500 }, (curr, prev) => {
         if (curr.mtimeMs !== prev.mtimeMs) {
-          console.log(`[Watcher] File mod time changed: ${prev.mtime} -> ${curr.mtime}`);
           try {
             if (fs.existsSync(watchedPath)) {
               const content = fs.readFileSync(watchedPath, "utf8");
               const currentHash = hashContent(content);
               const knownHash = lastAppHashes.get(watchedPath);
-              console.log(`[Watcher] File hash check: current="${currentHash}", known="${knownHash}"`);
               if (knownHash && currentHash !== knownHash) {
-                console.log(`[Watcher] Hash mismatch detected! Sending notification for: "${watchedPath}"`);
                 if (webContents && !webContents.isDestroyed()) {
                   webContents.send("document:changed-on-disk", { filePath: watchedPath });
                 }
@@ -99,7 +94,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
-    const requestedFolderPath = String(payload?.folderPath || "").trim();
+    const requestedFolderPath = String(
+      (typeof payload === "string" ? payload : payload?.folderPath) || ""
+    ).trim();
     const targetDir = path.resolve(requestedFolderPath || projectRoot);
 
     if (!filePathWithin(projectRoot, targetDir)) {
@@ -171,6 +168,20 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       console.error("[documentIpc] Failed to trigger AI onNoteRename:", aiErr.message);
     }
     return renamed;
+  });
+
+  registerTrustedHandler("notes:transfer-workspace", (_event, payload) => {
+    const result = transferDocumentWorkspace({ getNotesRoot, listProjectsState: deps.listProjectsState }, payload);
+    if (result?.action === "move" && result?.sourceFilePath && result?.targetFilePath) {
+      dashboardCache?.renameEntry?.(result.sourceFilePath, { filePath: result.targetFilePath, title: result.fileName });
+      try {
+        const { aiService } = require("../../../ai/core/AIService.js");
+        aiService.onNoteRename(result.sourceFilePath, result.targetFilePath);
+      } catch (aiErr) {
+        console.error("[documentIpc] Failed to trigger AI onNoteRename on transfer:", aiErr.message);
+      }
+    }
+    return result;
   });
 
   registerTrustedHandler("documents:delete", (_event, payload) => {

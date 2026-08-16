@@ -20,9 +20,39 @@ class DrawioKnowledgeSource extends KnowledgeSource {
     return 0.90;
   }
 
+  supports(filePath) {
+    return typeof filePath === 'string' && (filePath.endsWith('.drawio') || filePath.endsWith('.drawio.xml'));
+  }
+
   discover(workspaceRoot) {
     if (!workspaceRoot || !fs.existsSync(workspaceRoot)) return [];
     const files = [];
+
+    // 1. Check .notes-app/drawio-diagrams
+    const drawioAppDir = path.join(workspaceRoot, '.notes-app', 'drawio-diagrams');
+    if (fs.existsSync(drawioAppDir)) {
+      try {
+        const entries = fs.readdirSync(drawioAppDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isFile() && (entry.name.endsWith('.drawio') || entry.name.endsWith('.drawio.xml'))) {
+            files.push(path.join(drawioAppDir, entry.name));
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    // 2. Check media/draw.io (legacy)
+    const mediaDrawioDir = path.join(workspaceRoot, 'media', 'draw.io');
+    if (fs.existsSync(mediaDrawioDir)) {
+      try {
+        const entries = fs.readdirSync(mediaDrawioDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isFile() && (entry.name.endsWith('.drawio') || entry.name.endsWith('.drawio.xml'))) {
+            files.push(path.join(mediaDrawioDir, entry.name));
+          }
+        }
+      } catch { /* ignore */ }
+    }
 
     const scan = (dir) => {
       const base = path.basename(dir);
@@ -42,7 +72,7 @@ class DrawioKnowledgeSource extends KnowledgeSource {
     };
 
     scan(workspaceRoot);
-    return files;
+    return Array.from(new Set(files));
   }
 
   async extractEntities(filePath) {

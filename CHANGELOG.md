@@ -6,6 +6,11 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ### Added
 
+- Added **Copy and Move Note Between Workspaces and Folders** (`File → Copy Note / Move Note`).
+  - Allows copying or moving notes across workspaces and subfolders directly from top **File** menu submenus (`To Workspace ▶`, `To Folder (Current Workspace) ▶`) or transfer dialog.
+  - Automatically copies/moves embedded local media assets (`media/images/`, `media/uploads/`) and diagrams (`.notes-app/excali-diagrams/`, `.notes-app/drawio-diagrams/`).
+  - Recalculates relative link paths in Markdown text to match target directory depth without breaking image/diagram references in the note or other notes.
+  - Added unit test suite `src/tests/utils/noteMover.test.js` covering workspace transfer, duplicate indexing, subfolder relocation, and relative link path rewriting.
 - Added modular, local-first **AI Platform** overhaul:
   - **Global AI Chat**: Open AI Assistant panel from the left sidebar on the landing screen to search/chat across the entire workspace.
   - **Sourced References**: Render referred notes chips under assistant message bubbles so users can inspect note relevance.

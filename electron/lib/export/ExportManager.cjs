@@ -407,12 +407,14 @@ class ExportManager {
       // 4. Package Draw.io diagrams
       for (const id of allDrawioIds) {
         if (!id) continue;
-        const drawioSrcDir = path.join(notesRoot, "media", "draw.io");
         const drawioDestDir = stagingDrawioDir;
         const filesToCopy = [`${id}.drawio`, `${id}.png`];
         let hasDiagram = false;
         for (const file of filesToCopy) {
-          const srcPath = path.join(drawioSrcDir, file);
+          let srcPath = path.join(notesRoot, ".notes-app", "drawio-diagrams", file);
+          if (!fs.existsSync(srcPath)) {
+            srcPath = path.join(notesRoot, "media", "draw.io", file);
+          }
           const destPath = path.join(drawioDestDir, file);
           if (!fs.existsSync(srcPath)) continue;
           try {

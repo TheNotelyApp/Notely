@@ -1017,7 +1017,7 @@ ipcMain.handle("window:get-menu-structure", (event) => {
   assertTrustedIpcSender(BrowserWindow, event, "window:get-menu-structure");
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return [];
-  const rawTemplate = buildAppMenuTemplate(win, win.__menuContext || {});
+  const rawTemplate = buildAppMenuTemplate(win, win.__menuContext || {}, { listProjectsState });
   
   function serializeMenuTemplate(items) {
     if (!Array.isArray(items)) return [];
@@ -1067,11 +1067,15 @@ ipcMain.handle("window:get-menu-structure", (event) => {
         role: item.role
       };
 
+      if (item.action) {
+        result.action = item.action;
+      }
+
       if (item.submenu) {
         result.submenu = serializeMenuTemplate(item.submenu);
-      } else if (typeof item.click === "function") {
+      } else if (!result.action && typeof item.click === "function") {
         const fnStr = item.click.toString();
-        const match = fnStr.match(/sendMenuAction\(\s*\w+\s*,\s*["']([^"']+)["']\)/);
+        const match = fnStr.match(/sendMenuAction\(\s*\w+\s*,\s*[`"']([^`"']+)[`"']\)/);
         if (match) {
           result.action = match[1];
         }
@@ -1094,7 +1098,7 @@ ipcMain.on("window:execute-menu-item", (event, { indexPath, role, action }) => {
   }
 
   if (Array.isArray(indexPath)) {
-    const rawTemplate = buildAppMenuTemplate(win, win.__menuContext || {});
+    const rawTemplate = buildAppMenuTemplate(win, win.__menuContext || {}, { listProjectsState });
     let currentItems = rawTemplate;
     let targetItem = null;
     for (let i = 0; i < indexPath.length; i++) {
@@ -1201,6 +1205,7 @@ registerDocumentIpcHandlers(ipcMain, {
   getNotesRoot: () => notesRoot,
   getVersionsRoot: () => versionsRoot,
   getActiveProject,
+  listProjectsState,
   getAIAgent: () => aiAgent,
   createDocumentInProject,
   createFolderInProject,

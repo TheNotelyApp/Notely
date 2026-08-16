@@ -7,11 +7,12 @@ import {
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
   ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
-  Upload, Download
+  Upload, Download, FolderOutput
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
 import DownloadsPopover from "../DownloadsPopover";
+
 
 const MENU_ICON_MAP = {
   "new": FilePlus,
@@ -20,6 +21,8 @@ const MENU_ICON_MAP = {
   "folder": FolderPlus,
   "open workspace": FolderOpen,
   "open recent": Clock,
+  "no recent workspaces": Clock,
+  "recent workspaces": Clock,
   "save": Save,
   "save*": Save,
   "auto save": RefreshCw,
@@ -44,10 +47,15 @@ const MENU_ICON_MAP = {
   "find": Search,
   "find and replace": Replace,
   "screen capture options": Camera,
+  "auto insert": Camera,
+  "review before insert": Camera,
   "spelling dictionary": BookOpen,
 
   "open command palette": Command,
   "theme": SunMoon,
+  "system": SunMoon,
+  "light": SunMoon,
+  "dark": SunMoon,
   "enable typo check": SpellCheck,
   "set icon & color": Palette,
   "editor layout": Layout,
@@ -80,6 +88,11 @@ const MENU_ICON_MAP = {
   "export workspace as zip": Package,
   "open project website": Globe,
   "open current note website view": Globe,
+
+  "copy note to workspace": Copy,
+  "move note to workspace": FolderOutput,
+  "copy / move to workspace": FolderOutput,
+  "transfer note": FolderOutput,
 
   "open version control": GitBranch,
   "commit…": GitCommit,
@@ -129,8 +142,12 @@ function getItemIcon(item) {
       IconComponent = ImageIcon;
     } else if (rawLabel.includes("log")) {
       IconComponent = FileTerminal;
-    } else if (rawLabel.includes("move") && rawLabel.includes("removed")) {
+    } else if (rawLabel.includes("move") && (rawLabel.includes("removed") || rawLabel.includes("trash"))) {
       IconComponent = Trash2;
+    } else if (rawLabel.includes("move") || rawLabel.includes("transfer")) {
+      IconComponent = FolderOutput;
+    } else if (rawLabel.includes("copy")) {
+      IconComponent = Copy;
     } else if (rawLabel.includes("commit")) {
       IconComponent = GitCommit;
     } else if (rawLabel.includes("workspace") && (rawLabel.includes("remove") || rawLabel.includes("delete"))) {
@@ -141,7 +158,7 @@ function getItemIcon(item) {
       IconComponent = Clock;
     } else if (rawLabel.includes("export") || rawLabel.includes("import")) {
       IconComponent = Package;
-    } else if (rawLabel.includes("theme")) {
+    } else if (rawLabel.includes("theme") || rawLabel.includes("dark") || rawLabel.includes("light")) {
       IconComponent = SunMoon;
     } else if (rawLabel.includes("zoom")) {
       IconComponent = ZoomIn;
@@ -153,6 +170,20 @@ function getItemIcon(item) {
       IconComponent = Clock;
     } else if (rawLabel.includes("remove") || rawLabel.includes("delete") || rawLabel.includes("trash")) {
       IconComponent = Trash2;
+    } else if (rawLabel.includes("new")) {
+      IconComponent = FilePlus;
+    } else if (rawLabel.includes("find") || rawLabel.includes("search")) {
+      IconComponent = Search;
+    } else if (rawLabel.includes("dictionary") || rawLabel.includes("guide")) {
+      IconComponent = BookOpen;
+    } else if (rawLabel.includes("ai")) {
+      IconComponent = Sparkles;
+    } else if (rawLabel.includes("sync") || rawLabel.includes("p2p")) {
+      IconComponent = RefreshCw;
+    } else if (rawLabel.includes("help") || rawLabel.includes("about")) {
+      IconComponent = HelpCircle;
+    } else {
+      IconComponent = FileText;
     }
   }
 

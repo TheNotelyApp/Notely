@@ -29,9 +29,7 @@ export function LandingView({
   landingSortMode,
   setLandingSortMode,
   visibleDocuments,
-  visibleFolderCount,
   folderCount,
-  visibleNoteCount,
   noteCount,
   notesViewMode,
   notesDensityMode,
@@ -45,6 +43,7 @@ export function LandingView({
   onShowUpdateModal,
   onDismissUpdate,
   onCopyLinkPath,
+  onTransferWorkspace,
   onReloadWorkspace,
   aiSidebar = null,
 }) {
@@ -227,9 +226,7 @@ export function LandingView({
             onSortByChange={setLandingSortMode}
             visibleCount={visibleDocuments.length}
             totalCount={documents.length}
-            visibleFolderCount={visibleFolderCount}
             totalFolderCount={folderCount}
-            visibleNoteCount={visibleNoteCount}
             totalNoteCount={noteCount}
             onCreateNote={() => onDashboardAction("new-note")}
             onReloadWorkspace={onReloadWorkspace}
@@ -245,6 +242,7 @@ export function LandingView({
             onToggleFavorite={onToggleFavorite}
             emptyMessage="No notes or folders match your current filters."
             onCopyLinkPath={onCopyLinkPath}
+            onTransferWorkspace={onTransferWorkspace}
           />
         </div>
         {aiSidebar && (

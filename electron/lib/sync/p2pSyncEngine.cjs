@@ -140,6 +140,7 @@ function createP2PSyncEngine(deps) {
           const nextPath = path.join(current, entry.name);
           if (entry.name === ".notes-app") {
             collectRecursively(path.join(nextPath, "excali-diagrams"));
+            collectRecursively(path.join(nextPath, "drawio-diagrams"));
             continue;
           }
 
@@ -155,8 +156,10 @@ function createP2PSyncEngine(deps) {
     collectRecursively(path.join(notesRoot, "images"));
     collectRecursively(path.join(notesRoot, "media", "images"));
     collectRecursively(path.join(notesRoot, "media", "docs"));
+    collectRecursively(path.join(notesRoot, "media", "draw.io"));
     collectRecursively(path.join(notesRoot, "excali-diagrams"));
     collectRecursively(path.join(notesRoot, ".notes-app", "excali-diagrams"));
+    collectRecursively(path.join(notesRoot, ".notes-app", "drawio-diagrams"));
     collectNestedNotesAppDiagrams(notesRoot);
 
     return Array.from(candidates);

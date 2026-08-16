@@ -27,19 +27,47 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     hashContent = null,
   } = deps;
 
+  function resolveWorkspaceRoot(documentPath) {
+    const notesRoot = getNotesRoot();
+    if (notesRoot && fsSync.existsSync(notesRoot)) {
+      return notesRoot;
+    }
+    if (documentPath) {
+      let curr = path.resolve(documentPath);
+      while (curr && curr !== path.dirname(curr)) {
+        if (fsSync.existsSync(path.join(curr, '.notes-app'))) {
+          return curr;
+        }
+        curr = path.dirname(curr);
+      }
+      return path.resolve(documentPath);
+    }
+    return "";
+  }
+
   function getCurrentDiagramDir(documentPath, diagramId) {
-    return path.join(documentPath, '.notes-app', 'excali-diagrams', diagramId);
+    const root = resolveWorkspaceRoot(documentPath);
+    return path.join(root, '.notes-app', 'excali-diagrams', diagramId);
   }
 
   function getLegacyDiagramDir(documentPath, diagramId) {
-    return path.join(documentPath, 'excali-diagrams', diagramId);
+    const root = resolveWorkspaceRoot(documentPath);
+    return path.join(root, 'excali-diagrams', diagramId);
   }
 
   function getPreferredExistingDiagramDir(documentPath, diagramId) {
-    const currentDir = getCurrentDiagramDir(documentPath, diagramId);
+    const root = resolveWorkspaceRoot(documentPath);
+    const currentDir = path.join(root, '.notes-app', 'excali-diagrams', diagramId);
     if (fsSync.existsSync(currentDir)) return currentDir;
-    const legacyDir = getLegacyDiagramDir(documentPath, diagramId);
+
+    if (documentPath && documentPath !== root) {
+      const subDir = path.join(documentPath, '.notes-app', 'excali-diagrams', diagramId);
+      if (fsSync.existsSync(subDir)) return subDir;
+    }
+
+    const legacyDir = path.join(root, 'excali-diagrams', diagramId);
     if (fsSync.existsSync(legacyDir)) return legacyDir;
+
     return currentDir;
   }
 
@@ -286,13 +314,44 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     }
   });
 
+  function getDrawioSourceFile(diagramId, documentPath) {
+    const root = resolveWorkspaceRoot(documentPath);
+    const primaryFile = path.join(root, '.notes-app', 'drawio-diagrams', `${diagramId}.drawio`);
+    if (fsSync.existsSync(primaryFile)) return primaryFile;
+
+    if (documentPath && documentPath !== root) {
+      const subFile = path.join(documentPath, '.notes-app', 'drawio-diagrams', `${diagramId}.drawio`);
+      if (fsSync.existsSync(subFile)) return subFile;
+    }
+
+    const legacyFile = path.join(root, 'media', 'draw.io', `${diagramId}.drawio`);
+    if (fsSync.existsSync(legacyFile)) return legacyFile;
+
+    return primaryFile;
+  }
+
+  function getDrawioImageFile(diagramId, documentPath) {
+    const root = resolveWorkspaceRoot(documentPath);
+    const primaryFile = path.join(root, '.notes-app', 'drawio-diagrams', `${diagramId}.png`);
+    if (fsSync.existsSync(primaryFile)) return primaryFile;
+
+    if (documentPath && documentPath !== root) {
+      const subFile = path.join(documentPath, '.notes-app', 'drawio-diagrams', `${diagramId}.png`);
+      if (fsSync.existsSync(subFile)) return subFile;
+    }
+
+    const legacyFile = path.join(root, 'media', 'draw.io', `${diagramId}.png`);
+    if (fsSync.existsSync(legacyFile)) return legacyFile;
+
+    return primaryFile;
+  }
+
   /**
    * Read drawio source file
    */
-  ipcMain.handle('drawio:read-source', async (event, { diagramId }) => {
+  ipcMain.handle('drawio:read-source', async (event, { diagramId, documentPath }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const sourceFile = path.join(notesRoot, 'media', 'draw.io', `${diagramId}.drawio`);
+      const sourceFile = getDrawioSourceFile(diagramId, documentPath);
       const data = await fs.readFile(sourceFile, 'utf-8');
       
       return {
@@ -317,10 +376,10 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   /**
    * Write drawio source file
    */
-  ipcMain.handle('drawio:write-source', async (event, { diagramId, data }) => {
+  ipcMain.handle('drawio:write-source', async (event, { diagramId, data, documentPath }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const drawioDir = path.join(notesRoot, 'media', 'draw.io');
+      const root = resolveWorkspaceRoot(documentPath);
+      const drawioDir = path.join(root, '.notes-app', 'drawio-diagrams');
       const sourceFile = path.join(drawioDir, `${diagramId}.drawio`);
       const existed = fsSync.existsSync(sourceFile);
       const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
@@ -345,10 +404,10 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   /**
    * Write drawio image file
    */
-  ipcMain.handle('drawio:write-image', async (event, { diagramId, imageData }) => {
+  ipcMain.handle('drawio:write-image', async (event, { diagramId, imageData, documentPath }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const drawioDir = path.join(notesRoot, 'media', 'draw.io');
+      const root = resolveWorkspaceRoot(documentPath);
+      const drawioDir = path.join(root, '.notes-app', 'drawio-diagrams');
       const imageFile = path.join(drawioDir, `${diagramId}.png`);
       const existed = fsSync.existsSync(imageFile);
       const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
@@ -382,10 +441,9 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   /**
    * Read drawio image file as base64
    */
-  ipcMain.handle('drawio:read-image', async (event, { diagramId }) => {
+  ipcMain.handle('drawio:read-image', async (event, { diagramId, documentPath }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const imageFile = path.join(notesRoot, 'media', 'draw.io', `${diagramId}.png`);
+      const imageFile = getDrawioImageFile(diagramId, documentPath);
       const imageData = await fs.readFile(imageFile);
       const base64 = imageData.toString('base64');
       
@@ -411,27 +469,24 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   /**
    * Delete drawio files
    */
-  ipcMain.handle('drawio:delete', async (event, { diagramId }) => {
+  ipcMain.handle('drawio:delete', async (event, { diagramId, documentPath }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const drawioDir = path.join(notesRoot, 'media', 'draw.io');
-      const sourceFile = path.join(drawioDir, `${diagramId}.drawio`);
-      const imageFile = path.join(drawioDir, `${diagramId}.png`);
+      const root = resolveWorkspaceRoot(documentPath);
+      const filesToDelete = [
+        path.join(root, '.notes-app', 'drawio-diagrams', `${diagramId}.drawio`),
+        path.join(root, '.notes-app', 'drawio-diagrams', `${diagramId}.png`),
+        path.join(root, 'media', 'draw.io', `${diagramId}.drawio`),
+        path.join(root, 'media', 'draw.io', `${diagramId}.png`),
+      ];
 
-      const sourceHash = (typeof hashContent === 'function' && fsSync.existsSync(sourceFile))
-        ? hashContent(fsSync.readFileSync(sourceFile).toString('base64'))
-        : null;
-      const imageHash = (typeof hashContent === 'function' && fsSync.existsSync(imageFile))
-        ? hashContent(fsSync.readFileSync(imageFile).toString('base64'))
-        : null;
-
-      if (fsSync.existsSync(sourceFile)) {
-        await fs.unlink(sourceFile);
-        emitDiagramSync(sourceFile, { op: 'delete', baseHash: sourceHash });
-      }
-      if (fsSync.existsSync(imageFile)) {
-        await fs.unlink(imageFile);
-        emitDiagramSync(imageFile, { op: 'delete', baseHash: imageHash });
+      for (const file of filesToDelete) {
+        if (fsSync.existsSync(file)) {
+          const hash = (typeof hashContent === 'function')
+            ? hashContent(fsSync.readFileSync(file).toString('base64'))
+            : null;
+          await fs.unlink(file);
+          emitDiagramSync(file, { op: 'delete', baseHash: hash });
+        }
       }
       
       return {
@@ -449,11 +504,9 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   /**
    * Check if drawio diagram exists
    */
-  ipcMain.handle('drawio:exists', async (event, { diagramId }) => {
+  ipcMain.handle('drawio:exists', async (event, { diagramId, documentPath }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const sourceFile = path.join(notesRoot, 'media', 'draw.io', `${diagramId}.drawio`);
-      
+      const sourceFile = getDrawioSourceFile(diagramId, documentPath);
       try {
         await fs.access(sourceFile);
         return {

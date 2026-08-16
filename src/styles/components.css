@@ -4212,8 +4212,8 @@
 }
 
 .markdown-codemirror .cm-editor.cm-focused {
-  box-shadow: inset 0 0 0 2px rgba(47, 93, 98, 0.7);
-  border-radius: 6px;
+  outline: none;
+  box-shadow: none;
 }
 
 .markdown-codemirror .cm-content,

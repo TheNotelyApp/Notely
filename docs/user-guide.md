@@ -134,7 +134,18 @@ Then review tasks centrally:
 6. Confirm or edit filename (default `notelyproject.zip`).
 7. Click **Export Zip**.
 
-## 11. Get Help Quickly
+## 11. Copy and Move Notes Between Workspaces and Folders
+
+Transfer notes and their local media/diagram assets effortlessly across workspaces or subfolders:
+
+1. Open the top **File** menu when viewing a note.
+2. Select **Copy Note** or **Move Note**:
+   - **To Workspace ▶**: Choose a target workspace, then select either `[ Workspace Root ]` or a target subfolder inside that workspace.
+   - **To Folder (Current Workspace) ▶**: Choose a target subfolder inside your current workspace, or `[ Root / Top Level ]`.
+3. Notely automatically copies/moves the note and its local media/diagram assets (`media/`, `.notes-app/excali-diagrams/`, `.notes-app/drawio-diagrams/`).
+4. Link paths inside the note content are recalculated relative to the destination directory, preserving all embedded images and diagrams without breaking.
+
+## 12. Get Help Quickly
 
 - **Help -> Help Center** (`F1`) for in-app help.
 - **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) for key bindings.

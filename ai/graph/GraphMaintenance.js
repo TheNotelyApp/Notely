@@ -20,13 +20,17 @@ class GraphMaintenance {
    */
   async runMaintenance() {
     if (!this.graphDb?.db) return { purgedOrphans: 0, decayedEdges: 0 };
-    log.info('Starting background GraphMaintenance run...');
+    log.debug('Starting background GraphMaintenance run...');
 
     const purgedOrphans = this.purgeOrphans();
     const decayedEdges = this.decayStaleEdges();
     const mergedAliases = this.deduplicateAliases();
 
-    log.info(`GraphMaintenance finished: Purged ${purgedOrphans} orphans, decayed ${decayedEdges} edges, merged ${mergedAliases} aliases.`);
+    if (purgedOrphans > 0 || decayedEdges > 0 || mergedAliases > 0) {
+      log.info(`GraphMaintenance finished: Purged ${purgedOrphans} orphans, decayed ${decayedEdges} edges, merged ${mergedAliases} aliases.`);
+    } else {
+      log.debug('GraphMaintenance finished with 0 modifications.');
+    }
     return { purgedOrphans, decayedEdges, mergedAliases };
   }
 
@@ -88,9 +92,13 @@ class GraphMaintenance {
           const e2 = entities[j];
           if (!e1 || !e2 || e1.id === e2.id || e1.type !== e2.type) continue;
           if (SKIP_DEDUP_TYPES.has(e1.type)) continue;
-          if ((e1.name || '').length < 4 || (e2.name || '').length < 4) continue;
+          const n1 = (e1.name || '').trim();
+          const n2 = (e2.name || '').trim();
+          if (n1.length < 4 || n2.length < 4) continue;
+          if (Math.abs(n1.length - n2.length) > 4) continue;
+          if (n1[0].toLowerCase() !== n2[0].toLowerCase()) continue;
 
-          const sim = this.entityResolver.calculateSimilarity(e1.name, e2.name);
+          const sim = this.entityResolver.calculateSimilarity(n1, n2);
           if (sim >= 0.88) {
             // Determine survivor (canonical) and deprecated entity based on degree count
             const deg1 = this._getEntityDegree(e1.id);

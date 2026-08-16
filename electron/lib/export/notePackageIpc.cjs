@@ -78,7 +78,7 @@ function scanNoteDependencies(content) {
   }
 
   // 3. Scan for Draw.io references
-  const drawioRegex = /media\/draw\.io\/([^/.]+)\.png/g;
+  const drawioRegex = /(?:\.notes-app\/drawio-diagrams\/|media\/draw\.io\/)([^/.]+)\.png/g;
   while ((match = drawioRegex.exec(content)) !== null) {
     drawioIds.add(match[1]);
   }
@@ -321,8 +321,9 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
         let counter = 1;
         while (true) {
           const excaliDest = path.join(notesRoot, ".notes-app", "excali-diagrams", currentId);
-          const drawioDest = path.join(notesRoot, "media", "draw.io", `${currentId}.drawio`);
-          if (!fsSync.existsSync(excaliDest) && !fsSync.existsSync(drawioDest)) {
+          const drawioDest1 = path.join(notesRoot, ".notes-app", "drawio-diagrams", `${currentId}.drawio`);
+          const drawioDest2 = path.join(notesRoot, "media", "draw.io", `${currentId}.drawio`);
+          if (!fsSync.existsSync(excaliDest) && !fsSync.existsSync(drawioDest1) && !fsSync.existsSync(drawioDest2)) {
             return currentId;
           }
           currentId = `${diagramId.slice(0, 6)}_${counter}`;
@@ -391,7 +392,7 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
       for (const diagId of manifest.drawio || []) {
         const sourceDir = path.join(tempDir, "drawio");
         const targetId = renameMap.diagrams[diagId];
-        const targetDir = path.join(notesRoot, "media", "draw.io");
+        const targetDir = path.join(notesRoot, ".notes-app", "drawio-diagrams");
 
         ensureDirSync(targetDir);
         const filesToCopy = [`${diagId}.drawio`, `${diagId}.png`];
@@ -430,7 +431,8 @@ function registerNotePackageIpc(ipcMain, deps = {}) {
           content = content.replace(new RegExp(`excali-diagrams/${oldId}/diagram\\.png`, "g"), `excali-diagrams/${newId}/diagram.png`);
           content = content.replace(new RegExp(`media/diagrams/${oldId}\\.png`, "g"), `media/diagrams/${newId}.png`);
           // Replace Draw.io diagram references
-          content = content.replace(new RegExp(`media/draw\\.io/${oldId}\\.png`, "g"), `media/draw.io/${newId}.png`);
+          content = content.replace(new RegExp(`\\.notes-app/drawio-diagrams/${oldId}\\.png`, "g"), `.notes-app/drawio-diagrams/${newId}.png`);
+          content = content.replace(new RegExp(`media/draw\\.io/${oldId}\\.png`, "g"), `.notes-app/drawio-diagrams/${newId}.png`);
         }
 
         // C. Rewrite relative cross-note links if target notes got renamed

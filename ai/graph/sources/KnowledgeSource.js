@@ -12,6 +12,10 @@ class KnowledgeSource {
     return [];
   }
 
+  supports(filePath) {
+    return false;
+  }
+
   async extractEntities(filePath, content) {
     return [];
   }

@@ -52,6 +52,19 @@ When folders or notes are deleted, they are moved to a temporary Trash Bin inste
 - Restoring items back to their original paths.
 - Permanently emptying the trash bin to free up disk space.
 
+### Copying and moving notes across workspaces and folders
+
+The top **File** menu provides multi-level fan-out submenus when a note is open:
+
+- **File -> Copy Note -> To Workspace ▶** — Select any target workspace, then choose either `[ Workspace Root ]` or a specific subfolder.
+- **File -> Copy Note -> To Folder (Current Workspace) ▶** — Choose a target subfolder inside the active workspace, or `[ Root / Top Level ]`.
+- **File -> Move Note -> To Workspace ▶** — Move the note to another workspace root or subfolder.
+- **File -> Move Note -> To Folder (Current Workspace) ▶** — Relocate the note to another subfolder inside the active workspace.
+
+During transfer:
+- Local media assets (`media/images/`, `media/uploads/`) and diagrams (`.notes-app/excali-diagrams/`, `.notes-app/drawio-diagrams/`) are automatically copied to the target workspace asset folders.
+- Relative link paths inside the Markdown text are recalculated to match the destination folder depth, ensuring embedded images and diagrams render seamlessly.
+
 ## 2. Editor and Writing Experience
 
 ### Multiple edit modes

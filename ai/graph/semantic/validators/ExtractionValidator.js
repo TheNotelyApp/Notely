@@ -40,73 +40,75 @@ class ExtractionValidator {
       decisions.warnings.push(`Graph explosion detected: ${entities.length} entities and ${relations.length} relations exceed limit of ${this.maxGraphExplosionLimit}.`);
     }
 
-    // 2. Duplicate Nodes & Invalid Entity Ids
+    const sanitizedEntities = [];
     const entityIdSet = new Set();
+
     for (const ent of entities) {
-      if (!ent.id || !ent.text) {
+      if (!ent || (!ent.id && !ent.text)) {
         decisions.warnings.push(`Entity missing required fields: ${JSON.stringify(ent)}`);
+        continue;
       }
-      if (entityIdSet.has(ent.id)) {
+      const entId = ent.id || ent.text;
+      if (entityIdSet.has(entId)) {
         decisions.duplicateNodesCount++;
       } else {
-        entityIdSet.add(ent.id);
+        entityIdSet.add(entId);
+        sanitizedEntities.push(ent);
       }
       if (!ent.sourceEvidence) {
         decisions.missingEvidenceCount++;
       }
     }
 
-    // 3. Duplicate Edges, Invalid References & Low Confidence
+    // 3. Filter Duplicate Edges, Self-Loops, Invalid References & Low Confidence
+    const sanitizedRelations = [];
     const edgeKeySet = new Set();
     const referencedEntityIds = new Set();
 
     for (const rel of relations) {
-      if (!rel.sourceEntityId || !rel.targetEntityId) {
+      if (!rel.sourceEntityId || !rel.targetEntityId || rel.sourceEntityId === rel.targetEntityId) {
         decisions.invalidReferencesCount++;
-        decisions.warnings.push(`Relationship missing source/target ID: ${JSON.stringify(rel)}`);
+        decisions.warnings.push(`Relationship missing/invalid source or target ID (or self loop): ${JSON.stringify(rel)}`);
         continue;
       }
 
       referencedEntityIds.add(rel.sourceEntityId);
       referencedEntityIds.add(rel.targetEntityId);
 
-      if (!entityIdSet.has(rel.sourceEntityId) && !rel.sourceEntityId.startsWith('ent-')) {
-        decisions.invalidReferencesCount++;
-        decisions.warnings.push(`Relationship source ID '${rel.sourceEntityId}' not found in entity set.`);
-      }
-      if (!entityIdSet.has(rel.targetEntityId) && !rel.targetEntityId.startsWith('ent-')) {
-        decisions.invalidReferencesCount++;
-        decisions.warnings.push(`Relationship target ID '${rel.targetEntityId}' not found in entity set.`);
-      }
-
       const edgeKey = `${rel.sourceEntityId}:${rel.relationType}:${rel.targetEntityId}`;
       if (edgeKeySet.has(edgeKey)) {
         decisions.duplicateEdgesCount++;
-      } else {
-        edgeKeySet.add(edgeKey);
+        continue;
       }
 
       if (rel.confidence < this.minConfidence) {
         decisions.lowConfidenceRelationsCount++;
         decisions.warnings.push(`Low confidence relationship '${rel.relationType}' (${rel.confidence} < ${this.minConfidence}).`);
+        continue;
       }
+
+      edgeKeySet.add(edgeKey);
+      sanitizedRelations.push(rel);
 
       if (!rel.sourceEvidence) {
         decisions.missingEvidenceCount++;
       }
     }
 
-    // 4. Orphan Nodes (entities with no relations in this pass)
-    for (const ent of entities) {
-      if (!referencedEntityIds.has(ent.id)) {
+    // 4. Orphan Nodes
+    for (const ent of sanitizedEntities) {
+      if (!referencedEntityIds.has(ent.id || ent.text)) {
         decisions.orphanNodesCount++;
       }
     }
 
+    decisions.sanitizedEntities = sanitizedEntities;
+    decisions.sanitizedRelations = sanitizedRelations;
+
     decisions.telemetry = {
       event: 'semantic_extraction_validated',
-      entitiesCount: entities.length,
-      relationsCount: relations.length,
+      entitiesCount: sanitizedEntities.length,
+      relationsCount: sanitizedRelations.length,
       evidenceCount: evidence.length,
       duplicateNodes: decisions.duplicateNodesCount,
       duplicateEdges: decisions.duplicateEdgesCount,
@@ -117,7 +119,7 @@ class ExtractionValidator {
       warningsCount: decisions.warnings.length
     };
 
-    log.info('ExtractionValidator validation pass completed:', decisions.telemetry);
+    log.debug('ExtractionValidator validation pass completed:', decisions.telemetry);
     return decisions;
   }
 }

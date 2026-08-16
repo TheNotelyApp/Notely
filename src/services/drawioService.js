@@ -14,9 +14,9 @@ function invokeDrawio(method, payload) {
 /**
  * Read drawio source file (.xml)
  */
-export async function readDrawioSource(diagramId) {
+export async function readDrawioSource(diagramId, documentPath) {
   try {
-    const response = await invokeDrawio('drawioReadSource', { diagramId });
+    const response = await invokeDrawio('drawioReadSource', { diagramId, documentPath });
     if (response && response.success) {
       return response.data;
     }
@@ -30,9 +30,9 @@ export async function readDrawioSource(diagramId) {
 /**
  * Write drawio source file (.xml)
  */
-export async function writeDrawioSource(diagramId, data) {
+export async function writeDrawioSource(diagramId, data, documentPath) {
   try {
-    const response = await invokeDrawio('drawioWriteSource', { diagramId, data });
+    const response = await invokeDrawio('drawioWriteSource', { diagramId, data, documentPath });
     return response?.success ?? false;
   } catch (err) {
     console.error('Failed to write drawio source:', err);
@@ -43,9 +43,9 @@ export async function writeDrawioSource(diagramId, data) {
 /**
  * Write drawio image file (.png)
  */
-export async function writeDrawioImage(diagramId, imageData) {
+export async function writeDrawioImage(diagramId, imageData, documentPath) {
   try {
-    const response = await invokeDrawio('drawioWriteImage', { diagramId, imageData });
+    const response = await invokeDrawio('drawioWriteImage', { diagramId, imageData, documentPath });
     return response?.success ?? false;
   } catch (err) {
     console.error('Failed to write drawio image:', err);
@@ -56,9 +56,9 @@ export async function writeDrawioImage(diagramId, imageData) {
 /**
  * Read drawio image file (.png) as a data URL
  */
-export async function readDrawioImage(diagramId) {
+export async function readDrawioImage(diagramId, documentPath) {
   try {
-    const response = await invokeDrawio('drawioReadImage', { diagramId });
+    const response = await invokeDrawio('drawioReadImage', { diagramId, documentPath });
     if (response?.success && response?.data) {
       return response.data;
     }
@@ -72,9 +72,9 @@ export async function readDrawioImage(diagramId) {
 /**
  * Delete drawio diagram
  */
-export async function deleteDrawio(diagramId) {
+export async function deleteDrawio(diagramId, documentPath) {
   try {
-    const response = await invokeDrawio('drawioDelete', { diagramId });
+    const response = await invokeDrawio('drawioDelete', { diagramId, documentPath });
     return response?.success ?? false;
   } catch (err) {
     console.error('Failed to delete drawio:', err);
@@ -85,9 +85,9 @@ export async function deleteDrawio(diagramId) {
 /**
  * Check if drawio diagram exists
  */
-export async function drawioExists(diagramId) {
+export async function drawioExists(diagramId, documentPath) {
   try {
-    const response = await invokeDrawio('drawioExists', { diagramId });
+    const response = await invokeDrawio('drawioExists', { diagramId, documentPath });
     return response?.exists ?? false;
   } catch (err) {
     console.error('Failed to check drawio existence:', err);

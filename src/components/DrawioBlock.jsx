@@ -5,7 +5,7 @@ import { runExport } from "../services/electronService";
 import DrawioEditor from "./DrawioEditor";
 import "../styles/ExcalidrawBlock.css"; // Reuse block styles
 
-export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceSaveNote }) {
+export function DrawioBlock({ imagePath, diagramId, documentPath, onUpdate, onNotify, onForceSaveNote }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [thumbnail, setThumbnail] = useState(null);
   const [error, setError] = useState("");
@@ -20,12 +20,12 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
       try {
         setLoading(true);
 
-        const source = await readDrawioSource(diagramId);
+        const source = await readDrawioSource(diagramId, documentPath);
         if (!cancelled && source) {
           setDiagramData(source);
         }
 
-        const imageDataUrl = await readDrawioImage(diagramId);
+        const imageDataUrl = await readDrawioImage(diagramId, documentPath);
         if (!cancelled) {
           if (imageDataUrl) {
             setThumbnail(imageDataUrl);
@@ -50,7 +50,7 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
     return () => {
       cancelled = true;
     };
-  }, [diagramId, imagePath]);
+  }, [diagramId, documentPath, imagePath]);
 
   const handleDownload = async () => {
     if (!thumbnail) return;
@@ -77,7 +77,7 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
     try {
       setLoading(true);
       
-      const sourceSaved = await writeDrawioSource(diagramId, newDiagramXml);
+      const sourceSaved = await writeDrawioSource(diagramId, newDiagramXml, documentPath);
       if (!sourceSaved) {
         throw new Error("Failed to persist diagram source");
       }
@@ -174,6 +174,7 @@ export function DrawioBlock({ imagePath, diagramId, onUpdate, onNotify, onForceS
         <DrawioEditor
           initialData={diagramData}
           diagramId={diagramId}
+          documentPath={documentPath}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
         />
