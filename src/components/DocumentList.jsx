@@ -51,7 +51,7 @@ export function DocumentList({
   onToggleFavorite,
   emptyMessage,
   onCopyLinkPath,
-  onTransferWorkspace,
+  _onTransferWorkspace,
 }) {
   const { getMetadata, updateMetadata } = useWorkspaceMetadata();
   const [pickerState, setPickerState] = useState({ isOpen: false, entry: null });

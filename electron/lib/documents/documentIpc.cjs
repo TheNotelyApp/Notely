@@ -171,7 +171,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   });
 
   registerTrustedHandler("notes:transfer-workspace", (_event, payload) => {
-    const notesRoot = getNotesRoot();
     const result = transferDocumentWorkspace({ getNotesRoot, listProjectsState: deps.listProjectsState }, payload);
     if (result?.action === "move" && result?.sourceFilePath && result?.targetFilePath) {
       dashboardCache?.renameEntry?.(result.sourceFilePath, { filePath: result.targetFilePath, title: result.fileName });

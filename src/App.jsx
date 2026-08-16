@@ -2242,8 +2242,6 @@ export default function App() {
     typeFilter: landingEntryFilter,
     sortBy: landingSortMode,
   });
-  const visibleFolderCount = visibleDocuments.filter((entry) => entry.entryType === "folder").length;
-  const visibleNoteCount = visibleDocuments.length - visibleFolderCount;
   const workspaceTagSuggestions = useMemo(() => {
     const pool = new Set();
     for (const entry of documents) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FolderOutput, Copy, ArrowRight, Search, Check, Folder, Sparkles } from "lucide-react";
+import { FolderOutput, Copy, ArrowRight, Search, Check, Folder } from "lucide-react";
 import OverlayDialog from "../OverlayDialog";
 import AppButton from "../AppButton";
 import AppInput from "../AppInput";
@@ -110,7 +110,7 @@ export function TransferNoteWorkspaceModal({
     } finally {
       setLoading(false);
     }
-  }, [targetDoc, selectedWorkspaceSlug, mode, overwrite, onNotify, onTransferSuccess, onClose]);
+  }, [targetDoc, selectedWorkspaceSlug, targetSubfolder, mode, overwrite, onNotify, onTransferSuccess, onClose]);
 
   if (!isOpen) return null;
 

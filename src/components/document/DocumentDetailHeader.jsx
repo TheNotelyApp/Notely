@@ -8,7 +8,6 @@ import {
   Minimize,
   ListChecks,
   ExternalLink,
-  FolderOutput,
 } from "lucide-react";
 import AppButton from "../AppButton";
 
@@ -37,7 +36,7 @@ export function DocumentDetailHeader({
   aiEnabled,
   onShowAI,
   toggleFocusMode,
-  onTransferWorkspace,
+  _onTransferWorkspace,
 }) {
   if (isFocusMode) return null;
 
