@@ -26,6 +26,7 @@ const ExportImportModal = lazy(() =>
 const MediaTab = lazy(() =>
   import("../MediaTab").then((m) => ({ default: m.default || m.MediaTab }))
 );
+import { TransferNoteWorkspaceModal } from "./TransferNoteWorkspaceModal";
 
 export function AppModalsContainer({
   markdownGuideOpen,
@@ -61,9 +62,22 @@ export function AppModalsContainer({
   exportImportOpen,
   exportImportMode,
   setExportImportOpen,
+  transferModalState,
+  setTransferModalState,
+  onTransferSuccess,
 }) {
   return (
     <>
+      {transferModalState?.isOpen && (
+        <TransferNoteWorkspaceModal
+          isOpen={transferModalState.isOpen}
+          onClose={() => setTransferModalState?.({ isOpen: false, document: null, mode: "copy" })}
+          document={transferModalState.document}
+          initialMode={transferModalState.mode}
+          onTransferSuccess={onTransferSuccess}
+          onNotify={notify}
+        />
+      )}
       {markdownGuideOpen ? (
         <Suspense fallback={null}>
           <MarkdownGuideModal

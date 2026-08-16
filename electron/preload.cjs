@@ -204,6 +204,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   deleteFolder: (payload) => ipcRenderer.invoke("folders:delete", payload),
   renameDocument: (payload) => ipcRenderer.invoke("documents:rename", payload),
   deleteDocument: (payload) => ipcRenderer.invoke("documents:delete", payload),
+  transferDocumentWorkspace: (payload) => ipcRenderer.invoke("notes:transfer-workspace", payload),
   readDocument: (filePath) => ipcRenderer.invoke("documents:read", filePath),
   trashList: () => ipcRenderer.invoke("trash:list"),
   trashRestore: (payload) => ipcRenderer.invoke("trash:restore", payload),

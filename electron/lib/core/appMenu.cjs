@@ -1,5 +1,12 @@
 const { Menu, app } = require("electron");
 
+let mainHelpers = null;
+try {
+  mainHelpers = require("./mainHelpers.cjs");
+} catch {
+  // Ignore fallback require if unavailable
+}
+
 // Sends a menu-action signal to the renderer for the given window.
 function sendMenuAction(win, action) {
   if (!win || win.isDestroyed()) return;
@@ -24,7 +31,7 @@ function normalizeMenuText(value, fallback = "") {
 }
 
 // Builds the application menu template based on the current screen/view context.
-function buildAppMenuTemplate(win, context = {}) {
+function buildAppMenuTemplate(win, context = {}, deps = {}) {
   const isMac = process.platform === "darwin";
   const screen = context?.screen === "document" ? "document" : "landing";
   const viewMode = context?.viewMode === "table" ? "table" : "tile";
@@ -61,6 +68,143 @@ function buildAppMenuTemplate(win, context = {}) {
           enabled: false
         }
       ];
+
+  let availableWorkspaces = Array.isArray(context?.availableWorkspaces) && context.availableWorkspaces.length > 0
+    ? context.availableWorkspaces
+    : [];
+
+  // Live fallback from mainHelpers if empty
+  if (!availableWorkspaces.length) {
+    const listFn = deps?.listProjectsState || mainHelpers?.listProjectsState;
+    if (typeof listFn === "function") {
+      try {
+        const state = listFn();
+        if (Array.isArray(state?.projects)) {
+          availableWorkspaces = state.projects;
+        }
+      } catch {
+        // ignore fallback error
+      }
+    }
+  }
+
+  const currentWorkspaceSlug = String(context?.activeWorkspaceSlug || "").toLowerCase();
+  const currentNoteSubfolder = String(context?.currentNoteSubfolder || "").trim();
+
+  // Separate target workspaces (other workspaces vs current workspace)
+  const otherWorkspaces = availableWorkspaces.filter(
+    (ws) => ws.slug && ws.slug.toLowerCase() !== currentWorkspaceSlug
+  );
+
+  const currentWorkspace = availableWorkspaces.find(
+    (ws) => ws.slug && ws.slug.toLowerCase() === currentWorkspaceSlug
+  ) || availableWorkspaces[0];
+
+  function buildWorkspaceTargetItems(ws, actionType) {
+    const subs = Array.isArray(ws.subfolders) ? ws.subfolders : [];
+    const rootAction = `${actionType}-note-to-workspace:${encodeURIComponent(ws.slug)}:`;
+
+    if (!subs.length) {
+      return {
+        label: ws.name || ws.slug,
+        action: rootAction,
+        click: () => sendMenuAction(win, rootAction)
+      };
+    }
+
+    return {
+      label: ws.name || ws.slug,
+      submenu: [
+        {
+          label: "[ Workspace Root ]",
+          action: rootAction,
+          click: () => sendMenuAction(win, rootAction)
+        },
+        { type: "separator" },
+        ...subs.map((sf) => {
+          const actStr = `${actionType}-note-to-workspace:${encodeURIComponent(ws.slug)}:${encodeURIComponent(sf.relativePath)}`;
+          return {
+            label: sf.relativePath,
+            action: actStr,
+            click: () => sendMenuAction(win, actStr)
+          };
+        })
+      ]
+    };
+  }
+
+  function buildFolderTargetItems(ws, actionType) {
+    const subs = Array.isArray(ws?.subfolders) ? ws.subfolders : [];
+    const items = [];
+
+    if (currentNoteSubfolder !== "") {
+      const actStr = `${actionType}-note-to-folder:`;
+      items.push({
+        label: "[ Root / Top Level ]",
+        action: actStr,
+        click: () => sendMenuAction(win, actStr)
+      });
+    }
+
+    const availableFolders = subs.filter((sf) => sf.relativePath !== currentNoteSubfolder);
+    if (availableFolders.length) {
+      if (items.length) items.push({ type: "separator" });
+      availableFolders.forEach((sf) => {
+        const actStr = `${actionType}-note-to-folder:${encodeURIComponent(sf.relativePath)}`;
+        items.push({
+          label: sf.relativePath,
+          action: actStr,
+          click: () => sendMenuAction(win, actStr)
+        });
+      });
+    }
+
+    if (!items.length) {
+      return [
+        {
+          label: "No Other Folders Available",
+          enabled: false
+        }
+      ];
+    }
+
+    return items;
+  }
+
+  const targetWorkspaces = otherWorkspaces.length ? otherWorkspaces : availableWorkspaces;
+
+  const copyToWorkspaceItems = targetWorkspaces.length
+    ? targetWorkspaces.map((ws) => buildWorkspaceTargetItems(ws, "copy"))
+    : [{ label: "No Workspaces Available", enabled: false }];
+
+  const moveToWorkspaceItems = targetWorkspaces.length
+    ? targetWorkspaces.map((ws) => buildWorkspaceTargetItems(ws, "move"))
+    : [{ label: "No Workspaces Available", enabled: false }];
+
+  const copyToFolderItems = buildFolderTargetItems(currentWorkspace, "copy");
+  const moveToFolderItems = buildFolderTargetItems(currentWorkspace, "move");
+
+  const copyNoteSubmenu = [
+    {
+      label: "To Workspace",
+      submenu: copyToWorkspaceItems
+    },
+    {
+      label: "To Folder (Current Workspace)",
+      submenu: copyToFolderItems
+    }
+  ];
+
+  const moveNoteSubmenu = [
+    {
+      label: "To Workspace",
+      submenu: moveToWorkspaceItems
+    },
+    {
+      label: "To Folder (Current Workspace)",
+      submenu: moveToFolderItems
+    }
+  ];
 
   const fileSubmenu = screen === "document"
     ? [
@@ -123,6 +267,14 @@ function buildAppMenuTemplate(win, context = {}) {
           label: "Rename Note",
           accelerator: "F2",
           click: () => sendMenuAction(win, "rename-note")
+        },
+        {
+          label: "Copy Note",
+          submenu: copyNoteSubmenu
+        },
+        {
+          label: "Move Note",
+          submenu: moveNoteSubmenu
         },
         {
           label: "Reload from Disk",
@@ -577,6 +729,19 @@ function buildAppMenuTemplate(win, context = {}) {
           accelerator: "CmdOrCtrl+Alt+R",
           click: () => sendMenuAction(win, "reload-workspace")
         },
+        ...(screen === "document"
+          ? [
+              { type: "separator" },
+              {
+                label: "Copy Note to Workspace...",
+                click: () => sendMenuAction(win, "copy-note-to-workspace")
+              },
+              {
+                label: "Move Note to Workspace...",
+                click: () => sendMenuAction(win, "move-note-to-workspace")
+              }
+            ]
+          : []),
         { type: "separator" },
         {
           label: "Open Workspace in VS Code",
@@ -770,8 +935,8 @@ function buildAppMenuTemplate(win, context = {}) {
   return template;
 }
 
-function buildAppMenu(win, context = {}) {
-  const template = buildAppMenuTemplate(win, context);
+function buildAppMenu(win, context = {}, deps = {}) {
+  const template = buildAppMenuTemplate(win, context, deps);
   return Menu.buildFromTemplate(template);
 }
 

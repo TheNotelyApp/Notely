@@ -8,6 +8,7 @@ import {
   Minimize,
   ListChecks,
   ExternalLink,
+  FolderOutput,
 } from "lucide-react";
 import AppButton from "../AppButton";
 
@@ -36,6 +37,7 @@ export function DocumentDetailHeader({
   aiEnabled,
   onShowAI,
   toggleFocusMode,
+  onTransferWorkspace,
 }) {
   if (isFocusMode) return null;
 
@@ -204,6 +206,7 @@ export function DocumentDetailHeader({
         <Sparkles size={14} />
         <span>{aiPanelVisible ? "Hide AI" : "AI Assistant"}</span>
       </AppButton>
+
 
       {/* View Action: Full Screen */}
       <AppButton

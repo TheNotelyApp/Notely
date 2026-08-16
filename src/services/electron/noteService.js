@@ -66,6 +66,14 @@ export async function deleteDocument(filePath) {
   return api.deleteDocument({ filePath });
 }
 
+export async function transferDocumentWorkspace(payload) {
+  const api = getNotesApi();
+  if (typeof api.transferDocumentWorkspace !== "function") {
+    throw new Error("Workspace transfer action unavailable. Please restart the app.");
+  }
+  return api.transferDocumentWorkspace(payload);
+}
+
 export async function readDocument(filePath) {
   const api = getNotesApi();
   return api.readDocument(filePath);

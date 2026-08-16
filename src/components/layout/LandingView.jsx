@@ -43,6 +43,7 @@ export function LandingView({
   onShowUpdateModal,
   onDismissUpdate,
   onCopyLinkPath,
+  onTransferWorkspace,
   onReloadWorkspace,
   aiSidebar = null,
 }) {
@@ -241,6 +242,7 @@ export function LandingView({
             onToggleFavorite={onToggleFavorite}
             emptyMessage="No notes or folders match your current filters."
             onCopyLinkPath={onCopyLinkPath}
+            onTransferWorkspace={onTransferWorkspace}
           />
         </div>
         {aiSidebar && (

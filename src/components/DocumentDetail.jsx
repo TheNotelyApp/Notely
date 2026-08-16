@@ -411,6 +411,7 @@ export function DocumentDetail({
   onCopyLinkPath,
   onReloadFromDisk,
   onOpenAllTasks,
+  onTransferWorkspace,
 }) {
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
@@ -1271,6 +1272,7 @@ export function DocumentDetail({
         aiEnabled={aiEnabled}
         onShowAI={onShowAI}
         toggleFocusMode={toggleFocusMode}
+        onTransferWorkspace={onTransferWorkspace}
       />
 
       {isFocusMode && (

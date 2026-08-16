@@ -1,6 +1,7 @@
 const { BrowserWindow, shell } = require("electron");
 const { assertTrustedIpcSender } = require("../ipc/ipcSecurity.cjs");
 const { buildWorkspaceGraph } = require("./workspaceGraph.cjs");
+const { transferDocumentWorkspace } = require("../core/noteMover.cjs");
 
 function registerDocumentIpcHandlers(ipcMain, deps) {
   const {
@@ -167,6 +168,21 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       console.error("[documentIpc] Failed to trigger AI onNoteRename:", aiErr.message);
     }
     return renamed;
+  });
+
+  registerTrustedHandler("notes:transfer-workspace", (_event, payload) => {
+    const notesRoot = getNotesRoot();
+    const result = transferDocumentWorkspace({ getNotesRoot, listProjectsState: deps.listProjectsState }, payload);
+    if (result?.action === "move" && result?.sourceFilePath && result?.targetFilePath) {
+      dashboardCache?.renameEntry?.(result.sourceFilePath, { filePath: result.targetFilePath, title: result.fileName });
+      try {
+        const { aiService } = require("../../../ai/core/AIService.js");
+        aiService.onNoteRename(result.sourceFilePath, result.targetFilePath);
+      } catch (aiErr) {
+        console.error("[documentIpc] Failed to trigger AI onNoteRename on transfer:", aiErr.message);
+      }
+    }
+    return result;
   });
 
   registerTrustedHandler("documents:delete", (_event, payload) => {

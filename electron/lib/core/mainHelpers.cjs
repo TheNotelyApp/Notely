@@ -177,6 +177,27 @@ function createMainHelpers(deps) {
         .sort((a, b) => a.name.localeCompare(b.name))
     ];
 
+    const userSettings = readUserSettings();
+    const recentPaths = Array.isArray(userSettings?.recentWorkspaces) ? userSettings.recentWorkspaces : [];
+    for (const rPath of recentPaths) {
+      if (rPath && typeof rPath === "string") {
+        try {
+          const resolvedPath = path.resolve(rPath);
+          if (fs.existsSync(resolvedPath) && !projects.some((p) => path.resolve(p.rootPath).toLowerCase() === resolvedPath.toLowerCase())) {
+            const baseName = path.basename(resolvedPath) || resolvedPath;
+            projects.push({
+              slug: `recent-${baseName.toLowerCase().replace(/[^a-z0-9_-]/g, "_")}`,
+              name: baseName,
+              rootPath: resolvedPath,
+              isRoot: false
+            });
+          }
+        } catch {
+          // Ignore invalid path
+        }
+      }
+    }
+
     const activeProjectSlug = getActiveProjectSlug();
     if (!projects.some((item) => item.slug === activeProjectSlug)) {
       setActiveProjectSlug(rootProjectSlug);
@@ -195,18 +216,43 @@ function createMainHelpers(deps) {
         isRoot: true
       };
 
+    function getSubfoldersForPath(targetDir) {
+      if (!targetDir || !fs.existsSync(targetDir)) return [];
+      const result = [];
+      const walk = (dir, prefix = "") => {
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory() && !shouldHideDirectory(entry.name)) {
+              const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+              result.push({ name: entry.name, relativePath: rel });
+              if (rel.split("/").length < 3) {
+                walk(path.join(dir, entry.name), rel);
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      };
+      walk(targetDir);
+      return result;
+    };
+
     return {
       projects: projects.map((item) => ({
         slug: item.slug,
         name: item.name,
         rootPath: item.rootPath,
-        isRoot: Boolean(item.isRoot)
+        isRoot: Boolean(item.isRoot),
+        subfolders: getSubfoldersForPath(item.rootPath)
       })),
       activeProject: {
         slug: activeProject.slug,
         name: activeProject.name,
         rootPath: activeProject.rootPath,
-        isRoot: Boolean(activeProject.isRoot)
+        isRoot: Boolean(activeProject.isRoot),
+        subfolders: getSubfoldersForPath(activeProject.rootPath)
       }
     };
   }

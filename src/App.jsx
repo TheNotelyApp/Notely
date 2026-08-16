@@ -69,6 +69,8 @@ import {
   gitGetStatus,
   checkForUpdates,
   onExportRecordAdded,
+  listProjects,
+  transferDocumentWorkspace,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -471,6 +473,48 @@ export default function App() {
     initialLine,
     setInitialLine,
   } = useDocumentManager({ notify, onRequireWorkspaceInitialization: handleRequireWorkspaceInitialization });
+
+  const [availableWorkspaces, setAvailableWorkspaces] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    listProjects()
+      .then((res) => {
+        if (!isMounted) return;
+        const projectList = Array.isArray(res?.projects) ? res.projects : [];
+        setAvailableWorkspaces(projectList);
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [activeProject, notesFolderPath]);
+
+  const [transferModalState, setTransferModalState] = useState({
+    isOpen: false,
+    document: null,
+    mode: "copy",
+  });
+
+  const handleTransferWorkspace = useCallback((doc, mode = "copy") => {
+    setTransferModalState({
+      isOpen: true,
+      document: doc || current,
+      mode,
+    });
+  }, [current]);
+
+  const handleTransferSuccess = useCallback((result) => {
+    if (typeof handleReloadWorkspace === "function") {
+      void handleReloadWorkspace();
+    }
+    if (result?.action === "move" && result?.sourceFilePath && result?.targetFilePath) {
+      if (openTabs.includes(result.sourceFilePath)) {
+        void openDocument(result.targetFilePath);
+        handleCloseTab(result.sourceFilePath);
+      }
+    }
+  }, [handleReloadWorkspace, openTabs, openDocument, handleCloseTab]);
 
   const handlePreviewNote = useCallback((filePath, lineNum = null) => {
     if (!filePath) return;
@@ -1410,6 +1454,14 @@ export default function App() {
       personasPageOpen
     );
 
+    let currentNoteSubfolder = "";
+    if (current?.filePath && rootPath) {
+      const docDir = normalizePathLikeValue(current.filePath).replace(/[\\/][^\\/]+$/, "");
+      if (docDir.toLowerCase().startsWith(rootPath.toLowerCase())) {
+        currentNoteSubfolder = docDir.slice(rootPath.length).replace(/^[\\/]+/, "").replace(/\\/g, "/");
+      }
+    }
+
     updateMenuContext({
       screen: (current && !isSubpageActive) ? "document" : "landing",
       viewMode: notesViewMode,
@@ -1430,9 +1482,16 @@ export default function App() {
       canRemoveFolder,
       currentFolderLabel: currentPath ? currentPath.replace(/^.*[\\/]/, "") : "",
       recentWorkspacePaths: normalizePathLikeList(recentWorkspacePaths),
+      availableWorkspaces: availableWorkspaces.map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        subfolders: p.subfolders || [],
+      })),
+      activeWorkspaceSlug: activeProject?.slug || "root",
+      currentNoteSubfolder,
       autosaveEnabled,
     });
-  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
@@ -1953,6 +2012,53 @@ export default function App() {
 
       if (action === "reload-workspace") {
         handleReloadWorkspace();
+        return;
+      }
+
+      if (action.startsWith("copy-note-to-workspace:") || action.startsWith("move-note-to-workspace:")) {
+        const isMove = action.startsWith("move-note-to-workspace:");
+        const parts = action.split(":");
+        const slugPart = parts[1] ? decodeURIComponent(parts[1]) : "";
+        const subfolderPart = parts[2] ? decodeURIComponent(parts[2]) : "";
+        if (current && slugPart) {
+          transferDocumentWorkspace({
+            filePath: current.filePath,
+            targetWorkspaceSlug: slugPart,
+            targetSubfolder: subfolderPart,
+            action: isMove ? "move" : "copy",
+          }).then((res) => {
+            if (res?.success) {
+              const destLabel = subfolderPart ? `${res.targetWorkspaceName || slugPart}/${subfolderPart}` : (res.targetWorkspaceName || slugPart);
+              notify(`${isMove ? "Moved" : "Copied"} note "${res.fileName}" to "${destLabel}".`, "success");
+              handleTransferSuccess(res);
+            }
+          }).catch((err) => {
+            notify(`${isMove ? "Move" : "Copy"} failed: ${err?.message || "Unknown error"}`, "error");
+          });
+        }
+        return;
+      }
+
+      if (action.startsWith("copy-note-to-folder:") || action.startsWith("move-note-to-folder:")) {
+        const isMove = action.startsWith("move-note-to-folder:");
+        const subfolderPart = action.split(":")[1] ? decodeURIComponent(action.split(":")[1]) : "";
+        const activeSlug = activeProject?.slug || "root";
+        if (current) {
+          transferDocumentWorkspace({
+            filePath: current.filePath,
+            targetWorkspaceSlug: activeSlug,
+            targetSubfolder: subfolderPart,
+            action: isMove ? "move" : "copy",
+          }).then((res) => {
+            if (res?.success) {
+              const destLabel = subfolderPart ? `folder "${subfolderPart}"` : "Workspace Root";
+              notify(`${isMove ? "Moved" : "Copied"} note "${res.fileName}" to ${destLabel}.`, "success");
+              handleTransferSuccess(res);
+            }
+          }).catch((err) => {
+            notify(`${isMove ? "Move" : "Copy"} failed: ${err?.message || "Unknown error"}`, "error");
+          });
+        }
         return;
       }
 
@@ -3099,6 +3205,7 @@ export default function App() {
             onShowUpdateModal={() => setShowUpdateModal(true)}
             onDismissUpdate={() => setUpdateStatus("dismissed")}
             onCopyLinkPath={handleCopyLinkPath}
+            onTransferWorkspace={handleTransferWorkspace}
             onReloadWorkspace={handleReloadWorkspace}
           />
         </>
@@ -3122,6 +3229,7 @@ export default function App() {
             onOpenInEditor={handleOpenInEditor}
             onRevealInExplorer={handleRevealInExplorer}
             onCopyLinkPath={handleCopyLinkPath}
+            onTransferWorkspace={handleTransferWorkspace}
             history={history}
             workspacePath={notesFolderPath}
             branch={gitWorkspaceMeta.branch}
@@ -3749,6 +3857,9 @@ export default function App() {
         exportImportOpen={exportImportOpen}
         exportImportMode={exportImportMode}
         setExportImportOpen={setExportImportOpen}
+        transferModalState={transferModalState}
+        setTransferModalState={setTransferModalState}
+        onTransferSuccess={handleTransferSuccess}
       />
       </div>
     </div>
