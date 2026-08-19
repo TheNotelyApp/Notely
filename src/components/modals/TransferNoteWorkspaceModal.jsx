@@ -3,7 +3,7 @@ import { FolderOutput, Copy, ArrowRight, Search, Check, Folder } from "lucide-re
 import OverlayDialog from "../OverlayDialog";
 import AppButton from "../AppButton";
 import AppInput from "../AppInput";
-import { listProjects, transferDocumentWorkspace } from "../../services/electronService";
+import { listProjects, transferDocumentWorkspace, getNotesRootSetting } from "../../services/electronService";
 
 /**
  * TransferNoteWorkspaceModal
@@ -44,10 +44,32 @@ export function TransferNoteWorkspaceModal({
     let isMounted = true;
     setFetchingProjects(true);
 
-    listProjects()
-      .then((res) => {
+    Promise.all([
+      listProjects().catch(() => ({ projects: [], activeProject: null })),
+      getNotesRootSetting().catch(() => ({}))
+    ])
+      .then(([res, notesSetting]) => {
         if (!isMounted) return;
-        const projectList = Array.isArray(res?.projects) ? res.projects : [];
+        const projectList = Array.isArray(res?.projects) ? [...res.projects] : [];
+        const currentRoot = (notesSetting?.notesRoot || res?.activeProject?.rootPath || "").toLowerCase();
+        const recents = Array.isArray(notesSetting?.recentWorkspaces) ? notesSetting.recentWorkspaces : [];
+
+        for (const rPath of recents) {
+          if (rPath && typeof rPath === "string") {
+            const norm = rPath.toLowerCase();
+            if (norm !== currentRoot && !projectList.some((p) => (p.rootPath || "").toLowerCase() === norm)) {
+              const baseName = rPath.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || rPath;
+              projectList.push({
+                slug: `recent:${encodeURIComponent(rPath)}`,
+                name: `${baseName} (Workspace)`,
+                rootPath: rPath,
+                isRecent: true,
+                subfolders: []
+              });
+            }
+          }
+        }
+
         setProjects(projectList);
 
         // Default selection: first available project that is NOT the active workspace if possible

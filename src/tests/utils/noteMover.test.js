@@ -190,4 +190,25 @@ Here is a Draw.io diagram: ![](.notes-app/drawio-diagrams/diag2.png)
     expect(movedNoteContent).toContain("../..");
     expect(movedNoteContent).toContain("media/images/diagram.png");
   });
+
+  it("handles transfer when targetWorkspaceSlug is a recent: prefixed URI", () => {
+    const notePath = path.join(sourceWorkspace, "RecentTarget.md");
+    fs.writeFileSync(notePath, "# Recent Transfer", "utf8");
+
+    const mockDeps = {
+      getNotesRoot: () => tmpDir,
+      listProjectsState: () => ({ projects: [] }),
+    };
+
+    const recentTargetSlug = `recent:${encodeURIComponent(targetWorkspace)}`;
+    const res = transferDocumentWorkspace(mockDeps, {
+      filePath: notePath,
+      targetWorkspaceSlug: recentTargetSlug,
+      action: "copy",
+    });
+
+    expect(res.success).toBe(true);
+    expect(fs.existsSync(res.targetFilePath)).toBe(true);
+    expect(fs.readFileSync(res.targetFilePath, "utf8")).toBe("# Recent Transfer");
+  });
 });

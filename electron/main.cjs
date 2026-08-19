@@ -438,6 +438,7 @@ function resolveInitialNotesRoot() {
 function applyNotesRoot(nextRootPath) {
   const previousNotesRoot = notesRoot;
   notesRoot = path.resolve(nextRootPath);
+  activeProjectSlug = ROOT_PROJECT_SLUG;
   appDataDir = path.join(notesRoot, ".notes-app");
   versionsRoot = path.join(appDataDir, "versions");
   const removedRoot = path.join(appDataDir, "removed");

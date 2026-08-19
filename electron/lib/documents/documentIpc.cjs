@@ -227,6 +227,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
+    if (!fs.existsSync(resolved)) {
+      return null;
+    }
     const content = fs.readFileSync(resolved, "utf8");
     lastAppHashes.set(resolved, hashContent(content));
     return parseDocument(content, resolved);

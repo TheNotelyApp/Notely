@@ -58,10 +58,14 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         .filter(Boolean)
     : [];
   const openRecentSubmenu = recentWorkspacePaths.length
-    ? recentWorkspacePaths.map((workspacePath) => ({
-        label: workspacePath,
-        click: () => sendMenuAction(win, `open-recent-workspace:${encodeURIComponent(workspacePath)}`)
-      }))
+    ? recentWorkspacePaths.map((workspacePath) => {
+        const actStr = `open-recent-workspace:${encodeURIComponent(workspacePath)}`;
+        return {
+          label: workspacePath,
+          action: actStr,
+          click: () => sendMenuAction(win, actStr)
+        };
+      })
     : [
         {
           label: "No Recent Workspaces",
@@ -80,7 +84,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
       try {
         const state = listFn();
         if (Array.isArray(state?.projects)) {
-          availableWorkspaces = state.projects;
+          availableWorkspaces = [...state.projects];
         }
       } catch {
         // ignore fallback error

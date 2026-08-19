@@ -129,6 +129,11 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       setLoading(true);
       readDocument(activeTabPath)
         .then((doc) => {
+          if (!doc) {
+            setOpenTabs((prev) => prev.filter((p) => p !== activeTabPath));
+            setActiveTabPath(null);
+            return;
+          }
           const hash = JSON.stringify({
             header: doc.header || "",
             rawNotes: doc.rawNotes || "",
@@ -163,6 +168,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       unloaded.map(async (filePath) => {
         try {
           const doc = await readDocument(filePath);
+          if (!doc) return null;
           const hash = JSON.stringify({
             header: doc.header || "",
             rawNotes: doc.rawNotes || "",

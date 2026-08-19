@@ -155,67 +155,6 @@ function createMainHelpers(deps) {
     };
   }
 
-  function listProjectsState() {
-    const notesRoot = getNotesRoot();
-    ensureDir(notesRoot);
-    const projects = [
-      {
-        slug: rootProjectSlug,
-        name: "Root",
-        rootPath: notesRoot,
-        isRoot: true
-      },
-      ...fs.readdirSync(notesRoot, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .filter((entry) => !shouldHideDirectory(entry.name))
-        .map((entry) => ({
-          slug: entry.name,
-          name: entry.name,
-          rootPath: path.join(notesRoot, entry.name),
-          isRoot: false
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-    ];
-
-    const userSettings = readUserSettings();
-    const recentPaths = Array.isArray(userSettings?.recentWorkspaces) ? userSettings.recentWorkspaces : [];
-    for (const rPath of recentPaths) {
-      if (rPath && typeof rPath === "string") {
-        try {
-          const resolvedPath = path.resolve(rPath);
-          if (fs.existsSync(resolvedPath) && !projects.some((p) => path.resolve(p.rootPath).toLowerCase() === resolvedPath.toLowerCase())) {
-            const baseName = path.basename(resolvedPath) || resolvedPath;
-            projects.push({
-              slug: `recent-${baseName.toLowerCase().replace(/[^a-z0-9_-]/g, "_")}`,
-              name: baseName,
-              rootPath: resolvedPath,
-              isRoot: false
-            });
-          }
-        } catch {
-          // Ignore invalid path
-        }
-      }
-    }
-
-    const activeProjectSlug = getActiveProjectSlug();
-    if (!projects.some((item) => item.slug === activeProjectSlug)) {
-      setActiveProjectSlug(rootProjectSlug);
-    }
-
-    const finalActiveProjectSlug = projects.some((item) => item.slug === activeProjectSlug)
-      ? activeProjectSlug
-      : rootProjectSlug;
-
-    const activeProject = projects.find((item) => item.slug === finalActiveProjectSlug)
-      || projects[0]
-      || {
-        slug: rootProjectSlug,
-        name: "Root",
-        rootPath: notesRoot,
-        isRoot: true
-      };
-
     function getSubfoldersForPath(targetDir) {
       if (!targetDir || !fs.existsSync(targetDir)) return [];
       const result = [];
@@ -237,7 +176,47 @@ function createMainHelpers(deps) {
       };
       walk(targetDir);
       return result;
-    };
+    }
+
+    function listProjectsState() {
+    const notesRoot = getNotesRoot();
+    ensureDir(notesRoot);
+    const projects = [
+      {
+        slug: rootProjectSlug,
+        name: "Root",
+        rootPath: notesRoot,
+        isRoot: true
+      },
+      ...fs.readdirSync(notesRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .filter((entry) => !shouldHideDirectory(entry.name))
+        .map((entry) => ({
+          slug: entry.name,
+          name: entry.name,
+          rootPath: path.join(notesRoot, entry.name),
+          isRoot: false
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    ];
+
+    const activeProjectSlug = getActiveProjectSlug();
+    if (!projects.some((item) => item.slug === activeProjectSlug)) {
+      setActiveProjectSlug(rootProjectSlug);
+    }
+
+    const finalActiveProjectSlug = projects.some((item) => item.slug === activeProjectSlug)
+      ? activeProjectSlug
+      : rootProjectSlug;
+
+    const activeProject = projects.find((item) => item.slug === finalActiveProjectSlug)
+      || projects[0]
+      || {
+        slug: rootProjectSlug,
+        name: "Root",
+        rootPath: notesRoot,
+        isRoot: true
+      };
 
     return {
       projects: projects.map((item) => ({
@@ -313,6 +292,7 @@ function createMainHelpers(deps) {
     resolveInitialNotesRoot,
     readP2PStatusSnapshot,
     listProjectsState,
+    getSubfoldersForPath,
     getActiveProject,
     parseDocument,
     buildDocumentContent,

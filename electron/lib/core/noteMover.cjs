@@ -53,19 +53,31 @@ function transferDocumentWorkspace(deps, payload) {
     throw new Error(`Source note does not exist at path: ${filePath}`);
   }
 
-  // Resolve target workspace root
-  const projectsState = listProjectsState();
+  const projectsState = typeof listProjectsState === "function" ? listProjectsState() : { projects: [] };
   const projects = projectsState?.projects || [];
+
+  // Resolve target workspace root
+  let targetWorkspaceRoot = "";
   const targetProject = projects.find((p) => p.slug === targetWorkspaceSlug);
 
-  let targetWorkspaceRoot = "";
-  if (targetProject && targetProject.rootPath) {
-    targetWorkspaceRoot = targetProject.rootPath;
-  } else if (targetWorkspaceSlug === "root" || !targetWorkspaceSlug) {
-    targetWorkspaceRoot = getNotesRoot();
-  } else {
-    // If slug matches a directory directly under notes root
-    targetWorkspaceRoot = path.join(getNotesRoot(), targetWorkspaceSlug);
+  if (targetWorkspaceSlug && typeof targetWorkspaceSlug === "string" && targetWorkspaceSlug.startsWith("recent:")) {
+    const rawPath = decodeURIComponent(targetWorkspaceSlug.slice(7));
+    if (rawPath && fs.existsSync(rawPath)) {
+      targetWorkspaceRoot = path.resolve(rawPath);
+    }
+  }
+
+  if (!targetWorkspaceRoot) {
+    if (targetProject && targetProject.rootPath) {
+      targetWorkspaceRoot = targetProject.rootPath;
+    } else if (targetWorkspaceSlug && typeof targetWorkspaceSlug === "string" && fs.existsSync(targetWorkspaceSlug)) {
+      targetWorkspaceRoot = path.resolve(targetWorkspaceSlug);
+    } else if (targetWorkspaceSlug === "root" || !targetWorkspaceSlug) {
+      targetWorkspaceRoot = getNotesRoot();
+    } else {
+      // If slug matches a directory directly under notes root
+      targetWorkspaceRoot = path.join(getNotesRoot(), targetWorkspaceSlug);
+    }
   }
 
   // Resolve target folder path (including optional subfolder inside target workspace)

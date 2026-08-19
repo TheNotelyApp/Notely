@@ -702,6 +702,9 @@ function createWindowLifecycle(deps) {
       canRemoveFolder: Boolean(context?.canRemoveFolder),
       currentFolderLabel: normalizeMenuText(context?.currentFolderLabel, ""),
       recentWorkspacePaths: normalizeRecentWorkspacePaths(context?.recentWorkspacePaths),
+      availableWorkspaces: Array.isArray(context?.availableWorkspaces) ? context.availableWorkspaces : [],
+      activeWorkspaceSlug: String(context?.activeWorkspaceSlug || "root"),
+      currentNoteSubfolder: String(context?.currentNoteSubfolder || ""),
     };
 
     Menu.setApplicationMenu(buildAppMenu(win, win.__menuContext));

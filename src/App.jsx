@@ -505,14 +505,14 @@ export default function App() {
   }, [current]);
 
   const handleTransferSuccess = useCallback((result) => {
-    if (typeof handleReloadWorkspace === "function") {
-      void handleReloadWorkspace();
-    }
     if (result?.action === "move" && result?.sourceFilePath && result?.targetFilePath) {
       if (openTabs.includes(result.sourceFilePath)) {
-        void openDocument(result.targetFilePath);
         handleCloseTab(result.sourceFilePath);
+        void openDocument(result.targetFilePath);
       }
+    }
+    if (typeof handleReloadWorkspace === "function") {
+      void handleReloadWorkspace();
     }
   }, [handleReloadWorkspace, openTabs, openDocument, handleCloseTab]);
 
