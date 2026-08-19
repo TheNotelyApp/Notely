@@ -18,7 +18,7 @@ export function generateDiagramId() {
  * @returns {string} Path to diagrams root folder
  */
 export function getDiagramFolderPath() {
-  return ".notes-app/excali-diagrams";
+  return "media/excalidraw";
 }
 
 /**
@@ -48,7 +48,7 @@ export function getDiagramSourcePath(docSlug, diagramId) {
  * @returns {string} Path to rendered PNG image
  */
 export function getDiagramImagePath(_docSlug, diagramId) {
-  return `.notes-app/excali-diagrams/${diagramId}/diagram.png`;
+  return `media/excalidraw/${diagramId}/diagram.png`;
 }
 
 /**
@@ -69,15 +69,17 @@ export function getDiagramMarkdownReference(docSlug, diagramId) {
  */
 export function parseDiagramReference(markdownRef) {
   // Match both:
-  // - .notes-app/excali-diagrams/diagramId/diagram.png (current)
+  // - media/excalidraw/diagramId/diagram.png (current)
+  // - .notes-app/excali-diagrams/diagramId/diagram.png (legacy)
   // - excali-diagrams/diagramId/diagram.png (legacy)
   // - excali-diagrams/docSlug/diagramId/diagram.png (legacy slugged)
-  const match = markdownRef.match(/!\[.*?\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*(?:\{[^}]*\})?/);
+  // - media/diagrams/diagramId.png (legacy flat)
+  const match = markdownRef.match(/!\[.*?\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|media\/(?:excalidraw|diagrams)\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*(?:\{[^}]*\})?/);
   
   if (match) {
     return {
-      docSlug: match[2] || null,
-      diagramId: match[4] || match[3],
+      docSlug: match[2] || match[4] || null,
+      diagramId: match[6] || match[5] || match[3],
       fullPath: match[1],
     };
   }
@@ -93,7 +95,7 @@ export function parseDiagramReference(markdownRef) {
 export function isDiagramReference(imagePath) {
   return (
     Boolean(imagePath) &&
-    (imagePath.includes('excali-diagrams') || imagePath.includes('media/diagrams')) &&
+    (imagePath.includes('excali-diagrams') || imagePath.includes('excalidraw') || imagePath.includes('media/diagrams') || imagePath.includes('media/draw.io') || imagePath.includes('drawio-diagrams')) &&
     (imagePath.includes('diagram.png') || imagePath.endsWith('.png'))
   );
 }
@@ -145,14 +147,14 @@ export function createDiagramMarkdown(docSlug, diagramId) {
 export function extractDiagramReferences(markdown) {
   const diagramRefs = [];
   
-  // Match both current (media/diagrams) and legacy diagram reference paths.
-  const pattern = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*\{data-diagram-id=["“]([^"”]+)["”]/g;
+  // Match both current (media/excalidraw) and legacy diagram reference paths.
+  const pattern = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/(?:excalidraw|diagrams)\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*\{data-diagram-id=["“]([^"”]+)["”]/g;
   
   let match;
   while ((match = pattern.exec(markdown)) !== null) {
     diagramRefs.push({
       imagePath: match[1],
-      diagramId: match[4] || match[2] || match[3],
+      diagramId: match[6] || match[5] || match[3] || match[2],
     });
   }
   

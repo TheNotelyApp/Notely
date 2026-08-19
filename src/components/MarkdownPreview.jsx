@@ -77,7 +77,7 @@ function replaceDiagramReferenceWithOriginal(content, options = {}) {
 
   const comparableDiagramPath = toComparableAssetPath(diagramImagePath);
   const replacementMarkdown = createImageMarkdown(originAltText || "Image", originAssetPath || "");
-  const diagramRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*(\{[^}]*\})?/gi;
+  const diagramRegex = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/(?:excalidraw|diagrams)\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png)\)\s*(\{[^}]*\})?/gi;
   let replaced = false;
 
   const nextContent = source.replace(diagramRegex, (match, imagePath, fallbackDiagramId, attributeBlock) => {
@@ -495,6 +495,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   }, [content]);
 
   useEffect(() => {
+    imageResolveCacheRef.current.clear();
     let cancelled = false;
     const previewElement = previewRef.current;
     if (!previewElement || !basePath) return undefined;
@@ -1579,6 +1580,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       if (previewImageData) {
         await writeDiagramImage(docPath, diagramEditState.diagramId, previewImageData);
       }
+
+      imageResolveCacheRef.current.clear();
 
       if (diagramEditState.converted) {
         onNotify?.("Diagram saved.", "success");

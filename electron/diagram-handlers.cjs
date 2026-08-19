@@ -47,7 +47,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
 
   function getCurrentDiagramDir(documentPath, diagramId) {
     const root = resolveWorkspaceRoot(documentPath);
-    return path.join(root, '.notes-app', 'excali-diagrams', diagramId);
+    return path.join(root, 'media', 'excalidraw', diagramId);
   }
 
   function getLegacyDiagramDir(documentPath, diagramId) {
@@ -57,6 +57,12 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
 
   function getPreferredExistingDiagramDir(documentPath, diagramId) {
     const root = resolveWorkspaceRoot(documentPath);
+    const mediaExcaliDir = path.join(root, 'media', 'excalidraw', diagramId);
+    if (fsSync.existsSync(mediaExcaliDir)) return mediaExcaliDir;
+
+    const mediaDiagramsDir = path.join(root, 'media', 'diagrams', diagramId);
+    if (fsSync.existsSync(mediaDiagramsDir)) return mediaDiagramsDir;
+
     const currentDir = path.join(root, '.notes-app', 'excali-diagrams', diagramId);
     if (fsSync.existsSync(currentDir)) return currentDir;
 
@@ -68,7 +74,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     const legacyDir = path.join(root, 'excali-diagrams', diagramId);
     if (fsSync.existsSync(legacyDir)) return legacyDir;
 
-    return currentDir;
+    return mediaExcaliDir;
   }
 
   function emitDiagramSync(filePath, options = {}) {
@@ -172,36 +178,38 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
    */
   ipcMain.handle('diagram:write-image', async (event, { documentPath, diagramId, imageData }) => {
     try {
-      const notesRoot = getNotesRoot();
-      const mediaDiagramsDir = path.join(notesRoot, 'media', 'diagrams');
-      const imageFile = path.join(mediaDiagramsDir, `${diagramId}.png`);
-      const existed = fsSync.existsSync(imageFile);
-      const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
+      const primaryDir = getCurrentDiagramDir(documentPath, diagramId);
+      const primaryImageFile = path.join(primaryDir, 'diagram.png');
+      const existed = fsSync.existsSync(primaryImageFile);
+      const previousBase64 = existed ? fsSync.readFileSync(primaryImageFile).toString('base64') : null;
       const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
       
-      // Legacy path for backward compatibility
-      const legacyDir = getCurrentDiagramDir(documentPath, diagramId);
-      const legacyImageFile = path.join(legacyDir, 'diagram.png');
+      await mkdirRecursive(primaryDir);
 
-      // Create directories if they don't exist
-      await mkdirRecursive(mediaDiagramsDir);
-      await mkdirRecursive(legacyDir);
-
-      // Handle both base64 strings and buffers
       let buffer;
       if (typeof imageData === 'string') {
-        // Remove data URL prefix if present
         const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
         buffer = Buffer.from(base64Data, 'base64');
       } else {
         buffer = imageData;
       }
       
-      // Write to both locations
-      await fs.writeFile(imageFile, buffer);
-      await fs.writeFile(legacyImageFile, buffer);
+      await fs.writeFile(primaryImageFile, buffer);
 
-      emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
+      // Also mirror to legacy notes-app dir if it exists
+      const notesRoot = getNotesRoot();
+      const legacyNotesAppDir = path.join(resolveWorkspaceRoot(documentPath), '.notes-app', 'excali-diagrams', diagramId);
+      if (fsSync.existsSync(legacyNotesAppDir)) {
+        await fs.writeFile(path.join(legacyNotesAppDir, 'diagram.png'), buffer);
+      }
+
+      // Also mirror to legacy flat media/diagrams dir if it already exists
+      const legacyFlatFile = path.join(notesRoot, 'media', 'diagrams', `${diagramId}.png`);
+      if (fsSync.existsSync(legacyFlatFile)) {
+        await fs.writeFile(legacyFlatFile, buffer);
+      }
+
+      emitDiagramSync(primaryImageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
         success: true,
@@ -316,6 +324,9 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
 
   function getDrawioSourceFile(diagramId, documentPath) {
     const root = resolveWorkspaceRoot(documentPath);
+    const mediaFile = path.join(root, 'media', 'draw.io', `${diagramId}.drawio`);
+    if (fsSync.existsSync(mediaFile)) return mediaFile;
+
     const primaryFile = path.join(root, '.notes-app', 'drawio-diagrams', `${diagramId}.drawio`);
     if (fsSync.existsSync(primaryFile)) return primaryFile;
 
@@ -324,14 +335,14 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       if (fsSync.existsSync(subFile)) return subFile;
     }
 
-    const legacyFile = path.join(root, 'media', 'draw.io', `${diagramId}.drawio`);
-    if (fsSync.existsSync(legacyFile)) return legacyFile;
-
-    return primaryFile;
+    return mediaFile;
   }
 
   function getDrawioImageFile(diagramId, documentPath) {
     const root = resolveWorkspaceRoot(documentPath);
+    const mediaFile = path.join(root, 'media', 'draw.io', `${diagramId}.png`);
+    if (fsSync.existsSync(mediaFile)) return mediaFile;
+
     const primaryFile = path.join(root, '.notes-app', 'drawio-diagrams', `${diagramId}.png`);
     if (fsSync.existsSync(primaryFile)) return primaryFile;
 
@@ -340,10 +351,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       if (fsSync.existsSync(subFile)) return subFile;
     }
 
-    const legacyFile = path.join(root, 'media', 'draw.io', `${diagramId}.png`);
-    if (fsSync.existsSync(legacyFile)) return legacyFile;
-
-    return primaryFile;
+    return mediaFile;
   }
 
   /**
@@ -379,7 +387,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   ipcMain.handle('drawio:write-source', async (event, { diagramId, data, documentPath }) => {
     try {
       const root = resolveWorkspaceRoot(documentPath);
-      const drawioDir = path.join(root, '.notes-app', 'drawio-diagrams');
+      const drawioDir = path.join(root, 'media', 'draw.io');
       const sourceFile = path.join(drawioDir, `${diagramId}.drawio`);
       const existed = fsSync.existsSync(sourceFile);
       const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
@@ -387,6 +395,13 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       
       await mkdirRecursive(drawioDir);
       await fs.writeFile(sourceFile, data, 'utf-8');
+
+      // Also mirror to legacy notes-app dir if it already exists
+      const legacyDir = path.join(root, '.notes-app', 'drawio-diagrams');
+      if (fsSync.existsSync(legacyDir)) {
+        await fs.writeFile(path.join(legacyDir, `${diagramId}.drawio`), data, 'utf-8');
+      }
+
       emitDiagramSync(sourceFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
@@ -407,7 +422,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   ipcMain.handle('drawio:write-image', async (event, { diagramId, imageData, documentPath }) => {
     try {
       const root = resolveWorkspaceRoot(documentPath);
-      const drawioDir = path.join(root, '.notes-app', 'drawio-diagrams');
+      const drawioDir = path.join(root, 'media', 'draw.io');
       const imageFile = path.join(drawioDir, `${diagramId}.png`);
       const existed = fsSync.existsSync(imageFile);
       const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
@@ -424,6 +439,13 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       }
       
       await fs.writeFile(imageFile, buffer);
+
+      // Also mirror to legacy notes-app dir if it exists
+      const legacyDir = path.join(root, '.notes-app', 'drawio-diagrams');
+      if (fsSync.existsSync(legacyDir)) {
+        await fs.writeFile(path.join(legacyDir, `${diagramId}.png`), buffer);
+      }
+
       emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {

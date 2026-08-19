@@ -732,7 +732,7 @@ export function MarkdownToolbar({
 
   const insertDrawioDiagram = () => {
     const diagramId = generateDiagramId();
-    const rawMarkdown = `![Draw.io Diagram](.notes-app/drawio-diagrams/${diagramId}.png){data-diagram-id="${diagramId}"}`;
+    const rawMarkdown = `![Draw.io Diagram](media/draw.io/${diagramId}.png){data-diagram-id="${diagramId}"}`;
     const normalizedMarkdown = rawMarkdown.replace(/\(([^)]+)\)/, (_match, pathValue) => {
       return `(${normalizeImagePathForMarkdown(pathValue)})`;
     });

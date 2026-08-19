@@ -60,7 +60,7 @@ function scanNoteDependencies(content) {
     const rawPath = match[1].replace(/^\/+/, "").replace(/[?#].*$/, "").trim();
     if (!rawPath) continue;
     // Exclude excalidraw/draw.io from direct raw images if they will be handled separately
-    if (!rawPath.includes("excali-diagrams") && !rawPath.includes("draw.io") && !rawPath.includes("media/diagrams")) {
+    if (!rawPath.includes("excali-diagrams") && !rawPath.includes("excalidraw") && !rawPath.includes("draw.io") && !rawPath.includes("drawio") && !rawPath.includes("media/diagrams")) {
       images.push(rawPath);
     }
   }
@@ -72,13 +72,13 @@ function scanNoteDependencies(content) {
   }
 
   // Also check URL pattern for excalidraw
-  const excaliUrlRegex = /(?:excali-diagrams|media\/diagrams)\/([^/.]+)\.png/g;
+  const excaliUrlRegex = /(?:excali-diagrams|excalidraw|media\/diagrams)\/([^/.]+)\.png/g;
   while ((match = excaliUrlRegex.exec(content)) !== null) {
     excalidrawIds.add(match[1]);
   }
 
   // 3. Scan for Draw.io references
-  const drawioRegex = /(?:\.notes-app\/drawio-diagrams\/|media\/draw\.io\/)([^/.]+)\.png/g;
+  const drawioRegex = /(?:\.notes-app\/drawio-diagrams\/|media\/draw\.io\/|media\/drawio\/)([^/.]+)\.png/g;
   while ((match = drawioRegex.exec(content)) !== null) {
     drawioIds.add(match[1]);
   }
