@@ -10,9 +10,6 @@ import {
   GitCommit,
   FileText,
   GitCompare,
-  User,
-  ShieldCheck,
-  Calendar,
 } from "lucide-react";
 
 export function TimeMachineScrubber({

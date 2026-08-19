@@ -35,9 +35,17 @@ describe('Semantic Search Tests', () => {
   });
 
   afterAll(() => {
-    db.close();
+    try {
+      db.close();
+    } catch {
+      // ignore
+    }
     if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // ignore Windows file handle lock
+      }
     }
   });
 

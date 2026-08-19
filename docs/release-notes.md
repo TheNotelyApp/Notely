@@ -1,6 +1,17 @@
 # Release Notes
 
-## 2026-07-25 (latest)
+## 2026-08-19 (latest)
+
+### Screen Video Recording & Modal Player
+
+- **Screen & Window Recording** — record high-definition desktop videos with microphone audio commentary directly into notes from the editor toolbar (**🎥 Record**).
+- **Custom Source Selection Modal** — visual picker displaying live 16:9 thumbnail previews of connected monitors and open application windows with tabbed filtering and microphone toggle (`Mic: ON / OFF`).
+- **Auto-Minimization & Floating Overlay** — Notely automatically minimizes on record start to clear the desktop space, spawning a frameless, transparent, always-on-top draggable pill window with real-time timer (`00:00`), Pause/Resume, Mic Mute/Unmute, Stop & Save (`⏹`), and Cancel (`✕`) controls.
+- **Note Video Cards & Modal Player** — Markdown preview renders `.webm` / `.mp4` links as interactive thumbnail cards with `▶ Play Video` badges and frame decoding. Clicking opens a full-screen player modal with HTML5 controls, **Download**, and **Copy Path** actions.
+
+---
+
+## 2026-07-25
 
 ### AI Architecture & UI Telemetry
 

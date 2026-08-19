@@ -293,21 +293,20 @@ Add images and other files to your notes and link to them when needed.
 
 Rename, replace, annotate, and open media in default apps.
 
-### Screen capture (Windows)
+### Screen capture & video recording
 
-Notely supports area-based screen capture directly from the editor.
+Notely supports area-based screen capture and full screen/window video recording directly from the editor.
 
-- Trigger capture from the toolbar screen icon or `Ctrl/Cmd + Shift + S`.
-- Use Windows snip overlay to select an area.
-- Insert behavior is controlled by **Settings -> Screen Capture**:
-  - **Auto Insert**: captured image is inserted immediately.
-  - **Review Before Insert**: open review editor first, then save to insert.
-- In review mode, edits are optional; you can save as-is.
-
-The toolbar capture icon shows current mode:
-
-- `A` = Auto Insert
-- `R` = Review Before Insert
+- **Static Screen Snipping**:
+  - Trigger capture from the toolbar icon or `Ctrl/Cmd + Shift + S`.
+  - Insert behavior is controlled by **Settings -> Screen Capture** (`Auto Insert` vs `Review Before Insert`).
+- **Screen Video Recording**:
+  - Click **🎥 Record** on the editor toolbar to open the source picker.
+  - **Source Picker**: Choose any connected desktop screen or application window with live thumbnail previews. Includes a **Microphone Toggle (ON/OFF)**.
+  - **Auto-Minimize**: Notely automatically minimizes to clear the desktop recording area.
+  - **Draggable Floating Overlay**: Always-on-top pill window with timer (`00:00`), Pause/Resume, Mic Mute/Unmute, Stop & Save (`⏹`), and Cancel (`✕`).
+  - **Auto-Save & Linking**: Saves `.webm` files under `media/recordings/` and inserts `![Screen Recording](media/recordings/*.webm)` into the note.
+  - **Note Preview & Modal Player**: Renders video links as interactive thumbnail cards with `▶ Play Video` badges and frame decoding. Clicking opens a full-screen playback modal with Download and Copy Path options.
 
 ### Media preview tools
 

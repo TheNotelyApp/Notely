@@ -686,7 +686,7 @@ export function DocumentDetail({
       } else {
         onNotify?.(res?.error || "Restore failed.", "error");
       }
-    } catch (err) {
+    } catch {
       onNotify?.("Failed to restore commit version.", "error");
     }
   };

@@ -95,7 +95,7 @@ export default withMermaid(
             { text: "Tasks", link: "/workspace/tasks" },
             { text: "Calendar", link: "/workspace/calendar" },
             { text: "Media", link: "/workspace/media" },
-            { text: "Screen Capture", link: "/workspace/screen-capture" },
+            { text: "Screen Capture & Recording", link: "/workspace/screen-capture" },
             { text: "Workspace Graph", link: "/workspace/graph" },
             { text: "Downloads & History", link: "/workspace/downloads" },
             { text: "Export", link: "/workspace/export" },

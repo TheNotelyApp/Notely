@@ -48,16 +48,17 @@ The Markdown toolbar sits above the editor and provides quick-insert actions for
 | **Validate** | Run Markdown validation on the current note |
 | **Format** | Auto-format the focused code block using Prettier |
 
-## Capture Button (Windows)
+## Capture & Video Recording Buttons
 
 | Button | Action | Notes |
 |---|---|---|
 | **📷 A** | Capture screen area — Auto Insert mode | `A` = Auto Insert |
 | **📷 R** | Capture screen area — Review Before Insert mode | `R` = Review mode |
+| **🎥 Record** | Record screen or app window | Opens source picker, minimizes Notely, and displays floating overlay controls |
 
 The mode badge (`A` or `R`) reflects the current setting from **Settings → Screen Capture**.
 
-→ [Screen Capture guide](/workspace/screen-capture)
+→ [Screen Capture & Recording guide](/workspace/screen-capture)
 
 ## View Mode Controls
 

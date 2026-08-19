@@ -53,8 +53,8 @@ describe('Diagram Storage in Subfolders & .notes-app Isolation', () => {
 
     expect(writeRes.success).toBe(true);
 
-    // Assert it was created in workspace root .notes-app/excali-diagrams/
-    const expectedRootFile = path.join(workspaceRoot, '.notes-app', 'excali-diagrams', diagramId, 'diagram.excalidraw');
+    // Assert it was created in workspace media/excalidraw/
+    const expectedRootFile = path.join(workspaceRoot, 'media', 'excalidraw', diagramId, 'diagram.excalidraw');
     expect(fs.existsSync(expectedRootFile)).toBe(true);
 
     // Assert NO .notes-app was created inside subfolder
@@ -70,7 +70,7 @@ describe('Diagram Storage in Subfolders & .notes-app Isolation', () => {
     expect(readRes.data).toBe(diagramData);
   });
 
-  it('2. Writing Draw.io diagram from subfolder note saves inside workspace .notes-app/drawio-diagrams', async () => {
+  it('2. Writing Draw.io diagram from subfolder note saves inside workspace media/draw.io', async () => {
     const noteInSubfolder = path.join(subfolderDir, 'architecture.md');
     const diagramId = 'drawio_sub_456';
     const xmlData = '<mxfile><diagram name="Page-1"><mxGraphModel><root/></mxGraphModel></diagram></mxfile>';
@@ -90,9 +90,9 @@ describe('Diagram Storage in Subfolders & .notes-app Isolation', () => {
     });
     expect(writeImageRes.success).toBe(true);
 
-    // Verify stored inside .notes-app/drawio-diagrams
-    const expectedXmlFile = path.join(workspaceRoot, '.notes-app', 'drawio-diagrams', `${diagramId}.drawio`);
-    const expectedPngFile = path.join(workspaceRoot, '.notes-app', 'drawio-diagrams', `${diagramId}.png`);
+    // Verify stored inside media/draw.io
+    const expectedXmlFile = path.join(workspaceRoot, 'media', 'draw.io', `${diagramId}.drawio`);
+    const expectedPngFile = path.join(workspaceRoot, 'media', 'draw.io', `${diagramId}.png`);
     expect(fs.existsSync(expectedXmlFile)).toBe(true);
     expect(fs.existsSync(expectedPngFile)).toBe(true);
 
