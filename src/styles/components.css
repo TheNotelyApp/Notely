@@ -5614,6 +5614,441 @@
   font-weight: 500;
 }
 
+/* ─── Time Machine Pro Module & Document Inspection View ──────────────── */
+
+.time-machine-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-bg);
+}
+
+/* Pro Top Toolbar */
+.time-machine-bar {
+  flex: 0 0 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--surface-elevated) 96%, var(--accent-solid));
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 85%, var(--accent-solid));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.time-machine-bar * {
+  box-sizing: border-box;
+}
+
+.time-machine-bar--empty {
+  justify-content: space-between;
+}
+
+.time-machine-bar__empty-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-subtle);
+  font-weight: 500;
+}
+
+/* Left Group: Branding & Revision Status */
+.time-machine-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 240px;
+  width: 240px;
+  height: 26px;
+}
+
+.time-machine-bar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.time-machine-bar__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-solid) 16%, transparent);
+  color: var(--accent-solid);
+}
+
+.time-machine-bar__title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+
+.time-machine-bar__status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 8px;
+  width: 115px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-solid) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-solid) 22%, transparent);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.time-machine-bar__pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-solid);
+  flex-shrink: 0;
+}
+
+.time-machine-bar__status-label {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--accent-solid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Center Group: Playback Controls & Track Scrubber */
+.time-machine-bar__center {
+  flex: 1;
+  max-width: 480px;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 28px;
+}
+
+.time-machine-bar__playback {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.time-machine-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-muted);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.time-machine-btn:hover:not(:disabled) {
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
+  border-color: var(--accent-solid);
+}
+
+.time-machine-btn.is-playing {
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
+  border-color: var(--accent-solid);
+}
+
+.time-machine-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.time-machine-bar__slider-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.time-machine-track-container {
+  width: 100%;
+  height: 6px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+
+.time-machine-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-solid) 40%, transparent), var(--accent-solid));
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.time-machine-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  z-index: 3;
+  position: relative;
+  margin: 0;
+}
+
+.time-machine-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-solid);
+  border: 2px solid var(--surface-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.time-machine-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.time-machine-ticks {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.time-machine-tick {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-subtle) 40%, transparent);
+}
+
+.time-machine-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--tooltip-bg, #1a1a1a);
+  color: var(--tooltip-text, #ffffff);
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 200;
+}
+
+.time-machine-tooltip__hash {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--accent-solid);
+}
+
+.time-machine-tooltip__msg {
+  font-weight: 500;
+}
+
+/* Right Group: Commit Card, Mode Switcher & Actions */
+.time-machine-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  height: 26px;
+}
+
+.time-machine-bar__commit-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  width: 200px;
+  flex: 0 0 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-machine-bar__hash-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 650;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-strong) 8%, transparent);
+  color: var(--text-strong);
+  flex-shrink: 0;
+}
+
+.time-machine-bar__commit-msg {
+  color: var(--text-strong);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.time-machine-bar__commit-date {
+  color: var(--text-subtle);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.time-machine-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+  height: 26px;
+}
+
+.time-machine-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.time-machine-mode-btn:hover {
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--text-strong) 8%, transparent);
+}
+
+.time-machine-mode-btn.is-active {
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.time-machine-restore-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent-solid) 25%, transparent);
+}
+
+.time-machine-restore-btn.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.time-machine-restore-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.time-machine-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-muted);
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.time-machine-close-btn:hover {
+  background: color-mix(in srgb, var(--text-strong) 10%, transparent);
+  color: var(--text-strong);
+}
+
+/* Body & Document Preview (Scroll ONLY applies to body content) */
+.time-machine-body {
+  flex: 1 1 auto;
+  height: calc(100% - 48px);
+  min-height: 0;
+  position: relative;
+  overflow-y: auto;
+  background: var(--surface-bg);
+}
+
+.time-machine-preview {
+  max-width: 920px;
+  margin: 0 auto;
+  background: var(--surface-bg);
+  color: var(--text-strong);
+  padding: 32px 36px 64px;
+}
+
+.time-machine-preview .preview-with-media,
+.time-machine-preview .preview-pane-content {
+  overflow: visible !important;
+  height: auto !important;
+}
+
+
+
 
 
 

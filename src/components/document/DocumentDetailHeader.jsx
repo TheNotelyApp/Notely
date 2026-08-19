@@ -8,6 +8,7 @@ import {
   Minimize,
   ListChecks,
   ExternalLink,
+  Clock,
 } from "lucide-react";
 import AppButton from "../AppButton";
 
@@ -37,6 +38,8 @@ export function DocumentDetailHeader({
   onShowAI,
   toggleFocusMode,
   _onTransferWorkspace,
+  onToggleTimeMachine,
+  isTimeMachineOpen,
 }) {
   if (isFocusMode) return null;
 
@@ -206,6 +209,17 @@ export function DocumentDetailHeader({
         <span>{aiPanelVisible ? "Hide AI" : "AI Assistant"}</span>
       </AppButton>
 
+      {/* View Action: Time Machine */}
+      <AppButton
+        variant="small"
+        className={isTimeMachineOpen ? "active" : ""}
+        onClick={onToggleTimeMachine}
+        data-tooltip={isTimeMachineOpen ? "Exit Time Machine" : "Open Visual Time Machine Scrubber"}
+        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+      >
+        <Clock size={14} />
+        <span>Time Machine</span>
+      </AppButton>
 
       {/* View Action: Full Screen */}
       <AppButton

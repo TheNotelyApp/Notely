@@ -1,4 +1,4 @@
-import { memo, useRef, useState, useEffect, useMemo } from "react";
+import { memo, useRef, useState, useEffect, useMemo, useCallback } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,8 +24,10 @@ import { MediaTab } from "./MediaTab";
 import OverlayDialog from "./OverlayDialog";
 import DialogSelectField from "./DialogSelectField";
 
-import { downloadPdf, syncTasksFromNote } from "../services/electronService";
+import { downloadPdf, syncTasksFromNote, gitGetLog, gitGetFileAtCommit, gitRestoreFileAtCommit } from "../services/electronService";
 import { GitNoteHistoryPanel } from "./GitNoteHistoryPanel";
+import GitDiffViewer from "./GitDiffViewer";
+import TimeMachineScrubber from "./TimeMachineScrubber";
 import { useDocumentEditorActions } from "../hooks/useDocumentEditorActions";
 import { useWorkspaceScopedStorage } from "../hooks/useWorkspaceScopedStorage";
 import { renderMarkdown } from "../utils/renderUtils";
@@ -35,6 +37,7 @@ import { NoteTabBar } from "./NoteTabBar";
 import { MetadataPopover } from "./MetadataPopover";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { DocumentDetailHeader } from "./document/DocumentDetailHeader";
+import { useConfirm } from "../hooks/useConfirm";
 
 function getBlockRange(value, anchorIndex) {
   const text = String(value || "");
@@ -415,6 +418,14 @@ export function DocumentDetail({
 }) {
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
+  const content = activeTab === "raw" ? (document?.rawNotes || "") : (document?.cleansed || "");
+  const fullWorkingCopyContent = useMemo(() => {
+    const parts = [];
+    if (document?.header?.trim()) parts.push(document.header.trim());
+    if (document?.rawNotes?.trim()) parts.push("# RawNotes\n" + document.rawNotes.trim());
+    if (document?.cleansed?.trim()) parts.push("# Cleansed\n" + document.cleansed.trim());
+    return parts.length > 0 ? parts.join("\n\n") : (content || "");
+  }, [document?.header, document?.rawNotes, document?.cleansed, content]);
   const taskPopoverTimerRef = useRef(null);
   const historyStateRef = useRef({
     raw: { undo: [], redo: [] },
@@ -423,6 +434,15 @@ export function DocumentDetail({
   const applyingHistoryRef = useRef(false);
   const [showHistoryPopover, setShowHistoryPopover] = useState(false);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState(null);
+
+  // Time Machine state
+  const [isTimeMachineOpen, setIsTimeMachineOpen] = useState(false);
+  const [timeMachineCommits, setTimeMachineCommits] = useState([]);
+  const [timeMachineIndex, setTimeMachineIndex] = useState(0);
+  const [timeMachineContent, setTimeMachineContent] = useState("");
+  const [timeMachineLoading, setTimeMachineLoading] = useState(false);
+  const [timeMachineViewMode, setTimeMachineViewMode] = useState("preview");
+  const [timeMachineIsPlaying, setTimeMachineIsPlaying] = useState(false);
 
   const [pdfExporting, setPdfExporting] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
@@ -538,6 +558,139 @@ export function DocumentDetail({
     }
   };
 
+  const loadTimeMachineHistory = useCallback(async () => {
+    const wsPath = workspacePath || document.workspacePath;
+    const fPath = document.filePath || document.path;
+    if (!fPath || !wsPath) {
+      onNotify?.("Time Machine requires an active workspace git repo.", "info");
+      return;
+    }
+    setTimeMachineLoading(true);
+    try {
+      const res = await gitGetLog({ workspacePath: wsPath, filePath: fPath, limit: 100 });
+      const gitCommits = (res?.ok && Array.isArray(res.data)) ? res.data : [];
+
+      const currentDraftCommit = {
+        hash: "WORKING_DRAFT",
+        shortHash: "Draft",
+        message: dirty ? "Working Draft (Unsaved Changes)" : "Current Working Copy",
+        author: "You",
+        date: new Date().toISOString(),
+        isWorkingDraft: true,
+      };
+
+      const fullCommits = [currentDraftCommit, ...gitCommits];
+      setTimeMachineCommits(fullCommits);
+      setTimeMachineIndex(0);
+      setTimeMachineContent(fullWorkingCopyContent || "");
+    } catch (err) {
+      console.warn("[TimeMachine] Error fetching history log:", err);
+      setTimeMachineCommits([]);
+    } finally {
+      setTimeMachineLoading(false);
+    }
+  }, [workspacePath, document.workspacePath, document.filePath, document.path, dirty, fullWorkingCopyContent, onNotify]);
+
+  useEffect(() => {
+    if (isTimeMachineOpen) {
+      loadTimeMachineHistory();
+    } else {
+      setTimeMachineIsPlaying(false);
+    }
+  }, [isTimeMachineOpen, loadTimeMachineHistory]);
+
+  useEffect(() => {
+    if (!isTimeMachineOpen || timeMachineCommits.length === 0) return;
+    const commit = timeMachineCommits[timeMachineIndex];
+    if (!commit) return;
+
+    if (commit.isWorkingDraft) {
+      setTimeMachineContent(fullWorkingCopyContent || "");
+      return;
+    }
+
+    let isMounted = true;
+    const wsPath = workspacePath || document.workspacePath;
+    const fPath = document.filePath || document.path;
+
+    gitGetFileAtCommit({
+      workspacePath: wsPath,
+      commitHash: commit.hash,
+      filePath: fPath,
+    }).then((res) => {
+      if (isMounted && res?.ok) {
+        setTimeMachineContent(res.data || "");
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [timeMachineIndex, timeMachineCommits, isTimeMachineOpen, workspacePath, document.workspacePath, document.filePath, document.path, fullWorkingCopyContent]);
+
+  useEffect(() => {
+    if (!timeMachineIsPlaying || !isTimeMachineOpen || timeMachineCommits.length <= 1) return;
+    const timer = setInterval(() => {
+      setTimeMachineIndex((prev) => {
+        if (prev <= 0) return timeMachineCommits.length - 1;
+        return prev - 1;
+      });
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [timeMachineIsPlaying, isTimeMachineOpen, timeMachineCommits.length]);
+
+  useEffect(() => {
+    if (!isTimeMachineOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsTimeMachineOpen(false);
+      } else if (e.key === "ArrowLeft") {
+        setTimeMachineIndex((idx) => Math.min(timeMachineCommits.length - 1, idx + 1));
+      } else if (e.key === "ArrowRight") {
+        setTimeMachineIndex((idx) => Math.max(0, idx - 1));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isTimeMachineOpen, timeMachineCommits.length]);
+
+  const { confirm } = useConfirm();
+
+  const handleTimeMachineRestore = async (commit) => {
+    const wsPath = workspacePath || document.workspacePath;
+    const fPath = document.filePath || document.path;
+    if (!wsPath || !fPath || !commit) return;
+
+    const commitLabel = commit.shortHash || commit.hash?.slice(0, 7) || "selected revision";
+    const confirmed = await confirm({
+      title: "Restore Document Version",
+      message: `Are you sure you want to restore this note to revision ${commitLabel} ("${commit.message || ""}")? Current unsaved changes will be overwritten.`,
+      confirmLabel: "Restore Version",
+      cancelLabel: "Cancel",
+      variant: "warning",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const res = await gitRestoreFileAtCommit({
+        workspacePath: wsPath,
+        commitHash: commit.hash,
+        filePath: fPath,
+      });
+
+      if (res?.ok) {
+        onNotify?.(`Restored document to version ${commitLabel}`, "success");
+        setIsTimeMachineOpen(false);
+        onReloadFromDisk?.(fPath);
+      } else {
+        onNotify?.(res?.error || "Restore failed.", "error");
+      }
+    } catch (err) {
+      onNotify?.("Failed to restore commit version.", "error");
+    }
+  };
+
   useEffect(() => {
     setChangedOnDisk(false);
   }, [document.filePath, document.rawNotes, document.cleansed]);
@@ -590,7 +743,6 @@ export function DocumentDetail({
   const [showMediaManager, setShowMediaManager] = useState(false);
   const [isTaskSummaryOpen, setIsTaskSummaryOpen] = useState(false);
   const findRegexValid = !findUseRegex || isValidFindRegex(findQuery);
-  const content = activeTab === "raw" ? document.rawNotes : document.cleansed;
   const findMatches = useMemo(
     () => collectMatches(content, findQuery, findCaseSensitive, findUseRegex),
     [content, findQuery, findCaseSensitive, findUseRegex],
@@ -1226,7 +1378,7 @@ export function DocumentDetail({
 
   return (
     <div className="detail-shell">
-      {!isFocusMode && (
+      {!isFocusMode && !isTimeMachineOpen && (
         <NoteTabBar
           openTabs={openTabs}
           onReorderTabs={onReorderTabs}
@@ -1247,33 +1399,37 @@ export function DocumentDetail({
           onReloadFromDisk={onReloadFromDisk}
         />
       )}
-      <DocumentDetailHeader
-        isFocusMode={isFocusMode}
-        breadcrumbs={breadcrumbs}
-        onNavigateBreadcrumb={onNavigateBreadcrumb}
-        onBack={onBack}
-        document={document}
-        taskCounts={taskCounts}
-        isTaskSummaryOpen={isTaskSummaryOpen}
-        setIsTaskSummaryOpen={setIsTaskSummaryOpen}
-        taskPopoverTimerRef={taskPopoverTimerRef}
-        taskSummaryPopoverId={taskSummaryPopoverId}
-        openTaskItems={openTaskItems}
-        closedTaskItems={closedTaskItems}
-        jumpToLine={jumpToLine}
-        onOpenAllTasks={onOpenAllTasks}
-        dirty={dirty}
-        saving={saving}
-        changedOnDisk={changedOnDisk}
-        handleManualSave={handleManualSave}
-        showMetadataPanel={showMetadataPanel}
-        setShowMetadataPanel={setShowMetadataPanel}
-        aiPanelVisible={aiPanelVisible}
-        aiEnabled={aiEnabled}
-        onShowAI={onShowAI}
-        toggleFocusMode={toggleFocusMode}
-        onTransferWorkspace={onTransferWorkspace}
-      />
+      {!isTimeMachineOpen && (
+        <DocumentDetailHeader
+          isFocusMode={isFocusMode}
+          breadcrumbs={breadcrumbs}
+          onNavigateBreadcrumb={onNavigateBreadcrumb}
+          onBack={onBack}
+          document={document}
+          taskCounts={taskCounts}
+          isTaskSummaryOpen={isTaskSummaryOpen}
+          setIsTaskSummaryOpen={setIsTaskSummaryOpen}
+          taskPopoverTimerRef={taskPopoverTimerRef}
+          taskSummaryPopoverId={taskSummaryPopoverId}
+          openTaskItems={openTaskItems}
+          closedTaskItems={closedTaskItems}
+          jumpToLine={jumpToLine}
+          onOpenAllTasks={onOpenAllTasks}
+          dirty={dirty}
+          saving={saving}
+          changedOnDisk={changedOnDisk}
+          handleManualSave={handleManualSave}
+          showMetadataPanel={showMetadataPanel}
+          setShowMetadataPanel={setShowMetadataPanel}
+          aiPanelVisible={aiPanelVisible}
+          aiEnabled={aiEnabled}
+          onShowAI={onShowAI}
+          toggleFocusMode={toggleFocusMode}
+          onTransferWorkspace={onTransferWorkspace}
+          onToggleTimeMachine={() => setIsTimeMachineOpen((prev) => !prev)}
+          isTimeMachineOpen={isTimeMachineOpen}
+        />
+      )}
 
       {isFocusMode && (
         <div className="mode-contract-banner" role="status" aria-live="polite">
@@ -1341,162 +1497,206 @@ export function DocumentDetail({
         }}
       >
         <main className="editor-panel">
-          {!isFocusMode && (
-          <div className="tab-row">
-            <div className="mode-switch">
-              <div className="copy-menu" role="group" aria-label="Copy options">
-                <button
-                  type="button"
-                  className="copy-menu-trigger"
-                  data-tooltip="Copy note content"
-                  disabled={showMediaManager}
-                >
-                  <Clipboard size={16} />
-                  <span>Copy</span>
-                  <ChevronDown size={14} />
-                </button>
-                <div className="copy-menu-panel" role="menu" aria-label="Copy actions">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    data-tooltip="Copy note content as rendered HTML"
-                    onClick={handleCopyAsHtml}
-                    disabled={showMediaManager}
-                  >
-                    <Code2 size={16} />
-                    <span>Copy HTML</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    data-tooltip="Copy note content as plain text (markdown source)"
-                    onClick={handleCopyAsText}
-                    disabled={showMediaManager}
-                  >
-                    <Clipboard size={16} />
-                    <span>Copy Text</span>
-                  </button>
-                </div>
-              </div>
-              <div className="button-group-separator" />
-              <div className="button-group">
-                <button
-                  className={activeTab === "raw" ? "active" : ""}
-                  onClick={() => {
-                    setShowMediaManager(false);
-                    setActiveTab("raw");
-                  }}
-                  data-tooltip="Quick notes"
-                >
-                  <FilePenLine size={16} />
-                  <span>Quick Notes</span>
-                </button>
-                <button
-                  className={activeTab === "cleansed" ? "active" : ""}
-                  onClick={() => {
-                    setShowMediaManager(false);
-                    setActiveTab("cleansed");
-                  }}
-                  data-tooltip="Formal notes"
-                >
-                  <FileText size={16} />
-                  <span>Formal Notes</span>
-                </button>
-              </div>
-              <div className="button-group-separator" />
-              <button
-                className={showMediaManager ? "active" : ""}
-                type="button"
-                data-tooltip="Open assets manager"
-                onClick={() => setShowMediaManager((value) => !value)}
-              >
-                <Images size={16} />
-                <span>Assets</span>
-              </button>
-              <div className="button-group mode-switch-modes">
-                {EDITOR_MODE_OPTIONS.map((item) => (
-                  <button
-                    className={mode === item.key ? "active" : ""}
-                    key={item.key}
-                    disabled={showMediaManager}
-                    onClick={() => setEditorMode(item.key, { announce: false })}
-                    data-tooltip={showMediaManager ? "Close Assets view to switch mode" : `Switch to ${item.label} mode`}
-                  >
-                    <item.icon size={16} />
-                    <span>{item.label}</span>
-                  </button>
-                ))}
+          {/* Time Machine Mode: Only single top toolbar and content preview */}
+          {isTimeMachineOpen ? (
+            <div className="time-machine-container">
+              <TimeMachineScrubber
+                commits={timeMachineCommits}
+                currentIndex={timeMachineIndex}
+                onChangeIndex={setTimeMachineIndex}
+                onRestore={handleTimeMachineRestore}
+                onClose={() => setIsTimeMachineOpen(false)}
+                isPlaying={timeMachineIsPlaying}
+                onTogglePlay={() => setTimeMachineIsPlaying((prev) => !prev)}
+                viewMode={timeMachineViewMode}
+                onToggleViewMode={setTimeMachineViewMode}
+                isWorkingDraft={Boolean(timeMachineCommits[timeMachineIndex]?.isWorkingDraft)}
+                loading={timeMachineLoading}
+              />
+              <div className="time-machine-body">
+                {timeMachineViewMode === "diff" ? (
+                  <GitDiffViewer
+                    latestContent={fullWorkingCopyContent || ""}
+                    previousContent={timeMachineContent}
+                    fromLabel={`Revision ${timeMachineCommits.length - timeMachineIndex} (${timeMachineCommits[timeMachineIndex]?.shortHash || ""})`}
+                    toLabel="Active Draft"
+                    loading={timeMachineLoading}
+                  />
+                ) : (
+                  <div className="time-machine-preview">
+                    <EditorPane
+                      value={timeMachineContent || ""}
+                      onChange={() => {}}
+                      mode="preview"
+                      basePath={document.filePath}
+                      typoCheckEnabled={false}
+                      showToolbar={false}
+                      onNotify={onNotify}
+                    />
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {!isFocusMode && (
+              <div className="tab-row">
+                <div className="mode-switch">
+                  <div className="copy-menu" role="group" aria-label="Copy options">
+                    <button
+                      type="button"
+                      className="copy-menu-trigger"
+                      data-tooltip="Copy note content"
+                      disabled={showMediaManager}
+                    >
+                      <Clipboard size={16} />
+                      <span>Copy</span>
+                      <ChevronDown size={14} />
+                    </button>
+                    <div className="copy-menu-panel" role="menu" aria-label="Copy actions">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        data-tooltip="Copy note content as rendered HTML"
+                        onClick={handleCopyAsHtml}
+                        disabled={showMediaManager}
+                      >
+                        <Code2 size={16} />
+                        <span>Copy HTML</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        data-tooltip="Copy note content as plain text (markdown source)"
+                        onClick={handleCopyAsText}
+                        disabled={showMediaManager}
+                      >
+                        <Clipboard size={16} />
+                        <span>Copy Text</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="button-group-separator" />
+                  <div className="button-group">
+                    <button
+                      className={activeTab === "raw" ? "active" : ""}
+                      onClick={() => {
+                        setShowMediaManager(false);
+                        setActiveTab("raw");
+                      }}
+                      data-tooltip="Quick notes"
+                    >
+                      <FilePenLine size={16} />
+                      <span>Quick Notes</span>
+                    </button>
+                    <button
+                      className={activeTab === "cleansed" ? "active" : ""}
+                      onClick={() => {
+                        setShowMediaManager(false);
+                        setActiveTab("cleansed");
+                      }}
+                      data-tooltip="Formal notes"
+                    >
+                      <FileText size={16} />
+                      <span>Formal Notes</span>
+                    </button>
+                  </div>
+                  <div className="button-group-separator" />
+                  <button
+                    className={showMediaManager ? "active" : ""}
+                    type="button"
+                    data-tooltip="Open assets manager"
+                    onClick={() => setShowMediaManager((value) => !value)}
+                  >
+                    <Images size={16} />
+                    <span>Assets</span>
+                  </button>
+                  <div className="button-group mode-switch-modes">
+                    {EDITOR_MODE_OPTIONS.map((item) => (
+                      <button
+                        className={mode === item.key ? "active" : ""}
+                        key={item.key}
+                        disabled={showMediaManager}
+                        onClick={() => setEditorMode(item.key, { announce: false })}
+                        data-tooltip={showMediaManager ? "Close Assets view to switch mode" : `Switch to ${item.label} mode`}
+                      >
+                        <item.icon size={16} />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              )}
+
+              <FindReplacePanel
+                showFindReplace={showFindReplace}
+                showReplaceControls={showReplaceControls}
+                findQuery={findQuery}
+                setFindQuery={setFindQuery}
+                replaceValue={replaceValue}
+                setReplaceValue={setReplaceValue}
+                findCaseSensitive={findCaseSensitive}
+                setFindCaseSensitive={setFindCaseSensitive}
+                findUseRegex={findUseRegex}
+                setFindUseRegex={setFindUseRegex}
+                regexValid={findRegexValid}
+                onFindPrevious={handleFindPrevious}
+                onFindNext={handleFindNext}
+                onReplace={replaceCurrentMatch}
+                onReplaceAll={replaceAllMatches}
+                currentMatchLabel={currentFindMatchLabel}
+                onClose={closeFindReplacePanel}
+              />
+
+              <EditorPane
+                value={content}
+                onChange={updateContent}
+                mode={mode}
+                textareaRef={textareaRef}
+                basePath={document.filePath}
+                typoCheckEnabled={typoCheckEnabled}
+                screenCaptureMode={screenCaptureMode}
+                showToolbar={!showMediaManager}
+                onNotify={onNotify}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onOpenFind={openFindInNotePanel}
+                onToggleFind={toggleFindInNotePanel}
+                aiEnabled={aiEnabled}
+                onOpenAIRequest={onOpenAIRequest}
+                onOpenAISettings={onOpenAISettings}
+                onInlineAIContinue={() => {
+                  onInlineAIRequest?.({
+                    initialQuery: "Continue the current paragraph naturally in the same tone and structure.",
+                    target: "block",
+                    source: "inline-continue",
+                  });
+                }}
+                ghostSuggestion={inlineGhostSuggestion}
+                onAcceptInlineGhost={onAcceptInlineGhost}
+                onRejectInlineGhost={onRejectInlineGhost}
+                findMatches={findMatches}
+                activeFindMatchIndex={activeFindMatchIndex}
+                showOriginalImages={showOriginalImages}
+                inlineLinkedMarkdown={inlineLinkedMarkdown}
+                ignoredSpellingWords={ignoredSpellingWords}
+                onIgnoreSpellingWord={onIgnoreSpellingWord}
+                onForceSaveDocument={onForceSaveDocument}
+                initialLine={targetLine ?? initialLine}
+                onLineJumped={() => setTargetLine(null)}
+                outlineEnabled={outlineEnabled}
+                onOutlineEnabledChange={onOutlineEnabledChange}
+                tableEditorEnabled={tableEditorEnabled}
+                onTableEditorToggle={onTableEditorToggle}
+                scrollSyncEnabled={scrollSyncEnabled}
+                onScrollSyncEnabledChange={onScrollSyncEnabledChange}
+                onOpenTaskDetails={(taskInfo) => setSelectedTaskForModal({ ...taskInfo, noteContent: content })}
+              />
+            </>
           )}
-
-          <FindReplacePanel
-            showFindReplace={showFindReplace}
-            showReplaceControls={showReplaceControls}
-            findQuery={findQuery}
-            setFindQuery={setFindQuery}
-            replaceValue={replaceValue}
-            setReplaceValue={setReplaceValue}
-            findCaseSensitive={findCaseSensitive}
-            setFindCaseSensitive={setFindCaseSensitive}
-            findUseRegex={findUseRegex}
-            setFindUseRegex={setFindUseRegex}
-            regexValid={findRegexValid}
-            onFindPrevious={handleFindPrevious}
-            onFindNext={handleFindNext}
-            onReplace={replaceCurrentMatch}
-            onReplaceAll={replaceAllMatches}
-            currentMatchLabel={currentFindMatchLabel}
-            onClose={closeFindReplacePanel}
-          />
-
-          <EditorPane
-            value={content}
-            onChange={updateContent}
-            mode={mode}
-            textareaRef={textareaRef}
-            basePath={document.filePath}
-            typoCheckEnabled={typoCheckEnabled}
-            screenCaptureMode={screenCaptureMode}
-            showToolbar={!showMediaManager}
-            onNotify={onNotify}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onOpenFind={openFindInNotePanel}
-            onToggleFind={toggleFindInNotePanel}
-            aiEnabled={aiEnabled}
-            onOpenAIRequest={onOpenAIRequest}
-            onOpenAISettings={onOpenAISettings}
-            onInlineAIContinue={() => {
-              onInlineAIRequest?.({
-                initialQuery: "Continue the current paragraph naturally in the same tone and structure.",
-                target: "block",
-                source: "inline-continue",
-              });
-            }}
-            ghostSuggestion={inlineGhostSuggestion}
-            onAcceptInlineGhost={onAcceptInlineGhost}
-            onRejectInlineGhost={onRejectInlineGhost}
-            findMatches={findMatches}
-            activeFindMatchIndex={activeFindMatchIndex}
-            showOriginalImages={showOriginalImages}
-            inlineLinkedMarkdown={inlineLinkedMarkdown}
-            ignoredSpellingWords={ignoredSpellingWords}
-            onIgnoreSpellingWord={onIgnoreSpellingWord}
-            onForceSaveDocument={onForceSaveDocument}
-            initialLine={targetLine ?? initialLine}
-            onLineJumped={() => setTargetLine(null)}
-            outlineEnabled={outlineEnabled}
-            onOutlineEnabledChange={onOutlineEnabledChange}
-            tableEditorEnabled={tableEditorEnabled}
-            onTableEditorToggle={onTableEditorToggle}
-            scrollSyncEnabled={scrollSyncEnabled}
-            onScrollSyncEnabledChange={onScrollSyncEnabledChange}
-            onOpenTaskDetails={(taskInfo) => setSelectedTaskForModal({ ...taskInfo, noteContent: content })}
-          />
         </main>
 
         {hasOutline && (
