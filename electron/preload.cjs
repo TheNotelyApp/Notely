@@ -157,6 +157,26 @@ contextBridge.exposeInMainWorld("notesApi", {
   getGitWorkspaceMetadata: () => ipcRenderer.invoke("settings:get-git-workspace-meta"),
   setAutoIgnoreGitMetadata: (payload) => ipcRenderer.invoke("settings:set-auto-ignore-git-metadata", payload),
   captureCurrentDisplay: () => ipcRenderer.invoke("screen:capture-current-display"),
+  getDesktopSources: () => ipcRenderer.invoke("screen:get-sources"),
+  saveVideo: (payload) => ipcRenderer.invoke("video:save", payload),
+  minimizeMainWindow: () => ipcRenderer.invoke("window:minimize-main"),
+  restoreMainWindow: () => ipcRenderer.invoke("window:restore-main"),
+  openRecordingOverlay: () => ipcRenderer.invoke("window:open-recording-overlay"),
+  closeRecordingOverlay: () => ipcRenderer.invoke("window:close-recording-overlay"),
+  sendRecordingAction: (action) => ipcRenderer.send("recording:action", action),
+  onRecordingAction: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, action) => callback(action);
+    ipcRenderer.on("recording:action", listener);
+    return () => ipcRenderer.removeListener("recording:action", listener);
+  },
+  sendRecordingState: (state) => ipcRenderer.send("recording:state", state),
+  onRecordingState: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on("recording:state", listener);
+    return () => ipcRenderer.removeListener("recording:state", listener);
+  },
   pickFolder: () => ipcRenderer.invoke("settings:pick-folder"),
   showOpenDialog: (opts) => ipcRenderer.invoke("dialog:show-open", opts),
   showSaveDialog: (opts) => ipcRenderer.invoke("dialog:show-save", opts),

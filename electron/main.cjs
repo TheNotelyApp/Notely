@@ -1167,6 +1167,12 @@ registerCoreIpcHandlers(ipcMain, {
     activeProjectSlug = slug;
   },
   createReferenceWindow: (filePath) => windowLifecycle.createReferenceWindow(filePath),
+  createRecordingOverlayWindow: () => windowLifecycle.createRecordingOverlayWindow(),
+  closeRecordingOverlayWindow: () => windowLifecycle.closeRecordingOverlayWindow(),
+  minimizeMainWindow: () => windowLifecycle.minimizeMainWindow(),
+  restoreMainWindow: () => windowLifecycle.restoreMainWindow(),
+  getMainWindow: () => windowLifecycle.getMainWindow(),
+  getRecordingOverlayWindow: () => windowLifecycle.getRecordingOverlayWindow(),
   nativeTheme,
   getWorkspaceMetadataStore: () => workspaceMetadataStore,
 });

@@ -20,11 +20,14 @@ import {
   PenTool,
   Grid,
   Info,
+  Video,
 } from "lucide-react";
+import { ScreenRecordingBar } from "./ScreenRecordingBar";
+import { ScreenSourcePickerModal } from "./ScreenSourcePickerModal";
 import AppSelect from "./AppSelect";
 import { applySnippet, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
 import { insertMediaFromFile } from "../services/imageService";
-import { captureCurrentDisplay, listDocuments, listImages, saveImage } from "../services/electronService";
+import { captureCurrentDisplay, getDesktopSources, listDocuments, listImages, saveImage, saveVideo } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
@@ -213,6 +216,11 @@ export function MarkdownToolbar({
   const [screenCaptureBusy, setScreenCaptureBusy] = useState(false);
   const [screenCaptureSaving, setScreenCaptureSaving] = useState(false);
   const [isCodeModalOpen, setCodeModalOpen] = useState(false);
+  const [screenRecording, setScreenRecording] = useState(false);
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
+  const [sourcePickerSources, setSourcePickerSources] = useState([]);
+  const screenRecorderRef = useRef(null);
+  const screenRecorderAudioTrackRef = useRef(null);
 
   function preserveEditorViewportAfterChange() {
     const editor = textareaRef?.current;
@@ -768,6 +776,203 @@ export function MarkdownToolbar({
     setScreenCaptureLabel("");
   };
 
+  const openScreenRecord = async () => {
+    if (screenRecording) return;
+    closeToolbarPanels();
+    try {
+      const sources = await getDesktopSources();
+      if (!sources || sources.length === 0) {
+        throw new Error("No display or window sources available to record.");
+      }
+      setSourcePickerSources(sources);
+      setSourcePickerOpen(true);
+    } catch (error) {
+      onNotify?.(error?.message || "Unable to retrieve recording sources.", "error");
+    }
+  };
+
+  const startRecordingWithSource = async (selectedSource, { recordMic }) => {
+    setSourcePickerOpen(false);
+    try {
+      let displayStream = null;
+      try {
+        displayStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: selectedSource.id,
+            },
+          },
+        });
+      } catch {
+        displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      }
+
+      let audioTrack = null;
+      if (recordMic) {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioTrack = micStream.getAudioTracks()[0] ?? null;
+        } catch {
+          // Mic denied or unavailable
+        }
+      }
+
+      const tracks = [...displayStream.getTracks(), ...(audioTrack ? [audioTrack] : [])];
+      const combined = new MediaStream(tracks);
+
+      let mimeType = "";
+      if (typeof MediaRecorder.isTypeSupported === "function") {
+        if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+          mimeType = "video/webm;codecs=vp9";
+        } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+          mimeType = "video/webm;codecs=vp8";
+        } else if (MediaRecorder.isTypeSupported("video/webm")) {
+          mimeType = "video/webm";
+        }
+      }
+
+      const recorderOptions = mimeType ? { mimeType } : undefined;
+      const recorder = new MediaRecorder(combined, recorderOptions);
+      const chunks = [];
+
+      recorder.addEventListener("dataavailable", (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      });
+
+      recorder.start(1000);
+
+      screenRecorderRef.current = recorder;
+      screenRecorderAudioTrackRef.current = audioTrack;
+      setScreenRecording(true);
+
+      // 1. Open floating draggable overlay window
+      window.notesApi?.openRecordingOverlay?.();
+
+      // 2. Minimize main Notely window to clear desktop area
+      setTimeout(() => {
+        window.notesApi?.minimizeMainWindow?.();
+      }, 250);
+
+      let elapsedSec = 0;
+      let isPaused = false;
+
+      const pushState = () => {
+        window.notesApi?.sendRecordingState?.({
+          elapsed: elapsedSec,
+          paused: isPaused,
+          hasMic: Boolean(audioTrack),
+          micEnabled: audioTrack ? audioTrack.enabled : false,
+        });
+      };
+
+      pushState();
+
+      const timerInterval = setInterval(() => {
+        if (recorder.state === "recording") {
+          elapsedSec += 1;
+          pushState();
+        }
+      }, 1000);
+
+      // Listen for actions from overlay window (pause, resume, mic, stop, cancel)
+      const removeActionListener = window.notesApi?.onRecordingAction?.((action) => {
+        if (action === "toggle-pause") {
+          if (recorder.state === "recording") {
+            recorder.pause();
+            isPaused = true;
+          } else if (recorder.state === "paused") {
+            recorder.resume();
+            isPaused = false;
+          }
+          pushState();
+        } else if (action === "toggle-mic") {
+          if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            pushState();
+          }
+        } else if (action === "stop") {
+          cleanupAndFinish(true);
+        } else if (action === "cancel") {
+          cleanupAndFinish(false);
+        }
+      });
+
+      let finishing = false;
+      const cleanupAndFinish = async (shouldSave) => {
+        if (finishing) return;
+        finishing = true;
+
+        clearInterval(timerInterval);
+        removeActionListener?.();
+        setScreenRecording(false);
+        screenRecorderRef.current = null;
+        screenRecorderAudioTrackRef.current = null;
+
+        // Close overlay and restore main window
+        window.notesApi?.closeRecordingOverlay?.();
+        window.notesApi?.restoreMainWindow?.();
+
+        if (recorder.state !== "inactive") {
+          await new Promise((resolve) => {
+            recorder.addEventListener("stop", resolve, { once: true });
+            try {
+              recorder.stop();
+            } catch {
+              resolve();
+            }
+          });
+        }
+
+        displayStream.getTracks().forEach((t) => t.stop());
+        if (audioTrack) audioTrack.stop();
+
+        if (shouldSave && chunks.length > 0) {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          await handleRecordingStop(blob);
+        } else if (!shouldSave) {
+          onNotify?.("Screen recording canceled.", "info");
+        }
+      };
+
+      displayStream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        cleanupAndFinish(true);
+      });
+    } catch (error) {
+      if (error?.name !== "NotAllowedError") {
+        onNotify?.(error?.message || "Unable to start screen recording.", "error");
+      }
+    }
+  };
+
+  const handleRecordingStop = async (blob) => {
+    try {
+      const reader = new FileReader();
+      const base64Data = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const fileName = `screen-rec-${Date.now()}.webm`;
+      const savedPath = await saveVideo(fileName, base64Data);
+      const markdown = `![Screen Recording](${savedPath})`;
+      insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
+      onNotify?.("Screen recording saved.", "success");
+    } catch (error) {
+      onNotify?.(error?.message || "Unable to save recording.", "error");
+    }
+  };
+
+  const handleRecordingCancel = () => {
+    window.notesApi?.closeRecordingOverlay?.();
+    window.notesApi?.restoreMainWindow?.();
+    setScreenRecording(false);
+    screenRecorderRef.current = null;
+    screenRecorderAudioTrackRef.current = null;
+    onNotify?.("Screen recording canceled.", "info");
+  };
+
   const insertCapturedImage = async (dataUrl) => {
     if (screenCaptureSaving) return false;
 
@@ -1057,6 +1262,15 @@ export function MarkdownToolbar({
         <span className="toolbar-capture-mode-glyph" aria-hidden="true">
           {screenCaptureMode === "review" ? "R" : "A"}
         </span>
+      </AppIconButton>
+      <AppIconButton
+        onClick={() => { void openScreenRecord(); }}
+        title="Record screen video"
+        aria-label="Record screen video"
+        disabled={screenRecording}
+        className={screenRecording ? "toolbar-btn-capture review" : ""}
+      >
+        <Video size={16} />
       </AppIconButton>
       <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert workspace asset">
         <Link size={16} />
@@ -1529,6 +1743,21 @@ export function MarkdownToolbar({
         onClose={() => setCodeModalOpen(false)}
         onSave={handleInsertCodeBlock}
       />
+      {sourcePickerOpen && (
+        <ScreenSourcePickerModal
+          sources={sourcePickerSources}
+          onSelect={startRecordingWithSource}
+          onClose={() => setSourcePickerOpen(false)}
+        />
+      )}
+      {screenRecording && screenRecorderRef.current && (
+        <ScreenRecordingBar
+          mediaRecorder={screenRecorderRef.current}
+          audioTrack={screenRecorderAudioTrackRef.current}
+          onStop={handleRecordingStop}
+          onCancel={handleRecordingCancel}
+        />
+      )}
     </>
   );
 }

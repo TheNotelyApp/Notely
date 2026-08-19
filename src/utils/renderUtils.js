@@ -177,6 +177,14 @@ md.renderer.rules.link_close = (tokens, idx, options, env, self) => {
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const token = tokens[idx];
   const src = token.attrGet("src") || "";
+  const isVideo = /\.(webm|mp4|ogg)(\?|#|$)/i.test(src);
+
+  if (isVideo) {
+    const safeSrc = escapeHtml(src);
+    const label = getImageDisplayName(src, token.content || token.attrGet("alt") || "Video");
+    return `<span class="markdown-image-frame markdown-video-card" data-asset-path="${safeSrc}" data-video-src="${safeSrc}" data-video-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to play video" style="cursor:pointer;position:relative;display:inline-block;"><video src="${safeSrc}" preload="metadata" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:cover;pointer-events:none;display:block;"></video><span class="markdown-video-play-badge" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);pointer-events:none;">▶ Play Video</span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
+  }
+
   if (src && !token.attrGet("data-asset-path") && !/^(data:|blob:)/i.test(src)) {
     token.attrSet("data-asset-path", src);
   }
@@ -184,6 +192,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const imageHtml = defaultImageRenderer(tokens, idx, options, env, self);
   return `<span class="markdown-image-frame">${imageHtml}<span class="markdown-image-actions"><button type="button" class="markdown-image-action" data-image-action="view" aria-label="View image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><span>View</span></button><span class="markdown-image-action-separator"></span><button type="button" class="markdown-image-action" data-image-action="annotate" aria-label="Annotate image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Annotate</span></button><span class="markdown-image-action-separator"></span><button type="button" class="markdown-image-action" data-image-action="edit" aria-label="Edit image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span>Edit</span></button><span class="markdown-image-action-separator"></span><button type="button" class="markdown-image-action" data-image-action="download" aria-label="Download image"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Download</span></button></span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
 };
+
 
 /**
  * Normalizes markdown links (e.g. [text](url)) so that URLs with spaces,

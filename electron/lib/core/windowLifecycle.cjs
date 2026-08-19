@@ -370,6 +370,24 @@ function createWindowLifecycle(deps) {
   }
  
   function applyContentSecurityPolicy() {
+    const { desktopCapturer } = require("electron");
+    if (typeof session?.defaultSession?.setDisplayMediaRequestHandler === "function") {
+      session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+        try {
+          const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
+          const primaryScreen = sources.find((s) => s.id.startsWith("screen:")) || sources[0];
+          if (primaryScreen) {
+            callback({ video: primaryScreen });
+          } else {
+            callback({});
+          }
+        } catch (err) {
+          console.error("Failed to handle display media request:", err);
+          callback({});
+        }
+      });
+    }
+
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       const responseHeaders = { ...details.responseHeaders };
       for (const headerName of Object.keys(responseHeaders)) {
@@ -561,6 +579,93 @@ function createWindowLifecycle(deps) {
     });
   }
 
+  let recordingOverlayWindow = null;
+
+  function createRecordingOverlayWindow() {
+    if (recordingOverlayWindow && !recordingOverlayWindow.isDestroyed()) {
+      recordingOverlayWindow.focus();
+      return recordingOverlayWindow;
+    }
+
+    const { screen } = require("electron");
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: boundsWidth, height: boundsHeight } = primaryDisplay.workAreaSize;
+
+    const overlayWidth = 460;
+    const overlayHeight = 72;
+    const x = Math.round((boundsWidth - overlayWidth) / 2);
+    const y = boundsHeight - overlayHeight - 40;
+
+    const win = new BrowserWindow({
+      width: overlayWidth,
+      height: overlayHeight,
+      x,
+      y,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      resizable: false,
+      skipTaskbar: true,
+      hasShadow: false,
+      backgroundColor: "#00000000",
+      webPreferences: {
+        preload: path.join(__dirname, "..", "..", "preload.cjs"),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webviewTag: false,
+      },
+    });
+
+    win.setAlwaysOnTop(true, "screen-saver");
+    hardenWebContents(win.webContents);
+
+    win.once("ready-to-show", () => {
+      win.show();
+    });
+
+    if (rendererUrl) {
+      const targetUrl = new URL(rendererUrl);
+      targetUrl.hash = "#recording-overlay";
+      win.loadURL(targetUrl.toString());
+    } else {
+      win.loadFile(path.join(projectRoot, "dist", "index.html"), {
+        hash: "#recording-overlay",
+      });
+    }
+
+    recordingOverlayWindow = win;
+
+    win.on("closed", () => {
+      recordingOverlayWindow = null;
+    });
+
+    return win;
+  }
+
+  function closeRecordingOverlayWindow() {
+    if (recordingOverlayWindow && !recordingOverlayWindow.isDestroyed()) {
+      recordingOverlayWindow.close();
+      recordingOverlayWindow = null;
+    }
+  }
+
+  function minimizeMainWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.minimize();
+    }
+  }
+
+  function restoreMainWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }
+
   function createReferenceWindow(filePath) {
     const windowIconPath = resolveWindowIconPath();
     const query = new URLSearchParams({ filePath: String(filePath || "") }).toString();
@@ -738,12 +843,17 @@ function createWindowLifecycle(deps) {
     applyContentSecurityPolicy,
     createWindow,
     createReferenceWindow,
+    createRecordingOverlayWindow,
+    closeRecordingOverlayWindow,
+    minimizeMainWindow,
+    restoreMainWindow,
     focusOrCreateWindow,
     registerAppWindowEvents,
     handleMenuContextUpdate,
     markRendererBootReady,
     updateRendererBootProgress,
     getMainWindow: () => mainWindow,
+    getRecordingOverlayWindow: () => recordingOverlayWindow,
   };
 }
 

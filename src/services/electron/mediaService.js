@@ -8,6 +8,14 @@ export async function captureCurrentDisplay() {
   return api.captureCurrentDisplay();
 }
 
+export async function getDesktopSources() {
+  const api = getNotesApi();
+  if (typeof api.getDesktopSources !== "function") {
+    throw new Error("Screen recording source picker unavailable. Please restart the app.");
+  }
+  return api.getDesktopSources();
+}
+
 export async function saveImage(fileName, base64Data, basePath, options = {}) {
   const api = getNotesApi();
   return api.saveImage({
@@ -16,6 +24,14 @@ export async function saveImage(fileName, base64Data, basePath, options = {}) {
     basePath,
     storageTarget: options.storageTarget,
   });
+}
+
+export async function saveVideo(fileName, base64Data) {
+  const api = getNotesApi();
+  if (typeof api.saveVideo !== "function") {
+    throw new Error("Video save unavailable. Please restart the app.");
+  }
+  return api.saveVideo({ fileName, base64Data });
 }
 
 export async function listImages(basePath, options = {}) {

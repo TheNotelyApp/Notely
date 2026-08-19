@@ -318,6 +318,57 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return setAutoIgnoreMetadataInGit(payload?.enabled !== false);
   });
 
+  registerTrustedHandler("screen:get-sources", async () => {
+    const { desktopCapturer } = require("electron");
+    const sources = await desktopCapturer.getSources({
+      types: ["screen", "window"],
+      thumbnailSize: { width: 320, height: 180 },
+      fetchWindowIcons: true,
+    });
+
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail ? s.thumbnail.toDataURL() : "",
+      appIcon: s.appIcon ? s.appIcon.toDataURL() : null,
+      isScreen: s.id.startsWith("screen:"),
+    }));
+  });
+
+  registerTrustedHandler("window:minimize-main", () => {
+    deps.minimizeMainWindow?.();
+    return true;
+  });
+
+  registerTrustedHandler("window:restore-main", () => {
+    deps.restoreMainWindow?.();
+    return true;
+  });
+
+  registerTrustedHandler("window:open-recording-overlay", () => {
+    deps.createRecordingOverlayWindow?.();
+    return true;
+  });
+
+  registerTrustedHandler("window:close-recording-overlay", () => {
+    deps.closeRecordingOverlayWindow?.();
+    return true;
+  });
+
+  ipcMain.on("recording:action", (_event, action) => {
+    const mainWin = deps.getMainWindow?.();
+    if (mainWin && !mainWin.isDestroyed() && mainWin.webContents) {
+      mainWin.webContents.send("recording:action", action);
+    }
+  });
+
+  ipcMain.on("recording:state", (_event, state) => {
+    const overlayWin = deps.getRecordingOverlayWindow?.();
+    if (overlayWin && !overlayWin.isDestroyed() && overlayWin.webContents) {
+      overlayWin.webContents.send("recording:state", state);
+    }
+  });
+
   registerTrustedHandler("screen:capture-current-display", async (event) => {
     if (process.platform !== "win32") {
       throw new Error("Area snip is currently supported on Windows only.");

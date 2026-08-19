@@ -21,6 +21,7 @@ import { MermaidBlock } from "./MermaidBlock";
 import { ExcalidrawBlock } from "./ExcalidrawBlock";
 import { DrawioBlock } from "./DrawioBlock";
 import { PreviewModalsContainer } from "./preview/PreviewModalsContainer";
+import { VideoPlayerModal } from "./VideoPlayerModal";
 
 function replaceAllLiteral(source, needle, replacement) {
   if (!needle || needle === replacement) return source;
@@ -481,6 +482,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   const [codeEditState, setCodeEditState] = useState({ open: false, language: "", code: "", sourceLine: null });
   const [mermaidEditState, setMermaidEditState] = useState({ open: false, initialCode: "", originalBlockCode: "" });
   const [tableEditState, setTableEditState] = useState({ open: false, initialMarkdown: "", sourceLine: null, lineCount: 0 });
+  const [activeVideoModal, setActiveVideoModal] = useState({ open: false, src: "", title: "" });
   const [diagramEditState, setDiagramEditState] = useState({
     open: false,
     diagramId: "",
@@ -500,108 +502,107 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     const previewElement = previewRef.current;
     if (!previewElement || !basePath) return undefined;
 
-    const resolveImage = async (image) => {
-      if (!image || !(image instanceof HTMLImageElement)) return;
-      if (!image.hasAttribute("tabindex")) {
-        image.setAttribute("tabindex", "0");
-      }
-      image.setAttribute("aria-haspopup", "menu");
-      image.setAttribute("aria-label", image.getAttribute("alt") || "Image");
+    const resolveMediaElement = async (element) => {
+      if (!element || (!(element instanceof HTMLImageElement) && !(element instanceof HTMLVideoElement))) return;
 
-      const existingAssetPath = image.getAttribute("data-asset-path") || "";
-      const src = image.getAttribute("src") || "";
+      const isImage = element instanceof HTMLImageElement;
+      if (isImage) {
+        if (!element.hasAttribute("tabindex")) {
+          element.setAttribute("tabindex", "0");
+        }
+        element.setAttribute("aria-haspopup", "menu");
+        element.setAttribute("aria-label", element.getAttribute("alt") || "Image");
+      }
+
+      const existingAssetPath = element.getAttribute("data-asset-path") || element.getAttribute("data-video-src") || "";
+      const src = element.getAttribute("src") || "";
       const assetPath = (existingAssetPath && !/^(data:|blob:)/i.test(existingAssetPath))
         ? existingAssetPath
         : (!/^(data:|blob:)/i.test(src) ? src : "");
 
       if (assetPath) {
-        image.setAttribute("data-asset-path", assetPath);
+        element.setAttribute("data-asset-path", assetPath);
       }
 
       const shouldSkipResolution = !assetPath || /^(data:|blob:|https?:)/i.test(assetPath);
       if (shouldSkipResolution) return;
 
       const cache = imageResolveCacheRef.current;
-      const variant = showOriginalImages ? "original" : "thumbnail";
+      const variant = isImage ? (showOriginalImages ? "original" : "thumbnail") : "full";
       const cacheKey = imageCacheKey(assetPath, variant);
       if (cache.has(cacheKey)) {
         const cached = cache.get(cacheKey);
-        if (!cancelled && cached) image.src = cached;
-        const annotationKey = `annotation:${assetPath}`;
-        if (cache.has(annotationKey)) {
-          if (!cancelled) applyImageAnnotation(image, cache.get(annotationKey));
-        } else {
-          try {
-            const annotation = await getImageAnnotation(basePath, assetPath);
-            cache.set(annotationKey, annotation);
-            if (!cancelled) applyImageAnnotation(image, annotation);
-          } catch {
-            if (!cancelled) applyImageAnnotation(image, null);
-          }
-        }
-        const originalKey = `original:${assetPath}`;
-        if (cache.has(originalKey)) {
-          if (!cancelled) applyImageOriginalBadge(image, Boolean(cache.get(originalKey)));
-        } else {
-          try {
-            const originalStatus = await getImageOriginalStatus(basePath, assetPath);
-            cache.set(originalKey, Boolean(originalStatus?.hasOriginal));
-            if (!cancelled) applyImageOriginalBadge(image, Boolean(originalStatus?.hasOriginal));
-          } catch {
-            if (!cancelled) applyImageOriginalBadge(image, false);
+        if (!cancelled && cached) element.src = cached;
+        if (isImage) {
+          const annotationKey = `annotation:${assetPath}`;
+          if (cache.has(annotationKey)) {
+            if (!cancelled) applyImageAnnotation(element, cache.get(annotationKey));
           }
         }
         return;
       }
 
       try {
-        const resolved = await readImage(basePath, assetPath, { thumbnail: !showOriginalImages });
+        const cleanAssetPath = assetPath.split(/[?#]/)[0];
+        const resolved = await readImage(basePath, cleanAssetPath, { thumbnail: isImage ? !showOriginalImages : false });
         if (!cancelled && resolved) {
           cache.set(cacheKey, resolved);
-          image.src = resolved;
+          element.src = resolved;
+          if (!isImage) {
+            element.onloadeddata = () => {
+              try {
+                if (element.currentTime === 0) element.currentTime = 0.1;
+              } catch {
+                // Ignore seek error
+              }
+            };
+          }
         }
       } catch {
         // Keep original src if resolution fails.
       }
 
-      try {
-        const annotation = await getImageAnnotation(basePath, assetPath);
-        cache.set(`annotation:${assetPath}`, annotation);
-        if (!cancelled) applyImageAnnotation(image, annotation);
-      } catch {
-        if (!cancelled) applyImageAnnotation(image, null);
-      }
-      try {
-        const originalStatus = await getImageOriginalStatus(basePath, assetPath);
-        const hasOrig = Boolean(originalStatus?.hasOriginal);
-        cache.set(`original:${assetPath}`, hasOrig);
-        if (!cancelled) applyImageOriginalBadge(image, hasOrig);
-      } catch {
-        if (!cancelled) applyImageOriginalBadge(image, false);
+      if (isImage) {
+        try {
+          const annotation = await getImageAnnotation(basePath, assetPath);
+          cache.set(`annotation:${assetPath}`, annotation);
+          if (!cancelled) applyImageAnnotation(element, annotation);
+        } catch {
+          if (!cancelled) applyImageAnnotation(element, null);
+        }
+        try {
+          const originalStatus = await getImageOriginalStatus(basePath, assetPath);
+          const hasOrig = Boolean(originalStatus?.hasOriginal);
+          cache.set(`original:${assetPath}`, hasOrig);
+          if (!cancelled) applyImageOriginalBadge(element, hasOrig);
+        } catch {
+          if (!cancelled) applyImageOriginalBadge(element, false);
+        }
       }
     };
 
-    const resolveAllImages = () => {
-      const images = Array.from(previewElement.querySelectorAll("img"));
-      images.forEach((image) => {
-        void resolveImage(image);
+    const resolveAllMedia = () => {
+      const mediaElements = Array.from(previewElement.querySelectorAll("img, video"));
+      mediaElements.forEach((element) => {
+        void resolveMediaElement(element);
       });
     };
 
-    resolveAllImages();
-    const timer = window.setTimeout(resolveAllImages, 40);
+    resolveAllMedia();
+    const timer = window.setTimeout(resolveAllMedia, 40);
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (!(node instanceof HTMLElement)) return;
-          if (node.tagName === "IMG") {
-            void resolveImage(node);
-            return;
+          if (node.tagName === "IMG" || node.tagName === "VIDEO") {
+            void resolveMediaElement(node);
           }
-          node.querySelectorAll?.("img").forEach((image) => {
-            void resolveImage(image);
-          });
+          if (typeof node.querySelectorAll === "function") {
+            node.querySelectorAll("img, video").forEach((child) => {
+              void resolveMediaElement(child);
+            });
+          }
         });
       });
     });
@@ -2044,6 +2045,29 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         onContextMenu={openImageContextMenu}
         onKeyDown={handlePreviewKeyDown}
         onClick={(e) => {
+          const videoCard = e.target.closest?.(".markdown-video-card");
+          if (videoCard) {
+            e.preventDefault();
+            e.stopPropagation();
+            const rawVideoSrc = videoCard.getAttribute("data-video-src");
+            const videoTitle = videoCard.getAttribute("data-video-title");
+            if (rawVideoSrc) {
+              const videoElement = videoCard.querySelector("video");
+              const currentSrc = videoElement?.src || "";
+              if (currentSrc && /^data:video/i.test(currentSrc)) {
+                setActiveVideoModal({ open: true, src: currentSrc, title: videoTitle || "Screen Recording" });
+              } else {
+                readImage(basePath, rawVideoSrc, { thumbnail: false })
+                  .then((resolvedUrl) => {
+                    setActiveVideoModal({ open: true, src: resolvedUrl || rawVideoSrc, title: videoTitle || "Screen Recording" });
+                  })
+                  .catch(() => {
+                    setActiveVideoModal({ open: true, src: rawVideoSrc, title: videoTitle || "Screen Recording" });
+                  });
+              }
+            }
+            return;
+          }
           const taskBtn = e.target.closest?.(".task-preview-link");
           if (taskBtn) {
             e.preventDefault();
@@ -2217,6 +2241,12 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         setTableEditState={setTableEditState}
         mermaidEditState={mermaidEditState}
         setMermaidEditState={setMermaidEditState}
+      />
+      <VideoPlayerModal
+        open={activeVideoModal.open}
+        src={activeVideoModal.src}
+        title={activeVideoModal.title}
+        onClose={() => setActiveVideoModal({ open: false, src: "", title: "" })}
       />
     </>
   );

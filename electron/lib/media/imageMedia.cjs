@@ -723,6 +723,32 @@ registerTrustedHandler("images:save", (_event, payload) => {
   return `/media/${subFolder}/${finalName}`;
 });
 
+registerTrustedHandler("video:save", (_event, payload) => {
+  const { fileName, base64Data } = payload || {};
+  if (!fileName || typeof fileName !== "string") {
+    throw new Error("Invalid video filename.");
+  }
+  if (!base64Data || typeof base64Data !== "string" || !base64Data.includes(",")) {
+    throw new Error("Invalid video payload.");
+  }
+
+  const safeFileName = path.basename(fileName).replace(/[<>:"/\\|?*]+/g, "-");
+  const recordingsDir = path.join(getNotesRoot(), "media", "recordings");
+  ensureDir(recordingsDir);
+
+  const targetPath = path.join(recordingsDir, safeFileName);
+  if (!filePathWithin(getNotesRoot(), targetPath)) {
+    throw new Error("Invalid recording path.");
+  }
+
+  const buffer = Buffer.from(base64Data.split(",")[1], "base64");
+  if (!buffer.length) {
+    throw new Error("Video data is empty.");
+  }
+  fs.writeFileSync(targetPath, buffer);
+  return `media/recordings/${safeFileName}`;
+});
+
 registerTrustedHandler("images:download", async (event, payload) => {
   const { getExportManager } = require("../export/ExportManager.cjs");
   const exportManager = getExportManager();
