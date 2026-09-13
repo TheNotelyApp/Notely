@@ -27,6 +27,9 @@ const CalendarPage = lazy(() =>
 const DownloadsPage = lazy(() =>
   import("../DownloadsPage").then((m) => ({ default: m.default || m.DownloadsPage }))
 );
+const WorkspaceIndexPage = lazy(() =>
+  import("../WorkspaceIndexPage").then((m) => ({ default: m.default || m.WorkspaceIndexPage }))
+);
 
 const fullScreenOverlayStyle = {
   position: "fixed",
@@ -69,6 +72,10 @@ export function AppSubpageViews({
   setCalendarPageOpen,
   downloadsPageOpen,
   setDownloadsPageOpen,
+  workspaceIndexOpen,
+  setWorkspaceIndexOpen,
+  onSelectHeader,
+  onAskAI,
 }) {
   return (
     <>
@@ -166,6 +173,22 @@ export function AppSubpageViews({
         <div style={fullScreenOverlayStyle}>
           <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
             <DownloadsPage onBack={() => setDownloadsPageOpen(false)} />
+          </Suspense>
+        </div>
+      )}
+
+      {workspaceIndexOpen && (
+        <div style={fullScreenOverlayStyle}>
+          <Suspense fallback={<div className="lazy-loading">Loading Workspace Index…</div>}>
+            <WorkspaceIndexPage
+              documents={documents}
+              onBack={() => setWorkspaceIndexOpen(false)}
+              onSelectHeader={(docId, line) => {
+                setWorkspaceIndexOpen(false);
+                if (onSelectHeader) onSelectHeader(docId, line);
+              }}
+              onAskAI={onAskAI}
+            />
           </Suspense>
         </div>
       )}

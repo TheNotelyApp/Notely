@@ -344,6 +344,7 @@ export default function App() {
   } = useUIState();
 
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
+  const [workspaceIndexOpen, setWorkspaceIndexOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [exportImportOpen, setExportImportOpen] = useState(false);
   const [exportImportMode, setExportImportMode] = useState("export");
@@ -2108,6 +2109,11 @@ export default function App() {
         return;
       }
 
+      if (action === "open-workspace-index" || action === "workspace-index") {
+        setWorkspaceIndexOpen(true);
+        return;
+      }
+
       if (action === "ai-clear-cache") {
         handleAIClearCache();
         return;
@@ -2873,6 +2879,11 @@ export default function App() {
 
     if (action === "calendar") {
       setCalendarPageOpen(true);
+      return;
+    }
+
+    if (action === "workspace-index" || action === "open-workspace-index") {
+      setWorkspaceIndexOpen(true);
       return;
     }
 
@@ -3819,6 +3830,11 @@ export default function App() {
         setCalendarPageOpen={setCalendarPageOpen}
         downloadsPageOpen={downloadsPageOpen}
         setDownloadsPageOpen={setDownloadsPageOpen}
+        workspaceIndexOpen={workspaceIndexOpen}
+        setWorkspaceIndexOpen={setWorkspaceIndexOpen}
+        onSelectHeader={(docId, line) => {
+          handleOpenReferencedDocument(docId, line);
+        }}
       />
 
       <AppModalsContainer

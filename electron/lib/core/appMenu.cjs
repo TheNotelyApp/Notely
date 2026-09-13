@@ -716,6 +716,11 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           click: () => sendMenuAction(win, "open-workspace-info")
         },
         {
+          label: "Workspace Index",
+          accelerator: "CmdOrCtrl+Shift+I",
+          click: () => sendMenuAction(win, "open-workspace-index")
+        },
+        {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")

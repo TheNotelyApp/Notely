@@ -7,7 +7,7 @@ import {
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
   ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
-  Upload, Download, FolderOutput
+  Upload, Download, FolderOutput, Layers
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -80,6 +80,7 @@ const MENU_ICON_MAP = {
   "downloads & export history": Download,
   "downloads export history": Download,
   "workspace": FolderOpen,
+  "workspace index": Layers,
   "workspace information": Info,
   "workspace activity": Activity,
   "reload workspace": RefreshCw,
