@@ -24,6 +24,7 @@ import {
   onMcpStatusChanged
 } from "../services/electronService";
 import "../styles/AISettings.css";
+import "../styles/MCPSettings.css";
 
 export function MCPSettingsContent({ notify }) {
   const [config, setConfig] = useState(null);
@@ -185,71 +186,23 @@ export function MCPSettingsContent({ notify }) {
   const isPortConflict = status?.errorCode === "EADDRINUSE" || (status?.error && status.error.includes("in use"));
 
   return (
-    <div className="ai-settings-container" style={{ padding: "0" }}>
+    <div className="mcp-settings-container">
       {/* Top Hero / Status Card */}
-      <div
-        className="settings-section"
-        style={{
-          border: isPortConflict
-            ? "1px solid var(--status-danger-border, #ef4444)"
-            : isRunning
-            ? "1px solid var(--status-success-border, #10b981)"
-            : "1px solid var(--border-subtle)",
-          borderRadius: "8px",
-          padding: "16px",
-          background: isPortConflict
-            ? "rgba(239, 68, 68, 0.06)"
-            : isRunning
-            ? "rgba(16, 185, 129, 0.05)"
-            : "var(--bg-card)",
-          marginBottom: "16px"
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--bg-muted)",
-                color: "#fff"
-              }}
-            >
-              <Server size={18} />
+      <div className={`mcp-hero-card ${isPortConflict ? "is-conflict" : isRunning ? "is-running" : ""}`}>
+        <div className="mcp-hero-header">
+          <div className="mcp-hero-info">
+            <div className="mcp-hero-icon">
+              <Server size={20} />
             </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Notely MCP Server</h3>
-                <span
-                  className={`status-badge ${isPortConflict ? "status-badge-error" : isRunning ? "status-badge-active" : "status-badge-idle"}`}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "2px 8px",
-                    borderRadius: "12px",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    background: isPortConflict ? "rgba(239, 68, 68, 0.15)" : isRunning ? "rgba(16, 185, 129, 0.15)" : "var(--bg-muted)",
-                    color: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)"
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      background: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)"
-                    }}
-                  />
+            <div className="mcp-hero-title-group">
+              <div className="mcp-hero-title-row">
+                <h3 className="mcp-hero-title">Notely MCP Server</h3>
+                <span className={`mcp-status-badge ${isPortConflict ? "is-conflict" : isRunning ? "is-running" : ""}`}>
+                  <span className="mcp-status-badge-dot" />
                   {isPortConflict ? "Port Conflict" : isRunning ? "Running" : "Stopped"}
                 </span>
               </div>
-              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>
+              <p className="mcp-hero-subtitle">
                 {isPortConflict
                   ? `Port ${status?.port || portInput} is in use by another app. Choose a different port below.`
                   : isRunning
@@ -259,23 +212,21 @@ export function MCPSettingsContent({ notify }) {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className="mcp-hero-actions">
             {isRunning ? (
               <>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={handleRestart}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
                   title="Restart MCP Server"
                 >
                   <RotateCw size={14} /> Restart
                 </button>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-danger"
                   onClick={handleStop}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--status-danger-text, #ef4444)" }}
                   title="Stop Server"
                 >
                   <Square size={14} /> Stop
@@ -287,7 +238,6 @@ export function MCPSettingsContent({ notify }) {
                 className="btn btn-primary"
                 onClick={handleStart}
                 disabled={isPortConflict}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
                 title="Start Server"
               >
                 <Play size={14} /> Start Server
@@ -298,51 +248,26 @@ export function MCPSettingsContent({ notify }) {
 
         {/* Port Conflict Banner */}
         {isPortConflict && (
-          <div
-            style={{
-              marginTop: "12px",
-              padding: "8px 12px",
-              borderRadius: "6px",
-              background: "rgba(239, 68, 68, 0.12)",
-              color: "#ef4444",
-              fontSize: "12px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}
-          >
+          <div className="mcp-alert-banner is-conflict">
             <AlertCircle size={14} />
             <span>
-              Port {status?.port || portInput} is blocked. Change the port below (e.g. 3701 or 3750) and click <strong>Save &amp; Apply</strong>.
+              Port {status?.port || portInput} is blocked. Change the port below and click <strong>Save &amp; Apply</strong>.
             </span>
           </div>
         )}
 
         {/* SSE Endpoint Bar */}
         {isRunning && (
-          <div
-            style={{
-              marginTop: "12px",
-              padding: "8px 12px",
-              borderRadius: "6px",
-              background: "var(--bg-subtle)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "8px"
-            }}
-          >
+          <div className="mcp-sse-bar">
             <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
-              <Radio size={14} style={{ color: "var(--accent-default)", flexShrink: 0 }} />
-              <code style={{ fontSize: "12px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                {sseUrl}
-              </code>
+              <Radio size={14} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
+              <code className="mcp-sse-url">{sseUrl}</code>
             </div>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={copySseUrl}
-              style={{ fontSize: "11px", padding: "4px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+              style={{ fontSize: "11px", padding: "4px 8px" }}
             >
               {copiedUrl ? <Check size={12} /> : <Copy size={12} />}
               {copiedUrl ? "Copied" : "Copy URL"}
@@ -352,31 +277,34 @@ export function MCPSettingsContent({ notify }) {
       </div>
 
       {/* Configuration Form */}
-      <form onSubmit={handleSave} className="settings-section" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <h4 style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600 }}>Configuration</h4>
+      <form onSubmit={handleSave} className="mcp-form-card">
+        <h4 className="mcp-card-heading">
+          <Shield size={16} /> Server Configuration
+        </h4>
 
         {/* Enable Toggle */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="mcp-form-row">
           <div>
-            <label style={{ fontSize: "13px", fontWeight: 500, display: "block" }}>Enable MCP Server</label>
-            <span style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>
+            <label className="mcp-field-label">Enable MCP Server</label>
+            <span className="mcp-field-help">
               Start the Model Context Protocol server on application launch
             </span>
           </div>
-          <label className="toggle-switch" style={{ cursor: "pointer" }}>
+          <label className="mcp-toggle-label">
             <input
               type="checkbox"
+              className="mcp-toggle-input"
               checked={enabledInput}
               onChange={(e) => setEnabledInput(e.target.checked)}
             />
-            <span className="toggle-slider" />
+            <span className="mcp-toggle-slider" />
           </label>
         </div>
 
         {/* Port & Host row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div>
-            <label htmlFor="mcp-port-input" style={{ fontSize: "12px", fontWeight: 500, display: "block", marginBottom: "4px" }}>
+        <div className="mcp-form-grid">
+          <div className="mcp-field-group">
+            <label htmlFor="mcp-port-input" className="mcp-field-label">
               Server Port
             </label>
             <input
@@ -386,44 +314,40 @@ export function MCPSettingsContent({ notify }) {
               max="65535"
               value={portInput}
               onChange={(e) => setPortInput(e.target.value)}
-              className="text-input"
-              style={{ width: "100%", fontSize: "12px" }}
+              className="mcp-input"
               placeholder="3700"
             />
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Default: 3700</span>
+            <span className="mcp-field-help">Default: 3700</span>
           </div>
 
-          <div>
-            <label htmlFor="mcp-host-input" style={{ fontSize: "12px", fontWeight: 500, display: "block", marginBottom: "4px" }}>
+          <div className="mcp-field-group">
+            <label htmlFor="mcp-host-input" className="mcp-field-label">
               Host Binding
             </label>
             <select
               id="mcp-host-input"
               value={hostInput}
               onChange={(e) => setHostInput(e.target.value)}
-              className="select-input"
-              style={{ width: "100%", fontSize: "12px", height: "34px" }}
+              className="mcp-select"
             >
               <option value="127.0.0.1">127.0.0.1 (Local loopback only)</option>
               <option value="0.0.0.0">0.0.0.0 (Allow local network access)</option>
             </select>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Recommend 127.0.0.1 for security</span>
+            <span className="mcp-field-help">Recommend 127.0.0.1 for security</span>
           </div>
         </div>
 
         {/* Bearer Token */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-            <label htmlFor="mcp-token-input" style={{ fontSize: "12px", fontWeight: 500 }}>
-              Bearer Authentication Token (Optional)
-            </label>
+        <div className="mcp-field-group">
+          <div className="mcp-field-label">
+            <label htmlFor="mcp-token-input">Bearer Authentication Token (Optional)</label>
             <button
               type="button"
               className="btn-link"
               onClick={generateRandomToken}
-              style={{ fontSize: "11px", color: "var(--accent-default)", background: "none", border: "none", cursor: "pointer" }}
+              style={{ fontSize: "11px", color: "var(--accent-solid)", background: "none", border: "none", cursor: "pointer" }}
             >
-              Generate Secret Token
+              Generate Token
             </button>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
@@ -432,8 +356,8 @@ export function MCPSettingsContent({ notify }) {
               type={showToken ? "text" : "password"}
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
-              className="text-input"
-              style={{ flex: 1, fontSize: "12px" }}
+              className="mcp-input"
+              style={{ flex: 1 }}
               placeholder="Leave blank for no authentication"
             />
             <button
@@ -445,8 +369,8 @@ export function MCPSettingsContent({ notify }) {
               {showToken ? "Hide" : "Show"}
             </button>
           </div>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-            When set, clients must send <code>Authorization: Bearer &lt;token&gt;</code> with every request.
+          <span className="mcp-field-help">
+            When set, clients must send <code>Authorization: Bearer &lt;token&gt;</code> header.
           </span>
         </div>
 
@@ -456,7 +380,7 @@ export function MCPSettingsContent({ notify }) {
             type="submit"
             className="btn btn-primary"
             disabled={saving}
-            style={{ fontSize: "12px", padding: "6px 14px" }}
+            style={{ padding: "6px 16px" }}
           >
             {saving ? "Saving..." : "Save & Apply"}
           </button>
@@ -464,28 +388,16 @@ export function MCPSettingsContent({ notify }) {
       </form>
 
       {/* Integration Guide / Claude Desktop Config */}
-      <div className="settings-section" style={{ marginTop: "16px" }}>
-        <h4 style={{ margin: "0 0 6px", fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-          <Globe size={14} /> Claude Desktop &amp; External Client Config
+      <div className="mcp-form-card">
+        <h4 className="mcp-card-heading">
+          <Globe size={16} /> Claude Desktop &amp; External Client Config
         </h4>
-        <p style={{ margin: "0 0 10px", fontSize: "12px", color: "var(--text-muted)" }}>
-          Add this to your <code>claude_desktop_config.json</code> or your external MCP client settings to connect to Notely:
+        <p className="mcp-field-help" style={{ margin: 0 }}>
+          Add this JSON configuration to your <code>claude_desktop_config.json</code> to connect external AI tools to Notely:
         </p>
 
-        <div style={{ position: "relative" }}>
-          <pre
-            style={{
-              background: "var(--bg-subtle)",
-              padding: "12px",
-              borderRadius: "6px",
-              fontSize: "11.5px",
-              overflowX: "auto",
-              fontFamily: "monospace",
-              margin: 0
-            }}
-          >
-            {claudeSnippet}
-          </pre>
+        <div className="mcp-code-container">
+          <pre className="mcp-code-block">{claudeSnippet}</pre>
           <button
             type="button"
             className="btn btn-secondary"
@@ -495,10 +407,7 @@ export function MCPSettingsContent({ notify }) {
               top: "8px",
               right: "8px",
               fontSize: "11px",
-              padding: "4px 8px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px"
+              padding: "4px 8px"
             }}
           >
             {copiedSnippet ? <Check size={12} /> : <Copy size={12} />}

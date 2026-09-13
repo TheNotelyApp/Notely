@@ -20,6 +20,7 @@ import { listTools, executeTool } from "../services/electron/aiService";
 import { mcpGetStatus } from "../services/electronService";
 import "../styles/KnowledgeGraph.css";
 import "../styles/AISettings.css";
+import "../styles/MCPSettings.css";
 
 export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [tools, setTools] = useState([]);
