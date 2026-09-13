@@ -903,10 +903,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         {
           label: "AI Health & Diagnostics",
           click: () => sendMenuAction(win, "open-health-page")
-        },
-        {
-          label: "MCP Tools & Capabilities",
-          click: () => sendMenuAction(win, "open-mcp-tools")
         }
       ]
     },
