@@ -6,7 +6,7 @@ export default withMermaid(
   defineConfig({
     title: "Notely",
     description:
-      "Documentation for Notely — the desktop Markdown notes app with Git version control, AI assistance, and P2P sync.",
+      "Documentation for Notely — the desktop Markdown notes app with Git version control, local Knowledge Graph, and Model Context Protocol (MCP) server.",
     base: "/",
     srcDir: "../docs",
     outDir: "../docs-site-dist",
@@ -53,7 +53,7 @@ export default withMermaid(
         { text: "Editor", link: "/editor/" },
         { text: "Workspace", link: "/workspace/" },
         { text: "Git", link: "/git/" },
-        { text: "AI", link: "/ai/" },
+        { text: "MCP & AI", link: "/ai/" },
         {
           text: "Download",
           link: "https://github.com/WGLabz/notely/releases/latest",
@@ -123,20 +123,20 @@ export default withMermaid(
           ],
         },
         {
-          text: "AI Features",
+          text: "MCP & Local AI",
           collapsed: false,
           items: [
-            { text: "AI Overview", link: "/ai/" },
-            { text: "AI Setup", link: "/ai/setup" },
-            { text: "AI Features", link: "/ai/features" },
-            { text: "AI Architecture", link: "/ai/architecture" },
+            { text: "Overview", link: "/ai/" },
+            { text: "Server Setup", link: "/ai/setup" },
+            { text: "Tools & Prompts", link: "/ai/features" },
+            { text: "Architecture", link: "/ai/architecture" },
             { text: "Knowledge Graph Engine", link: "/ai/knowledge-graph" },
           ],
         },
         {
           text: "Sync",
           collapsed: true,
-          items: [{ text: "P2P Sync", link: "/sync/" }],
+          items: [{ text: "Workspace Sync", link: "/sync/" }],
         },
         {
           text: "Reference",

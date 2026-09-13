@@ -1,38 +1,40 @@
 ---
-title: AI Overview
-description: Learn about Notely's 13-domain modular, local-first AI platform, AIFlow master orchestrator, and Context Compaction engine.
-keywords: ai, local llm, openai, huggingface, vector database, knowledge graph, AIFlow, compaction
+title: MCP & Local AI Overview
+description: Learn about Notely's Model Context Protocol (MCP) server, local-first ONNX embeddings, and SQLite Knowledge Graph engine.
+keywords: mcp, model context protocol, local ai, embeddings, knowledge graph, claude desktop, cursor, antigravity
 category: AI
 ---
 
-# AI Subsystem Overview
+# MCP & Local AI Overview
 
-Notely features a 13-domain modular, local-first AI platform designed around private data control. Markdown files remain the absolute source of truth, parsed and indexed into offline-first databases to fuel assistant reasoning.
+Notely provides a local-first platform designed around complete data sovereignty. Markdown notes, tasks, and graphs remain private on your device, while an embedded **Model Context Protocol (MCP)** server securely exposes them to external AI assistants (such as Claude Desktop, Cursor, and Antigravity).
 
 ---
 
 ## Capabilities at a Glance
 
-### 1. Master Flow Orchestrator (`AIFlow.js`) & 13-Domain Architecture
-- All LLM queries flow through **`AIFlow.js`**, executing a 5-stage pipeline across 13 decoupled domain module facades (`compaction`, `planner`, `personas`, `prompts`, `context`, `graph`, `embeddings`, `memory`, `executor`, `tools`, `grounding`, `formatter`, `testing`).
+### 1. Embedded Model Context Protocol (MCP) Server
+- Runs an embedded HTTP Server-Sent Events (SSE) server at `http://127.0.0.1:3721/sse`.
+- Supports standard I/O (Stdio) execution via `electron/mcp/cli.cjs` for desktop and command-line AI tools.
+- Provides tools for note listing, reading, creation, updates, task aggregation, and semantic note graph traversal.
 
-### 2. Zero-Latency Context Compaction (`ai/compaction/`)
-- Automatically compacts long chat sessions (>4 messages) into an Executive Memory Summary + recent 4 turns verbatim, slashing LLM input tokens by **~75-80%** with 0ms overhead.
+### 2. Local-First Knowledge Graph Engine
+- Extracts entities, tags, and cross-note relations into `{workspace}/.notes-app/ai-graph.db`.
+- Powered by an offline zero-shot ONNX model (`GLiNER2-Relex`) running entirely on-device without cloud API dependencies.
+- Exposed directly as the `get_note_graph` MCP tool and interactive visualizer.
 
-### 3. SQLite Knowledge Graph
-- Outbound relations, tags, and CTE traversals mapped into `ai-graph.db`.
-- Visualized interactively in the sidebar.
+### 3. Local ONNX Vector Embeddings
+- Offline vector embeddings powered by `bge-small-en-v1.5` running locally via ONNX Runtime.
+- Notes are chunked and indexed into `{workspace}/.notes-app/ai-embeddings.db`.
+- Enables semantic similarity search via the `search_notes` MCP tool.
 
-### 4. Local Embedding Indexer
-- High-performance `ai-embeddings.db` storing note chunk vectors.
-- Runs entirely offline using a local ONNX runtime for `BGE-small-en-v1.5` embeddings, or falls back to HuggingFace APIs.
-- Background Index Worker priority queues processing note changes debounced.
+### 4. Persona Prompts as MCP Prompts
+- Authoritative system personas (`general`, `software-engineer`, `technical-architect`, `research-assistant`) and custom workspace personas are exposed through MCP `prompts/list` and `prompts/get`.
+- External assistants can adopt your configured persona instructions instantly.
 
-### 5. Persona Registry (Markdown Source of Truth)
-- All personas (builtin and custom) use `.md` files with YAML frontmatter as their authoritative Source of Truth.
-- SQLite (`personas.db`) acts strictly as an index registry. Custom personas persist as formatted `.md` files to disk (`appData/personas/*.md`).
-- Customize instructions, descriptions, metadata, and preset avatar icons (🤖, 💻, 🧠, etc.).
-
-### 6. Diagnostics, Flow Telemetry & Trace Logs
-- Professional **AI Health** panel to verify subsystem initialization.
-- **Flow Telemetry** tab displaying 5-stage timeline cards, system prompt viewer (Copy/Expand), tool calls, compaction stats, and latency breakdown.
+### 5. 1-Click Client Configuration
+- Open **Settings → MCP Server** to view server health, port status, and copy ready-to-paste JSON configuration snippets for:
+  - Claude Desktop (HTTP SSE)
+  - Claude Desktop (Stdio CLI)
+  - Cursor
+  - Antigravity

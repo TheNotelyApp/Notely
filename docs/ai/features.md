@@ -1,59 +1,44 @@
 ---
-title: Using AI Features
-description: Learn how to invoke AI chat, use the AI rewrite palette, and explore semantic search.
-keywords: AI chat, AI palette, rewrite, summarize, translate, semantic search, diagnostic trace, references
+title: MCP Tools & Prompts Reference
+description: Reference of tools, prompts, and resources exposed by Notely's Model Context Protocol (MCP) server.
+keywords: MCP tools, MCP prompts, personas, list_notes, read_note, create_note, search_notes, get_note_graph
 category: AI
 ---
 
-# AI Features
+# MCP Tools & Prompts Reference
 
-AI capabilities in Notely are integrated across your editor workspace, left panel dashboards, and settings.
-
----
-
-## 1. Global & Note-Scoped Chat Panel
-
-You can chat with Notely's assistant in two ways:
-- **Note-Scoped**: While editing a note, toggle the assistant from the right side edge or the toolbar to brainstorm inside the active document.
-- **Global Chat**: While on the landing page (with no note open), click the **Sparkles** icon under the **Quick Actions** toolbar on the left panel rail. This opens the AI sidebar to chat about the entire workspace.
-
-### Context Scope Options
-Inside the chat panel, you can choose what context to send with your message:
-1. **Auto**: Selects highlighted text if active, otherwise the current note.
-2. **Selection**: Restricts context to active text selection.
-3. **Block**: Restricts context to active cursor paragraph.
-4. **Note**: Sends the entire note.
-5. **Workspace**: Extends context by searching relevant chunks across the whole note library.
-
-### Sourced References
-Whenever the assistant retrieves documents to answer your question, a **Referred Notes** chip list is rendered under the assistant message bubble. Hover over these chips to see file paths and relevance match percentages.
+Notely transforms your local note workspace into an MCP endpoint for AI assistants. External models can read notes, create structured documentation, search meaning vectors, and traverse relation graphs.
 
 ---
 
-## 2. AI Palette Actions
+## 1. Exposed MCP Tools
 
-Refactor or rewrite text inside the editor:
-1. Highlight target text selection in the Markdown editor.
-2. Press **`Ctrl + Space`** or right-click and select **AI Actions**.
-3. Choose an action from the palette (e.g. Summarize, Change Tone, Improve Readability).
+The embedded MCP server exposes the following tools to connected AI assistants:
 
----
-
-## 3. Persona Customization & Markdown Source of Truth
-
-Customize how the AI talks to you:
-- Open **AI Settings** and click **Manage Personas**.
-- **Markdown Source of Truth**: All personas (builtin and custom) are authored as Markdown files (`.md`) with YAML frontmatter. Custom personas created in the UI are persisted as formatted `.md` files to disk (`appData/personas/*.md`), while SQLite acts strictly as an index.
-- Select or edit custom personas, modify frontmatter metadata (tone, verbosity, structure), and update prompt instructions.
-- Select a preset emoji avatar (🤖, 💻, 🧠, etc.) next to the custom avatar field to represent them in the chat panel.
+| Tool Name | Parameters | Description |
+|---|---|---|
+| `list_notes` | `{ folder?: string, tag?: string }` | List notes in the current workspace with optional folder or tag filtering. |
+| `read_note` | `{ notePath: string }` | Read the markdown content and frontmatter metadata of a specific note. |
+| `create_note` | `{ title: string, content: string, folder?: string }` | Create a new note file in the workspace with automatic filename sanitization. |
+| `update_note` | `{ notePath: string, content: string }` | Replace or update the content of an existing markdown note. |
+| `search_notes` | `{ query: string, limit?: number }` | Search workspace notes by keyword or semantic similarity matching. |
+| `get_note_graph` | `{ notePath?: string }` | Retrieve the knowledge graph relations, wikilinks, and connections for a note or entire workspace. |
+| `list_tasks` | `{ completed?: boolean, notePath?: string }` | Retrieve all pending or completed Markdown tasks across workspace notes. |
 
 ---
 
-## 4. Diagnostics, Flow Telemetry & Prompt Tracker Log
+## 2. MCP Prompts (Personas)
 
-If you want to inspect how the AI retrieves data, what system prompts are assembled, or what tools it invokes:
-1. Go to **AI Diagnostics** / **AI Health** page.
-2. Select a conversation session from the list.
-3. Use the dual-tab inspector pane:
-   - **Messages**: View clean chat conversation transcript (technical tool execution boxes separated for clutter-free reading).
-   - **Flow Telemetry**: View a 3-column continuous timeline stream connecting 5-stage execution breakdown (`AIFlow.js`), latency metrics, persistent session tokens (`LogDB`), expandable tool call arguments/outputs, zero-latency Context Compaction stats (`ai/compaction/`), system prompt inspector (with Copy/Expand), and full flow trace JSON export.
+Notely exposes built-in and workspace custom personas as structured MCP Prompts through `prompts/list` and `prompts/get`:
+
+- **`general`**: Balanced, helpful, concise note assistant.
+- **`software-engineer`**: Focuses on clean code architecture, design patterns, testing, and debugging.
+- **`technical-architect`**: Specializes in system design, trade-offs, scalability, and technical RFC authoring.
+- **`research-assistant`**: Emphasizes synthesis, citation, structured analysis, and critical evaluation.
+- **Custom Workspace Personas**: Any custom personas authored in your workspace are automatically exposed as prompts.
+
+---
+
+## 3. MCP Resources
+
+- **`notely://note/{notePath}`**: Exposes individual note files directly as Markdown resources with live content subscription capabilities.

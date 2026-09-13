@@ -47,9 +47,9 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - Word-level inline diff highlights, automatic legacy history-to-commit migrations on startup, and direct commit tagging.
 - Preview Mermaid diagrams and rendered Markdown content.
 - Create and edit structured technical diagrams with **Draw.io integration** directly from markdown previews, supporting drag-and-drop import for `.drawio` and `.drawio.xml` files, image export, and offline drawing.
-- Visualize the workspace as an interactive note graph.
-- Use built-in AI features powered by Vercel AI SDK (Gemini, Groq, OpenAI / OpenAI-compatible endpoints) with a 3-Brain Architecture (`WorkspaceBrain`, `ReasoningBrain`, `ActionBrain`), autonomous multi-step Planner, semantic domain tools, local-first ONNX Embeddings Engine (`BGE-small-en-v1.5`), zero-latency Context Compaction (`CompactionEngine`), local GLiNER2 ONNX Knowledge Graph Engine, strict read-only note immutability safeguards, ReAct self-correction engine (`SelfCorrectionEngine`), and an automated diagnostic evaluation harness (`AgentHarness`).
-- Aggregate tasks across notes with **Open Tasks** and **All Tasks** panels.
+- Built-in **Model Context Protocol (MCP)** server: Expose your local notes, tasks, and knowledge graph directly to external AI assistants (Claude Desktop, Cursor, Antigravity) via HTTP SSE (`http://127.0.0.1:3721/sse`) or Stdio CLI.
+- Local-first **Knowledge Graph & ONNX Embeddings**: Generate vector embeddings locally with ONNX (`bge-small-en-v1.5`) and extract entity/relationship knowledge graphs with zero cloud dependencies.
+- Expose system and workspace custom **Personas as MCP Prompts** (`general`, `software-engineer`, `technical-architect`, `research-assistant`).
   - Open Tasks focuses on unchecked items.
   - All Tasks includes open + closed items with filtering and note grouping.
   - Dashboard widgets and note-level task summaries help you triage quickly.
@@ -137,30 +137,13 @@ npm run build
 npm test
 ```
 
-### Run local P2P harness
+### Run MCP server tests
 
 ```bash
-npm run test:p2p
+npm run test:mcp
 ```
 
-This harness is designed for one-machine validation of planned peer-to-peer flows without cloud dependencies. It validates:
-
-- Peer discovery
-- Human-readable pairing code handshake
-- Workspace key exchange to trusted peers
-- Encrypted message sync using workspace keys
-- Workspace key rotation and re-share
-- Peer revoke behavior
-
-Harness output artifacts are written to `.artifacts/p2p-harness/`.
-
-### Run packaged P2P validation preflight
-
-```bash
-npm run test:p2p:packaged
-```
-
-This command checks whether expected Windows release executables are present and prints a repeatable two-machine LAN validation checklist.
+Validates the embedded Model Context Protocol (MCP) server, HTTP SSE transport lifecycle, tool execution (`list_notes`, `read_note`, `create_note`, `update_note`, `search_notes`, `get_note_graph`, `list_tasks`), prompt generation, and note resources.
 
 ### Markdown linting
 
@@ -201,7 +184,6 @@ Planned additions and improvements for upcoming iterations:
 - Search indexing for diagram text/content.
 - Update-from-source flow for image-converted Excalidraw diagrams.
 - Interactive diagram hotspots linking to notes/files.
-- Expanded P2P sync dashboard with per-peer media/diagram health.
 - OCR-assisted alt text suggestions for inserted images.
 - Command palette automation macros for repeated authoring tasks.
 

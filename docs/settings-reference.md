@@ -106,36 +106,29 @@ The toolbar capture button shows the current mode:
 - `A` = Auto Insert
 - `R` = Review Before Insert
 
-## 6. AI Settings
+## 6. Local Embeddings, Knowledge Graph & MCP Server
 
-Open **AI -> AI Settings**.
+Open **Settings** (`Ctrl/Cmd + ,`) and switch to the desired configuration tab.
 
-### Provider setup
+### Local Embeddings
 
-- **Text provider**: choose the LLM service for writing, summarizing, or refactoring text (Google Gemini, Groq, or OpenAI / OpenAI-compatible).
-- **OpenAI Compatible**: connect to OpenAI (`gpt-4o`, `gpt-4o-mini`) or any compatible endpoint by specifying your API key and Base URL.
-- **Local ONNX Models**: vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph extraction (`GLiNER2-Relex`) run completely on-device and offline via `onnxruntime-node`.
-- **HuggingFace token**: optional API token for cloud-based embeddings fallback.
-- **Test** buttons: verify that your saved credentials and endpoint connections work.
+- **Offline Vector Model**: Download and manage local ONNX weights (`bge-small-en-v1.5`, 130 MB) for on-device vector search.
+- **Active Vector Provider**: Choose between Local ONNX Engine (offline) or HuggingFace Cloud Inference API.
+- **Automatic Vector Generation**: Toggle background embedding generation upon note save.
+- **Vector Index Statistics & Maintenance**: View total chunks, indexed notes, and database size; trigger index rebuilds or clear the vector cache.
 
-### Feature toggles
+### Knowledge Graph
 
-- **Learn user patterns**: lets the app remember how you use AI so it can be more helpful later
-- **Generate embeddings**: turns on meaning-based search and related-note features
-- **Discover relationships**: helps the graph and AI features find links between related notes
-- **Graph confidence threshold**: controls the minimum confidence score (10% to 95%) required for neural-extracted entities and relationships. Adjusting this slider dynamically filters the Knowledge Graph visualization in real time.
+- **Offline Extraction Model**: Download and manage `GLiNER2-Relex` ONNX weights for zero-shot entity and relation extraction without cloud APIs.
+- **Active Extraction Engine**: Select between the local ONNX model or Cloud AI provider.
+- **Automatic Relationship Discovery**: Toggle background entity and link extraction when notes are saved.
+- **Confidence Threshold**: Fine-tune the extraction confidence slider (30% to 95%).
 
-### Advanced generation tuning
+### Model Context Protocol (MCP) Server
 
-- **Max tokens**: controls how long AI responses are allowed to be
-- **Temperature**: controls how safe and predictable, or how varied and creative, the response feels
-
-Use lower temperature for predictable output. Use higher temperature for brainstorming or variation.
-
-### Data and privacy controls
-
-- Shows where AI-related app data is stored on your device
-- Lets you clear saved AI working data and learned behavior
+- **Status & Control**: Toggle the embedded HTTP Server-Sent Events (SSE) server on `http://127.0.0.1:3721/sse`.
+- **Client Configuration Export**: 1-click JSON snippet generator for **Claude Desktop (SSE)**, **Claude Desktop (Stdio)**, **Cursor**, and **Antigravity**.
+- **Exposed Tools & Prompts**: Live list of available tools (`list_notes`, `read_note`, `create_note`, `update_note`, `search_notes`, `get_note_graph`, `list_tasks`) and personas exposed as prompts.
 
 ## 7. Workspace Metadata and Git Safety
 

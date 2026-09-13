@@ -21,7 +21,6 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Open Workspace | `Ctrl/Cmd + Shift + N` | Workspace |
 | Open Workspace Activity | `Ctrl/Cmd + Shift + A` | Workspace |
 | Open Workspace Graph | `Ctrl/Cmd + Shift + G` | Workspace |
-| Open P2P Status | `Ctrl/Cmd + Shift + P` | Sync |
 | Switch to Next Tab | `Ctrl + Tab` | Editor |
 | Switch to Previous Tab | `Ctrl + Shift + Tab` | Editor |
 
@@ -59,9 +58,9 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 
 | Action | Shortcut | Scope / Notes |
 |---|---|---|
-| Open AI Palette | `Ctrl/Cmd + Shift + I` | AI (Document screens) |
+| Open MCP Settings | `Ctrl/Cmd + Shift + I` | MCP / AI |
 | Open Downloads & Export History | `Ctrl/Cmd + J` | Global |
-| Open AI Settings | `Ctrl/Cmd + Shift + ,` | AI |
+| Open MCP / AI Settings | `Ctrl/Cmd + Shift + ,` | MCP / AI |
 
 ## View, Media & Tools
 

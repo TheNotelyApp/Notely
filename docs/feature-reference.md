@@ -396,19 +396,19 @@ Longer AI actions show progress and completion messages so you know something is
 
 Notely shows whether its AI search data is fresh or getting old.
 
-## 10. Peer-to-Peer Sync
+## 10. Model Context Protocol (MCP) Server
 
-### Discovery and pairing
+### External AI Assistant Connectivity
 
-Pair trusted peers using invite codes from **P2P -> P2P Status**.
+Notely runs an embedded Model Context Protocol (MCP) server supporting HTTP Server-Sent Events (SSE) and Stdio transports.
 
-### Sync status and conflicts
+### Client Integration
 
-Monitor sync progress and resolve conflicts with built-in conflict tools.
+Quick-configure external AI applications (Claude Desktop, Cursor, Antigravity) with 1-click JSON configuration snippets available under **Settings -> MCP Server**.
 
-### Security controls
+### Tools & Resources
 
-Trust and access controls help keep shared workspaces safer.
+Exposes note search, reading, creation, updates, task aggregation, and the local knowledge graph directly to external AI models.
 
 ## 11. Help and Product Info
 

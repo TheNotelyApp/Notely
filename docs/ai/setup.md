@@ -1,49 +1,58 @@
 ---
-title: Setting Up AI Providers
-description: Configure AI settings, API keys, local endpoints, and feature flags.
-keywords: AI settings, API key, OpenAI, Gemini, Groq, HuggingFace, ONNX, BGE embeddings
+title: Setting Up MCP & Local AI Engines
+description: Configure the embedded MCP server, offline ONNX embedding models, and Knowledge Graph extraction settings.
+keywords: MCP server setup, local embeddings, ONNX, Knowledge Graph, GLiNER, Claude Desktop, Cursor
 category: AI
 ---
 
-# AI Setup
+# Setting Up MCP & Local AI Engines
 
-Configure LLM provider models, API tokens, and local vector index settings inside **AI → AI Settings**.
-
----
-
-## 1. Text Generation Providers
-
-Notely connects to cloud and custom LLM providers using the **Vercel AI SDK**:
-- **Google Gemini**: Requires a Gemini API key. Default provider (`gemini-2.0-flash`), recommended for rich tool calling.
-- **Groq**: Requires a Groq API key (supports models like `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `deepseek-r1-distill-llama-70b`).
-- **OpenAI / OpenAI-Compatible**: Connect to OpenAI (`gpt-4o`, `gpt-4o-mini`) or custom compatible endpoints by setting an API Key and custom Base URL.
-- **Connection Diagnostics**: Click the **Test** button next to any configured provider in **AI Settings** to verify connection status.
+Configure your local AI models and external AI connections under **Settings** (`Ctrl/Cmd + ,`).
 
 ---
 
-## 2. Embedding Index Setup
+## 1. Model Context Protocol (MCP) Server
 
-Vector embeddings enable Semantic Search and Context Retrieval:
-- **Local BGE Model (Recommended)**: Runs entirely offline inside your app. Downloads a lightweight `BGE-small-en-v1.5` ONNX model (~130MB) into `%AppData%/notely/ai-model/` and runs vector calculations locally via `onnxruntime-node`.
-- **HuggingFace API**: Runs cloud-based embeddings using an API key token.
+The embedded MCP server enables external AI applications to interact safely with your Notely workspace:
 
----
-
-## 3. Knowledge Graph Engine
-
-Relationship extraction and entity graph generation:
-- **GLiNER2-Relex ONNX (Always Local)**: The Knowledge Graph uses a dedicated `gliner2-multi-v1-onnx` model running locally via ONNX Runtime. This is separate from your text generation provider — it runs entirely offline with no API key required and is not user-configurable.
-- **Model Location**: Downloaded automatically to `%AppData%/notely/models/gliner2-relex/` on first graph build.
-- **Confidence Threshold**: Adjustable in AI Settings (`graphConfidence`, default 0.45–0.60). Higher values produce fewer but more precise relationships.
+1. Open **Settings → MCP Server**.
+2. Check that the server status indicates **Running (HTTP SSE)** on `http://127.0.0.1:3721/sse`.
+3. Select your external client tab:
+   - **Claude Desktop (SSE)**: Copy the `notely-sse` JSON configuration snippet into your `claude_desktop_config.json`.
+   - **Claude Desktop (Stdio)**: Copy the Stdio CLI command configuration.
+   - **Cursor**: Copy the mcpServers definition for Cursor settings.
+   - **Antigravity**: Copy the Antigravity IDE configuration block.
+4. Restart or reload your AI assistant to establish the connection.
 
 ---
 
-## 4. SQLite Database Locality
+## 2. Local Embeddings Setup
 
-All AI databases are workspace-scoped and stored inside the hidden `{workspace}/.notes-app/` folder to keep your data local and portable:
-1. `ai-embeddings.db`: Stores chunk text, line mappings, content hashes, and indexing queues.
-2. `ai-graph.db`: Stores extracted entity nodes and relationships.
-3. `ai-memory.db`: Stores conversation sessions, message logs, and persona configurations.
-4. `ai-logs.db`: Stores 5-stage execution traces, flow telemetry logs (`FlowTracker`), and prompt tracking payloads (`LogDB`).
+Semantic search and vector retrieval run completely offline on your device:
 
-PRAGMA `journal_mode = WAL` and `synchronous = NORMAL` are enabled across all databases for high performance without write blocks.
+1. Open **Settings → Local Embeddings**.
+2. Under **Offline Vector Weights**, click **Download (130 MB)** if weights are not yet present on disk.
+3. The model (`bge-small-en-v1.5`) is stored locally in `%AppData%/Notely/notely/ai-model/` and executed via `onnxruntime-node`.
+4. Check **Automatic Vector Generation** to keep note vectors updated whenever notes are saved.
+5. Click **Rebuild Vector Index** if you modify embedding providers or want a clean index.
+
+---
+
+## 3. Knowledge Graph Engine Setup
+
+Offline entity and relationship extraction:
+
+1. Open **Settings → Knowledge Graph**.
+2. Download the offline `GLiNER2-Relex` ONNX model weights to enable zero-shot extraction.
+3. Adjust the **Extraction Confidence Threshold** slider (default 60%) to balance recall and precision.
+4. Check **Automatic Relationship Discovery** to continuously update the knowledge graph in the background as you write.
+
+---
+
+## 4. Local Database Storage
+
+All local AI indexes are workspace-scoped and stored inside the hidden `{workspace}/.notes-app/` folder:
+
+- `ai-embeddings.db`: Vector chunk records, hashes, and indexing queues.
+- `ai-graph.db`: Extracted entity nodes and relation edges.
+- `personas.db`: Index of system and workspace personas.

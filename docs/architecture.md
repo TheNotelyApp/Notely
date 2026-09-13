@@ -93,9 +93,11 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 * **Local Git Execution**: Runs native `git` CLI commands synchronously or asynchronously without external cloud dependencies.
 * **Feature Set**: Workspace initialization, status tracking (staged/unstaged files), diff generation, commit creation, branch management, and commit history inspection.
 
-### C. P2P Local Sync Engine (`p2pService.cjs`)
-* **Peer Discovery**: Discovers local network peers for direct device-to-device note synchronization.
-* **Status Snapshots**: Tracks live peer connection states and sync progress.
+### C. Model Context Protocol (MCP) Server Subsystem (`electron/mcp/`)
+* **Embedded HTTP SSE Server (`sseTransport.cjs`)**: Runs on `http://127.0.0.1:3721/sse` for real-time external AI assistant communication (Claude Desktop, Cursor, Antigravity).
+* **CLI Transport (`cli.cjs`)**: Provides standard I/O (Stdio) MCP interface for terminal tools and desktop AI clients.
+* **MCP Tools & Resources**: Exposes `list_notes`, `read_note`, `create_note`, `update_note`, `search_notes`, `get_note_graph`, `list_tasks`, and `notely://note/{notePath}` resources.
+* **MCP Prompts**: Exposes system personas (`general`, `software-engineer`, `technical-architect`, `research-assistant`) and custom workspace personas as structured AI prompts.
 
 ### D. Package, Import & Export Subsystem (`notePackageIpc.cjs`)
 
