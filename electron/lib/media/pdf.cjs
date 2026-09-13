@@ -367,9 +367,25 @@ function buildPdfStyles({ compact = false } = {}) {
       table,
       tr,
       .notely-image-frame,
+      .notely-mermaid-container,
+      .mermaid,
       img {
         break-inside: avoid-page;
         page-break-inside: avoid;
+      }
+
+      .notely-mermaid-container,
+      .mermaid {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 16px 0;
+        background: transparent;
+      }
+
+      .mermaid svg {
+        max-width: 100% !important;
+        height: auto !important;
       }
 
       .markdown-code-block,

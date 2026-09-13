@@ -192,6 +192,60 @@ class ExportManager {
     });
   }
 
+  async _renderMermaidInWindow(win) {
+    if (!win || win.isDestroyed()) return;
+    try {
+      const hasMermaid = await win.webContents.executeJavaScript(
+        "Boolean(document.querySelector('.mermaid'))"
+      );
+      if (!hasMermaid) return;
+
+      let mermaidScript = null;
+      try {
+        const mermaidDistPath = require.resolve("mermaid/dist/mermaid.min.js");
+        if (fs.existsSync(mermaidDistPath)) {
+          mermaidScript = fs.readFileSync(mermaidDistPath, "utf8");
+        }
+      } catch { /* ignore fallback */ }
+
+      if (mermaidScript) {
+        await win.webContents.executeJavaScript(`${mermaidScript}; void 0;`);
+      } else {
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const s = document.createElement("script");
+            s.src = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          })
+        `);
+      }
+
+      await win.webContents.executeJavaScript(`
+        (async () => {
+          try {
+            if (window.mermaid) {
+              window.mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: 'default',
+                fontFamily: 'Segoe UI, Inter, Arial, sans-serif'
+              });
+              await window.mermaid.run({
+                nodes: document.querySelectorAll('.mermaid')
+              });
+            }
+          } catch (err) {
+            console.error('Mermaid render error during export:', err);
+          }
+        })()
+      `);
+    } catch (err) {
+      console.warn("Mermaid diagram rendering skipped:", err?.message || err);
+    }
+  }
+
   // --- Type 1: PDF Export ---
   async _exportPdf(payload, downloadDir) {
     const notesRoot = typeof this.getNotesRoot === "function" ? this.getNotesRoot() : null;
@@ -259,6 +313,7 @@ class ExportManager {
 
       try {
         await pdfWindow.loadFile(tempHtmlPath);
+        await this._renderMermaidInWindow(pdfWindow);
         await pdfWindow.webContents.executeJavaScript("document.fonts ? document.fonts.ready : Promise.resolve()");
 
         const pdfData = await pdfWindow.webContents.printToPDF({
@@ -608,6 +663,7 @@ class ExportManager {
 
         try {
           await pdfWindow.loadFile(htmlTempPath);
+          await this._renderMermaidInWindow(pdfWindow);
           await pdfWindow.webContents.executeJavaScript("document.fonts ? document.fonts.ready : Promise.resolve()", true);
 
           const pdfData = await pdfWindow.webContents.printToPDF({
@@ -647,8 +703,30 @@ class ExportManager {
       try {
         const MarkdownItCtor = this.getMarkdownIt();
         markdownIt = new MarkdownItCtor({ html: false, linkify: true, typographer: true });
+        markdownIt.renderer.rules.fence = (tokens, idx) => {
+          const token = tokens[idx];
+          const info = String(token.info || "").trim();
+          const language = (info.split(/\s+/)[0] || "").toLowerCase();
+          const rawCode = String(token.content || "").replace(/\n$/, "");
+          const escapeHtml = (val) => String(val || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+          if (language === "mermaid") {
+            return `<div class="notely-mermaid-container"><pre class="mermaid">${escapeHtml(rawCode)}</pre></div>`;
+          }
+          return `<pre><code class="language-${escapeHtml(language)}">${escapeHtml(rawCode)}</code></pre>`;
+        };
       } catch { /* fallback */ }
     }
+
+    let hasLocalMermaid = false;
+    const assetsDir = path.join(webRoot, "_notely_assets");
+    try {
+      const mermaidDistPath = require.resolve("mermaid/dist/mermaid.min.js");
+      if (fs.existsSync(mermaidDistPath)) {
+        fs.mkdirSync(assetsDir, { recursive: true });
+        fs.copyFileSync(mermaidDistPath, path.join(assetsDir, "mermaid.min.js"));
+        hasLocalMermaid = true;
+      }
+    } catch { /* fallback */ }
 
     const indexLinks = [];
 
@@ -660,6 +738,11 @@ class ExportManager {
 
       const title = path.basename(markdownPath, ".md");
       const renderedHtml = markdownIt ? markdownIt.render(content) : `<pre>${content}</pre>`;
+
+      const depth = relHtmlPath.split("/").length - 1;
+      const prefix = depth > 0 ? "../".repeat(depth) : "./";
+      const localMermaidScriptSrc = `${prefix}_notely_assets/mermaid.min.js`;
+
       const pageHtml = `<!doctype html>
 <html lang="en">
   <head>
@@ -675,6 +758,8 @@ class ExportManager {
       img { max-width: 100%; height: auto; }
       a { color: #0f5f76; }
       ul { padding-left: 20px; }
+      .notely-mermaid-container, .mermaid { display: flex; justify-content: center; align-items: center; margin: 20px 0; overflow-x: auto; background: transparent; }
+      .mermaid svg { max-width: 100%; height: auto; }
     </style>
   </head>
   <body>
@@ -682,6 +767,34 @@ class ExportManager {
       <h1>${title}</h1>
       ${renderedHtml}
     </main>
+    <script>
+      (function() {
+        function initMermaid() {
+          if (window.mermaid) {
+            try {
+              window.mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "default" });
+            } catch (e) { console.error("Mermaid init error:", e); }
+          }
+        }
+        ${hasLocalMermaid ? `
+        const s = document.createElement("script");
+        s.src = "${localMermaidScriptSrc}";
+        s.onload = initMermaid;
+        s.onerror = function() {
+          const cdn = document.createElement("script");
+          cdn.src = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+          cdn.onload = initMermaid;
+          document.head.appendChild(cdn);
+        };
+        document.head.appendChild(s);
+        ` : `
+        const cdn = document.createElement("script");
+        cdn.src = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+        cdn.onload = initMermaid;
+        document.head.appendChild(cdn);
+        `}
+      })();
+    </script>
   </body>
 </html>`;
 

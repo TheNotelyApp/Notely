@@ -3440,7 +3440,7 @@ export default function App() {
             </div>
             {recentWorkspacePaths.length ? (
               <div className="overlay-dialog-recents" aria-label="Recent workspaces">
-                <span>Recent Workspaces</span>
+                <span>Recent Workspaces ({recentWorkspacePaths.length})</span>
                 <div className="overlay-dialog-recent-list">
                   {recentWorkspacePaths.map((workspacePath) => (
                     <button

@@ -57,21 +57,37 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         .map((entry) => normalizeMenuText(entry, ""))
         .filter(Boolean)
     : [];
-  const openRecentSubmenu = recentWorkspacePaths.length
-    ? recentWorkspacePaths.map((workspacePath) => {
-        const actStr = `open-recent-workspace:${encodeURIComponent(workspacePath)}`;
-        return {
-          label: workspacePath,
-          action: actStr,
-          click: () => sendMenuAction(win, actStr)
-        };
-      })
-    : [
-        {
-          label: "No Recent Workspaces",
-          enabled: false
-        }
-      ];
+  const MENU_RECENT_LIMIT = 8;
+  let openRecentSubmenu;
+  if (!recentWorkspacePaths.length) {
+    openRecentSubmenu = [
+      {
+        label: "No Recent Workspaces",
+        enabled: false
+      }
+    ];
+  } else {
+    const visibleRecent = recentWorkspacePaths.slice(0, MENU_RECENT_LIMIT);
+    openRecentSubmenu = visibleRecent.map((workspacePath) => {
+      const actStr = `open-recent-workspace:${encodeURIComponent(workspacePath)}`;
+      return {
+        label: workspacePath,
+        action: actStr,
+        click: () => sendMenuAction(win, actStr)
+      };
+    });
+
+    const remainingCount = recentWorkspacePaths.length - MENU_RECENT_LIMIT;
+    const moreLabel = remainingCount > 0 ? `${remainingCount} more...` : "More...";
+    openRecentSubmenu.push(
+      { type: "separator" },
+      {
+        label: moreLabel,
+        action: "open-recent-workspaces",
+        click: () => sendMenuAction(win, "open-recent-workspaces")
+      }
+    );
+  }
 
   let availableWorkspaces = Array.isArray(context?.availableWorkspaces) && context.availableWorkspaces.length > 0
     ? context.availableWorkspaces

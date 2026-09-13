@@ -198,8 +198,13 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
     const token = tokens[idx];
     const info = String(token.info || "").trim();
     const language = (info.split(/\s+/)[0] || "").toLowerCase();
-    const languageLabel = getLanguageDisplayLabel(language);
     const rawCode = String(token.content || "").replace(/\n$/, "");
+
+    if (language === "mermaid") {
+      return `<div class="notely-mermaid-container"><pre class="mermaid">${escapeCodeHtml(rawCode)}</pre></div>`;
+    }
+
+    const languageLabel = getLanguageDisplayLabel(language);
     const highlighted = highlightCode(rawCode, language);
     const highlightedLines = highlighted.split(/\r?\n/);
 

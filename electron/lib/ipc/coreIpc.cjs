@@ -27,7 +27,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     getWorkspaceMetadataStore,
   } = deps;
 
-  const RECENT_WORKSPACES_LIMIT = 8;
+  const RECENT_WORKSPACES_LIMIT = 100;
 
   function normalizeWorkspacePathValue(rawPath) {
     if (typeof rawPath !== "string") return "";

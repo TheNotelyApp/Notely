@@ -114,6 +114,7 @@
       "ai/**/*",
       "node_modules/node-pty/**/*",
       "node_modules/node-addon-api/**/*",
+      "node_modules/mermaid/dist/**/*",
       "scripts/launch-electron.cjs",
       "package.json"
     ],
