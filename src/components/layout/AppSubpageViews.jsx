@@ -33,6 +33,9 @@ const WorkspaceIndexPage = lazy(() =>
 const WorkspaceDiagramsMediaPage = lazy(() =>
   import("../WorkspaceDiagramsMediaPage").then((m) => ({ default: m.default || m.WorkspaceDiagramsMediaPage }))
 );
+const MCPToolsPage = lazy(() =>
+  import("../MCPToolsPage").then((m) => ({ default: m.default || m.MCPToolsPage }))
+);
 
 const fullScreenOverlayStyle = {
   position: "fixed",
@@ -79,8 +82,10 @@ export function AppSubpageViews({
   setWorkspaceIndexOpen,
   diagramsMediaOpen,
   setDiagramsMediaOpen,
+  mcpToolsPageOpen,
+  setMcpToolsPageOpen,
+  onOpenMcpSettings,
   onSelectHeader,
-  onAskAI,
 }) {
   return (
     <>
@@ -192,7 +197,6 @@ export function AppSubpageViews({
                 setWorkspaceIndexOpen(false);
                 if (onSelectHeader) onSelectHeader(docId, line);
               }}
-              onAskAI={onAskAI}
             />
           </Suspense>
         </div>
@@ -210,6 +214,21 @@ export function AppSubpageViews({
                 if (handleOpenReferencedDocument) {
                   void handleOpenReferencedDocument(filePath, line);
                 }
+              }}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {mcpToolsPageOpen && (
+        <div style={fullScreenOverlayStyle}>
+          <Suspense fallback={<div className="lazy-loading">Loading MCP Tools…</div>}>
+            <MCPToolsPage
+              onBack={() => setMcpToolsPageOpen(false)}
+              onNotify={notify}
+              onOpenSettings={() => {
+                setMcpToolsPageOpen(false);
+                if (onOpenMcpSettings) onOpenMcpSettings();
               }}
             />
           </Suspense>

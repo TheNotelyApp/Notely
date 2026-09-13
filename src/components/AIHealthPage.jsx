@@ -25,9 +25,10 @@ import {
   Brain,
   FileText,
   Bot,
-  Filter
+  Filter,
+  Server
 } from 'lucide-react';
-import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs, aiClearConversations, onTelemetryEvent } from '../services/electronService';
+import { aiGetHealth, aiListConversations, aiGetMessages, aiGetLogs, aiClearLogs, aiClearConversations, onTelemetryEvent, mcpGetStatus } from '../services/electronService';
 import { useConfirm } from '../hooks/useConfirm';
 import { renderMarkdown } from '../utils/renderUtils';
 import '../styles/KnowledgeGraph.css';
@@ -589,7 +590,7 @@ function FlowTelemetryPane({ conv, flowLogs }) {
         {filteredLogs.length === 0 && (
           <div className="ahp-empty">
             {flowLogs.length === 0
-              ? 'No flow telemetry recorded yet for this conversation thread. Send a message in chat to generate execution events.'
+              ? 'No flow telemetry recorded yet. Trigger MCP tools or background AI tasks to generate execution events.'
               : 'No execution events match your search.'}
           </div>
         )}
@@ -821,6 +822,7 @@ function ConversationPane({ conv, onBack }) {
 export default function AIHealthPage({ onBack }) {
   const { confirm } = useConfirm();
   const [health, setHealth] = useState(null);
+  const [mcpStatus, setMcpStatus] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
   const [convSearch, setConvSearch] = useState('');
@@ -831,13 +833,15 @@ export default function AIHealthPage({ onBack }) {
     try {
       setLoading(true);
       setError('');
-      const [healthRes, convRes] = await Promise.all([
+      const [healthRes, convRes, mcpRes] = await Promise.all([
         aiGetHealth(),
-        aiListConversations().catch(() => ({ success: true, data: [] }))
+        aiListConversations().catch(() => ({ success: true, data: [] })),
+        mcpGetStatus().catch(() => null)
       ]);
       if (healthRes?.success) setHealth(healthRes.data);
       else setError(healthRes?.error || 'Failed to fetch diagnostics.');
       if (convRes?.success) setConversations(convRes.data || []);
+      if (mcpRes) setMcpStatus(mcpRes);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -866,7 +870,7 @@ export default function AIHealthPage({ onBack }) {
             <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Notes</button>
             <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
           </span>
-          <span className="detail-breadcrumb-current">AI Health &amp; Diagnostics</span>
+          <span className="detail-breadcrumb-current">AI &amp; MCP Diagnostics</span>
         </nav>
       </div>
 
@@ -915,7 +919,7 @@ export default function AIHealthPage({ onBack }) {
             <div className="ahp-stat-grid">
               <StatCard label="Requests" value={stats?.requestsCount ?? 0} />
               <StatCard label="Tokens" value={stats?.tokensUsed ?? 0} />
-              <StatCard label="Conversations" value={health?.database?.totalConversations ?? conversations.length} accent />
+              <StatCard label="MCP Clients" value={mcpStatus?.activeSessions ?? 0} accent />
             </div>
           </div>
 
@@ -925,6 +929,7 @@ export default function AIHealthPage({ onBack }) {
             </div>
             <div className="ahp-db-list">
               <DbRow label="Telemetry DB" count={db?.totalTelemetry ?? 0} countLabel="flows" path={db?.telemetryDBPath} status={db?.status} />
+              <DbRow label="MCP Server" count={mcpStatus?.activeSessions ?? 0} countLabel="clients" path={mcpStatus ? `http://${mcpStatus.host || '127.0.0.1'}:${mcpStatus.port || 3700}/sse` : 'none'} status={mcpStatus?.running ? 'connected' : 'disabled'} />
               <DbRow label="Logs DB" count={db?.totalLogs ?? 0} countLabel="entries" path={db?.logDBPath} status={db?.status} />
               <DbRow label="Persona Registry" count={db?.totalPersonas ?? 0} countLabel="personas" path={db?.personaDBPath} status={db?.status} />
               <DbRow label="Embeddings DB" count={db?.totalChunks ?? 0} countLabel="chunks" path={db?.embeddingDBPath} status={db?.status} />
@@ -1017,7 +1022,7 @@ export default function AIHealthPage({ onBack }) {
               {filteredConversations.length === 0 ? (
                 <div className="ahp-empty">
                   {conversations.length === 0
-                    ? 'No conversations yet. Start chatting to see history here.'
+                    ? 'No conversations yet. External AI clients connect and invoke capabilities via MCP.'
                     : 'No matches for your search.'}
                 </div>
               ) : (

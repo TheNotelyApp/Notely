@@ -14,3 +14,4 @@ export * from "./electron/mediaService";
 export * from "./electron/taskService";
 export * from "./electron/exportService";
 export * from "./electron/aiService";
+export * from "./electron/mcpService";

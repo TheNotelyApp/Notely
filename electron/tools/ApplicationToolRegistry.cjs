@@ -571,6 +571,69 @@ class ApplicationToolRegistry {
       },
       execute: async (args) => this.webService.fetchUrl(args)
     });
+
+    // 15. personas.list
+    this.registerTool({
+      name: 'personas.list',
+      version: 'v1',
+      aliases: ['list_personas'],
+      sdkName: 'list_personas',
+      capability: 'personas:list',
+      serviceName: 'PersonaService',
+      description: 'List all available custom and system personas.',
+      schema: z.object({}),
+      jsonSchema: {
+        type: 'object',
+        properties: {}
+      },
+      execute: async () => {
+        try {
+          const { PersonaDB } = require('../../ai/memory');
+          const { app } = require('electron');
+          const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely', 'notely') : null;
+          if (!appDataDir) return [];
+          const db = new PersonaDB(appDataDir);
+          db.initialize();
+          return db.list();
+        } catch {
+          return [];
+        }
+      }
+    });
+
+    // 16. personas.get
+    this.registerTool({
+      name: 'personas.get',
+      version: 'v1',
+      aliases: ['get_persona'],
+      sdkName: 'get_persona',
+      capability: 'personas:get',
+      serviceName: 'PersonaService',
+      description: 'Get details of a specific persona by ID.',
+      schema: z.object({
+        id: z.string().describe('ID of the persona to fetch.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'ID of the persona to fetch.' }
+        },
+        required: ['id']
+      },
+      execute: async (args) => {
+        try {
+          const { PersonaDB } = require('../../ai/memory');
+          const { app } = require('electron');
+          const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely', 'notely') : null;
+          if (!appDataDir) return null;
+          const db = new PersonaDB(appDataDir);
+          db.initialize();
+          return db.get(args.id);
+        } catch {
+          return null;
+        }
+      }
+    });
   }
 }
 

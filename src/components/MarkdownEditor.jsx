@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import { Search, Copy, Sparkles, MessageSquare, RefreshCcw, FileSearch, List, Wand2, Settings, BookPlus } from "lucide-react";
+import { Search, Copy, Settings, BookPlus } from "lucide-react";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
@@ -273,7 +273,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   onOpenFind,
   onToggleFind,
   aiEnabled = true,
-  onOpenAIRequest,
   onOpenAISettings,
   onSearchRequest,
   ghostSuggestion,
@@ -323,38 +322,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
 
     setSlashMenu(null);
 
-    if (cmd?.isAI) {
-      const blockText = lineText.replace(/^\s*\//, "").trim();
-      if (!blockText) {
-        onNotify?.("Type some text on this line before running an AI command.", "warning");
-        return;
-      }
 
-      onNotify?.("AI is working...", "info");
-      try {
-        const response = await window.notesApi?.aiQuery?.({
-          query: cmd.prompt + blockText,
-          context: {
-            scope: "block",
-            currentBlock: blockText,
-            systemPrompt: "You are a text editing helper. Rewrite the text based on user instructions and return ONLY the output without explanations.",
-          },
-        });
-        if (response?.success && response.data?.result) {
-          let result = response.data.result.replace(/^["']|["']$/g, "").trim();
-          view.dispatch({
-            changes: { from: lineObj.from, to: lineObj.to, insert: result },
-          });
-          onChange?.(view.state.doc.toString());
-          onNotify?.("Block updated by AI.", "success");
-        } else {
-          throw new Error(response?.error || "AI returned empty result");
-        }
-      } catch (err) {
-        onNotify?.("AI action failed: " + (err?.message || err), "error");
-      }
-      return;
-    }
 
     if (insertedText) {
       view.dispatch({
@@ -692,62 +660,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         onSearchRequest?.(payload);
       } else if (action === "configure-ai-settings") {
         onOpenAISettings?.();
-      } else if (action === "ask-ai-selection") {
-        onOpenAIRequest?.({
-          initialQuery: "Help me improve this selection while preserving its meaning and intent.",
-          target: "selection",
-          autoRun: false,
-          source: "context-menu",
-        });
-      } else if (action === "rewrite-ai-selection") {
-        onOpenAIRequest?.({
-          initialQuery: "Rewrite this selection to be clearer and more polished while preserving meaning.",
-          target: "selection",
-          autoRun: true,
-          source: "context-menu",
-        });
-      } else if (action === "find-related-workspace-selection") {
-        onOpenAIRequest?.({
-          initialQuery: "Use the selected text as the focal point and find related ideas, contradictions, or supporting notes from the workspace.",
-          target: "workspace",
-          autoRun: true,
-          source: "context-menu",
-        });
-      } else if (action === "turn-selection-actions") {
-        onOpenAIRequest?.({
-          initialQuery: "Turn this selection into a concise action list with markdown bullets.",
-          target: "selection",
-          autoRun: true,
-          source: "context-menu",
-        });
-      } else if (action === "ask-ai-block") {
-        onOpenAIRequest?.({
-          initialQuery: "Help me think through this section, point out gaps, and suggest the strongest next move.",
-          target: "block",
-          autoRun: false,
-          source: "context-menu",
-        });
-      } else if (action === "continue-ai-block") {
-        onOpenAIRequest?.({
-          initialQuery: "Continue writing this section in the same tone and structure.",
-          target: "block",
-          autoRun: true,
-          source: "context-menu",
-        });
-      } else if (action === "explore-related-workspace-block") {
-        onOpenAIRequest?.({
-          initialQuery: "Use this note as the focal point and search the workspace for related notes, missing context, and useful connections.",
-          target: "workspace",
-          autoRun: true,
-          source: "context-menu",
-        });
-      } else if (action === "summarize-ai-block") {
-        onOpenAIRequest?.({
-          initialQuery: "Summarize the current block into a shorter, cleaner version.",
-          target: "block",
-          autoRun: true,
-          source: "context-menu",
-        });
       } else if (action === "apply-issue-action") {
         if (payload) {
           applyIssueAction(payload);
@@ -766,7 +678,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   }, [
     onJumpToLine,
     onSearchRequest,
-    onOpenAIRequest,
     onOpenAISettings,
     onNotify,
     onIgnoreSpellingWord,
@@ -1205,148 +1116,8 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
               </button>
             </>
           ) : null}
-          {aiEnabled ? (
+          {onOpenAISettings ? (
             <div className="editor-context-menu-group">
-              <div className="editor-context-menu-label">AI actions</div>
-              {contextMenu.hasSelection ? (
-                <>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Help me improve this selection while preserving its meaning and intent.",
-                        target: "selection",
-                        autoRun: false,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <MessageSquare size={16} />
-                    Ask AI about selection
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Rewrite this selection to be clearer and more polished while preserving meaning.",
-                        target: "selection",
-                        autoRun: true,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <RefreshCcw size={16} />
-                    Rewrite selection with AI
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Use the selected text as the focal point and find related ideas, contradictions, or supporting notes from the workspace.",
-                        target: "workspace",
-                        autoRun: true,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <FileSearch size={16} />
-                    Find related notes in workspace
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Turn this selection into a concise action list with markdown bullets.",
-                        target: "selection",
-                        autoRun: true,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <List size={16} />
-                    Turn selection into action items
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Help me think through this section, point out gaps, and suggest the strongest next move.",
-                        target: "block",
-                        autoRun: false,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <MessageSquare size={16} />
-                    Ask AI about this section
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Continue writing this section in the same tone and structure.",
-                        target: "block",
-                        autoRun: true,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <Sparkles size={16} />
-                    Continue this section with AI
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Use this note as the focal point and search the workspace for related notes, missing context, and useful connections.",
-                        target: "workspace",
-                        autoRun: true,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <FileSearch size={16} />
-                    Explore related workspace notes
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onOpenAIRequest?.({
-                        initialQuery: "Summarize the current block into a shorter, cleaner version.",
-                        target: "block",
-                        autoRun: true,
-                        source: "context-menu",
-                      });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <Wand2 size={16} />
-                    Summarize current block
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="editor-context-menu-group">
-              <div className="editor-context-menu-label">AI unavailable</div>
               <button
                 type="button"
                 role="menuitem"
@@ -1359,7 +1130,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
                 Configure AI settings
               </button>
             </div>
-          )}
+          ) : null}
           {contextMenu.issues.length ? (
             <div className="editor-context-menu-group">
               <div className="editor-context-menu-label">Fixes</div>

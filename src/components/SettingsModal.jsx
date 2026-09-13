@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { X, Settings, Cpu, ShieldAlert, Sliders, Type } from "lucide-react";
+import { X, Settings, Cpu, ShieldAlert, Sliders, Type, Server } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
 import AppSelect from "./AppSelect";
 import { AISettingsContent } from "./AISettings";
 import { P2PStatusPanel } from "./P2PStatusPanel";
+import { MCPSettingsContent } from "./MCPSettings";
 
 export function SettingsModal({
   isOpen,
   onClose,
   activeTab: initialTab = "general",
+  notify,
   // Theme & Appearance
   themePreference,
   onThemeChange,
@@ -56,6 +58,7 @@ export function SettingsModal({
     { id: "editor", label: "Editor", icon: Type },
     { id: "ai", label: "AI Configuration", icon: Cpu },
     { id: "p2p", label: "P2P Sync Status", icon: ShieldAlert },
+    { id: "mcp", label: "MCP Server", icon: Server },
   ];
 
   const handleZoomChange = (e) => {
@@ -230,6 +233,14 @@ export function SettingsModal({
                 onRemoveTrustedPeer={onRemoveTrustedP2PPeer}
                 onRotateWorkspaceKeys={onRotateP2PWorkspaceKeys}
               />
+            </div>
+          )}
+
+          {activeTab === "mcp" && (
+            <div className="settings-tab-pane mcp-tab-pane">
+              <h3>Model Context Protocol (MCP) Server</h3>
+              <p className="settings-pane-intro">Expose Notely capabilities to external AI clients (Claude Desktop, Cursor, and IDE agents).</p>
+              <MCPSettingsContent notify={notify} />
             </div>
           )}
         </main>

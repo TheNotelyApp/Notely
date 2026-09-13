@@ -271,7 +271,7 @@ export function OnboardingFlow({
                   <Sparkles className="onboarding-feature-icon" size={20} />
                   <div className="onboarding-feature-text">
                     <h4>Workspace AI</h4>
-                    <p>Query semantic search, ask questions, and chat with local context integration.</p>
+                    <p>Vector semantic search, knowledge graphs, and MCP server capability integration.</p>
                   </div>
                 </div>
                 <div className="onboarding-feature-item">

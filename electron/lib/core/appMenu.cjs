@@ -879,16 +879,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
     {
       label: "AI",
       submenu: [
-        ...(screen === "document"
-          ? [
-              {
-                label: "Open AI Palette",
-                accelerator: "CmdOrCtrl+Shift+I",
-                click: () => sendMenuAction(win, "open-ai-palette")
-              },
-              { type: "separator" }
-            ]
-          : []),
+
         {
           label: "AI Settings",
           accelerator: "CmdOrCtrl+Shift+,",
@@ -910,8 +901,12 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
-          label: "Diagnostics",
+          label: "AI Health & Diagnostics",
           click: () => sendMenuAction(win, "open-health-page")
+        },
+        {
+          label: "MCP Tools & Capabilities",
+          click: () => sendMenuAction(win, "open-mcp-tools")
         }
       ]
     },
@@ -941,6 +936,10 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         {
           label: "System & Application Logs",
           click: () => sendMenuAction(win, "open-app-logs")
+        },
+        {
+          label: "MCP Tools & Capabilities",
+          click: () => sendMenuAction(win, "open-mcp-tools")
         },
         { type: "separator" },
         {

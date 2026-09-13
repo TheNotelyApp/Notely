@@ -356,7 +356,7 @@ export const AISettingsContent = ({ _onClose }) => {
               Enable AI Subsystem
             </span>
             <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-              Toggle the global switch to enable or disable all background AI services, embeddings, and chat.
+              Toggle the global switch to enable or disable all background AI services, embeddings, and graph extraction.
             </span>
           </div>
           <label style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", position: "relative", width: "40px", height: "20px" }}>

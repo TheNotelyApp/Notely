@@ -57,10 +57,11 @@ let handlersRegistered = false;
 
 // --- Input validation & sender trust guards -------------------------------
 
-const MAX_QUERY_LENGTH = 8000;
-const MAX_CONTEXT_BYTES = 200000;
+
+// Input size limits (kept for config/payload validation)
 const MAX_API_KEY_LENGTH = 2048;
 const MIN_API_KEY_LENGTH = 8;
+
 
 // Derived from providerRegistry — the single source of truth for valid provider ids.
 const { ALLOWED_PROVIDER_IDS: ALLOWED_PROVIDERS } = require('../../ai/providers/ProviderRegistry');
@@ -112,28 +113,7 @@ function maskApiKey(apiKey) {
   return `${key.slice(0, 5)}...${key.slice(-5)}`;
 }
 
-function sanitizeQueryPayload(payload) {
-  const source = payload && typeof payload === 'object' ? payload : {};
-  const query = typeof source.query === 'string' ? source.query : '';
-  if (!query.trim()) {
-    throw new Error('Query must be a non-empty string.');
-  }
-  if (query.length > MAX_QUERY_LENGTH) {
-    throw new Error('Query is too long.');
-  }
 
-  let context = source.context && typeof source.context === 'object' ? source.context : {};
-  try {
-    if (JSON.stringify(context).length > MAX_CONTEXT_BYTES) {
-      throw new Error('Context payload is too large.');
-    }
-  } catch {
-    // Non-serializable context is dropped rather than forwarded.
-    context = {};
-  }
-
-  return { query, context };
-}
 
 function registerHandler(channel, handler) {
   if (!channel || typeof channel !== 'string') {
@@ -148,7 +128,7 @@ function registerHandler(channel, handler) {
   });
 }
 
-const activeQueryControllers = new Map();
+
 
 /**
  * Initialize IPC handlers
@@ -203,10 +183,9 @@ function initializeAIHandlers(electronApp, agent) {
   // AI Initialization
   registerHandler(IPC_EVENTS.AI_INIT, handleInitialize);
 
-  // AI Query
-  registerHandler(IPC_EVENTS.AI_QUERY, handleQuery);
-  registerHandler(IPC_EVENTS.AI_QUERY_STREAM, handleQueryStream);
-  registerHandler(IPC_EVENTS.AI_QUERY_ABORT, handleQueryAbort);
+
+  // AI Query — removed (chat moved to MCP layer)
+
 
   // Status
   registerHandler(IPC_EVENTS.AI_STATUS, handleStatus);
@@ -237,8 +216,7 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_GRAPH_MODEL_DELETE, handleDeleteGraphModel);
   registerHandler(IPC_EVENTS.AI_GRAPH_MODEL_STATUS, handleGetGraphModelStatus);
 
-  // Pattern detection
-  registerHandler(IPC_EVENTS.AI_DETECT_PATTERNS, handleDetectPatterns);
+
 
   // Persistent Log Store
   registerHandler(IPC_EVENTS.AI_LOGS_GET, handleGetLogs);
@@ -261,15 +239,7 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_DISABLE, handleDisableAI);
   registerHandler(IPC_EVENTS.AI_HEALTH_GET, handleGetAIHealth);
 
-  // Phase 5 — Conversations
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_LIST, handleConversationList);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_GET, handleConversationGet);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_CREATE, handleConversationCreate);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_DELETE, handleConversationDelete);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_CLEAR, handleConversationClear);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_SET_PERSONA, handleConversationSetPersona);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_GET_MESSAGES, handleConversationGetMessages);
-  registerHandler(IPC_EVENTS.AI_CONVERSATION_ADD_MESSAGE, handleConversationAddMessage);
+  // Phase 5 — Conversations removed (chat moved to MCP layer)
 
   // Phase 5 — Personas
   registerHandler(IPC_EVENTS.AI_PERSONA_LIST, handlePersonaList);
@@ -279,10 +249,7 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_PERSONA_IMPORT, handlePersonaImport);
   registerHandler(IPC_EVENTS.AI_PERSONA_EXPORT, handlePersonaExport);
 
-  // Phase 5 — Candidate Knowledge
-  registerHandler(IPC_EVENTS.AI_KNOWLEDGE_LIST_PENDING, handleKnowledgeListPending);
-  registerHandler(IPC_EVENTS.AI_KNOWLEDGE_APPROVE, handleKnowledgeApprove);
-  registerHandler(IPC_EVENTS.AI_KNOWLEDGE_REJECT, handleKnowledgeReject);
+  // Candidate Knowledge — removed (chat-only)
 
   // Shutdown
   registerHandler(IPC_EVENTS.AI_SHUTDOWN, handleShutdown);
@@ -369,79 +336,6 @@ async function handleInitialize(event, payload) {
     console.error('[AI IPC] Initialization failed:', error);
     return new AIQueryResponse(false, null, error.message);
   }
-}
-
-/**
- * Handle AI query
- */
-async function handleQuery(event, payload) {
-  try {
-    if (!aiService.isEnabled() || !aiService.agent) {
-      throw new Error('AI agent is disabled or not initialized');
-    }
-
-    const { query, context } = sanitizeQueryPayload(payload);
-    const result = await aiService.chat(query, context);
-
-    return new AIQueryResponse(result.success, result);
-  } catch (error) {
-    console.error('[AI IPC] Query handling failed:', error);
-    return new AIQueryResponse(false, null, error.message);
-  }
-}
-
-/**
- * Handle AI query streaming
- */
-async function handleQueryStream(event, payload) {
-  const queryId = payload?.queryId || require('crypto').randomUUID();
-  try {
-    if (!aiService.isEnabled() || !aiService.agent) {
-      throw new Error('AI agent is disabled or not initialized');
-    }
-
-    const { query, context } = sanitizeQueryPayload(payload);
-    
-    const controller = new AbortController();
-    activeQueryControllers.set(queryId, controller);
-
-    const result = await aiService.stream(
-      query,
-      context,
-      (chunk) => {
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('ai:chat:chunk', { queryId, chunk });
-        }
-      },
-      controller.signal
-    );
-
-    activeQueryControllers.delete(queryId);
-    return new AIQueryResponse(true, result);
-  } catch (error) {
-    activeQueryControllers.delete(queryId);
-    console.error('[AI IPC] Streaming query handling failed:', error);
-    return new AIQueryResponse(false, null, error.message);
-  }
-}
-
-/**
- * Handle AI query abort
- */
-async function handleQueryAbort(_event, payload) {
-  const queryId = payload?.queryId;
-  if (!queryId) {
-    return new AIQueryResponse(false, null, 'queryId is required');
-  }
-
-  const controller = activeQueryControllers.get(queryId);
-  if (controller) {
-    controller.abort();
-    activeQueryControllers.delete(queryId);
-    return new AIQueryResponse(true, { message: 'Query generation aborted.' });
-  }
-
-  return new AIQueryResponse(false, null, 'No active query found for this ID.');
 }
 
 /**
@@ -928,22 +822,6 @@ async function handleGetGraphStatus(_event, payload) {
   }
 }
 
-/**
- * Handle pattern detection
- */
-async function handleDetectPatterns(_event, _payload) {
-  try {
-    if (!aiService.isEnabled() || !aiService.agent) {
-      throw new Error('AI agent is disabled or not initialized');
-    }
-
-    const result = aiService.agent.detectPatterns();
-    return new AIQueryResponse(true, result);
-  } catch (error) {
-    console.error('[AI IPC] Pattern detection failed:', error);
-    return new AIQueryResponse(false, null, error.message);
-  }
-}
 
 /**
  * Handle API key configuration
@@ -1349,100 +1227,26 @@ async function handleGetAIHealth(_event, _payload) {
   }
 }
 
-// ─── Phase 5: Context Engine Helpers ─────────────────────────────────────────
+// ─── Personas (exposed via MCP; backed by PersonaDB) ──────────────────────
+// ConversationStore and chat-scoped conversation handlers removed.
+// Persona handlers now load PersonaDB directly.
 
-function _getStore() {
+function _getPersonaDB() {
   const agent = aiService.agent;
-  if (!agent?.conversationStore) throw new Error('ConversationStore not initialized.');
-  return agent.conversationStore;
+  if (agent?.personaDB) return agent.personaDB;
+  // Fallback: direct PersonaDB access (agent may not be running)
+  const { PersonaDB } = require('../../ai/memory');
+  const { app } = require('electron');
+  const appDataDir = require('path').join(app.getPath('appData'), 'Notely', 'notely');
+  const db = new PersonaDB(appDataDir);
+  db.initialize();
+  return db;
 }
 
-// ─── Conversations ─────────────────────────────────────────────────────────
-
-async function handleConversationList(_event, _payload) {
-  try {
-    return new AIQueryResponse(true, _getStore().listConversations());
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationGet(_event, payload) {
-  try {
-    const conv = _getStore().getConversation(payload?.id);
-    if (!conv) return new AIQueryResponse(false, null, 'Conversation not found.');
-    return new AIQueryResponse(true, conv);
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationCreate(_event, payload) {
-  try {
-    const conv = _getStore().createConversation(payload?.title, payload?.persona);
-    return new AIQueryResponse(true, conv);
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationDelete(_event, payload) {
-  try {
-    const convId = payload?.id;
-    _getStore().deleteConversation(convId);
-    if (convId) {
-      const telDb = getTelemetryDbInstance();
-      if (telDb) telDb.clearTelemetry(convId);
-    }
-    return new AIQueryResponse(true, { deleted: convId });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationClear(_event, payload) {
-  try {
-    const beforeTimestamp = payload?.beforeTimestamp || null;
-    _getStore().clearAll(beforeTimestamp);
-    const telDb = getTelemetryDbInstance();
-    if (telDb) telDb.clearTelemetry(null, beforeTimestamp);
-    return new AIQueryResponse(true, { cleared: true });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationSetPersona(_event, payload) {
-  try {
-    _getStore().setPersona(payload?.conversationId, payload?.personaId);
-    return new AIQueryResponse(true, { ok: true });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationGetMessages(_event, payload) {
-  try {
-    return new AIQueryResponse(true, _getStore().getMessages(payload?.conversationId));
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleConversationAddMessage(_event, payload) {
-  try {
-    const msg = _getStore().addMessage(payload?.conversationId, payload?.role, payload?.content, payload?.metadata || null);
-    return new AIQueryResponse(true, msg);
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-// ─── Personas ─────────────────────────────────────────────────────────────
 
 async function handlePersonaList(_event, _payload) {
   try {
-    return new AIQueryResponse(true, _getStore().listPersonas());
+    return new AIQueryResponse(true, _getPersonaDB().list());
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
   }
@@ -1450,7 +1254,7 @@ async function handlePersonaList(_event, _payload) {
 
 async function handlePersonaGet(_event, payload) {
   try {
-    const p = _getStore().getPersona(payload?.id);
+    const p = _getPersonaDB().get(payload?.id);
     if (!p) return new AIQueryResponse(false, null, 'Persona not found.');
     return new AIQueryResponse(true, p);
   } catch (err) {
@@ -1460,7 +1264,7 @@ async function handlePersonaGet(_event, payload) {
 
 async function handlePersonaSave(_event, payload) {
   try {
-    _getStore().savePersona(payload);
+    _getPersonaDB().save(payload);
     return new AIQueryResponse(true, { ok: true });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
@@ -1469,7 +1273,7 @@ async function handlePersonaSave(_event, payload) {
 
 async function handlePersonaDelete(_event, payload) {
   try {
-    _getStore().deletePersona(payload?.id);
+    _getPersonaDB().delete(payload?.id);
     return new AIQueryResponse(true, { deleted: payload?.id });
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
@@ -1478,7 +1282,7 @@ async function handlePersonaDelete(_event, payload) {
 
 async function handlePersonaImport(_event, payload) {
   try {
-    const result = _getStore().importPersonaFromFile(payload?.filePath);
+    const result = _getPersonaDB().importFromFile(payload?.filePath);
     return new AIQueryResponse(true, result);
   } catch (err) {
     return new AIQueryResponse(false, null, err.message);
@@ -1487,7 +1291,7 @@ async function handlePersonaImport(_event, payload) {
 
 async function handlePersonaExport(_event, payload) {
   try {
-    const dest = _getStore().exportPersonaToFile(payload?.id, payload?.destPath);
+    const dest = _getPersonaDB().exportToFile(payload?.id, payload?.destPath);
     try {
       const { getExportManager } = require("../lib/export/ExportManager.cjs");
       const exportManager = getExportManager();
@@ -1504,33 +1308,8 @@ async function handlePersonaExport(_event, payload) {
   }
 }
 
-// ─── Candidate Knowledge ──────────────────────────────────────────────────
+// ─── Candidate Knowledge removed (chat-only) ─────────────────────────────
 
-async function handleKnowledgeListPending(_event, _payload) {
-  try {
-    return new AIQueryResponse(true, _getStore().listPendingKnowledge());
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleKnowledgeApprove(_event, payload) {
-  try {
-    _getStore().approveKnowledge(payload?.id);
-    return new AIQueryResponse(true, { ok: true });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handleKnowledgeReject(_event, payload) {
-  try {
-    _getStore().rejectKnowledge(payload?.id);
-    return new AIQueryResponse(true, { ok: true });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
 
 let logDbInstance = null;
 function getLogDbInstance() {
@@ -1618,14 +1397,6 @@ async function handleClearLogs(_event, payload) {
       const telDb = getTelemetryDbInstance();
       if (telDb) {
         telDb.clearTelemetry(payload?.conversationId || null, beforeTimestamp);
-      }
-    }
-
-    if (!subsystem) {
-      try {
-        _getStore().clearAll(beforeTimestamp);
-      } catch (err) {
-        console.warn('[AI IPC] Note: Failed clearing conversation store during clearLogs:', err.message);
       }
     }
 

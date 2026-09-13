@@ -96,6 +96,28 @@ class TelemetryDB {
           payload TEXT,
           created_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS mcp_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT UNIQUE NOT NULL,
+          connected_at TEXT NOT NULL,
+          disconnected_at TEXT,
+          client_info TEXT,
+          tool_calls_count INTEGER DEFAULT 0,
+          errors_count INTEGER DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_tool_calls (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id TEXT NOT NULL,
+          tool_name TEXT NOT NULL,
+          input_summary TEXT,
+          output_summary TEXT,
+          duration_ms INTEGER,
+          success INTEGER DEFAULT 1,
+          error TEXT,
+          called_at TEXT NOT NULL
+        );
       `);
 
       // Add trace_id column if upgrading existing database
@@ -116,6 +138,8 @@ class TelemetryDB {
         CREATE INDEX IF NOT EXISTS idx_events_type ON telemetry_events(event_type);
         CREATE INDEX IF NOT EXISTS idx_events_status ON telemetry_events(status);
         CREATE INDEX IF NOT EXISTS idx_events_severity ON telemetry_events(severity);
+        CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_session ON mcp_tool_calls(session_id);
+        CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_called_at ON mcp_tool_calls(called_at);
       `);
 
       this.isInitialized = true;
@@ -349,6 +373,68 @@ class TelemetryDB {
         events
       }
     };
+  }
+
+  recordMcpSession(session) {
+    if (!this.db || !this.isInitialized || !session?.id) return;
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO mcp_sessions (session_id, connected_at, disconnected_at, client_info, tool_calls_count, errors_count)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(session_id) DO UPDATE SET
+          disconnected_at = excluded.disconnected_at,
+          tool_calls_count = excluded.tool_calls_count,
+          errors_count = excluded.errors_count
+      `);
+      stmt.run(
+        session.id,
+        session.connectedAt || new Date().toISOString(),
+        session.disconnectedAt || null,
+        JSON.stringify({ remoteAddress: session.remoteAddress, userAgent: session.userAgent }),
+        session.toolCallsCount || 0,
+        session.errorsCount || 0
+      );
+    } catch (err) {
+      log.error('Failed to record MCP session in TelemetryDB:', err.message);
+    }
+  }
+
+  recordMcpToolCall({ sessionId, toolName, inputSummary, outputSummary, durationMs, success, error }) {
+    if (!this.db || !this.isInitialized) return;
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO mcp_tool_calls (session_id, tool_name, input_summary, output_summary, duration_ms, success, error, called_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        sessionId || 'anonymous',
+        toolName || 'unknown',
+        inputSummary ? sanitizePayload(inputSummary) : null,
+        outputSummary ? sanitizePayload(outputSummary) : null,
+        durationMs || 0,
+        success ? 1 : 0,
+        error || null,
+        new Date().toISOString()
+      );
+    } catch (err) {
+      log.error('Failed to record MCP tool call in TelemetryDB:', err.message);
+    }
+  }
+
+  getMcpStats() {
+    if (!this.db || !this.isInitialized) return { totalSessions: 0, totalToolCalls: 0, totalErrors: 0 };
+    try {
+      const sessionsRow = this.db.prepare('SELECT COUNT(*) as count FROM mcp_sessions').get();
+      const callsRow = this.db.prepare('SELECT COUNT(*) as count, SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as errors FROM mcp_tool_calls').get();
+      return {
+        totalSessions: sessionsRow?.count || 0,
+        totalToolCalls: callsRow?.count || 0,
+        totalErrors: callsRow?.errors || 0
+      };
+    } catch (err) {
+      log.error('Failed to get MCP stats:', err.message);
+      return { totalSessions: 0, totalToolCalls: 0, totalErrors: 0 };
+    }
   }
 
   close() {

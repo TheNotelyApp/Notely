@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Search, Folder, FileText, ChevronRight, ChevronDown,
-  Hash, Layers, Sparkles, ExternalLink, Filter, Tag, X,
+  Hash, Layers, ExternalLink, Filter, Tag, X,
   Code, ChevronsUpDown, Minimize2
 } from "lucide-react";
 import { buildWorkspaceIndex, searchMultiLevelIndex } from "../services/workspaceIndexService";
@@ -50,7 +50,6 @@ export function WorkspaceIndexPage({
   documents = [],
   onBack,
   onSelectHeader,
-  onAskAI,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState(null);
@@ -593,26 +592,6 @@ export function WorkspaceIndexPage({
                     <ExternalLink size={12} /> Open in Editor (Line {activeHeader.line})
                   </button>
 
-                  {onAskAI && (
-                    <button
-                      type="button"
-                      onClick={() => onAskAI(`Explain section '${activeHeader.text}' in ${activeHeader.docTitle}`)}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "3px",
-                        padding: "4px 9px",
-                        borderRadius: "var(--radius-md, 3px)",
-                        background: "var(--surface-card, rgba(255,255,255,0.08))",
-                        color: "inherit",
-                        border: "1px solid var(--border-soft, rgba(255,255,255,0.15))",
-                        cursor: "pointer",
-                        fontSize: "11px",
-                      }}
-                    >
-                      <Sparkles size={12} style={{ color: "#a855f7" }} /> Ask AI
-                    </button>
-                  )}
                 </div>
               </div>
 
