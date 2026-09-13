@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Database, Download, AlertCircle, Save, Trash2, Cpu, Sliders } from 'lucide-react';
+import { Download, Trash2, Sliders } from 'lucide-react';
 import AppSelect from './AppSelect';
+import AppButton from './AppButton';
 import {
   aiGetGraphModelStatus,
   aiDownloadGraphModel,
@@ -12,20 +13,26 @@ import {
 
 export default function KnowledgeGraphSettings() {
   const [loading, setLoading] = useState(false);
-  const [preferences, setPreferences] = useState({ graphProvider: 'gliner2-relex', graphConfidence: 0.60 });
+  const [preferences, setPreferences] = useState({
+    graphProvider: 'gliner2-relex',
+    graphConfidence: 0.60,
+    enableRelationshipDiscovery: true
+  });
   const [modelStatus, setModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
 
   useEffect(() => {
     const loadStatusAndPrefs = async () => {
       try {
-        const statusRes = await aiGetGraphModelStatus();
-        if (statusRes.success && statusRes.data) {
-          setModelStatus(statusRes.data);
-        }
+        const [statusRes, prefsRes] = await Promise.allSettled([
+          aiGetGraphModelStatus(),
+          aiGetPreferences()
+        ]);
 
-        const prefsRes = await aiGetPreferences();
-        if (prefsRes.success && prefsRes.data) {
-          setPreferences(prev => ({ ...prev, ...prefsRes.data }));
+        if (statusRes.status === 'fulfilled' && statusRes.value?.success && statusRes.value.data) {
+          setModelStatus(statusRes.value.data);
+        }
+        if (prefsRes.status === 'fulfilled' && prefsRes.value?.success && prefsRes.value.data) {
+          setPreferences(prev => ({ ...prev, ...prefsRes.value.data }));
         }
       } catch (err) {
         console.error('Failed to load graph model status / preferences', err);
@@ -48,27 +55,6 @@ export default function KnowledgeGraphSettings() {
     };
   }, []);
 
-  const handlePreferencesSave = async () => {
-    try {
-      setLoading(true);
-      await aiSetPreferences({
-        ...preferences,
-        graphProvider: preferences.graphProvider,
-        graphConfidence: preferences.graphConfidence
-      });
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Knowledge Graph preferences saved successfully.`, type: 'success' }
-      }));
-    } catch (err) {
-      console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to save preferences: ${err.message}`, type: 'error' }
-      }));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDownloadModel = async () => {
     try {
       setLoading(true);
@@ -87,143 +73,146 @@ export default function KnowledgeGraphSettings() {
   };
 
   const handleDeleteModel = async () => {
-    if (!window.confirm('Delete local GLiNER2-Relex ONNX model weights from disk? You can redownload anytime from AI Settings.')) return;
+    if (!window.confirm('Delete local GLiNER2-Relex ONNX model weights from disk? You can redownload anytime.')) return;
     try {
       setLoading(true);
       await aiDeleteGraphModel();
       setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
       window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Local GLiNER2-Relex ONNX model weights deleted successfully.', type: 'info' }
+        detail: { message: 'Local GLiNER2-Relex ONNX model weights deleted.', type: 'info' }
       }));
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to delete model: ${err.message}`, type: 'error' }
-      }));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleProviderChange = async (e) => {
+    const newProvider = e.target.value;
+    const updated = { ...preferences, graphProvider: newProvider };
+    setPreferences(updated);
+    try {
+      await aiSetPreferences(updated);
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { message: `Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model'}.`, type: 'success' }
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleAutoDiscovery = async () => {
+    const nextVal = !preferences.enableRelationshipDiscovery;
+    const updated = { ...preferences, enableRelationshipDiscovery: nextVal };
+    setPreferences(updated);
+    try {
+      await aiSetPreferences(updated);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleConfidenceChange = async (e) => {
+    const nextVal = parseFloat(e.target.value);
+    const updated = { ...preferences, graphConfidence: nextVal };
+    setPreferences(updated);
+    try {
+      await aiSetPreferences(updated);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const activeProvider = (preferences.graphProvider === 'text-provider') ? 'text-provider' : 'gliner2-relex';
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
-      <section className="ai-settings-section ai-settings-setup-card" style={{ gridColumn: "1 / -1", margin: 0 }}>
-        <div className="ai-settings-setup-head" style={{ marginBottom: "6px" }}>
-          <h3>Knowledge Graph Engine</h3>
+    <>
+      {/* Offline Model Weights */}
+      <div className="settings-toggle-row">
+        <div className="settings-toggle-copy">
+          <strong>Offline GLiNER2-Relex Extraction Model</strong>
+          <span>
+            {modelStatus.downloaded
+              ? 'Local ONNX zero-shot entity and relationship extraction model is ready.'
+              : modelStatus.isDownloading
+                ? `Downloading model weights... ${modelStatus.progress}% complete`
+                : 'Download zero-shot relation extraction weights to parse note graphs locally without cloud APIs.'}
+          </span>
         </div>
-
-        <div className="preference-group compact" style={{ marginBottom: "12px" }}>
-          <label htmlFor="graph-provider-select" style={{ fontSize: "11px" }}>Active Extraction Engine</label>
-          <div style={{ display: "flex", gap: "5px", alignItems: "center", marginTop: "2px" }}>
-            <AppSelect
-              id="graph-provider-select"
-              value={activeProvider}
-              onChange={async (e) => {
-                const newProvider = e.target.value;
-                const updated = { ...preferences, graphProvider: newProvider };
-                setPreferences(updated);
-                await aiSetPreferences(updated);
-                window.dispatchEvent(new CustomEvent('app:toast', {
-                  detail: { message: `Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model Engine'}.`, type: 'success' }
-                }));
-              }}
-              disabled={loading}
-              style={{ flex: 1 }}
-            >
-              <option value="gliner2-relex">GLiNER2-Relex ONNX Model Engine (Zero-Shot - Recommended)</option>
-              <option value="text-provider">Cloud LLM Text Provider (Configured Cloud AI)</option>
-            </AppSelect>
-            <button
-              className="btn btn-primary"
-              onClick={handlePreferencesSave}
-              disabled={loading}
-              type="button"
-            >
-              <Save size={12} /> Save
-            </button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginTop: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--border-soft)' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Active Extraction Engine</span>
-            <strong style={{ color: 'var(--text-strong)' }}>
-              {activeProvider === 'gliner2-relex' ? 'GLiNER2-Relex Zero-Shot Entity & Relationship ONNX Model' : 'Cloud LLM Text Provider'}
-            </strong>
-          </div>
+        <div>
+          {modelStatus.downloaded ? (
+            <AppButton onClick={handleDeleteModel} disabled={loading} danger>
+              <Trash2 size={14} style={{ marginRight: '4px' }} />
+              Remove Model
+            </AppButton>
+          ) : modelStatus.isDownloading ? (
+            <div style={{ minWidth: '120px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                <span>Downloading</span>
+                <span>{modelStatus.progress}%</span>
+              </div>
+              <div style={{ width: '100%', height: '4px', background: 'var(--surface-border)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: `${modelStatus.progress}%`, height: '100%', background: 'var(--accent-solid)' }} />
+              </div>
+            </div>
+          ) : (
+            <AppButton variant="primary" onClick={handleDownloadModel} disabled={loading}>
+              <Download size={14} style={{ marginRight: '4px' }} />
+              Download Model
+            </AppButton>
+          )}
         </div>
+      </div>
 
-        <div className="preference-group compact" style={{ marginBottom: "12px" }}>
-          <label htmlFor="graph-confidence-slider" style={{ fontSize: "11px", display: "flex", justifyContent: "space-between" }}>
-            <span>Extraction Confidence Threshold</span>
-            <strong>{Math.round((preferences.graphConfidence || 0.60) * 100)}%</strong>
-          </label>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "4px" }}>
-            <Sliders size={14} style={{ color: 'var(--text-muted)' }} />
-            <input
-              id="graph-confidence-slider"
-              type="range"
-              min="0.30"
-              max="0.95"
-              step="0.05"
-              value={preferences.graphConfidence || 0.60}
-              onChange={(e) => setPreferences({ ...preferences, graphConfidence: parseFloat(e.target.value) })}
-              style={{ flex: 1 }}
-            />
-          </div>
+      {/* Auto-Discovery Toggle */}
+      <div className="settings-toggle-row">
+        <div className="settings-toggle-copy">
+          <strong>Automatic Relationship Discovery</strong>
+          <span>Automatically discover note entities, links, and cross-references in the background.</span>
         </div>
+        <input
+          type="checkbox"
+          checked={preferences.enableRelationshipDiscovery !== false}
+          onChange={handleToggleAutoDiscovery}
+          className="settings-toggle-checkbox"
+        />
+      </div>
 
-        {activeProvider === 'gliner2-relex' && (
-          <div style={{ padding: "12px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
-            <h4 style={{ fontSize: "12px", fontWeight: "600", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Cpu size={14} /> Offline Model Status (dx111ge/gliner2-multi-v1-onnx)
-            </h4>
-            {modelStatus.downloaded ? (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
-                  <Database size={12} />
-                  <span>GLiNER2-Relex ONNX model weights (dx111ge/gliner2-multi-v1-onnx) downloaded and ready offline.</span>
-                </div>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleDeleteModel}
-                  disabled={loading}
-                  style={{ display: "flex", gap: "4px", alignItems: "center", padding: "4px 8px", fontSize: "10px", color: "var(--text-danger)" }}
-                  title="Remove model weights from disk to free space or redownload"
-                >
-                  <Trash2 size={12} />
-                  <span>Delete Model</span>
-                </button>
-              </div>
-            ) : modelStatus.isDownloading ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
-                  <span>Downloading GLiNER2-Relex ONNX weights...</span>
-                  <span style={{ fontWeight: 600, color: 'var(--brand-primary)' }}>{modelStatus.progress}%</span>
-                </div>
-                <div style={{ width: '100%', height: '6px', background: 'var(--border-soft)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${modelStatus.progress}%`, height: '100%', background: 'var(--accent-solid)', transition: 'width 0.2s ease' }} />
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "11px" }}>
-                  <AlertCircle size={12} />
-                  <span>GLiNER2-Relex ONNX model not downloaded. Click below to download offline model weights.</span>
-                </div>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleDownloadModel}
-                  disabled={loading}
-                  style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", width: "fit-content" }}
-                >
-                  <Download size={12} />
-                  <span>Download GLiNER2-Relex Model</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-    </div>
+      {/* Extraction Engine */}
+      <div className="settings-field-group">
+        <label className="settings-field-label">Active Extraction Engine</label>
+        <AppSelect
+          value={activeProvider}
+          onChange={handleProviderChange}
+          disabled={loading}
+        >
+          <option value="gliner2-relex">GLiNER2-Relex ONNX Model (Zero-Shot - Recommended)</option>
+          <option value="text-provider">Cloud AI Provider</option>
+        </AppSelect>
+      </div>
+
+      {/* Confidence Threshold */}
+      <div className="settings-field-group">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <label className="settings-field-label">Extraction Confidence Threshold</label>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-strong)' }}>
+            {Math.round((preferences.graphConfidence || 0.60) * 100)}%
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '2px' }}>
+          <Sliders size={14} style={{ color: 'var(--text-muted)' }} />
+          <input
+            type="range"
+            min="0.30"
+            max="0.95"
+            step="0.05"
+            value={preferences.graphConfidence || 0.60}
+            onChange={handleConfidenceChange}
+            className="slider zoom-slider"
+          />
+        </div>
+      </div>
+    </>
   );
 }

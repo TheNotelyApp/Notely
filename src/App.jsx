@@ -8,12 +8,6 @@ import { applyDocumentListQuery } from "./utils/documentListQuery";
 const DocumentDetail = lazy(() =>
   import("./components/DocumentDetail").then((m) => ({ default: m.DocumentDetail }))
 );
-const WorkspaceActivityPanel = lazy(() =>
-  import("./components/WorkspaceActivityPanel").then((m) => ({ default: m.WorkspaceActivityPanel }))
-);
-const ConflictResolutionPanel = lazy(() =>
-  import("./components/ConflictResolutionPanel").then((m) => ({ default: m.ConflictResolutionPanel }))
-);
 import { AppSubpageViews } from "./components/layout/AppSubpageViews";
 import { AppModalsContainer } from "./components/modals/AppModalsContainer";
 import { SettingsModal } from "./components/SettingsModal";
@@ -31,9 +25,6 @@ const GlobalSearchOverlay = lazy(() =>
 );
 const KeyboardShortcutsModal = lazy(() =>
   import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
-);
-const AIChatPanel = lazy(() =>
-  import("./components/AIChatPanel").then((m) => ({ default: m.default || m.AIChatPanel }))
 );
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
@@ -73,7 +64,6 @@ import {
   transferDocumentWorkspace,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
-import { useP2PSync } from "./hooks/useP2PSync";
 import { useAIAssistant } from "./hooks/useAIAssistant";
 import { useDocumentManager } from "./hooks/useDocumentManager";
 import { useWorkspaceScopedStorage } from "./hooks/useWorkspaceScopedStorage";
@@ -328,7 +318,7 @@ export default function App() {
     graphPanelOpen, setGraphPanelOpen,
     embeddingsPageOpen, setEmbeddingsPageOpen,
     personasPageOpen, setPersonasPageOpen,
-    healthPageOpen, setHealthPageOpen,
+    mcpSettingsOpen, setMcpSettingsOpen,
     appLogsOpen, setAppLogsOpen,
     recentNotesPanelOpen, setRecentNotesPanelOpen,
     favoritesPanelOpen, setFavoritesPanelOpen,
@@ -414,7 +404,6 @@ export default function App() {
     activeTab,
     setActiveTab,
     error,
-    setError,
     activeProject,
     newNoteTitle,
     setNewNoteTitle,
@@ -517,11 +506,6 @@ export default function App() {
       void handleReloadWorkspace();
     }
   }, [handleReloadWorkspace, openTabs, openDocument, handleCloseTab]);
-
-  const handlePreviewNote = useCallback((filePath, lineNum = null) => {
-    if (!filePath) return;
-    void handleOpenReferencedDocument(filePath, lineNum);
-  }, [handleOpenReferencedDocument]);
 
   const handleCopyLinkPath = useCallback((target) => {
     const filePath = typeof target === "object" ? target?.filePath : target;
@@ -888,62 +872,9 @@ export default function App() {
     notify("Cleared spelling dictionary.", "success");
   };
 
-  const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
-  syncStateRef.current = { doc: current, dirty, openDocument };
-  const {
-    p2pStatusOpen,
-    setP2PStatusOpen,
-    p2pStatusLoading,
-    p2pStatus,
-    fullSyncProgressByPeer,
-    handleOpenP2PStatus,
-    handleStartP2PDiscovery,
-    handleStopP2PDiscovery,
-    handleSetP2PDeviceName,
-    handleSetP2PKeyPolicyDays,
-    handleCreateP2PInvite,
-    handlePairP2PWithCode,
-    handleManualP2PConnect,
-    handleRemoveTrustedP2PPeer,
-    handleRotateP2PWorkspaceKeys,
-    workspaceActivityOpen,
-    setWorkspaceActivityOpen,
-    workspaceActivityLoading,
-    workspaceActivity,
-    handleOpenWorkspaceActivity,
-    p2pSyncHelpOpen,
-    setP2PSyncHelpOpen,
-    syncSelfTestOpen,
-    setSyncSelfTestOpen,
-    syncSelfTestLoading,
-    syncSelfTestResult,
-    handleRunP2PSyncSelfTest,
-    conflictCenterOpen,
-    setConflictCenterOpen,
-    conflictCenterLoading,
-    conflictCenterData,
-    conflictResolutionOpen,
-    setConflictResolutionOpen,
-    conflictResolutionEntry,
-    conflictResolutionFiles,
-    conflictResolutionLoading,
-    handleOpenConflictCenter,
-    handleOpenConflictFile,
-    handleOpenConflictResolution,
-    handleResolveConflict,
-    handleOpenNextConflict,
-  } = useP2PSync({ notify, setError, loadDocumentsData, syncStateRef });
   const {
     aiSettingsOpen,
     setAiSettingsOpen,
-    aiQueryLoading,
-    aiQueryError,
-    aiContextSummary,
-    aiPaletteIntent,
-    aiChatMessages,
-    isAIConfigured,
-    aiPanelVisible,
-    setAiPanelVisible,
     inlineGhostSuggestion,
     aiEditorRef,
     refreshAIConfiguration,
@@ -952,20 +883,8 @@ export default function App() {
     handleAIClearCache,
     handleOpenAIPalette,
     handleInlineAIRequest,
-    handleApplyAIResult,
-    handleAIChatSend,
-    handleAIChatAbort,
-    handleClearAIChat,
     handleRejectInlineGhost,
     handleAcceptInlineGhost,
-    activeProvider,
-    activePersona,
-    setActivePersona,
-    activeQueryId,
-    conversations,
-    loadConversations,
-    loadConversation,
-    deleteConversation,
   } = useAIAssistant({
     current,
     activeTab,
@@ -977,16 +896,16 @@ export default function App() {
   });
 
   useEffect(() => {
-    if (p2pStatusOpen) {
-      setSettingsTab("p2p");
+    if (mcpSettingsOpen) {
+      setSettingsTab("mcp");
       setSettingsOpen(true);
-      setP2PStatusOpen(false);
+      setMcpSettingsOpen(false);
     }
-  }, [p2pStatusOpen, setP2PStatusOpen]);
+  }, [mcpSettingsOpen, setMcpSettingsOpen]);
 
   useEffect(() => {
     if (aiSettingsOpen) {
-      setSettingsTab("ai");
+      setSettingsTab("mcp");
       setSettingsOpen(true);
       setAiSettingsOpen(false);
     }
@@ -1449,7 +1368,6 @@ export default function App() {
       calendarPageOpen ||
       taskWorkspaceOpen ||
       appLogsOpen ||
-      healthPageOpen ||
       gitVCOpen ||
       embeddingsPageOpen ||
       graphPanelOpen ||
@@ -1493,7 +1411,7 @@ export default function App() {
       currentNoteSubfolder,
       autosaveEnabled,
     });
-  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
@@ -1637,13 +1555,9 @@ export default function App() {
         return;
       }
 
-      if (action === "open-p2p-status") {
-        handleOpenP2PStatus();
-        return;
-      }
-
-      if (action === "open-workspace-activity") {
-        handleOpenWorkspaceActivity();
+      if (action === "open-mcp-settings") {
+        setSettingsTab("mcp");
+        setSettingsOpen(true);
         return;
       }
 
@@ -1652,7 +1566,6 @@ export default function App() {
         setGraphPanelOpen(false);
         setEmbeddingsPageOpen(false);
         setPersonasPageOpen(false);
-        setHealthPageOpen(false);
         setAppLogsOpen(false);
         setGitVCOpen(false);
         setTaskWorkspaceOpen(false);
@@ -1704,8 +1617,8 @@ export default function App() {
       }
 
       if (action === "open-ai-health") {
-        closeAllFullscreenViews();
-        setHealthPageOpen(true);
+        setSettingsTab("mcp");
+        setSettingsOpen(true);
         return;
       }
 
@@ -1791,26 +1704,6 @@ export default function App() {
         return;
       }
 
-      if (action === "open-p2p-sync-help") {
-
-        setP2PSyncHelpOpen(true);
-        return;
-      }
-
-      if (action === "run-p2p-sync-self-test") {
-        handleRunP2PSyncSelfTest();
-        return;
-      }
-
-      if (action === "rotate-p2p-workspace-keys") {
-        handleRotateP2PWorkspaceKeys();
-        return;
-      }
-
-      if (action === "open-p2p-conflicts") {
-        handleOpenConflictCenter();
-        return;
-      }
 
       if (action === "view-tile") {
         setNotesViewMode("tile");
@@ -2106,7 +1999,8 @@ export default function App() {
       }
 
       if (action === "open-health-page") {
-        setHealthPageOpen(true);
+        setSettingsTab("mcp");
+        setSettingsOpen(true);
         return;
       }
 
@@ -2337,9 +2231,7 @@ export default function App() {
       aliases: "recent workspaces recently opened folders",
     },
     { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
-    { id: "open-workspace-diagrams-media", label: "Open Diagrams & Media Gallery", group: "Workspace", aliases: "diagrams media pdfs gallery assets mermaid drawio excalidraw" },
-    { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
-    { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
+    { id: "open-mcp-settings", label: "Open MCP Server Settings", group: "MCP", aliases: "mcp server claude cursor antigravity external ai" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
     { id: "open-embeddings-page", label: "Open Embeddings Dashboard", group: "AI", aliases: "vector database indexing onnx local bge segments" },
     { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
@@ -2752,13 +2644,9 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-workspace-activity") {
-      await handleOpenWorkspaceActivity();
-      return;
-    }
-
-    if (resolvedCommandId === "open-p2p-status") {
-      await handleOpenP2PStatus();
+    if (resolvedCommandId === "open-mcp-settings") {
+      setSettingsTab("mcp");
+      setSettingsOpen(true);
       return;
     }
 
@@ -2931,12 +2819,8 @@ export default function App() {
     }
 
     if (action === "ai") {
-      if (!isAIConfigured) {
-        notify("Configure an AI provider key in AI Settings to use AI chat.", "warning");
-        setAiSettingsOpen(true);
-        return;
-      }
-      setAiPanelVisible((visible) => !visible);
+      setSettingsTab("mcp");
+      setSettingsOpen(true);
       return;
     }
 
@@ -3029,37 +2913,6 @@ export default function App() {
     [favoriteNotes, recentDashboardNotes, continueDashboardNotes]
   );
 
-  const aiSidebarComponent = aiPanelVisible && isAIConfigured ? (
-    <ErrorBoundary label="AI chat">
-      <Suspense fallback={<div className="lazy-loading">Loading AI…</div>}>
-        <AIChatPanel
-          onHide={() => setAiPanelVisible(false)}
-          onClear={handleClearAIChat}
-          onSend={handleAIChatSend}
-          onAbort={handleAIChatAbort}
-          activeQueryId={activeQueryId}
-          onApply={handleApplyAIResult}
-          onOpenDocument={handleOpenReferencedDocumentFromUI}
-          onPreviewNote={handlePreviewNote}
-          isLoading={aiQueryLoading}
-          error={aiQueryError || null}
-          contextSummary={aiContextSummary}
-          intent={aiPaletteIntent}
-          messages={aiChatMessages}
-          noteTitle={current?.title || "Current Note"}
-          activeProvider={activeProvider}
-          activePersona={activePersona}
-          setActivePersona={setActivePersona}
-          workspaceStorageScope={workspaceStorageScope}
-          conversations={conversations}
-          onLoadConversations={loadConversations}
-          onLoadConversation={loadConversation}
-          onDeleteConversation={deleteConversation}
-        />
-
-      </Suspense>
-    </ErrorBoundary>
-  ) : null;
 
   return (
     <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}${focusModeEnabled && current ? " focus-mode-active" : ""}`}>
@@ -3153,8 +3006,8 @@ export default function App() {
               }}
               onClick={() => setGitVCOpen(true)}
             />
-            <AIStatusBar onClick={() => setAiSettingsOpen(true)} />
-            {current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
+            <AIStatusBar onClick={() => { setSettingsTab("mcp"); setSettingsOpen(true); }} />
+            {current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
                 {documentStats ? (
                   <span
@@ -3188,16 +3041,12 @@ export default function App() {
             documents={documents}
             workspaceTaskDocuments={workspaceTaskDocuments}
             loading={loading}
-            aiSidebar={aiSidebarComponent}
-            aiPanelVisible={aiPanelVisible}
-            isAIConfigured={isAIConfigured}
+            aiSidebar={null}
+            aiPanelVisible={false}
+            isAIConfigured={false}
             onShowAI={() => {
-              if (!isAIConfigured) {
-                notify("Configure an AI provider key in AI Settings to use AI chat.", "warning");
-                setAiSettingsOpen(true);
-                return;
-              }
-              setAiPanelVisible((visible) => !visible);
+              setSettingsTab("mcp");
+              setSettingsOpen(true);
             }}
             onOpenListItem={handleOpenListItem}
             onOpenReferencedDocument={(task) => handleOpenReferencedDocument(task?.filePath)}
@@ -3306,17 +3155,16 @@ export default function App() {
             inlineGhostSuggestion={inlineGhostSuggestion}
             onAcceptInlineGhost={handleAcceptInlineGhost}
             onRejectInlineGhost={handleRejectInlineGhost}
-            aiEnabled={isAIConfigured}
-            aiPanelVisible={aiPanelVisible}
+            aiEnabled={false}
+            aiPanelVisible={false}
             onShowAI={() => {
-              if (!isAIConfigured) {
-                notify("Configure an AI provider key in AI Settings to use AI chat.", "warning");
-                setAiSettingsOpen(true);
-                return;
-              }
-              setAiPanelVisible((visible) => !visible);
+              setSettingsTab("mcp");
+              setSettingsOpen(true);
             }}
-            onOpenAISettings={() => setAiSettingsOpen(true)}
+            onOpenAISettings={() => {
+              setSettingsTab("mcp");
+              setSettingsOpen(true);
+            }}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
             initialLine={initialLine}
             onLineJumped={() => setInitialLine(null)}
@@ -3335,7 +3183,7 @@ export default function App() {
             scrollSyncEnabled={scrollSyncEnabled}
             onScrollSyncEnabledChange={setScrollSyncEnabled}
             onReloadFromDisk={(filePath) => handleReloadCurrentFromDisk(filePath)}
-            aiSidebar={aiSidebarComponent}
+            aiSidebar={null}
           />
         </Suspense>
       )}
@@ -3530,222 +3378,7 @@ export default function App() {
           onPreviewImageModeChange={setPreviewImageMode}
           embeddedMarkdownMode={embeddedMarkdownMode}
           onEmbeddedMarkdownModeToggle={setEmbeddedMarkdownMode}
-          p2pStatus={p2pStatus}
-          p2pLoading={p2pStatusLoading}
-          fullSyncProgressByPeer={fullSyncProgressByPeer}
-          onRefreshP2P={handleOpenP2PStatus}
-          onStartP2PDiscovery={handleStartP2PDiscovery}
-          onStopP2PDiscovery={handleStopP2PDiscovery}
-          onSetP2PDeviceName={handleSetP2PDeviceName}
-          onSetP2PKeyPolicyDays={handleSetP2PKeyPolicyDays}
-          onCreateP2PInvite={handleCreateP2PInvite}
-          onPairP2PWithCode={handlePairP2PWithCode}
-          onManualP2PConnect={handleManualP2PConnect}
-          onRemoveTrustedP2PPeer={handleRemoveTrustedP2PPeer}
-          onRotateP2PWorkspaceKeys={handleRotateP2PWorkspaceKeys}
         />
-      ) : null}
-
-      {workspaceActivityOpen ? (
-        <OverlayDialog open={workspaceActivityOpen} onClose={() => setWorkspaceActivityOpen(false)} ariaLabel="Workspace activity" cardClassName="activity-dialog-card">
-            <div className="overlay-dialog-header">
-              <h2>Workspace Activity</h2>
-              <button
-                className="icon-button"
-                onClick={() => setWorkspaceActivityOpen(false)}
-                type="button"
-                aria-label="Close workspace activity"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <Suspense fallback={<div className="lazy-loading">Loading activity…</div>}>
-              <WorkspaceActivityPanel
-                data={workspaceActivity}
-                loading={workspaceActivityLoading}
-                onRefresh={handleOpenWorkspaceActivity}
-              />
-            </Suspense>
-        </OverlayDialog>
-      ) : null}
-
-      {p2pSyncHelpOpen ? (
-        <OverlayDialog open={p2pSyncHelpOpen} onClose={() => setP2PSyncHelpOpen(false)} ariaLabel="P2P sync notes">
-            <div className="overlay-dialog-header">
-              <h2>How P2P Sync Works</h2>
-              <button
-                className="icon-button"
-                onClick={() => setP2PSyncHelpOpen(false)}
-                type="button"
-                aria-label="Close P2P sync help"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p2p-sync-help-content">
-              <p><strong>Current behavior</strong></p>
-              <ol>
-                <li>Discovery: each app broadcasts a LAN hello packet and lists nearby peers.</li>
-                <li>Connect: you can manually ping a peer by address and port.</li>
-                <li>Pairing: one peer creates an invite code, the other submits the code to establish trust.</li>
-                <li>Trust state: trusted peers are saved locally on each device.</li>
-                <li>Sync: create, update, and delete note events are shared between trusted peers.</li>
-              </ol>
-              <p><strong>File sync status</strong></p>
-              <p>Automatic note sync is enabled for trusted peers using AES-256-GCM encrypted sync events.</p>
-              <p><strong>Planned next phase</strong></p>
-              <ol>
-                <li>Replace full-content updates with true section/line deltas.</li>
-                <li>Add richer conflict resolution UI (manual choose/merge).</li>
-                <li>Add delivery retry queues and offline reconciliation.</li>
-              </ol>
-            </div>
-        </OverlayDialog>
-      ) : null}
-
-      {conflictResolutionOpen && conflictResolutionEntry ? (
-        <OverlayDialog open={conflictResolutionOpen && Boolean(conflictResolutionEntry)} onClose={() => setConflictResolutionOpen(false)} ariaLabel="Resolve sync conflict" cardClassName="conflict-resolve-dialog-card">
-            <div className="overlay-dialog-header">
-              <h2>Resolve Conflict</h2>
-              <button
-                className="icon-button"
-                onClick={() => setConflictResolutionOpen(false)}
-                type="button"
-                aria-label="Close conflict resolution"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {conflictResolutionLoading && !conflictResolutionFiles ? (
-              <p className="p2p-status-table-empty">Loading files...</p>
-            ) : conflictResolutionFiles ? (
-              <Suspense fallback={<div className="lazy-loading">Loading conflict resolver…</div>}>
-                <ConflictResolutionPanel
-                  localFile={conflictResolutionFiles.local}
-                  conflictFile={conflictResolutionFiles.conflict}
-                  relativePath={conflictResolutionEntry.relativePath || conflictResolutionEntry.filePath}
-                  onResolve={handleResolveConflict}
-                  loading={conflictResolutionLoading}
-                />
-              </Suspense>
-            ) : null}
-        </OverlayDialog>
-      ) : null}
-
-      {syncSelfTestOpen ? (
-        <OverlayDialog open={syncSelfTestOpen} onClose={() => setSyncSelfTestOpen(false)} ariaLabel="P2P sync self-test">
-            <div className="overlay-dialog-header">
-              <h2>P2P Sync Self-Test</h2>
-              <button
-                className="icon-button"
-                onClick={() => setSyncSelfTestOpen(false)}
-                type="button"
-                aria-label="Close sync self-test"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p2p-sync-help-content">
-              {syncSelfTestLoading ? (
-                <p>Running self-test...</p>
-              ) : syncSelfTestResult ? (
-                <>
-                  <p>
-                    <strong>Result:</strong>{" "}
-                    <span className={syncSelfTestResult.ok ? "p2p-test-pass" : "p2p-test-fail"}>
-                      {syncSelfTestResult.ok ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
-                  <p><strong>Crypto round-trip:</strong> {syncSelfTestResult.cryptoRoundTrip || "N/A"}</p>
-                  <p><strong>Trusted peers:</strong> {syncSelfTestResult.trustedPeers ?? "N/A"}</p>
-                  <p><strong>Outbox count:</strong> {syncSelfTestResult.outboxCount ?? "N/A"}</p>
-                  {syncSelfTestResult.error ? (
-                    <p className="p2p-test-fail"><strong>Error:</strong> {syncSelfTestResult.error}</p>
-                  ) : null}
-                </>
-              ) : (
-                <p>No result yet.</p>
-              )}
-            </div>
-        </OverlayDialog>
-      ) : null}
-
-      {conflictCenterOpen ? (
-        <OverlayDialog open={conflictCenterOpen} onClose={() => setConflictCenterOpen(false)} ariaLabel="P2P conflict center" cardClassName="p2p-status-dialog-card">
-            <div className="overlay-dialog-header">
-              <h2>Conflict Center</h2>
-              <button
-                className="icon-button"
-                onClick={() => setConflictCenterOpen(false)}
-                type="button"
-                aria-label="Close conflict center"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p2p-conflict-center">
-              <div className="p2p-conflict-center-actions">
-                <button
-                  className="small-button"
-                  type="button"
-                  onClick={handleOpenNextConflict}
-                  disabled={!conflictCenterData?.conflicts?.length}
-                >
-                  Resolve Next Unresolved
-                </button>
-              </div>
-              {conflictCenterLoading ? (
-                <p className="p2p-status-table-empty">Loading conflicts...</p>
-              ) : !conflictCenterData?.conflicts?.length ? (
-                <p className="p2p-status-table-empty">No unresolved sync conflicts.</p>
-              ) : (
-                <table className="p2p-status-peer-table">
-                  <thead>
-                    <tr>
-                      <th>Note</th>
-                      <th>Conflict File</th>
-                      <th>When</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {conflictCenterData.conflicts.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="mono-cell">{entry.relativePath || entry.filePath}</td>
-                        <td className="mono-cell" data-tooltip={entry.conflictPath}>
-                          {entry.conflictPath.split(/[\\/]/).pop()}
-                        </td>
-                        <td>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "Unknown"}</td>
-                        <td className="p2p-conflict-actions">
-                          <button
-                            className="small-button"
-                            type="button"
-                            onClick={() => handleOpenConflictResolution(entry)}
-                          >
-                            Resolve
-                          </button>
-                          <button
-                            className="small-button"
-                            type="button"
-                            onClick={() => handleOpenConflictFile(entry.filePath)}
-                          >
-                            Open Local
-                          </button>
-                          <button
-                            className="small-button"
-                            type="button"
-                            onClick={() => handleOpenConflictFile(entry.conflictPath)}
-                          >
-                            Open Conflict
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-        </OverlayDialog>
       ) : null}
 
       {commandPaletteOpen ? (
@@ -3834,8 +3467,6 @@ export default function App() {
         setEmbeddingsPageOpen={setEmbeddingsPageOpen}
         personasPageOpen={personasPageOpen}
         setPersonasPageOpen={setPersonasPageOpen}
-        healthPageOpen={healthPageOpen}
-        setHealthPageOpen={setHealthPageOpen}
         appLogsOpen={appLogsOpen}
         setAppLogsOpen={setAppLogsOpen}
         taskWorkspaceOpen={taskWorkspaceOpen}

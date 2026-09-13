@@ -12,9 +12,6 @@ const EmbeddingsPage = lazy(() =>
 const AIPersonasManager = lazy(() =>
   import("../AIPersonasManager").then((m) => ({ default: m.default || m.AIPersonasManager }))
 );
-const AIHealthPage = lazy(() =>
-  import("../AIHealthPage").then((m) => ({ default: m.default || m.AIHealthPage }))
-);
 const AppLogsPage = lazy(() =>
   import("../AppLogsPage").then((m) => ({ default: m.default || m.AppLogsPage }))
 );
@@ -62,8 +59,6 @@ export function AppSubpageViews({
   setEmbeddingsPageOpen,
   personasPageOpen,
   setPersonasPageOpen,
-  healthPageOpen,
-  setHealthPageOpen,
   appLogsOpen,
   setAppLogsOpen,
   taskWorkspaceOpen,
@@ -120,14 +115,6 @@ export function AppSubpageViews({
         <div style={fullScreenOverlayStyle}>
           <Suspense fallback={<div className="lazy-loading">Loading Personas…</div>}>
             <AIPersonasManager onBack={() => setPersonasPageOpen(false)} />
-          </Suspense>
-        </div>
-      )}
-
-      {healthPageOpen && (
-        <div style={fullScreenOverlayStyle}>
-          <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
-            <AIHealthPage onBack={() => setHealthPageOpen(false)} />
           </Suspense>
         </div>
       )}

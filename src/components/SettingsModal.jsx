@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { X, Settings, Cpu, ShieldAlert, Sliders, Type } from "lucide-react";
+import React, { useState } from "react";
+import { X, Settings, Sliders, Type, Network, Cpu, Share2 } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
-import AppIconButton from "./AppIconButton";
 import AppSelect from "./AppSelect";
-import { AISettingsContent } from "./AISettings";
-import { P2PStatusPanel } from "./P2PStatusPanel";
+import AppIconButton from "./AppIconButton";
+import { MCPSettingsContent } from "./MCPSettingsModal";
+import { EmbeddingsSettings } from "./EmbeddingsSettings";
+import KnowledgeGraphSettings from "./KnowledgeGraphSettings";
 
 export function SettingsModal({
   isOpen,
@@ -26,36 +27,17 @@ export function SettingsModal({
   onPreviewImageModeChange,
   embeddedMarkdownMode,
   onEmbeddedMarkdownModeToggle,
-  // P2P bindings
-  p2pStatus,
-  p2pLoading,
-  fullSyncProgressByPeer,
-  onRefreshP2P,
-  onStartP2PDiscovery,
-  onStopP2PDiscovery,
-  onSetP2PDeviceName,
-  onSetP2PKeyPolicyDays,
-  onCreateP2PInvite,
-  onPairP2PWithCode,
-  onManualP2PConnect,
-  onRemoveTrustedP2PPeer,
-  onRotateP2PWorkspaceKeys,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
-
-  useEffect(() => {
-    if (activeTab === "p2p") {
-      onRefreshP2P?.();
-    }
-  }, [activeTab, onRefreshP2P]);
 
   if (!isOpen) return null;
 
   const tabs = [
     { id: "general", label: "General", icon: Sliders },
     { id: "editor", label: "Editor", icon: Type },
-    { id: "ai", label: "AI Configuration", icon: Cpu },
-    { id: "p2p", label: "P2P Sync Status", icon: ShieldAlert },
+    { id: "embeddings", label: "Local Embeddings", icon: Cpu },
+    { id: "graph", label: "Knowledge Graph", icon: Share2 },
+    { id: "mcp", label: "MCP Server", icon: Network },
   ];
 
   const handleZoomChange = (e) => {
@@ -203,33 +185,27 @@ export function SettingsModal({
             </div>
           )}
 
-          {activeTab === "ai" && (
-            <div className="settings-tab-pane ai-tab-pane">
-              <h3>AI Copilot Configuration</h3>
-              <p className="settings-pane-intro">Tune neural features, manage active models, and connect cloud service providers.</p>
-              <AISettingsContent onClose={onClose} />
+          {activeTab === "embeddings" && (
+            <div className="settings-tab-pane">
+              <h3>Local Embeddings Generator</h3>
+              <p className="settings-pane-intro">Configure offline ONNX vector embeddings for semantic search, vector indexing, and chunking.</p>
+              <EmbeddingsSettings />
             </div>
           )}
 
-          {activeTab === "p2p" && (
-            <div className="settings-tab-pane p2p-tab-pane">
-              <h3>Peer-to-Peer Synchronization</h3>
-              <p className="settings-pane-intro">Discover trusted device peers, join sync invite codes, and rotate encryption keys.</p>
-              <P2PStatusPanel
-                status={p2pStatus}
-                loading={p2pLoading}
-                fullSyncProgressByPeer={fullSyncProgressByPeer}
-                onRefresh={onRefreshP2P}
-                onStartDiscovery={onStartP2PDiscovery}
-                onStopDiscovery={onStopP2PDiscovery}
-                onSetDeviceName={onSetP2PDeviceName}
-                onSetKeyPolicyDays={onSetP2PKeyPolicyDays}
-                onCreateInvite={onCreateP2PInvite}
-                onPairWithCode={onPairP2PWithCode}
-                onManualConnect={onManualP2PConnect}
-                onRemoveTrustedPeer={onRemoveTrustedP2PPeer}
-                onRotateWorkspaceKeys={onRotateP2PWorkspaceKeys}
-              />
+          {activeTab === "graph" && (
+            <div className="settings-tab-pane">
+              <h3>Knowledge Graph Engine</h3>
+              <p className="settings-pane-intro">Configure offline entity and relationship discovery models, extraction thresholds, and graph caching.</p>
+              <KnowledgeGraphSettings />
+            </div>
+          )}
+
+          {activeTab === "mcp" && (
+            <div className="settings-tab-pane mcp-tab-pane">
+              <h3>Model Context Protocol (MCP) Server</h3>
+              <p className="settings-pane-intro">Connect your external AI applications (Claude Desktop, Cursor, Antigravity) directly to your Notely notes, tasks, and knowledge graph.</p>
+              <MCPSettingsContent />
             </div>
           )}
         </main>

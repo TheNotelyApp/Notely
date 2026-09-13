@@ -32,15 +32,15 @@
     "test": "node scripts/run-vitest.cjs run",
     "test:a11y-smoke": "node scripts/run-vitest.cjs run src/tests/components/accessibility.smoke.test.js",
     "test:design-system": "node scripts/run-vitest.cjs run src/tests/components/designSystem.consistency.test.js",
-    "test:p2p": "node scripts/p2p-harness.cjs",
-    "test:p2p:packaged": "node scripts/p2p-packaged-validation.cjs",
-    "ci:check": "npm run lint && npm run build && npm run lint:markdown && npm run test && npm run test:a11y-smoke && npm run test:design-system && npm run test:p2p"
+    "test:mcp": "node scripts/run-vitest.cjs run src/tests/services/mcpServer.test.js",
+    "ci:check": "npm run lint && npm run build && npm run lint:markdown && npm run test && npm run test:a11y-smoke && npm run test:design-system"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.18",
     "@ai-sdk/groq": "^4.0.12",
     "@ai-sdk/openai": "^4.0.16",
     "@huggingface/transformers": "^4.2.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "ai": "^7.0.31",
     "groq-sdk": "^1.3.0",
     "highlight.js": "^11.11.1",

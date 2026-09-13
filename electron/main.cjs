@@ -8,7 +8,6 @@ const { spawn } = require("node:child_process");
 const {
   slugify,
   nowStamp,
-  randomId,
   hashContent,
   filePathWithin,
   normalizeToPosix,
@@ -27,11 +26,9 @@ const { createTerminalIpc } = require("./lib/ipc/terminalIpc.cjs");
 const { registerCoreIpcHandlers } = require("./lib/ipc/coreIpc.cjs");
 const { registerCodeExecutorIpcHandlers } = require("./lib/ipc/codeExecutorIpc.cjs");
 const { registerDocumentIpcHandlers } = require("./lib/documents/documentIpc.cjs");
-const { registerSyncIpcHandlers } = require("./lib/sync/syncIpc.cjs");
 const { createWebPreview } = require("./lib/web/webPreview.cjs");
 const { createWindowLifecycle } = require("./lib/core/windowLifecycle.cjs");
 const { assertTrustedIpcSender } = require("./lib/ipc/ipcSecurity.cjs");
-const { createP2PSyncEngine } = require("./lib/sync/p2pSyncEngine.cjs");
 const { createWorkspaceEntries, DEFAULT_WALK_EXCLUDE_DIRS } = require("./lib/documents/workspaceEntries.cjs");
 const { createMetadataStore } = require("./lib/core/metadataStore.cjs");
 const { createWorkspaceMetadata } = require("./lib/core/workspaceMetadata.cjs");
@@ -47,6 +44,8 @@ const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
 const { registerTaskIpc } = require("./lib/tasks/taskIpc.cjs");
 const { ExportHistoryStore } = require("./lib/export/exportHistoryStore.cjs");
 const { registerExportHistoryIpc } = require("./lib/export/exportHistoryIpc.cjs");
+const { NotelyMcpSseService } = require("./mcp/sseTransport.cjs");
+const { registerMcpIpc } = require("./mcp/mcpIpc.cjs");
 
 const exportHistoryStore = new ExportHistoryStore(app.getPath("userData"), () => notesRoot);
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -58,7 +57,6 @@ const generatedVersionPath = path.join(projectRoot, "electron", "app-version.gen
 const sessionDataPath = path.join(app.getPath("userData"), "session-data");
 const chromiumCachePath = path.join(sessionDataPath, "Cache");
 const getMarkdownIt = () => require("markdown-it");
-const getP2PLiveService = () => require("./p2p/p2pLive.cjs").P2PLiveService;
 
 if (process.platform === "win32") {
   app.setAppUserModelId("app.notely.desktop");
@@ -87,16 +85,12 @@ let appDataDir = "";
 let versionsRoot = "";
 const ROOT_PROJECT_SLUG = "__root__";
 let activeProjectSlug = ROOT_PROJECT_SLUG;
-let p2pService = null;
 let aiAgent = null;
-let p2pSyncEngine = null;
+let notelyMcpSse = null;
 let mainHelpers;
 let dashboardCache;
 let shutdownAISystemRef = () => {};
 let aiInitTriggered = false;
-const FULL_SYNC_BATCH_SIZE = 25;
-const FULL_SYNC_MAX_FILES = 1000;
-const VERSION_HISTORY_LIMIT = 50;
 
 function triggerDeferredAIInit() {
   if (aiInitTriggered) return;
@@ -508,7 +502,7 @@ function applyNotesRoot(nextRootPath) {
     getAppDataDir: () => appDataDir,
     getNotesRoot: () => notesRoot,
     filePathWithin,
-    pruneVersionHistory: (filePath, limit) => p2pSyncEngine.pruneVersionHistory(filePath, limit),
+    pruneVersionHistory: () => {},
   });
 
   workspaceMetadataStore = createWorkspaceMetadata({
@@ -519,23 +513,6 @@ function applyNotesRoot(nextRootPath) {
     filePathWithin,
     normalizeToPosix,
   });
-
-  if (p2pService) {
-    p2pService.shutdown();
-  }
-  const P2PLiveService = getP2PLiveService();
-  p2pService = new P2PLiveService({
-    storageDir: appDataDir,
-    onSyncEvent: (payload) => p2pSyncEngine.handleIncomingP2PSyncEvent(payload),
-    onPeerTrusted: (peerId) => {
-      setImmediate(() => {
-        p2pSyncEngine.initiateFullSyncForPeer(peerId).catch((error) => {
-          console.error("[p2p] full sync on trust failed:", error?.message || error);
-        });
-      });
-    }
-  });
-  p2pService.init();
 
   activeProjectSlug = ROOT_PROJECT_SLUG;
 
@@ -551,11 +528,6 @@ function applyNotesRoot(nextRootPath) {
       console.warn("[git] Legacy migration error:", err?.message || err);
     });
   });
-}
-
-
-function readP2PStatusSnapshot() {
-  return mainHelpers.readP2PStatusSnapshot();
 }
 
 function getUniquePath(targetPath) {
@@ -735,7 +707,6 @@ const imageMedia = createImageMedia({
   getUniquePath,
   getNotesRoot: () => notesRoot,
   getAppDataDir: () => appDataDir,
-  emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
   hashContent,
 });
 
@@ -850,31 +821,6 @@ const windowLifecycle = createWindowLifecycle({
   },
 });
 
-p2pSyncEngine = createP2PSyncEngine({
-  fs,
-  path,
-  slugify,
-  nowStamp,
-  randomId,
-  hashContent,
-  filePathWithin,
-  normalizeToPosix,
-  ensureDir,
-  getUniquePath,
-  walkFiles,
-  deleteDocumentFile,
-  parseDocument,
-  buildDocumentContent,
-  getNotesRoot: () => notesRoot,
-  getVersionsRoot: () => versionsRoot,
-  getMetadataStore: () => metadataStore,
-  getP2PService: () => p2pService,
-  getMainWindow: () => windowLifecycle.getMainWindow(),
-  fullSyncBatchSize: FULL_SYNC_BATCH_SIZE,
-  fullSyncMaxFiles: FULL_SYNC_MAX_FILES,
-  versionHistoryLimit: VERSION_HISTORY_LIMIT,
-});
-
 const canRunApp = windowLifecycle.registerAppWindowEvents();
 
 if (canRunApp) {
@@ -916,9 +862,8 @@ app.on("before-quit", () => {
 
   terminalIpc.disposeAll();
 
-  if (p2pService) {
-    p2pService.shutdown();
-    p2pService = null;
+  if (notelyMcpSse) {
+    notelyMcpSse.stop().catch(() => {});
   }
 });
 
@@ -1180,23 +1125,6 @@ registerCoreIpcHandlers(ipcMain, {
 terminalIpc.registerHandlers(ipcMain);
 registerCodeExecutorIpcHandlers(ipcMain, { BrowserWindow });
 
-registerSyncIpcHandlers(ipcMain, {
-  BrowserWindow,
-  fs,
-  path,
-  filePathWithin,
-  normalizeToPosix,
-  parseDocument,
-  createVersionSnapshot: (...args) => p2pSyncEngine.createVersionSnapshot(...args),
-  hashContent,
-  moveFileToRemoved,
-  getMetadataStore: () => metadataStore,
-  getNotesRoot: () => notesRoot,
-  getActiveProject,
-  getP2PService: () => p2pService,
-  readP2PStatusSnapshot,
-});
-
 registerDocumentIpcHandlers(ipcMain, {
   BrowserWindow,
   dialog,
@@ -1221,10 +1149,6 @@ registerDocumentIpcHandlers(ipcMain, {
   deleteFolderInProject,
   parseDocument,
   buildDocumentContent,
-  emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
-  buildNoteDelta: (payload) => p2pSyncEngine.buildNoteDelta(payload),
-  hasMatchingFileBackedVersion: (filePath, fileHash) => p2pSyncEngine.hasMatchingFileBackedVersion(filePath, fileHash),
-  createVersionSnapshot: (...args) => p2pSyncEngine.createVersionSnapshot(...args),
   getMetadataStore: () => metadataStore,
   metadataStore,
   dashboardCache,
@@ -1273,7 +1197,6 @@ imageMedia.registerIpcHandlers(ipcMain);
 setupDiagramHandlers(ipcMain, appDataDir, {
   getNotesRoot: () => notesRoot,
   filePathWithin,
-  emitLocalP2PSyncEvent: (payload) => p2pSyncEngine.emitLocalP2PSyncEvent(payload),
   hashContent,
 });
 
@@ -1289,5 +1212,21 @@ registerTaskIpc(ipcMain, {
   getActiveProject,
   getMetadataStore: () => metadataStore,
   getAppDataDir: () => appDataDir,
+});
+
+notelyMcpSse = new NotelyMcpSseService({
+  port: 3721,
+  getWorkspaceRoot: () => notesRoot,
+});
+
+notelyMcpSse.start().catch((err) => {
+  console.warn("[Notely MCP] SSE auto-start:", err.message);
+});
+
+registerMcpIpc(ipcMain, {
+  BrowserWindow,
+  mcpService: notelyMcpSse,
+  getNotesRoot: () => notesRoot,
+  getProjectRoot: () => projectRoot,
 });
 

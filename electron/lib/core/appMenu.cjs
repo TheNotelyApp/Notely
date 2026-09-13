@@ -848,35 +848,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
       ]
     },
     {
-      label: "P2P",
-      submenu: [
-        {
-          label: "P2P Status",
-          accelerator: "CmdOrCtrl+Shift+P",
-          click: () => sendMenuAction(win, "open-p2p-status")
-        },
-        { type: "separator" },
-        {
-          label: "Run Sync Self-Test",
-          click: () => sendMenuAction(win, "run-p2p-sync-self-test")
-        },
-        {
-          label: "Conflict Center",
-          click: () => sendMenuAction(win, "open-p2p-conflicts")
-        },
-        { type: "separator" },
-        {
-          label: "Rotate Workspace Keys",
-          click: () => sendMenuAction(win, "rotate-p2p-workspace-keys")
-        },
-        { type: "separator" },
-        {
-          label: "How Sync Works",
-          click: () => sendMenuAction(win, "open-p2p-sync-help")
-        }
-      ]
-    },
-    {
       label: "AI",
       submenu: [
         ...(screen === "document"
