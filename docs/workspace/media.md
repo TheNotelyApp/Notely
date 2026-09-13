@@ -33,3 +33,13 @@ Keep your assets tidy using the Media Health Dashboard:
 - **Unused Media**: Lists media files in `assets/` not referenced by any note. Offers bulk-deletion.
 - **Missing Assets**: Displays links in notes pointing to files that do not exist.
 - **Duplicate Media**: Highlights duplicate file contents to save storage.
+
+---
+
+## 4. Diagrams & Media Gallery
+
+Notely provides a dedicated full-screen page under **Workspace > Diagrams & Media Gallery** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`) inspired by the Knowledge Graph layout:
+- **Only Used Items**: Displays every diagram (inline Mermaid, Draw.io, Excalidraw), image, audio, video, and PDF actively referenced in notes.
+- **Collapsible Category Filter**: Filter by category (Diagrams, Images, PDFs, Videos, Audio, Documents) and usage scope (Single-note vs Multi-note).
+- **Referenced Notes & Line Jumping**: Click any item to inspect details and see all notes referencing it, complete with line numbers and markdown snippets. Click **Open Note** to jump directly to the note and line.
+- **Live Previews**: Interactive rendered Mermaid previews and high-resolution media previews.

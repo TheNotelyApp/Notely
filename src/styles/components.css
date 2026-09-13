@@ -1330,6 +1330,11 @@
   backdrop-filter: blur(10px);
 }
 
+.app-select-panel.placement-top {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
 .app-select-group + .app-select-group {
   margin-top: 5px;
   padding-top: 5px;

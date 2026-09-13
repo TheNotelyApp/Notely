@@ -65,6 +65,14 @@ During transfer:
 - Local media assets (`media/images/`, `media/uploads/`) and diagrams (`.notes-app/excali-diagrams/`, `.notes-app/drawio-diagrams/`) are automatically copied to the target workspace asset folders.
 - Relative link paths inside the Markdown text are recalculated to match the destination folder depth, ensuring embedded images and diagrams render seamlessly.
 
+### Diagrams & Media Gallery
+
+Open via **Workspace -> Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`) or Command Palette:
+- Catalogs all used diagrams (inline Mermaid, Draw.io, Excalidraw), images, videos, audio, and PDF documents in the workspace.
+- Reuses Knowledge Graph layout aesthetics with collapsible category filters, search, and stat indicators.
+- Inspect details for any item with high-res/diagram live previews, file paths, and exact note references with line numbers and snippets.
+- Direct "Open Note" navigation into the editor.
+
 ## 2. Editor and Writing Experience
 
 ### Multiple edit modes

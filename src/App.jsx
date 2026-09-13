@@ -345,6 +345,7 @@ export default function App() {
 
   const [workspaceExportOpen, setWorkspaceExportOpen] = useState(false);
   const [workspaceIndexOpen, setWorkspaceIndexOpen] = useState(false);
+  const [diagramsMediaOpen, setDiagramsMediaOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [exportImportOpen, setExportImportOpen] = useState(false);
   const [exportImportMode, setExportImportMode] = useState("export");
@@ -2114,6 +2115,11 @@ export default function App() {
         return;
       }
 
+      if (action === "open-workspace-diagrams-media" || action === "workspace-diagrams-media") {
+        setDiagramsMediaOpen(true);
+        return;
+      }
+
       if (action === "ai-clear-cache") {
         handleAIClearCache();
         return;
@@ -2331,6 +2337,7 @@ export default function App() {
       aliases: "recent workspaces recently opened folders",
     },
     { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
+    { id: "open-workspace-diagrams-media", label: "Open Diagrams & Media Gallery", group: "Workspace", aliases: "diagrams media pdfs gallery assets mermaid drawio excalidraw" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
@@ -2740,6 +2747,11 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-workspace-diagrams-media") {
+      setDiagramsMediaOpen(true);
+      return;
+    }
+
     if (resolvedCommandId === "open-workspace-activity") {
       await handleOpenWorkspaceActivity();
       return;
@@ -2884,6 +2896,11 @@ export default function App() {
 
     if (action === "workspace-index" || action === "open-workspace-index") {
       setWorkspaceIndexOpen(true);
+      return;
+    }
+
+    if (action === "workspace-diagrams-media" || action === "open-workspace-diagrams-media") {
+      setDiagramsMediaOpen(true);
       return;
     }
 
@@ -3832,6 +3849,8 @@ export default function App() {
         setDownloadsPageOpen={setDownloadsPageOpen}
         workspaceIndexOpen={workspaceIndexOpen}
         setWorkspaceIndexOpen={setWorkspaceIndexOpen}
+        diagramsMediaOpen={diagramsMediaOpen}
+        setDiagramsMediaOpen={setDiagramsMediaOpen}
         onSelectHeader={(docId, line) => {
           handleOpenReferencedDocument(docId, line);
         }}

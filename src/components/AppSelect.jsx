@@ -73,6 +73,7 @@ export const AppSelect = forwardRef(function AppSelect(
     value,
     onChange,
     disabled = false,
+    placement = "bottom",
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
     ...rest
@@ -226,7 +227,12 @@ export const AppSelect = forwardRef(function AppSelect(
       </button>
 
       {open ? (
-        <div id={listboxId} className="app-select-panel" role="listbox" aria-labelledby={triggerId}>
+        <div
+          id={listboxId}
+          className={`app-select-panel${placement === "top" ? " placement-top" : ""}`}
+          role="listbox"
+          aria-labelledby={triggerId}
+        >
           {optionGroups.map((group) => (
             <div className="app-select-group" key={group.key}>
               {group.label ? <div className="app-select-group-label">{group.label}</div> : null}

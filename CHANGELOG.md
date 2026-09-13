@@ -6,6 +6,11 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ### Added
 
+- Added **Diagrams & Media Gallery** (`Workspace → Diagrams & Media Gallery`, `Ctrl/Cmd + Alt + M`).
+  - Dedicated full-screen catalog for actively used diagrams (Mermaid, Draw.io, Excalidraw), images, videos, audio, and PDFs across workspace notes.
+  - Knowledge Graph-inspired visual layout with collapsible category filters, usage scope filtering, search, and summary badges.
+  - Slide-out Inspector drawer with live interactive Mermaid/media previews, file metadata, and exact referencing note cards with line numbers and snippets.
+  - One-click navigation to jump directly to the note and line where any diagram or media item is used.
 - Added **Copy and Move Note Between Workspaces and Folders** (`File → Copy Note / Move Note`).
   - Allows copying or moving notes across workspaces and subfolders directly from top **File** menu submenus (`To Workspace ▶`, `To Folder (Current Workspace) ▶`) or transfer dialog.
   - Automatically copies/moves embedded local media assets (`media/images/`, `media/uploads/`) and diagrams (`.notes-app/excali-diagrams/`, `.notes-app/drawio-diagrams/`).

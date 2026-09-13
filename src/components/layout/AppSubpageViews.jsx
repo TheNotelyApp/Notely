@@ -30,6 +30,9 @@ const DownloadsPage = lazy(() =>
 const WorkspaceIndexPage = lazy(() =>
   import("../WorkspaceIndexPage").then((m) => ({ default: m.default || m.WorkspaceIndexPage }))
 );
+const WorkspaceDiagramsMediaPage = lazy(() =>
+  import("../WorkspaceDiagramsMediaPage").then((m) => ({ default: m.default || m.WorkspaceDiagramsMediaPage }))
+);
 
 const fullScreenOverlayStyle = {
   position: "fixed",
@@ -74,6 +77,8 @@ export function AppSubpageViews({
   setDownloadsPageOpen,
   workspaceIndexOpen,
   setWorkspaceIndexOpen,
+  diagramsMediaOpen,
+  setDiagramsMediaOpen,
   onSelectHeader,
   onAskAI,
 }) {
@@ -188,6 +193,24 @@ export function AppSubpageViews({
                 if (onSelectHeader) onSelectHeader(docId, line);
               }}
               onAskAI={onAskAI}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {diagramsMediaOpen && (
+        <div style={fullScreenOverlayStyle}>
+          <Suspense fallback={<div className="lazy-loading">Loading Diagrams & Media…</div>}>
+            <WorkspaceDiagramsMediaPage
+              documents={documents}
+              workspacePath={notesFolderPath}
+              onBack={() => setDiagramsMediaOpen(false)}
+              onOpenNote={(filePath, line) => {
+                setDiagramsMediaOpen(false);
+                if (handleOpenReferencedDocument) {
+                  void handleOpenReferencedDocument(filePath, line);
+                }
+              }}
             />
           </Suspense>
         </div>
