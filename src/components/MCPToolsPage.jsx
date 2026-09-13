@@ -36,11 +36,16 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [toolList, st] = await Promise.all([
-        listTools().catch(() => []),
+      const [res, st] = await Promise.all([
+        listTools().catch(() => null),
         mcpGetStatus().catch(() => null)
       ]);
-      setTools(Array.isArray(toolList) ? toolList : []);
+      const toolArray = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.data)
+        ? res.data
+        : [];
+      setTools(toolArray);
       setStatus(st);
     } catch (err) {
       console.error("[MCPToolsPage] Failed to load data:", err);
