@@ -75,6 +75,27 @@ class McpLifecycle {
         win.webContents.send('telemetry:event', eventData);
       }
     }
+
+    try {
+      const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
+      if (root) {
+        const TelemetryDB = require('../../ai/telemetry/TelemetryDB');
+        const db = new TelemetryDB(root);
+        db.initialize();
+        db.recordMcpToolCall({
+          sessionId: eventData.sessionId,
+          clientName: eventData.clientName || 'MCP Client',
+          toolName: eventData.toolName,
+          input: eventData.input,
+          output: eventData.output,
+          durationMs: eventData.durationMs,
+          success: eventData.success,
+          error: eventData.error
+        });
+      }
+    } catch {
+      // Telemetry persistence is non-blocking
+    }
   }
 
   async start() {

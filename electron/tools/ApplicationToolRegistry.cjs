@@ -95,6 +95,7 @@ class ApplicationToolRegistry {
         version: toolDef.version,
         startTime,
         caller,
+        sessionId: context.sessionId || null,
         executionPath: `ApplicationToolRegistry -> SecurityCheck -> ${toolDef.name}`,
         error: {
           code: 'WRITE_DISABLED',
@@ -116,6 +117,7 @@ class ApplicationToolRegistry {
           version: toolDef.version,
           startTime,
           caller,
+          sessionId: context.sessionId || null,
           executionPath: `ApplicationToolRegistry -> SchemaValidation -> ${toolDef.name}`,
           error: {
             code: 'INVALID_INPUT',
@@ -140,6 +142,7 @@ class ApplicationToolRegistry {
         version: toolDef.version,
         startTime,
         caller,
+        sessionId: context.sessionId || null,
         executionPath: `ApplicationToolRegistry -> ${toolDef.serviceName || 'Service'} -> ${toolDef.name}`
       });
     } catch (err) {
@@ -150,6 +153,7 @@ class ApplicationToolRegistry {
         version: toolDef.version,
         startTime,
         caller,
+        sessionId: context.sessionId || null,
         executionPath: `ApplicationToolRegistry -> ExecutionFailure -> ${toolDef.name}`,
         error: {
           code: 'EXECUTION_ERROR',
@@ -159,7 +163,7 @@ class ApplicationToolRegistry {
     }
   }
 
-  _buildResponse({ success, data, toolName, version, startTime, caller, executionPath, error = null, warnings = [] }) {
+  _buildResponse({ success, data, toolName, version, startTime, caller, sessionId = null, executionPath, error = null, warnings = [] }) {
     const durationMs = Date.now() - startTime;
     return {
       success,
@@ -172,6 +176,7 @@ class ApplicationToolRegistry {
       },
       diagnostics: {
         caller,
+        sessionId,
         executionPath
       },
       warnings,
