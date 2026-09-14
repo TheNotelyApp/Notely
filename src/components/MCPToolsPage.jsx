@@ -4,7 +4,6 @@ import {
   Search,
   Server,
   Play,
-  Code,
   Copy,
   Check,
   ChevronDown,
@@ -16,7 +15,6 @@ import {
   Activity,
   Layers,
   Zap,
-  Filter,
   FileText,
   Folder,
   Cpu,
@@ -25,7 +23,6 @@ import {
   XCircle,
   Clock,
   BookOpen,
-  HelpCircle,
   ShieldAlert,
   ShieldCheck,
   Ban

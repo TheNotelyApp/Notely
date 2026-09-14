@@ -1612,7 +1612,6 @@ class ApplicationToolRegistry {
       execute: async (args) => {
         try {
           const TelemetryDB = require('../../ai/telemetry/TelemetryDB');
-          const path = require('path');
           const root = args.workspaceRoot || process.cwd();
           const db = new TelemetryDB(root);
           db.initialize();
@@ -2767,7 +2766,6 @@ class ApplicationToolRegistry {
         }
       },
       execute: async (args) => {
-        const fs = require('fs');
         const path = require('path');
         const { collectMarkdownFiles } = require('../services/NoteApplicationService.cjs');
         const files = collectMarkdownFiles(args.workspaceRoot);
@@ -4433,13 +4431,10 @@ class ApplicationToolRegistry {
         let replaced = false;
 
         // Skip frontmatter if present
-        let inFrontmatter = false;
         let fmEndIdx = -1;
         if (lines[0] && lines[0].trim() === '---') {
-          inFrontmatter = true;
           for (let i = 1; i < lines.length; i++) {
             if (lines[i].trim() === '---') {
-              inFrontmatter = false;
               fmEndIdx = i;
               break;
             }

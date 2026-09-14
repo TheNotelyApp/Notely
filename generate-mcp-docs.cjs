@@ -63,7 +63,7 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 
 `;
 
-for (const [key, suite] of Object.entries(suites)) {
+for (const suite of Object.values(suites)) {
   md += `### ${suite.title} — ${suite.tools.length} Tools\n\n`;
   for (const t of suite.tools) {
     const wTag = t.isWrite ? ' **[W]**' : '';
