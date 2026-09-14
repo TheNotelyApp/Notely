@@ -118,6 +118,13 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 
 The following diagram shows the full request path from the React UI through each layer to inference and storage:
 
+### F. Model Context Protocol (MCP) Server Subsystem (`electron/mcp/`)
+* **HTTP & SSE JSON-RPC Server (`McpServer.cjs`)**: Embedded MCP server (default port `3700`) exposing Notely workspace capabilities over SSE at `/sse` and `/messages` with Bearer token authentication support.
+* **Lifecycle Controller (`McpLifecycle.cjs`)**: Manages MCP server lifecycle, port settings (`mcp-config.json`), IPC status broadcasting (`mcp:status-changed`), and graceful app shutdown.
+* **Session Manager (`McpSessionManager.cjs`)**: Tracks active client connections, remote User-Agents, request durations, and tool invocation stats.
+* **Application Tool Registry (`ApplicationToolRegistry.cjs`)**: Exposes 18+ typed tools for note operations, workspace full-text search, knowledge graph queries, task listing, and system metrics.
+* **Capabilities & Diagnostics UI**: Integrated React views `MCPToolsPage.jsx` (Interactive capabilities catalog & terminal test runner) and `AIHealthPage.jsx` (MCP server telemetry & SSE session diagnostics). See [Developer MCP Guide](/developer/mcp) for detailed API schemas.
+
 ```mermaid
 flowchart TD
     subgraph Renderer["Renderer Process (React / Vite)"]
