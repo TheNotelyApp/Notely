@@ -246,4 +246,67 @@ describe('AI Telemetry & Execution Trace Framework', () => {
     const events = buildEventsFromTrace(trace.events);
     expect(events.some(e => e.eventType === 'planner:plan_created')).toBe(true);
   });
+
+  it('11. Migration — automatically migrates legacy mcp_tool_calls and mcp_sessions schemas', () => {
+    const legacyDir = path.join(process.cwd(), '.tmp-legacy-mig-' + Date.now());
+    const dotNotes = path.join(legacyDir, '.notes-app');
+    fs.mkdirSync(dotNotes, { recursive: true });
+    const dbFile = path.join(dotNotes, 'ai-telemetry.db');
+
+    // Create database with legacy schema
+    const { DatabaseSync } = require('node:sqlite');
+    const legacyDb = new DatabaseSync(dbFile);
+    legacyDb.exec(`
+      CREATE TABLE mcp_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT UNIQUE NOT NULL,
+        connected_at TEXT NOT NULL,
+        disconnected_at TEXT,
+        client_info TEXT,
+        tool_calls_count INTEGER DEFAULT 0,
+        errors_count INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE mcp_tool_calls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        input_summary TEXT,
+        output_summary TEXT,
+        duration_ms INTEGER,
+        success INTEGER DEFAULT 1,
+        error TEXT,
+        called_at TEXT NOT NULL
+      );
+
+      INSERT INTO mcp_tool_calls (session_id, tool_name, input_summary, output_summary, duration_ms, success, called_at)
+      VALUES ('sess-1', 'notes.read', '{"path":"test.md"}', '{"ok":true}', 42, 1, '2026-09-14T10:00:00.000Z');
+    `);
+    legacyDb.close();
+
+    // Now open with TelemetryDB and initialize
+    const tdb = new TelemetryDB(legacyDir);
+    expect(tdb.initialize()).toBe(true);
+
+    // Should successfully record a tool call with callId, input, output
+    expect(() => {
+      tdb.recordMcpToolCall({
+        callId: 'call-mig-123',
+        sessionId: 'sess-1',
+        clientName: 'Antigravity',
+        toolName: 'notes.create',
+        input: { path: 'new.md' },
+        output: { success: true },
+        durationMs: 15,
+        success: true
+      });
+    }).not.toThrow();
+
+    const calls = tdb.getMcpToolCalls({ sessionId: 'sess-1' });
+    expect(calls.length).toBe(2);
+    expect(calls.some(c => c.callId === 'call-mig-123')).toBe(true);
+
+    tdb.close();
+    fs.rmSync(legacyDir, { recursive: true, force: true });
+  });
 });

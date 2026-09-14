@@ -120,13 +120,65 @@ class TelemetryDB {
 
       // Migrate missing columns if tables pre-existed from older schema version
       try {
+        // 1. telemetry_events
         const eventCols = this.db.prepare("PRAGMA table_info(telemetry_events)").all().map(c => c.name);
-        if (eventCols.length > 0 && !eventCols.includes('status')) {
-          this.db.exec("ALTER TABLE telemetry_events ADD COLUMN status TEXT DEFAULT 'SUCCESS'");
+        if (eventCols.length > 0) {
+          if (!eventCols.includes('status')) {
+            this.db.exec("ALTER TABLE telemetry_events ADD COLUMN status TEXT DEFAULT 'SUCCESS'");
+          }
+          if (!eventCols.includes('trace_id')) {
+            this.db.exec("ALTER TABLE telemetry_events ADD COLUMN trace_id TEXT");
+          }
         }
+
+        // 2. mcp_sessions
         const sessionCols = this.db.prepare("PRAGMA table_info(mcp_sessions)").all().map(c => c.name);
-        if (sessionCols.length > 0 && !sessionCols.includes('status')) {
-          this.db.exec("ALTER TABLE mcp_sessions ADD COLUMN status TEXT DEFAULT 'active'");
+        if (sessionCols.length > 0) {
+          if (!sessionCols.includes('client_name')) {
+            this.db.exec("ALTER TABLE mcp_sessions ADD COLUMN client_name TEXT DEFAULT 'Unknown Client'");
+          }
+          if (!sessionCols.includes('client_version')) {
+            this.db.exec("ALTER TABLE mcp_sessions ADD COLUMN client_version TEXT DEFAULT '1.0.0'");
+          }
+          if (!sessionCols.includes('successful_calls')) {
+            this.db.exec("ALTER TABLE mcp_sessions ADD COLUMN successful_calls INTEGER DEFAULT 0");
+          }
+          if (!sessionCols.includes('status')) {
+            this.db.exec("ALTER TABLE mcp_sessions ADD COLUMN status TEXT DEFAULT 'active'");
+          }
+        }
+
+        // 3. mcp_tool_calls
+        const toolCallCols = this.db.prepare("PRAGMA table_info(mcp_tool_calls)").all().map(c => c.name);
+        if (toolCallCols.length > 0) {
+          if (!toolCallCols.includes('call_id')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN call_id TEXT");
+            this.db.exec("UPDATE mcp_tool_calls SET call_id = 'call_' || id WHERE call_id IS NULL");
+          }
+          if (!toolCallCols.includes('client_name')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN client_name TEXT DEFAULT 'Unknown Client'");
+          }
+          if (!toolCallCols.includes('input_payload')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN input_payload TEXT");
+            if (toolCallCols.includes('input_summary')) {
+              this.db.exec("UPDATE mcp_tool_calls SET input_payload = input_summary WHERE input_payload IS NULL");
+            }
+          }
+          if (!toolCallCols.includes('output_payload')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN output_payload TEXT");
+            if (toolCallCols.includes('output_summary')) {
+              this.db.exec("UPDATE mcp_tool_calls SET output_payload = output_summary WHERE output_payload IS NULL");
+            }
+          }
+          if (!toolCallCols.includes('duration_ms')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN duration_ms INTEGER DEFAULT 0");
+          }
+          if (!toolCallCols.includes('success')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN success INTEGER DEFAULT 1");
+          }
+          if (!toolCallCols.includes('error')) {
+            this.db.exec("ALTER TABLE mcp_tool_calls ADD COLUMN error TEXT");
+          }
         }
       } catch (migErr) {
         log.warn('TelemetryDB column migration warning:', migErr.message);
@@ -136,6 +188,7 @@ class TelemetryDB {
         CREATE INDEX IF NOT EXISTS idx_events_trace_id ON telemetry_events(trace_id);
         CREATE INDEX IF NOT EXISTS idx_events_type ON telemetry_events(event_type);
         CREATE INDEX IF NOT EXISTS idx_events_status ON telemetry_events(status);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_tool_calls_call_id ON mcp_tool_calls(call_id);
         CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_session ON mcp_tool_calls(session_id);
         CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_tool ON mcp_tool_calls(tool_name);
         CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_called_at ON mcp_tool_calls(called_at);
