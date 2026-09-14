@@ -26,6 +26,25 @@ class McpSessionManager {
     return session;
   }
 
+  registerSession(sessionId, clientName = 'Unknown Client', clientVersion = '1.0.0', headers = {}) {
+    const session = {
+      id: sessionId,
+      clientName,
+      clientVersion,
+      clientInfo: JSON.stringify(headers || {}),
+      connectedAt: new Date().toISOString(),
+      remoteAddress: '127.0.0.1',
+      userAgent: clientName,
+      toolCallsCount: 0,
+      errorsCount: 0,
+      status: 'active',
+      lastActivityAt: new Date().toISOString()
+    };
+    this.sessions.set(sessionId, session);
+    this.totalConnections++;
+    return session;
+  }
+
   closeSession(sessionId) {
     const session = this.sessions.get(sessionId);
     if (session) {

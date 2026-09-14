@@ -118,6 +118,20 @@ class TelemetryDB {
         );
       `);
 
+      // Migrate missing columns if tables pre-existed from older schema version
+      try {
+        const eventCols = this.db.prepare("PRAGMA table_info(telemetry_events)").all().map(c => c.name);
+        if (eventCols.length > 0 && !eventCols.includes('status')) {
+          this.db.exec("ALTER TABLE telemetry_events ADD COLUMN status TEXT DEFAULT 'SUCCESS'");
+        }
+        const sessionCols = this.db.prepare("PRAGMA table_info(mcp_sessions)").all().map(c => c.name);
+        if (sessionCols.length > 0 && !sessionCols.includes('status')) {
+          this.db.exec("ALTER TABLE mcp_sessions ADD COLUMN status TEXT DEFAULT 'active'");
+        }
+      } catch (migErr) {
+        log.warn('TelemetryDB column migration warning:', migErr.message);
+      }
+
       this.db.exec(`
         CREATE INDEX IF NOT EXISTS idx_events_trace_id ON telemetry_events(trace_id);
         CREATE INDEX IF NOT EXISTS idx_events_type ON telemetry_events(event_type);
