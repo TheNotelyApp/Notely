@@ -7,11 +7,16 @@ const DEFAULT_EXCLUDE_DIRS = new Set([
 // Extracts [[wiki link]] targets from markdown content.
 function extractWikiLinks(content) {
   const results = [];
+  const cleanContent = String(content || "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`\n]+`/g, "");
   const pattern = /\[\[([^\]|#\n]+?)(?:[|#][^\]]*?)?\]\]/g;
   let match;
-  while ((match = pattern.exec(content)) !== null) {
+  while ((match = pattern.exec(cleanContent)) !== null) {
     const target = String(match[1] || "").trim();
-    if (target) results.push(target);
+    if (target && !target.startsWith('"') && !target.startsWith("'")) {
+      results.push(target);
+    }
   }
   return results;
 }

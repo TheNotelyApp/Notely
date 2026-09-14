@@ -27,13 +27,14 @@
   grid-template-columns: 340px minmax(0, 1fr);
   gap: 16px;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   padding: 16px 20px 20px;
 }
 
 @media (max-width: 1024px) {
   .ahp-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     overflow-y: auto;
   }
 }
@@ -51,6 +52,8 @@
 .ahp-right {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-soft);
@@ -518,23 +521,24 @@
 }
 
 .ahp-tool-call {
-  border-radius: var(--radius-md);
   border: 1px solid var(--border-soft);
-  margin-bottom: 5px;
-  overflow: hidden;
-  background: var(--surface-bg);
-}
-.ahp-tool-call {
-  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  margin: 6px 0;
+  margin: 6px 12px;
   overflow: hidden;
   background: var(--surface-bg);
+  min-width: 0;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  flex-shrink: 0;
   transition: border-color var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease);
 }
 .ahp-tool-call:hover {
   border-color: var(--border-default);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+.ahp-tool-call.open {
+  border-color: var(--border-default);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 .ahp-bubble.user .ahp-tool-call {
   border-color: rgba(255, 255, 255, 0.15);
@@ -576,6 +580,7 @@
   font-size: 10.5px;
   color: var(--text-muted);
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -593,6 +598,10 @@
   border-top: 1px solid var(--border-subtle);
   padding: 10px 12px;
   font-size: var(--font-size-caption);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .ahp-bubble.user .ahp-tool-body {
   border-top-color: rgba(255, 255, 255, 0.12);
@@ -619,14 +628,56 @@
   line-height: 1.45;
   font-family: 'Consolas', 'Menlo', monospace;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: break-all;
+  overflow-wrap: anywhere;
   max-height: 360px;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
   overflow-y: auto;
   color: var(--app-text);
   transition: border-color var(--motion-fast, 0.15s ease);
 }
 .ahp-tool-pre:hover {
   border-color: var(--border-default);
+}
+
+/* JSON Syntax Highlighting Tokens */
+.json-key {
+  color: #0284c7;
+  font-weight: 600;
+}
+.json-string {
+  color: #15803d;
+}
+.json-number {
+  color: #c2410c;
+  font-weight: 600;
+}
+.json-boolean {
+  color: #7e22ce;
+  font-weight: 600;
+}
+.json-null {
+  color: #64748b;
+  font-style: italic;
+  font-weight: 600;
+}
+
+:root[data-theme="dark"] .json-key {
+  color: #38bdf8;
+}
+:root[data-theme="dark"] .json-string {
+  color: #4ade80;
+}
+:root[data-theme="dark"] .json-number {
+  color: #fb923c;
+}
+:root[data-theme="dark"] .json-boolean {
+  color: #c084fc;
+}
+:root[data-theme="dark"] .json-null {
+  color: #94a3b8;
 }
 
 /* Soft button and control borders aligned with application design system */
@@ -718,7 +769,10 @@
 /* Trace list */
 .atv-trace-list {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }

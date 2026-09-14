@@ -1396,11 +1396,14 @@ class ApplicationToolRegistry {
         files.forEach(f => {
           try {
             const text = fs.readFileSync(f, 'utf8');
-            const matches = text.match(/\[\[(.+?)\]\]/g) || [];
+            const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]+`/g, '');
+            const matches = cleanText.match(/\[\[(.+?)\]\]/g) || [];
             fileLinkCounts[f] = matches.length;
             matches.forEach(m => {
               const target = m.slice(2, -2).trim().toLowerCase();
-              linkedTargets.add(target);
+              if (target && !target.startsWith('"') && !target.startsWith("'")) {
+                linkedTargets.add(target);
+              }
             });
           } catch { /* ignore */ }
         });
@@ -2674,13 +2677,16 @@ class ApplicationToolRegistry {
           if (!fs.existsSync(filePath)) continue;
           try {
             const text = fs.readFileSync(filePath, 'utf8');
-            const matches = [...text.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?]]/g)];
+            const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]+`/g, '');
+            const matches = [...cleanText.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?]]/g)];
             for (const m of matches) {
-              const linked = m[1].trim().toLowerCase();
+              const raw = m[1].trim();
+              if (raw.startsWith('"') || raw.startsWith("'")) continue;
+              const linked = raw.toLowerCase();
               if (!existingTitles.has(linked)) {
                 broken.push({
                   sourceFile: path.relative(args.workspaceRoot, filePath),
-                  brokenLink: m[1].trim(),
+                  brokenLink: raw,
                   fullMatch: m[0]
                 });
               }
@@ -3103,9 +3109,12 @@ class ApplicationToolRegistry {
         const validPath = assertPathInWorkspace(args.filePath, args.workspaceRoot);
         if (!fs.existsSync(validPath)) throw new Error(`File "${args.filePath}" does not exist.`);
         const text = fs.readFileSync(validPath, 'utf8');
+        const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]+`/g, '');
 
-        const wikiLinks = [...text.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?]]/g)]
-          .map(m => ({ type: 'wikilink', target: m[1].trim(), raw: m[0] }));
+        const wikiLinks = [...cleanText.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?]]/g)]
+          .map(m => m[1].trim())
+          .filter(t => t && !t.startsWith('"') && !t.startsWith("'"))
+          .map(target => ({ type: 'wikilink', target, raw: `[[${target}]]` }));
 
         const mdLinks = [...text.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)]
           .map(m => ({ type: 'markdown', label: m[1], target: m[2], raw: m[0] }));
@@ -3589,13 +3598,13 @@ class ApplicationToolRegistry {
       description: 'Build a JSON graph of all [[wikilink]] connections between notes in the workspace.',
       isWrite: false,
       schema: z.object({
-        includeOrphans: z.boolean().optional().describe('Include notes with no links (default: true).'),
-        limit: z.number().optional().describe('Max notes to include (default: 500).')
+        includeOrphans: z.boolean().optional().default(true).describe('Include notes with no links (default: true).'),
+        limit: z.number().optional().default(500).describe('Max notes to include (default: 500).')
       }),
       jsonSchema: {
         type: 'object',
         properties: {
-          includeOrphans: { type: 'boolean', description: 'Include unlinked notes.' },
+          includeOrphans: { type: 'boolean', description: 'Include unlinked notes (default: true).' },
           limit: { type: 'number', description: 'Max notes.' }
         }
       },
@@ -3604,6 +3613,7 @@ class ApplicationToolRegistry {
         const path = require('path');
         const { collectMarkdownFiles } = require('../services/NoteApplicationService.cjs');
         const files = collectMarkdownFiles(args.workspaceRoot).slice(0, args.limit || 500);
+        const includeOrphans = args.includeOrphans !== false;
         const titleToPath = {};
         for (const f of files) {
           titleToPath[path.basename(f, '.md').toLowerCase()] = f;
@@ -3616,10 +3626,12 @@ class ApplicationToolRegistry {
           const title = path.basename(f, '.md');
           try {
             const text = fs.readFileSync(f, 'utf8');
-            const links = [...text.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?]]/g)]
-              .map(m => m[1].trim());
+            const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]+`/g, '');
+            const links = [...cleanText.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?]]/g)]
+              .map(m => m[1].trim())
+              .filter(target => target && !target.startsWith('"') && !target.startsWith("'"));
 
-            if (!args.includeOrphans && links.length === 0) continue;
+            if (!includeOrphans && links.length === 0) continue;
 
             nodes.push({ id: title, path: path.relative(args.workspaceRoot, f), linkCount: links.length });
 

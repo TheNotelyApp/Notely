@@ -66,6 +66,34 @@ function formatJson(val) {
   }
 }
 
+function highlightJsonToHtml(jsonStr) {
+  if (!jsonStr) return '';
+  const safe = String(jsonStr)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return safe.replace(
+    /("(?:\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    (match) => {
+      let cls = 'json-number';
+      if (match.startsWith('"')) {
+        if (/:\s*$/.test(match)) {
+          cls = 'json-key';
+          const colonIdx = match.lastIndexOf(':');
+          return `<span class="${cls}">${match.slice(0, colonIdx)}</span>${match.slice(colonIdx)}`;
+        }
+        cls = 'json-string';
+      } else if (match === 'true' || match === 'false') {
+        cls = 'json-boolean';
+      } else if (match === 'null') {
+        cls = 'json-null';
+      }
+      return `<span class="${cls}">${match}</span>`;
+    }
+  );
+}
+
 // ─── Sub-Components ─────────────────────────────────────────────────────────
 
 function StatusDot({ ok }) {
@@ -501,17 +529,17 @@ export default function AIHealthPage({ onBack }) {
               filteredCalls.map((call) => {
                 const isExpanded = expandedCallId === call.id;
                 const isSuccess = call.status === 'SUCCESS';
-                const formattedInput = formatJson(call.input);
-                const formattedOutput = formatJson(call.output);
+                const formattedInput = isExpanded ? formatJson(call.input) : null;
+                const formattedOutput = isExpanded ? formatJson(call.output) : null;
 
                 return (
                   <div
                     key={call.id}
                     className={`ahp-tool-call${isExpanded ? ' open' : ''}`}
-                    style={{ margin: '8px 12px' }}
                   >
                     {/* Collapsed Item Header */}
                     <button
+                      type="button"
                       className="ahp-tool-call-header"
                       onClick={() => setExpandedCallId(isExpanded ? null : call.id)}
                     >
@@ -520,13 +548,13 @@ export default function AIHealthPage({ onBack }) {
                       <span className="ahp-tool-args-preview">
                         Client: {call.clientName}
                       </span>
-                      <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                         <Clock size={12} /> {fmtMs(call.durationMs)}
                       </span>
-                      <span className="ahp-pill" data-ok={isSuccess ? 'true' : 'false'} style={{ marginLeft: '8px' }}>
+                      <span className="ahp-pill" data-ok={isSuccess ? 'true' : 'false'} style={{ marginLeft: '8px', flexShrink: 0 }}>
                         {call.status}
                       </span>
-                      <ChevronRight size={14} className={`ahp-tool-chevron${isExpanded ? ' open' : ''}`} />
+                      <ChevronRight size={14} className={`ahp-tool-chevron${isExpanded ? ' open' : ''}`} style={{ flexShrink: 0 }} />
                     </button>
 
                     {/* Expanded Detail Inspector */}
@@ -543,32 +571,36 @@ export default function AIHealthPage({ onBack }) {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                             <span className="ahp-tool-section-label">INPUT PAYLOAD (Sanitized)</span>
                             <button
+                              type="button"
                               className="btn btn-secondary"
                               style={{ height: '22px', fontSize: '10.5px', padding: '0 6px' }}
-                              onClick={() => handleCopyCode(formattedInput, `${call.id}_in`)}
+                              onClick={() => handleCopyCode(formattedInput, `${call.id}_in`, 'Input payload')}
                             >
                               {copiedId === `${call.id}_in` ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />} Copy Input
                             </button>
                           </div>
-                          <pre className="ahp-tool-pre">
-                            {formattedInput}
-                          </pre>
+                          <pre
+                            className="ahp-tool-pre"
+                            dangerouslySetInnerHTML={{ __html: highlightJsonToHtml(formattedInput) }}
+                          />
                         </div>
 
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                             <span className="ahp-tool-section-label">OUTPUT PAYLOAD (Sanitized)</span>
                             <button
+                              type="button"
                               className="btn btn-secondary"
                               style={{ height: '22px', fontSize: '10.5px', padding: '0 6px' }}
-                              onClick={() => handleCopyCode(formattedOutput, `${call.id}_out`)}
+                              onClick={() => handleCopyCode(formattedOutput, `${call.id}_out`, 'Output payload')}
                             >
                               {copiedId === `${call.id}_out` ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />} Copy Output
                             </button>
                           </div>
-                          <pre className="ahp-tool-pre">
-                            {formattedOutput}
-                          </pre>
+                          <pre
+                            className="ahp-tool-pre"
+                            dangerouslySetInnerHTML={{ __html: highlightJsonToHtml(formattedOutput) }}
+                          />
                         </div>
                       </div>
                     )}

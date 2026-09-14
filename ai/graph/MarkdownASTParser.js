@@ -114,10 +114,15 @@ class MarkdownASTParser {
     }
 
     // 1. Wikilinks: [[Target Note]] or [[Target Note|Display Alias]]
+    // Mask code blocks with spaces to prevent Mermaid [["subroutine"]] syntax from becoming false wikilinks
+    const maskedForLinks = content
+      .replace(/```[\s\S]*?```/g, m => ' '.repeat(m.length))
+      .replace(/`[^`\n]+`/g, m => ' '.repeat(m.length));
     const wikilinkRegex = /\[\[(.*?)\]\]/g;
     let match;
-    while ((match = wikilinkRegex.exec(content)) !== null) {
+    while ((match = wikilinkRegex.exec(maskedForLinks)) !== null) {
       const rawTarget = match[1].trim();
+      if (rawTarget.startsWith('"') || rawTarget.startsWith("'")) continue;
       const targetName = rawTarget.includes('|') ? rawTarget.split('|')[0].trim() : rawTarget;
       if (targetName) {
         links.push({
