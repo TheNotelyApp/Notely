@@ -290,7 +290,7 @@ export default function AIHealthPage({ onBack }) {
             </div>
             <div className="ahp-card-rows">
               <div className="ahp-row">
-                <span>Streamable HTTP Endpoint</span>
+                <span>MCP</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <code style={{ fontSize: '11px', fontFamily: 'monospace' }}>http://{serverHost}:{serverPort}/mcp</code>
                   <button
@@ -308,16 +308,16 @@ export default function AIHealthPage({ onBack }) {
                       color: 'var(--text-muted)',
                       borderRadius: '4px'
                     }}
-                    onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/mcp`, 'endpoint_http', 'Streamable HTTP Endpoint URL')}
-                    title={copiedId === 'endpoint_http' ? 'Copied to clipboard' : 'Copy Streamable HTTP Endpoint URL'}
-                    aria-label="Copy Streamable HTTP Endpoint URL"
+                    onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/mcp`, 'endpoint_http', 'MCP Endpoint URL')}
+                    title={copiedId === 'endpoint_http' ? 'Copied to clipboard' : 'Copy MCP Endpoint URL'}
+                    aria-label="Copy MCP Endpoint URL"
                   >
                     {copiedId === 'endpoint_http' ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />}
                   </button>
                 </div>
               </div>
               <div className="ahp-row">
-                <span>Legacy SSE Endpoint</span>
+                <span>SSE</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <code style={{ fontSize: '11px', fontFamily: 'monospace' }}>http://{serverHost}:{serverPort}/sse</code>
                   <button

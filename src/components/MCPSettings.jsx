@@ -297,7 +297,7 @@ export function MCPSettingsContent({ notify }) {
             <div className="mcp-sse-bar">
               <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
                 <Radio size={14} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Streamable HTTP (Antigravity / Modern):</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>MCP:</span>
                 <code className="mcp-sse-url">{httpUrl}</code>
               </div>
               <button
@@ -314,7 +314,7 @@ export function MCPSettingsContent({ notify }) {
             <div className="mcp-sse-bar" style={{ opacity: 0.9 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
                 <Radio size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Legacy SSE (Claude Desktop):</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>SSE:</span>
                 <code className="mcp-sse-url">{sseUrl}</code>
               </div>
               <button

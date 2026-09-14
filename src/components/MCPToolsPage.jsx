@@ -651,7 +651,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         📡 Client Connection URLs
                       </strong>
-                      Streamable HTTP: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code> (or <code>/sse</code>). Legacy SSE: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code> (messages: <code>/messages</code>).
+                      MCP: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code>. SSE: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>.
                     </div>
                   </div>
                 </div>
