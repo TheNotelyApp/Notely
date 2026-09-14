@@ -100,7 +100,7 @@
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  border-radius: 5px;
+  border-radius: 4px;
   font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -493,7 +493,7 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: 4px;
   background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.3);
