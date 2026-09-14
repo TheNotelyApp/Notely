@@ -3080,7 +3080,7 @@ class ApplicationToolRegistry {
       aliases: ['get_note_links'],
       sdkName: 'get_note_links',
       serviceName: 'NoteApplicationService',
-      description: 'Extract all outgoing [[wikilinks]] and [markdown](links) from a note.',
+      description: 'Extract all outgoing wikilinks and markdown links from a note.',
       isWrite: false,
       schema: z.object({
         filePath: z.string().describe('Path to the note file.')

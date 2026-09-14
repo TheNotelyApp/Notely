@@ -42,7 +42,7 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `notes.find_broken_links`: Scan the workspace for [[wikilinks]] that point to notes which do not exist.
 - `notes.frontmatter_update` **[W]**: Add or update specific YAML frontmatter fields in a note without touching the body content.
 - `notes.count`: Count notes in the workspace, optionally grouped by top-level folder.
-- `notes.get_links`: Extract all outgoing [[wikilinks]] and [markdown](links) from a note.
+- `notes.get_links`: Extract all outgoing wikilinks and markdown links from a note.
 - `notes.insert_at` **[W]**: Insert content at a specific line number or directly after a named heading in a note.
 - `notes.stats`: Get detailed stats for a single note: word count, line count, heading count, link count, task count, and file size.
 - `notes.bulk_tag` **[W]**: Add or remove frontmatter tags from multiple notes matching a folder or name pattern.
