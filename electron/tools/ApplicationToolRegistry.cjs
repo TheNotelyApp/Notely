@@ -4907,6 +4907,310 @@ class ApplicationToolRegistry {
         };
       }
     });
+
+    // -------------------------------------------------------------------------
+    // SUITE: Excalidraw Vector Diagrams (excalidraw.*)
+    // -------------------------------------------------------------------------
+
+    this.registerTool({
+      name: 'excalidraw.read',
+      version: 'v1',
+      aliases: ['read_excalidraw'],
+      sdkName: 'excalidraw_read',
+      serviceName: 'DiagramService',
+      description: 'Read the JSON schema and element structure from an .excalidraw drawing file or diagram ID.',
+      isWrite: false,
+      schema: z.object({
+        filePath: z.string().optional().describe('Relative path to .excalidraw file.'),
+        diagramId: z.string().optional().describe('Unique diagram ID (e.g. "diag_123" inside media/excalidraw/).')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Relative path to .excalidraw file.' },
+          diagramId: { type: 'string', description: 'Unique diagram ID.' }
+        }
+      },
+      execute: async (args) => {
+        const fs = require('fs');
+        const path = require('path');
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+
+        let targetFile = null;
+        if (args.filePath) {
+          targetFile = assertPathInWorkspace(args.filePath, args.workspaceRoot);
+        } else if (args.diagramId) {
+          // Check media/excalidraw/ID/diagram.excalidraw or excali-diagrams/ID/diagram.excalidraw
+          const p1 = path.join(args.workspaceRoot, 'media', 'excalidraw', args.diagramId, 'diagram.excalidraw');
+          const p2 = path.join(args.workspaceRoot, 'excali-diagrams', args.diagramId, 'diagram.excalidraw');
+          if (fs.existsSync(p1)) targetFile = p1;
+          else if (fs.existsSync(p2)) targetFile = p2;
+        }
+
+        if (!targetFile || !fs.existsSync(targetFile)) {
+          throw new Error(`Excalidraw diagram not found for filePath="${args.filePath || ''}", diagramId="${args.diagramId || ''}".`);
+        }
+
+        const raw = fs.readFileSync(targetFile, 'utf8');
+        let parsed = null;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          parsed = { rawContent: raw };
+        }
+
+        return {
+          filePath: path.relative(args.workspaceRoot, targetFile),
+          elementsCount: Array.isArray(parsed.elements) ? parsed.elements.length : 0,
+          appState: parsed.appState || null,
+          data: parsed
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'excalidraw.create',
+      version: 'v1',
+      aliases: ['create_excalidraw'],
+      sdkName: 'excalidraw_create',
+      serviceName: 'DiagramService',
+      description: 'Create a new .excalidraw drawing with elements (rectangles, ellipses, arrows, text, etc.).',
+      isWrite: true,
+      schema: z.object({
+        filePath: z.string().describe('Relative path where .excalidraw file should be created.'),
+        elements: z.array(z.record(z.any())).optional().describe('List of Excalidraw element objects.'),
+        appState: z.record(z.any()).optional().describe('Optional canvas appState (viewBackgroundColor, etc.).')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Relative path where .excalidraw file should be created.' },
+          elements: { type: 'array', description: 'List of Excalidraw element objects.' },
+          appState: { type: 'object', description: 'Canvas appState settings.' }
+        },
+        required: ['filePath']
+      },
+      execute: async (args) => {
+        const fs = require('fs');
+        const path = require('path');
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+        let outPath = args.filePath;
+        if (!outPath.endsWith('.excalidraw')) outPath += '.excalidraw';
+        const target = assertPathInWorkspace(outPath, args.workspaceRoot);
+
+        const dir = path.dirname(target);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+        const drawingData = {
+          type: 'excalidraw',
+          version: 2,
+          source: 'https://notely.app',
+          elements: args.elements || [],
+          appState: args.appState || { viewBackgroundColor: '#ffffff', currentItemFontFamily: 1 },
+          files: {}
+        };
+
+        const jsonStr = JSON.stringify(drawingData, null, 2);
+        fs.writeFileSync(target, jsonStr, 'utf8');
+
+        return {
+          filePath: path.relative(args.workspaceRoot, target),
+          elementsCount: drawingData.elements.length,
+          bytesWritten: Buffer.byteLength(jsonStr, 'utf8')
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'excalidraw.update',
+      version: 'v1',
+      aliases: ['update_excalidraw'],
+      sdkName: 'excalidraw_update',
+      serviceName: 'DiagramService',
+      description: 'Update elements or add new elements to an existing .excalidraw drawing file.',
+      isWrite: true,
+      schema: z.object({
+        filePath: z.string().describe('Relative path to existing .excalidraw file.'),
+        elements: z.array(z.record(z.any())).describe('Full replacement or updated elements array.'),
+        appState: z.record(z.any()).optional().describe('Optional appState updates.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Relative path to .excalidraw file.' },
+          elements: { type: 'array', description: 'Updated elements array.' },
+          appState: { type: 'object', description: 'Canvas appState.' }
+        },
+        required: ['filePath', 'elements']
+      },
+      execute: async (args) => {
+        const fs = require('fs');
+        const path = require('path');
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+        const target = assertPathInWorkspace(args.filePath, args.workspaceRoot);
+        if (!fs.existsSync(target)) throw new Error(`Excalidraw file "${args.filePath}" does not exist.`);
+
+        let current = {};
+        try {
+          current = JSON.parse(fs.readFileSync(target, 'utf8'));
+        } catch {
+          current = { type: 'excalidraw', version: 2, elements: [], appState: {}, files: {} };
+        }
+
+        current.elements = args.elements;
+        if (args.appState) {
+          current.appState = { ...(current.appState || {}), ...args.appState };
+        }
+
+        const jsonStr = JSON.stringify(current, null, 2);
+        fs.writeFileSync(target, jsonStr, 'utf8');
+
+        return {
+          filePath: path.relative(args.workspaceRoot, target),
+          updatedElementsCount: current.elements.length,
+          bytesWritten: Buffer.byteLength(jsonStr, 'utf8')
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'excalidraw.list',
+      version: 'v1',
+      aliases: ['list_excalidraw'],
+      sdkName: 'excalidraw_list',
+      serviceName: 'DiagramService',
+      description: 'Find and list all Excalidraw drawing files and embedded diagram folders across the workspace.',
+      isWrite: false,
+      schema: z.object({
+        folder: z.string().optional().describe('Subfolder to scan (default: whole workspace).')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          folder: { type: 'string', description: 'Subfolder to scan (optional).' }
+        }
+      },
+      execute: async (args) => {
+        const fs = require('fs');
+        const path = require('path');
+        const base = args.folder ? path.join(args.workspaceRoot, args.folder) : args.workspaceRoot;
+        if (!fs.existsSync(base)) throw new Error(`Folder "${args.folder}" does not exist.`);
+
+        const drawings = [];
+        function walk(dir) {
+          try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const ent of entries) {
+              if (ent.name.startsWith('.') || ent.name === 'node_modules') continue;
+              const full = path.join(dir, ent.name);
+              if (ent.isDirectory()) {
+                walk(full);
+              } else if (ent.isFile() && (ent.name.endsWith('.excalidraw') || ent.name === 'diagram.excalidraw')) {
+                const stat = fs.statSync(full);
+                let elementCount = 0;
+                try {
+                  const content = JSON.parse(fs.readFileSync(full, 'utf8'));
+                  elementCount = Array.isArray(content.elements) ? content.elements.length : 0;
+                } catch { /* ignore */ }
+
+                drawings.push({
+                  name: ent.name,
+                  path: path.relative(args.workspaceRoot, full),
+                  sizeBytes: stat.size,
+                  elementCount,
+                  modifiedAt: stat.mtime.toISOString()
+                });
+              }
+            }
+          } catch { /* ignore */ }
+        }
+
+        walk(base);
+        return { count: drawings.length, drawings };
+      }
+    });
+
+    this.registerTool({
+      name: 'excalidraw.extract_elements',
+      version: 'v1',
+      aliases: ['extract_excalidraw_elements'],
+      sdkName: 'excalidraw_extract_elements',
+      serviceName: 'DiagramService',
+      description: 'Extract text labels, shapes, and connected bindings from an Excalidraw drawing.',
+      isWrite: false,
+      schema: z.object({
+        filePath: z.string().describe('Relative path to .excalidraw drawing file.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Relative path to .excalidraw drawing file.' }
+        },
+        required: ['filePath']
+      },
+      execute: async (args) => {
+        const fs = require('fs');
+        const path = require('path');
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+        const target = assertPathInWorkspace(args.filePath, args.workspaceRoot);
+        if (!fs.existsSync(target)) throw new Error(`File "${args.filePath}" does not exist.`);
+
+        const parsed = JSON.parse(fs.readFileSync(target, 'utf8'));
+        const elements = parsed.elements || [];
+
+        const texts = elements.filter(e => e.type === 'text').map(e => ({ id: e.id, text: e.text, x: e.x, y: e.y }));
+        const shapes = elements.filter(e => e.type !== 'text').map(e => ({ id: e.id, type: e.type, width: e.width, height: e.height, backgroundColor: e.backgroundColor }));
+
+        return {
+          filePath: path.relative(args.workspaceRoot, target),
+          totalElements: elements.length,
+          texts,
+          shapes
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'excalidraw.delete',
+      version: 'v1',
+      aliases: ['delete_excalidraw'],
+      sdkName: 'excalidraw_delete',
+      serviceName: 'DiagramService',
+      description: 'Delete an .excalidraw drawing file and its associated preview PNG from the workspace.',
+      isWrite: true,
+      schema: z.object({
+        filePath: z.string().describe('Relative path to .excalidraw file.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Relative path to .excalidraw file.' }
+        },
+        required: ['filePath']
+      },
+      execute: async (args) => {
+        const fs = require('fs');
+        const path = require('path');
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+        const target = assertPathInWorkspace(args.filePath, args.workspaceRoot);
+        if (!fs.existsSync(target)) throw new Error(`File "${args.filePath}" does not exist.`);
+
+        fs.unlinkSync(target);
+
+        // Also check if there is an adjacent diagram.png or matching .png
+        let previewDeleted = false;
+        const pngSibling = target.replace(/\.excalidraw$/i, '.png');
+        if (fs.existsSync(pngSibling)) {
+          fs.unlinkSync(pngSibling);
+          previewDeleted = true;
+        }
+
+        return {
+          deletedFile: path.relative(args.workspaceRoot, target),
+          previewDeleted
+        };
+      }
+    });
   }
 }
 

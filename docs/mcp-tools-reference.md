@@ -16,11 +16,11 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - **Transport Protocol**: HTTP SSE listening by default on `http://127.0.0.1:3700/sse` (messages accepted at `/messages`).
 - **Security Guard (`allowWriteTools`)**: Configurable toggle in MCP Settings. When set to `false`, all write operations (`[W]`) are automatically hidden from MCP capability advertisement (`tools/list`) and blocked with a `WRITE_DISABLED` error envelope.
 - **Flight Log Telemetry**: All incoming tool call executions are recorded in the local SQLite telemetry database and broadcast via IPC to the **MCP Diagnostics** flight log viewer (`AIHealthPage`).
-- **Total Capabilities**: **123 Tools** across 14 specialized suites.
+- **Total Capabilities**: **129 Tools** across 14 specialized suites.
 
 ---
 
-## 2. Complete Tool Suites Reference (123 Tools)
+## 2. Complete Tool Suites Reference (129 Tools)
 
 ### Suite 1: Notes & Document Management (`notes.*`) — 33 Tools
 
@@ -103,7 +103,16 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `drawio.update` **[W]**: Write back updated Excalidraw JSON elements or Draw.io XML markup to drawing files.
 - `drawio.export_svg`: Export drawing file to clean SVG graphic file in Media/.
 
-### Suite 6: Media & Assets (`media.*`) — 7 Tools
+### Suite 6: Excalidraw Canvas Diagrams (`excalidraw.*`) — 6 Tools
+
+- `excalidraw.read`: Read the JSON schema and element structure from an .excalidraw drawing file or diagram ID.
+- `excalidraw.create` **[W]**: Create a new .excalidraw drawing with elements (rectangles, ellipses, arrows, text, etc.).
+- `excalidraw.update` **[W]**: Update elements or add new elements to an existing .excalidraw drawing file.
+- `excalidraw.list`: Find and list all Excalidraw drawing files and embedded diagram folders across the workspace.
+- `excalidraw.extract_elements`: Extract text labels, shapes, and connected bindings from an Excalidraw drawing.
+- `excalidraw.delete` **[W]**: Delete an .excalidraw drawing file and its associated preview PNG from the workspace.
+
+### Suite 7: Media & Assets (`media.*`) — 7 Tools
 
 - `media.list_assets`: Scan workspace for images, audio, video, PDFs, and attachment files.
 - `media.extract_used_assets`: Catalog all referenced media files, diagrams, and PDFs with note line numbers and context snippets.
@@ -113,7 +122,7 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `media.cleanup_unused`: Find media assets in the workspace that are not referenced by any note. Optionally delete them.
 - `media.list`: List all image and media attachment files (.png, .jpg, .svg, .gif, .pdf, .mp3, .mp4, etc.) in the workspace with sizes.
 
-### Suite 7: Task Workspace (`tasks.*`) — 11 Tools
+### Suite 8: Task Workspace (`tasks.*`) — 11 Tools
 
 - `tasks.extract`: Extract checklist tasks across notes in the workspace.
 - `tasks.update_status` **[W]**: Update the status of a checklist task in a note. Supports open [ ], in-progress [/], and completed [x].
@@ -127,7 +136,7 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `tasks.move` **[W]**: Cut a task line from a source note and append it to a target note.
 - `tasks.archive_completed` **[W]**: Move all completed [x] tasks from a note to an archive section (## Completed Tasks) at the bottom.
 
-### Suite 8: Search & Retrieval (`search.*`) — 7 Tools
+### Suite 9: Search & Retrieval (`search.*`) — 7 Tools
 
 - `search.notes`: Full-text keyword search across workspace notes.
 - `search.similar`: Find semantically similar notes using vector embeddings.
@@ -137,7 +146,7 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `search.by_frontmatter`: Find notes where a specific YAML frontmatter field contains or equals a value.
 - `search.regex`: Search all notes using a regular expression pattern. Returns matching lines with file and line context.
 
-### Suite 9: Knowledge Graph & RAG (`knowledge.*`) — 9 Tools
+### Suite 10: Knowledge Graph & RAG (`knowledge.*`) — 9 Tools
 
 - `knowledge.related_topics`: Traverse knowledge graph relationships around a note or topic.
 - `knowledge.find_clusters`: Discover semantic topic clusters across the workspace.
@@ -149,7 +158,7 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `knowledge.note_summary`: Generate a structural summary of a note: title, headings, word count, tags, and first paragraph.
 - `knowledge.link_graph`: Build a JSON graph of all [[wikilink]] connections between notes in the workspace.
 
-### Suite 10: Git Version Control (`git.*`) — 12 Tools
+### Suite 11: Git Version Control (`git.*`) — 12 Tools
 
 - `git.status`: Check git working tree status and list modified note files.
 - `git.log`: View recent git commit history of the workspace.
@@ -164,25 +173,25 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `git.tag_list`: List all git tags in the workspace repository, newest first.
 - `git.revert` **[W]**: Revert a specific git commit by its hash, creating a new undo commit.
 
-### Suite 11: Diagnostics & Telemetry (`diagnostics.*`) — 3 Tools
+### Suite 12: Diagnostics & Telemetry (`diagnostics.*`) — 3 Tools
 
 - `diagnostics.check_health`: Run health diagnostics on AI providers, vector database, and graph DB.
 - `diagnostics.get_telemetry`: Inspect MCP tool call latency metrics, execution flight logs, and error rates.
 - `diagnostics.get_logs`: Fetch recent Notely application log entries from the electron log file.
 
-### Suite 12: External Web (`web.*`) — 2 Tools
+### Suite 13: External Web (`web.*`) — 2 Tools
 
 - `web.search`: Search the live web for external documentation or references.
 - `web.fetch`: Fetch and read text content from a public web page URL.
 
-### Suite 13: Personas & Agents (`personas.*`) — 4 Tools
+### Suite 14: Personas & Agents (`personas.*`) — 4 Tools
 
 - `personas.list`: List all available custom and system AI personas.
 - `personas.get`: Get details of a specific AI persona by ID.
 - `personas.create` **[W]**: Create a new custom AI persona.
 - `personas.delete` **[W]**: Delete a custom persona by ID.
 
-### Suite 14: Bundles & Packaging (`export.*`) — 2 Tools
+### Suite 15: Bundles & Packaging (`export.*`) — 2 Tools
 
 - `export.create_package` **[W]**: Export note + linked media assets into an encrypted .note bundle file.
 - `export.import_package` **[W]**: Import and extract a .note package bundle into the active workspace.

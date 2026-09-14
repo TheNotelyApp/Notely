@@ -10,15 +10,16 @@ const suiteNames = {
   workspace: 'Suite 3: Workspace Metadata & Files (`workspace.*`)',
   diagrams: 'Suite 4: Diagrams & Flowcharts (`diagrams.*`)',
   drawio: 'Suite 5: Draw.io Vector Drawings (`drawio.*`)',
-  media: 'Suite 6: Media & Assets (`media.*`)',
-  tasks: 'Suite 7: Task Workspace (`tasks.*`)',
-  search: 'Suite 8: Search & Retrieval (`search.*`)',
-  knowledge: 'Suite 9: Knowledge Graph & RAG (`knowledge.*`)',
-  git: 'Suite 10: Git Version Control (`git.*`)',
-  diagnostics: 'Suite 11: Diagnostics & Telemetry (`diagnostics.*`)',
-  web: 'Suite 12: External Web (`web.*`)',
-  personas: 'Suite 13: Personas & Agents (`personas.*`)',
-  export: 'Suite 14: Bundles & Packaging (`export.*`)'
+  excalidraw: 'Suite 6: Excalidraw Canvas Diagrams (`excalidraw.*`)',
+  media: 'Suite 7: Media & Assets (`media.*`)',
+  tasks: 'Suite 8: Task Workspace (`tasks.*`)',
+  search: 'Suite 9: Search & Retrieval (`search.*`)',
+  knowledge: 'Suite 10: Knowledge Graph & RAG (`knowledge.*`)',
+  git: 'Suite 11: Git Version Control (`git.*`)',
+  diagnostics: 'Suite 12: Diagnostics & Telemetry (`diagnostics.*`)',
+  web: 'Suite 13: External Web (`web.*`)',
+  personas: 'Suite 14: Personas & Agents (`personas.*`)',
+  export: 'Suite 15: Bundles & Packaging (`export.*`)'
 };
 
 const suites = {};

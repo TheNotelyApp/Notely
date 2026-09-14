@@ -72,6 +72,7 @@ function getToolCategory(name = "") {
   if (n.startsWith("workspace.")) return "Workspace Metadata";
   if (n.startsWith("diagrams.")) return "Diagrams & Flowcharts";
   if (n.startsWith("drawio.")) return "Draw.io Drawings";
+  if (n.startsWith("excalidraw.")) return "Excalidraw Drawings";
   if (n.startsWith("media.")) return "Media & Assets";
   if (n.startsWith("tasks.")) return "Task Workspace";
   if (n.startsWith("knowledge.")) return "Knowledge & Vector RAG";
@@ -101,6 +102,7 @@ function getCategoryIcon(cat) {
     case "Workspace Metadata": return <Folder size={14} />;
     case "Diagrams & Flowcharts": return <Zap size={14} />;
     case "Draw.io Drawings": return <FileJson size={14} />;
+    case "Excalidraw Drawings": return <Sparkles size={14} color="#f59e0b" />;
     case "Media & Assets": return <Sparkles size={14} />;
     case "Task Workspace": return <CheckCircle2 size={14} />;
     case "Knowledge & Vector RAG": return <Search size={14} />;
