@@ -7,15 +7,15 @@ category: Developer
 
 # Notely MCP Tools & Capabilities Reference
 
-Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** server enabling external AI clients (such as Claude Desktop, Cursor, IDE agents, and LLMs) to query, search, analyze, and manipulate workspace content safely.
+Notely embeds a dual-transport **Streamable HTTP & SSE Model Context Protocol (MCP)** server enabling external AI clients (such as Google Antigravity, Claude Desktop, Cursor, IDE agents, and LLMs) to query, search, analyze, and manipulate workspace content safely.
 
 ---
 
 ## 1. Server Architecture & Permission Control
 
-- **Transport Protocol**: HTTP SSE listening by default on `http://127.0.0.1:3700/sse` (messages accepted at `/messages`).
+- **Transport Protocol**: Dual-transport supporting Streamable HTTP (`http://127.0.0.1:3700/mcp`, `/sse`) and legacy HTTP SSE (`http://127.0.0.1:3700/sse` with `/messages`). Session tracking correlated via `Mcp-Session-Id` header.
 - **Security Guard (`allowWriteTools`)**: Configurable toggle in MCP Settings. When set to `false`, all write operations (`[W]`) are automatically hidden from MCP capability advertisement (`tools/list`) and blocked with a `WRITE_DISABLED` error envelope.
-- **Flight Log Telemetry**: All incoming tool call executions are recorded in the local SQLite telemetry database and broadcast via IPC to the **MCP Diagnostics** flight log viewer (`AIHealthPage`).
+- **Flight Log Telemetry**: All incoming tool call executions are recorded in the local SQLite telemetry database (`ai-telemetry.db`) and broadcast via IPC to the **MCP Diagnostics** flight log viewer (`AIHealthPage`).
 - **Total Capabilities**: **133 Tools** across 14 specialized suites.
 
 ---
@@ -202,10 +202,22 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 
 ---
 
-## 3. Client Integration Example (Claude Desktop)
+## 3. Client Integration Examples
 
-To connect Claude Desktop to Notely MCP server, add this entry to `claude_desktop_config.json`:
+### Google Antigravity (`mcp_config.json`)
+Connects via Streamable HTTP (`spec 2024-11-05`):
+```json
+{
+  "mcpServers": {
+    "notely": {
+      "url": "http://127.0.0.1:3700/mcp"
+    }
+  }
+}
+```
 
+### Claude Desktop (`claude_desktop_config.json`)
+Connects via Server-Sent Events:
 ```json
 {
   "mcpServers": {

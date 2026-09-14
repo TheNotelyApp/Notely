@@ -292,7 +292,34 @@ export default function AIHealthPage({ onBack }) {
             </div>
             <div className="ahp-card-rows">
               <div className="ahp-row">
-                <span>Server Endpoint</span>
+                <span>Streamable HTTP Endpoint</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <code style={{ fontSize: '11px', fontFamily: 'monospace' }}>http://{serverHost}:{serverPort}/mcp</code>
+                  <button
+                    type="button"
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      width: '20px',
+                      height: '20px',
+                      padding: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      borderRadius: '4px'
+                    }}
+                    onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/mcp`, 'endpoint_http', 'Streamable HTTP Endpoint URL')}
+                    title={copiedId === 'endpoint_http' ? 'Copied to clipboard' : 'Copy Streamable HTTP Endpoint URL'}
+                    aria-label="Copy Streamable HTTP Endpoint URL"
+                  >
+                    {copiedId === 'endpoint_http' ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />}
+                  </button>
+                </div>
+              </div>
+              <div className="ahp-row">
+                <span>Legacy SSE Endpoint</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <code style={{ fontSize: '11px', fontFamily: 'monospace' }}>http://{serverHost}:{serverPort}/sse</code>
                   <button
@@ -310,17 +337,17 @@ export default function AIHealthPage({ onBack }) {
                       color: 'var(--text-muted)',
                       borderRadius: '4px'
                     }}
-                    onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/sse`, 'endpoint_url', 'Server Endpoint URL')}
-                    title={copiedId === 'endpoint_url' ? 'Copied to clipboard' : 'Copy Server Endpoint URL'}
-                    aria-label="Copy Server Endpoint URL"
+                    onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/sse`, 'endpoint_sse', 'SSE Endpoint URL')}
+                    title={copiedId === 'endpoint_sse' ? 'Copied to clipboard' : 'Copy SSE Endpoint URL'}
+                    aria-label="Copy SSE Endpoint URL"
                   >
-                    {copiedId === 'endpoint_url' ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />}
+                    {copiedId === 'endpoint_sse' ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />}
                   </button>
                 </div>
               </div>
               <div className="ahp-row">
                 <span>Transport Protocol</span>
-                <span className="ahp-provider">HTTP SSE (Server-Sent Events)</span>
+                <span className="ahp-provider">Streamable HTTP &amp; SSE</span>
               </div>
               <div className="ahp-row">
                 <span>MCP Spec Version</span>

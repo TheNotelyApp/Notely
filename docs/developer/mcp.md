@@ -22,7 +22,8 @@ flowchart TD
     subgraph Transport ["Transport Layer (electron/mcp/McpServer.cjs)"]
         HTTP["HTTP Server (127.0.0.1:3700)"]
         AUTH["Bearer Token Authenticator"]
-        SSE["SSEServerTransport (/sse)"]
+        SHTTP["Streamable HTTP (/mcp, /sse, /)"]
+        SSE["Legacy SSEServerTransport (/sse)"]
         POST["JSON-RPC Message Endpoint (/messages?sessionId=...)"]
     end
 
@@ -46,8 +47,9 @@ flowchart TD
         MCS["MCPSettings.jsx (Port & Auth Settings)"]
     end
 
-    Clients -->|"HTTP GET /sse (Bearer Token)"| AUTH
-    AUTH --> SSE
+    Clients -->|"POST /mcp or /sse (Streamable HTTP, Mcp-Session-Id)"| SHTTP
+    Clients -->|"GET /sse (Legacy SSE)"| SSE
+    SHTTP --> SM & ATR
     SSE --> SM
     Clients -->|"HTTP POST /messages"| POST
     POST --> ATR
@@ -60,12 +62,18 @@ flowchart TD
 
 ## 2. Server & Transport Specifications
 
-* **Protocol Version**: Model Context Protocol JSON-RPC 2.0.
-* **Default Endpoint**: `http://127.0.0.1:3700/sse`
-* **Message Endpoint**: `http://127.0.0.1:3700/messages?sessionId=<session_id>`
+* **Protocol Version**: Model Context Protocol JSON-RPC 2.0 (Spec 2024-11-05).
+* **Dual Transport Architecture**:
+  * **Streamable HTTP (Recommended for Google Antigravity, modern IDEs)**:
+    * Endpoint: `http://127.0.0.1:3700/mcp` (also accepted on `/sse`, `/api/mcp`, `/`).
+    * Session Header: `Mcp-Session-Id` header tracks active client sessions across requests.
+    * Method: `POST` with `Content-Type: application/json` or `text/event-stream`.
+  * **Legacy Server-Sent Events (SSE) (Claude Desktop)**:
+    * SSE Stream: `http://127.0.0.1:3700/sse` (`GET`)
+    * Message Endpoint: `http://127.0.0.1:3700/messages?sessionId=<session_id>` (`POST`)
 * **Health Check**: `GET /health` or `GET /status` returns JSON server state, version (`0.1.41`), and registered tool count.
 * **Authentication**: Optional HTTP Authorization Header `Bearer <token>`.
-* **Session Lifecycle**: Connections managed via `SSEServerTransport`. Disconnections gracefully purge active session state from `McpSessionManager`.
+* **Session Lifecycle**: Connections managed via `StreamableHTTPServerTransport` and `SSEServerTransport`. Session state and tool metrics tracked in `McpSessionManager`. Telemetry persisted to `.notes-app/ai-telemetry.db`.
 
 ---
 
@@ -100,10 +108,38 @@ Notely provides two specialized React UI views for managing and inspecting the M
    - **Manifest Exporter**: 1-click **Export Manifest** button to copy full JSON-RPC tool schema manifest to clipboard for external integration.
 
 2. **MCP Diagnostics & Health (`src/components/AIHealthPage.jsx`)**:
-   - Live telemetry feed for active SSE sessions, remote client User-Agents, request durations, and error diagnostics.
+   - Live telemetry feed for active Streamable HTTP & SSE sessions, remote client User-Agents, request durations, and error diagnostics.
 
 ---
 
-## 5. Security & IPC Control
+## 5. Client Integration Configurations
+
+### A. Google Antigravity (`mcp_config.json`)
+Connects via Streamable HTTP:
+```json
+{
+  "mcpServers": {
+    "notely": {
+      "url": "http://127.0.0.1:3700/mcp"
+    }
+  }
+}
+```
+
+### B. Claude Desktop (`claude_desktop_config.json`)
+Connects via legacy Server-Sent Events (SSE):
+```json
+{
+  "mcpServers": {
+    "notely": {
+      "url": "http://127.0.0.1:3700/sse"
+    }
+  }
+}
+```
+
+---
+
+## 6. Security & IPC Control
 
 All IPC handlers (`mcp:get-status`, `mcp:set-config`, `mcp:start`, `mcp:stop`, `mcp:restart`, `mcp:get-sessions`) enforce trusted sender verification via `assertTrustedIpcSender`.

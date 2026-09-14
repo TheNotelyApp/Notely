@@ -143,7 +143,20 @@ export function MCPSettingsContent({ notify }) {
     }
   };
 
-  const sseUrl = `http://${status?.host || hostInput || "127.0.0.1"}:${status?.port || portInput || "3700"}/sse`;
+  const [copiedHttpUrl, setCopiedHttpUrl] = useState(false);
+  const [configTarget, setConfigTarget] = useState("antigravity");
+
+  const host = status?.host || hostInput || "127.0.0.1";
+  const port = status?.port || portInput || "3700";
+  const httpUrl = `http://${host}:${port}/mcp`;
+  const sseUrl = `http://${host}:${port}/sse`;
+
+  const copyHttpUrl = () => {
+    navigator.clipboard.writeText(httpUrl);
+    setCopiedHttpUrl(true);
+    notify?.("MCP Streamable HTTP URL copied to clipboard.", "success");
+    setTimeout(() => setCopiedHttpUrl(false), 2000);
+  };
 
   const copySseUrl = () => {
     navigator.clipboard.writeText(sseUrl);
@@ -151,6 +164,19 @@ export function MCPSettingsContent({ notify }) {
     notify?.("MCP SSE URL copied to clipboard.", "success");
     setTimeout(() => setCopiedUrl(false), 2000);
   };
+
+  const antigravitySnippet = JSON.stringify(
+    {
+      mcpServers: {
+        notely: {
+          url: httpUrl,
+          ...(tokenInput.trim() ? { headers: { Authorization: `Bearer ${tokenInput.trim()}` } } : {})
+        }
+      }
+    },
+    null,
+    2
+  );
 
   const claudeSnippet = JSON.stringify(
     {
@@ -165,10 +191,17 @@ export function MCPSettingsContent({ notify }) {
     2
   );
 
+  const currentSnippet = configTarget === "antigravity" ? antigravitySnippet : claudeSnippet;
+
   const copySnippet = () => {
-    navigator.clipboard.writeText(claudeSnippet);
+    navigator.clipboard.writeText(currentSnippet);
     setCopiedSnippet(true);
-    notify?.("Claude Desktop config snippet copied.", "success");
+    notify?.(
+      configTarget === "antigravity"
+        ? "Antigravity config snippet copied."
+        : "Claude Desktop config snippet copied.",
+      "success"
+    );
     setTimeout(() => setCopiedSnippet(false), 2000);
   };
 
@@ -208,7 +241,7 @@ export function MCPSettingsContent({ notify }) {
                 {isPortConflict
                   ? `Port ${status?.port || portInput} is in use by another app. Choose a different port below.`
                   : isRunning
-                  ? `Listening on ${sseUrl} • 50 Tools Available`
+                  ? `Streamable HTTP on ${httpUrl} • SSE on ${sseUrl} • 50 Tools Available`
                   : "Server is currently stopped."}
               </p>
             </div>
@@ -258,22 +291,42 @@ export function MCPSettingsContent({ notify }) {
           </div>
         )}
 
-        {/* SSE Endpoint Bar */}
+        {/* MCP Endpoint Bars (Streamable HTTP & SSE) */}
         {isRunning && (
-          <div className="mcp-sse-bar">
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
-              <Radio size={14} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
-              <code className="mcp-sse-url">{sseUrl}</code>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
+            <div className="mcp-sse-bar">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                <Radio size={14} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Streamable HTTP (Antigravity / Modern):</span>
+                <code className="mcp-sse-url">{httpUrl}</code>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={copyHttpUrl}
+                style={{ fontSize: "11px", padding: "4px 8px" }}
+              >
+                {copiedHttpUrl ? <Check size={12} /> : <Copy size={12} />}
+                {copiedHttpUrl ? "Copied" : "Copy URL"}
+              </button>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={copySseUrl}
-              style={{ fontSize: "11px", padding: "4px 8px" }}
-            >
-              {copiedUrl ? <Check size={12} /> : <Copy size={12} />}
-              {copiedUrl ? "Copied" : "Copy URL"}
-            </button>
+
+            <div className="mcp-sse-bar" style={{ opacity: 0.9 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                <Radio size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Legacy SSE (Claude Desktop):</span>
+                <code className="mcp-sse-url">{sseUrl}</code>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={copySseUrl}
+                style={{ fontSize: "11px", padding: "4px 8px" }}
+              >
+                {copiedUrl ? <Check size={12} /> : <Copy size={12} />}
+                {copiedUrl ? "Copied" : "Copy URL"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -408,17 +461,46 @@ export function MCPSettingsContent({ notify }) {
         </div>
       </form>
 
-      {/* Integration Guide / Claude Desktop Config */}
+      {/* Integration Guide / Client Config */}
       <div className="mcp-form-card">
-        <h4 className="mcp-card-heading">
-          <Globe size={16} /> Claude Desktop &amp; External Client Config
-        </h4>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+          <h4 className="mcp-card-heading" style={{ margin: 0 }}>
+            <Globe size={16} /> Client Integration Snippets
+          </h4>
+          <div style={{ display: "inline-flex", gap: "4px", background: "var(--surface-muted)", padding: "2px", borderRadius: "6px" }}>
+            <button
+              type="button"
+              className={`btn ${configTarget === "antigravity" ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => setConfigTarget("antigravity")}
+              style={{ fontSize: "11px", padding: "4px 10px", height: "24px" }}
+            >
+              Google Antigravity
+            </button>
+            <button
+              type="button"
+              className={`btn ${configTarget === "claude" ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => setConfigTarget("claude")}
+              style={{ fontSize: "11px", padding: "4px 10px", height: "24px" }}
+            >
+              Claude Desktop (SSE)
+            </button>
+          </div>
+        </div>
+
         <p className="mcp-field-help" style={{ margin: 0 }}>
-          Add this JSON configuration to your <code>claude_desktop_config.json</code> to connect external AI tools to Notely:
+          {configTarget === "antigravity" ? (
+            <>
+              Add this JSON block to your Antigravity <code>mcp_config.json</code> (or agent configuration) using Streamable HTTP:
+            </>
+          ) : (
+            <>
+              Add this JSON configuration to your <code>claude_desktop_config.json</code> using legacy SSE transport:
+            </>
+          )}
         </p>
 
         <div className="mcp-code-container">
-          <pre className="mcp-code-block">{claudeSnippet}</pre>
+          <pre className="mcp-code-block">{currentSnippet}</pre>
           <button
             type="button"
             className="btn btn-secondary"

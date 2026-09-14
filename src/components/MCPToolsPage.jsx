@@ -124,6 +124,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [showHelp, setShowHelp] = useState(false);
   const [copiedManifest, setCopiedManifest] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
+  const [configTarget, setConfigTarget] = useState("antigravity");
 
   const loadData = useCallback(async () => {
     try {
@@ -420,9 +421,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px", display: "block" }}>
                 {isRunning
                   ? !allowWrite
-                    ? `Running in READ-ONLY MODE. Exposing ${tools.filter(t => !t.isWrite).length} safe query tools over SSE. All ${tools.filter(t => t.isWrite).length} write tools are blocked.`
-                    : `Exposing all ${tools.length} capabilities to external AI clients over SSE at http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
-                  : "Server offline. Enable from MCP Settings to connect Claude Desktop, IDE agents, or external tools."}
+                    ? `Running in READ-ONLY MODE. Exposing ${tools.filter(t => !t.isWrite).length} safe query tools over Streamable HTTP & SSE. All ${tools.filter(t => t.isWrite).length} write tools are blocked.`
+                    : `Exposing all ${tools.length} capabilities over Streamable HTTP (/mcp) & SSE (/sse) at port ${status?.port || 3700}`
+                  : "Server offline. Enable from MCP Settings to connect Antigravity, Claude Desktop, IDE agents, or external tools."}
               </span>
             </div>
           </div>
@@ -494,11 +495,33 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
             {/* Integration Setup Card */}
             <div className="mcp-sidebar-card">
-              <h4 className="mcp-sidebar-card-title">
-                <Zap size={16} color="#eab308" /> Claude Desktop Client Config
-              </h4>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h4 className="mcp-sidebar-card-title" style={{ margin: 0 }}>
+                  <Zap size={16} color="#eab308" /> Client Integration Config
+                </h4>
+              </div>
+              <div style={{ display: "flex", gap: "4px", background: "var(--surface-bg)", padding: "2px", borderRadius: "6px" }}>
+                <button
+                  type="button"
+                  className={`btn ${configTarget === "antigravity" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setConfigTarget("antigravity")}
+                  style={{ flex: 1, fontSize: "11px", padding: "2px 6px", height: "24px" }}
+                >
+                  Antigravity
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${configTarget === "claude" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setConfigTarget("claude")}
+                  style={{ flex: 1, fontSize: "11px", padding: "2px 6px", height: "24px" }}
+                >
+                  Claude (SSE)
+                </button>
+              </div>
               <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.4 }}>
-                Add this snippet to your <code>claude_desktop_config.json</code> to connect Claude Desktop directly to Notely.
+                {configTarget === "antigravity"
+                  ? "Streamable HTTP snippet for Antigravity (mcp_config.json):"
+                  : "Legacy SSE snippet for Claude Desktop (claude_desktop_config.json):"}
               </p>
               <div style={{ position: "relative" }}>
                 <pre
@@ -514,7 +537,15 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                     overflowX: "auto"
                   }}
                 >
-{`{
+{configTarget === "antigravity"
+  ? `{
+  "mcpServers": {
+    "notely": {
+      "url": "http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/mcp"
+    }
+  }
+}`
+  : `{
   "mcpServers": {
     "notely": {
       "url": "http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse"
@@ -529,12 +560,19 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                     const snippet = JSON.stringify({
                       mcpServers: {
                         notely: {
-                          url: `http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
+                          url: configTarget === "antigravity"
+                            ? `http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/mcp`
+                            : `http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
                         }
                       }
                     }, null, 2);
                     navigator.clipboard.writeText(snippet);
-                    onNotify?.("Copied Claude Desktop configuration to clipboard!", "success");
+                    onNotify?.(
+                      configTarget === "antigravity"
+                        ? "Copied Antigravity configuration to clipboard!"
+                        : "Copied Claude Desktop configuration to clipboard!",
+                      "success"
+                    );
                   }}
                   style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                 >
@@ -591,7 +629,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
                 <div style={{ fontSize: "12.5px", lineHeight: "1.6", color: "var(--text-muted)" }}>
                   <p style={{ margin: "0 0 10px" }}>
-                    Notely embeds an <strong>HTTP Server-Sent Events (SSE)</strong> MCP server. External AI agents (Claude Desktop, Cursor, IDE assistants) connect to discover, query, and edit notes in real time.
+                    Notely embeds a dual-transport <strong>Streamable HTTP &amp; SSE</strong> MCP server. External AI agents (Google Antigravity, Claude Desktop, Cursor, IDE assistants) connect to discover, query, and edit notes in real time.
                   </p>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px", marginTop: "12px" }}>
@@ -611,9 +649,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
                     <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
-                        📡 Client Connection URL
+                        📡 Client Connection URLs
                       </strong>
-                      External SSE endpoint: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>. Messages endpoint: <code style={{ color: "#38bdf8" }}>/messages</code>. Copy the ready-made JSON snippet from the left sidebar.
+                      Streamable HTTP: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code> (or <code>/sse</code>). Legacy SSE: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code> (messages: <code>/messages</code>).
                     </div>
                   </div>
                 </div>
