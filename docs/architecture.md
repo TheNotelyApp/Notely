@@ -108,7 +108,13 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 * **Security**: AES-256 encrypted bundle (not readable by generic ZIP tools). Each file is SHA-256 hashed and verified on import to reject tampered packages. Optional password protection stores a salted SHA-256 signature in the manifest.
 * **Import**: Decrypts and verifies bundle integrity, resolves asset path conflicts, and places all files into the active workspace. See [Export & Import Reference](/export-reference) for full user-facing documentation.
 
-### E. Knowledge Graph & Vector Embedding Subsystem
+### E. Model Context Protocol (MCP) Subsystem (`McpServer.cjs`)
+* **HTTP SSE Server**: Embedded SSE server listening by default on port `3700` exposing workspace capabilities to external AI clients (Claude Desktop, Cursor, IDE agents).
+* **Capability Suites**: Registers **50 tools across 10 suites** (`notes`, `index`, `workspace`, `diagrams`, `drawio`, `media`, `tasks`, `knowledge`, `git`, `diagnostics`, `web`, `personas`). See [`docs/mcp-tools-reference.md`](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/docs/mcp-tools-reference.md).
+* **Permission Control**: Enforces `allowWriteTools` configuration toggle; rejects unauthorized write operations (`[W]`) automatically.
+* **Telemetry Flight Log**: Records tool execution events in SQLite database and streams updates via IPC to `AIHealthPage.jsx`.
+
+### F. Knowledge Graph & Vector Embedding Subsystem
 * **Vector Embeddings Engine (`EmbeddingDB.js`)**: Stores 384-dimensional `BGE-small` vector chunks in `{workspace}/.notes-app/ai-embeddings.db`. Features physical vector dimension validation (`verifyModelDimensions`) to prevent dimension mismatches.
 * **Knowledge Graph Subsystem (`GraphService.js`, `GraphDB.js`)**: Maps note relations, tags, mentions, Wikilinks, Images, Local Documents, and External URLs in `{workspace}/.notes-app/ai-graph.db`. Executes relation traversals via SQLite **Recursive Common Table Expressions (CTEs)**.
 * **Local ONNX Embedder**: Vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph entity/relationship extraction run on-device and offline using `onnxruntime-node`.

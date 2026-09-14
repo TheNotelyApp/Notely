@@ -62,25 +62,44 @@ function generateSampleArgs(tool) {
 
 function getToolCategory(name = "") {
   const n = name.toLowerCase();
-  if (n.includes("note") || n.includes("doc") || n.includes("content") || n.includes("read") || n.includes("write") || n.includes("create")) {
-    return "Notes & Docs";
-  }
-  if (n.includes("search") || n.includes("graph") || n.includes("embed") || n.includes("query") || n.includes("find") || n.includes("rag")) {
-    return "Search & Graph";
-  }
-  if (n.includes("workspace") || n.includes("folder") || n.includes("file") || n.includes("list") || n.includes("dir")) {
-    return "Workspace & Files";
-  }
+  if (n.startsWith("notes.")) return "Notes & Docs";
+  if (n.startsWith("index.")) return "Workspace Index";
+  if (n.startsWith("workspace.")) return "Workspace Metadata";
+  if (n.startsWith("diagrams.")) return "Diagrams & Flowcharts";
+  if (n.startsWith("drawio.")) return "Draw.io Drawings";
+  if (n.startsWith("media.")) return "Media & Assets";
+  if (n.startsWith("tasks.")) return "Task Workspace";
+  if (n.startsWith("knowledge.")) return "Knowledge & Vector RAG";
+  if (n.startsWith("git.") || n.startsWith("diagnostics.")) return "Git & Diagnostics";
+  if (n.startsWith("web.") || n.startsWith("personas.")) return "Web & Personas";
+
+  if (n.includes("note") || n.includes("doc")) return "Notes & Docs";
+  if (n.includes("index") || n.includes("toc")) return "Workspace Index";
+  if (n.includes("workspace")) return "Workspace Metadata";
+  if (n.includes("diagram") || n.includes("mermaid")) return "Diagrams & Flowcharts";
+  if (n.includes("drawio")) return "Draw.io Drawings";
+  if (n.includes("media") || n.includes("asset")) return "Media & Assets";
+  if (n.includes("task") || n.includes("todo")) return "Task Workspace";
+  if (n.includes("knowledge") || n.includes("graph") || n.includes("embed")) return "Knowledge & Vector RAG";
+  if (n.includes("git") || n.includes("health")) return "Git & Diagnostics";
+  if (n.includes("web") || n.includes("persona")) return "Web & Personas";
+
   return "System & AI";
 }
 
 function getCategoryIcon(cat) {
   switch (cat) {
     case "Notes & Docs": return <FileText size={14} />;
-    case "Search & Graph": return <Search size={14} />;
-    case "Workspace & Files": return <Folder size={14} />;
-    case "System & AI": return <Cpu size={14} />;
-    default: return <Layers size={14} />;
+    case "Workspace Index": return <Layers size={14} />;
+    case "Workspace Metadata": return <Folder size={14} />;
+    case "Diagrams & Flowcharts": return <Zap size={14} />;
+    case "Draw.io Drawings": return <FileJson size={14} />;
+    case "Media & Assets": return <Sparkles size={14} />;
+    case "Task Workspace": return <CheckCircle2 size={14} />;
+    case "Knowledge & Vector RAG": return <Search size={14} />;
+    case "Git & Diagnostics": return <Activity size={14} />;
+    case "Web & Personas": return <Terminal size={14} />;
+    default: return <Cpu size={14} />;
   }
 }
 
