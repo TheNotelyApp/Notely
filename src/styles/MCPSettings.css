@@ -285,7 +285,7 @@
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: var(--border-default);
-  border-radius: 20px;
+  border-radius: 999px;
   transition: background var(--motion-standard);
 }
 
