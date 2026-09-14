@@ -223,18 +223,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .landing-workspace-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .landing-workspace-layout .split-resizer {
-    display: none;
-  }
-
-  .landing-dashboard-rail {
-    height: auto;
-  }
-
   .dashboard-bar {
     grid-template-columns: minmax(0, 1fr);
   }

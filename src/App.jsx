@@ -18,6 +18,7 @@ import { AppSubpageViews } from "./components/layout/AppSubpageViews";
 import { AppModalsContainer } from "./components/modals/AppModalsContainer";
 import { SettingsModal } from "./components/SettingsModal";
 import { WorkspaceModal } from "./components/WorkspaceModal";
+import { RecentWorkspacesModal } from "./components/modals/RecentWorkspacesModal";
 import { LandingView } from "./components/layout/LandingView";
 import { TitleBar } from "./components/layout/TitleBar";
 const EmbeddedTerminal = lazy(() =>
@@ -3384,40 +3385,18 @@ export default function App() {
       ) : null}
 
       {recentWorkspacesDialogOpen ? (
-        <OverlayDialog open={recentWorkspacesDialogOpen} onClose={() => setRecentWorkspacesDialogOpen(false)} ariaLabel="Open recent workspace">
-            <div className="overlay-dialog-header">
-              <h2>Open Recent Workspace</h2>
-              <button
-                className="icon-button"
-                onClick={() => setRecentWorkspacesDialogOpen(false)}
-                type="button"
-                aria-label="Close recent workspaces dialog"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {recentWorkspacePaths.length ? (
-              <div className="overlay-dialog-recents" aria-label="Recent workspaces">
-                <span>Recent Workspaces ({recentWorkspacePaths.length})</span>
-                <div className="overlay-dialog-recent-list">
-                  {recentWorkspacePaths.map((workspacePath) => (
-                    <button
-                      key={workspacePath}
-                      className="overlay-dialog-recent-button"
-                      onClick={() => handleOpenRecentWorkspace(workspacePath)}
-                      disabled={savingNotesFolder}
-                      data-tooltip={workspacePath}
-                      type="button"
-                    >
-                      {workspacePath}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="overlay-dialog-empty">No recent workspaces yet.</p>
-            )}
-        </OverlayDialog>
+        <RecentWorkspacesModal
+          isOpen={recentWorkspacesDialogOpen}
+          onClose={() => setRecentWorkspacesDialogOpen(false)}
+          recentWorkspacePaths={recentWorkspacePaths}
+          currentWorkspacePath={notesFolderPath || activeProject?.rootPath}
+          onSelectWorkspace={handleOpenRecentWorkspace}
+          onBrowseWorkspace={() => {
+            setRecentWorkspacesDialogOpen(false);
+            void handleOpenWorkspacePicker();
+          }}
+          saving={savingNotesFolder}
+        />
       ) : null}
 
       {workspaceExportOpen ? (
