@@ -10,7 +10,8 @@ const DEFAULT_CONFIG = {
   enabled: true,
   port: 3700,
   host: '127.0.0.1',
-  bearerToken: ''
+  bearerToken: '',
+  allowWriteTools: true
 };
 
 class McpConfig {
@@ -29,7 +30,8 @@ class McpConfig {
         this.config = {
           ...DEFAULT_CONFIG,
           ...parsed,
-          port: Number(parsed.port) || DEFAULT_CONFIG.port
+          port: Number(parsed.port) || DEFAULT_CONFIG.port,
+          allowWriteTools: parsed.allowWriteTools !== undefined ? Boolean(parsed.allowWriteTools) : DEFAULT_CONFIG.allowWriteTools
         };
       }
     } catch (err) {
@@ -60,6 +62,9 @@ class McpConfig {
       if (updates.bearerToken !== undefined) {
         next.bearerToken = String(updates.bearerToken || '').trim();
       }
+      if (updates.allowWriteTools !== undefined) {
+        next.allowWriteTools = Boolean(updates.allowWriteTools);
+      }
 
       this.config = next;
       const dir = path.dirname(this.configPath);
@@ -80,6 +85,7 @@ class McpConfig {
       port: Number(this.config.port) || DEFAULT_CONFIG.port,
       host: this.config.host || DEFAULT_CONFIG.host,
       bearerToken: this.config.bearerToken || '',
+      allowWriteTools: this.config.allowWriteTools !== undefined ? Boolean(this.config.allowWriteTools) : true,
       isTokenProtected: Boolean(this.config.bearerToken && this.config.bearerToken.trim().length > 0)
     };
   }

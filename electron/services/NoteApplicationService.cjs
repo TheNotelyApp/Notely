@@ -196,17 +196,55 @@ class NoteApplicationService {
   }
 
   /**
-   * Note updates deferred until system maturity.
+   * Update or append content to an existing note safely inside the workspace.
    */
-  async updateNote() {
-    throw new Error('notes.update capability is deferred until system maturity.');
+  async updateNote({ workspaceRoot, filePath, content, mode = 'append' }) {
+    if (!filePath) {
+      throw new Error('filePath is required for updating note.');
+    }
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    if (!fs.existsSync(validPath)) {
+      throw new Error(`Note file at path "${filePath}" does not exist.`);
+    }
+
+    const currentContent = fs.readFileSync(validPath, 'utf8');
+    let newContent = currentContent;
+
+    if (mode === 'overwrite' || mode === 'replace') {
+      newContent = String(content || '');
+    } else if (mode === 'prepend') {
+      newContent = String(content || '') + '\n\n' + currentContent;
+    } else {
+      // Default: append
+      newContent = currentContent + '\n\n' + String(content || '');
+    }
+
+    fs.writeFileSync(validPath, newContent, 'utf8');
+    return {
+      path: validPath,
+      updated: true,
+      mode,
+      bytesWritten: Buffer.byteLength(newContent, 'utf8')
+    };
   }
 
   /**
-   * Note deletions deferred until system maturity.
+   * Delete or trash a note safely inside the workspace.
    */
-  async deleteNote() {
-    throw new Error('notes.delete capability is deferred until system maturity.');
+  async deleteNote({ workspaceRoot, filePath }) {
+    if (!filePath) {
+      throw new Error('filePath is required for deleting note.');
+    }
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    if (!fs.existsSync(validPath)) {
+      throw new Error(`Note file at path "${filePath}" does not exist.`);
+    }
+
+    fs.unlinkSync(validPath);
+    return {
+      path: validPath,
+      deleted: true
+    };
   }
 }
 

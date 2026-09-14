@@ -36,6 +36,7 @@ export function MCPSettingsContent({ notify }) {
   const [hostInput, setHostInput] = useState("127.0.0.1");
   const [tokenInput, setTokenInput] = useState("");
   const [enabledInput, setEnabledInput] = useState(true);
+  const [allowWriteInput, setAllowWriteInput] = useState(true);
 
   const fetchState = useCallback(async () => {
     try {
@@ -47,6 +48,7 @@ export function MCPSettingsContent({ notify }) {
         setHostInput(cfg.host || "127.0.0.1");
         setTokenInput(cfg.bearerToken || "");
         setEnabledInput(Boolean(cfg.enabled));
+        setAllowWriteInput(cfg.allowWriteTools !== undefined ? Boolean(cfg.allowWriteTools) : true);
       }
       if (st) {
         setStatus(st);
@@ -80,7 +82,8 @@ export function MCPSettingsContent({ notify }) {
         enabled: enabledInput,
         port: portNum,
         host: hostInput,
-        bearerToken: tokenInput
+        bearerToken: tokenInput,
+        allowWriteTools: allowWriteInput
       });
 
       if (res?.config) {
@@ -197,12 +200,15 @@ export function MCPSettingsContent({ notify }) {
                   <span className="mcp-status-badge-dot" />
                   {loading ? "Loading..." : isPortConflict ? "Port Conflict" : isRunning ? "Running" : "Stopped"}
                 </span>
+                <span className={`mcp-status-badge ${allowWriteInput ? "is-running" : ""}`} style={{ background: allowWriteInput ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: allowWriteInput ? 'var(--status-success-text)' : 'var(--status-danger-text)', border: '1px solid currentColor' }}>
+                  {allowWriteInput ? "Read-Write Mode" : "Read-Only Mode"}
+                </span>
               </div>
               <p className="mcp-hero-subtitle">
                 {isPortConflict
                   ? `Port ${status?.port || portInput} is in use by another app. Choose a different port below.`
                   : isRunning
-                  ? `Listening on ${sseUrl}`
+                  ? `Listening on ${sseUrl} • 50 Tools Available`
                   : "Server is currently stopped."}
               </p>
             </div>
@@ -292,6 +298,25 @@ export function MCPSettingsContent({ notify }) {
               className="mcp-toggle-input"
               checked={enabledInput}
               onChange={(e) => setEnabledInput(e.target.checked)}
+            />
+            <span className="mcp-toggle-slider" />
+          </label>
+        </div>
+
+        {/* Allow Write Tools Toggle */}
+        <div className="mcp-form-row" style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--border-soft)" }}>
+          <div>
+            <label className="mcp-field-label">Allow Write &amp; Modification Tools</label>
+            <span className="mcp-field-help">
+              Enable external AI clients to create, edit, delete notes, custom personas, diagrams, and assets. When disabled, write operations are blocked.
+            </span>
+          </div>
+          <label className="mcp-toggle-label">
+            <input
+              type="checkbox"
+              className="mcp-toggle-input"
+              checked={allowWriteInput}
+              onChange={(e) => setAllowWriteInput(e.target.checked)}
             />
             <span className="mcp-toggle-slider" />
           </label>

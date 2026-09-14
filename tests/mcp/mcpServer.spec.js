@@ -47,18 +47,21 @@ describe('Notely MCP Server Subsystem Tests', () => {
       const initial = configManager.getConfig();
       assert.strictEqual(initial.port, 3700);
       assert.strictEqual(initial.enabled, true);
+      assert.strictEqual(initial.allowWriteTools, true);
       assert.strictEqual(initial.isTokenProtected, false);
 
-      configManager.save({ port: 3755, bearerToken: 'secret123' });
+      configManager.save({ port: 3755, bearerToken: 'secret123', allowWriteTools: false });
       const updated = configManager.getConfig();
       assert.strictEqual(updated.port, 3755);
       assert.strictEqual(updated.bearerToken, 'secret123');
+      assert.strictEqual(updated.allowWriteTools, false);
       assert.strictEqual(updated.isTokenProtected, true);
 
       // Reload from disk
       const reloaded = new McpConfig(tempDir);
       assert.strictEqual(reloaded.getConfig().port, 3755);
       assert.strictEqual(reloaded.getConfig().bearerToken, 'secret123');
+      assert.strictEqual(reloaded.getConfig().allowWriteTools, false);
     });
   });
 
@@ -83,17 +86,38 @@ describe('Notely MCP Server Subsystem Tests', () => {
     });
   });
 
+  describe('ApplicationToolRegistry Security & Execution', () => {
+    it('should block write tools when allowWriteTools is false', async () => {
+      const writeRes = await applicationToolRegistry.executeTool(
+        'notes.create',
+        { title: 'Security Test Note' },
+        { allowWriteTools: false, workspaceRoot: tempDir }
+      );
+      assert.strictEqual(writeRes.success, false);
+      assert.strictEqual(writeRes.error.code, 'WRITE_DISABLED');
+
+      const readRes = await applicationToolRegistry.executeTool(
+        'workspace.statistics',
+        {},
+        { allowWriteTools: false, workspaceRoot: tempDir }
+      );
+      assert.strictEqual(readRes.success, true);
+    });
+  });
+
   describe('McpServer HTTP & Tool Endpoints', () => {
     let server;
     const testPort = 3798;
     const sessionManager = new McpSessionManager();
+    const recordedEvents = [];
 
     beforeAll(async () => {
       server = new McpServer({
         port: testPort,
         host: '127.0.0.1',
         bearerToken: 'test-token',
-        sessionManager
+        sessionManager,
+        onTelemetryEvent: (evt) => recordedEvents.push(evt)
       });
       await server.start();
     });
@@ -110,7 +134,7 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(res.json.status, 'ok');
       assert.strictEqual(res.json.server, 'notely-mcp');
       assert.strictEqual(res.json.port, testPort);
-      assert.ok(res.json.toolsCount > 10);
+      assert.ok(res.json.toolsCount >= 40);
     });
 
     it('should enforce Bearer token authentication when configured', async () => {
@@ -127,7 +151,11 @@ describe('Notely MCP Server Subsystem Tests', () => {
       const toolNames = resAuth.json.tools.map(t => t.name);
       assert.ok(toolNames.includes('notes.read'));
       assert.ok(toolNames.includes('notes.create'));
-      assert.ok(toolNames.includes('personas.list'));
+      assert.ok(toolNames.includes('diagrams.render'));
+      assert.ok(toolNames.includes('index.build_index'));
+      assert.ok(toolNames.includes('workspace.metadata'));
+      assert.ok(toolNames.includes('media.list_assets'));
+      assert.ok(toolNames.includes('git.status'));
     });
 
     it('should handle CORS preflight', async () => {
@@ -138,9 +166,9 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(res.headers['access-control-allow-origin'], '*');
     });
 
-    it('should execute tools registered in ApplicationToolRegistry', async () => {
+    it('should execute tools registered in ApplicationToolRegistry and emit telemetry', async () => {
       const schemas = applicationToolRegistry.toMcpSchemas();
-      assert.ok(schemas.length >= 15);
+      assert.ok(schemas.length >= 40);
       const personaList = schemas.find(s => s.name === 'personas.list');
       assert.ok(personaList);
     });

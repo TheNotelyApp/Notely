@@ -39,8 +39,10 @@ class McpLifecycle {
       port: cfg.port,
       host: cfg.host,
       bearerToken: cfg.bearerToken,
+      allowWriteTools: cfg.allowWriteTools,
       sessionManager: this.sessionManager,
-      getWorkspaceRoot: () => (this.getWorkspaceRoot ? this.getWorkspaceRoot() : null)
+      getWorkspaceRoot: () => (this.getWorkspaceRoot ? this.getWorkspaceRoot() : null),
+      onTelemetryEvent: (eventData) => this.broadcastTelemetryEvent(eventData)
     });
 
     this.initialized = true;
@@ -63,6 +65,14 @@ class McpLifecycle {
     for (const win of this.browserWindows) {
       if (!win.isDestroyed()) {
         win.webContents.send('mcp:status-changed', status);
+      }
+    }
+  }
+
+  broadcastTelemetryEvent(eventData) {
+    for (const win of this.browserWindows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('telemetry:event', eventData);
       }
     }
   }
@@ -100,6 +110,7 @@ class McpLifecycle {
         port: newConfig.port,
         host: newConfig.host,
         bearerToken: newConfig.bearerToken,
+        allowWriteTools: newConfig.allowWriteTools,
         getWorkspaceRoot: () => (this.getWorkspaceRoot ? this.getWorkspaceRoot() : null)
       });
     }
@@ -121,7 +132,7 @@ class McpLifecycle {
   }
 
   getStatus() {
-    const cfg = this.config ? this.config.getConfig() : { enabled: false, port: 3700, host: '127.0.0.1', isTokenProtected: false };
+    const cfg = this.config ? this.config.getConfig() : { enabled: false, port: 3700, host: '127.0.0.1', bearerToken: '', allowWriteTools: true, isTokenProtected: false };
     const isRunning = Boolean(this.server?.isRunning);
     const lastError = this.server?.lastError || null;
     const errorCode = this.server?.errorCode || null;
@@ -132,6 +143,7 @@ class McpLifecycle {
       running: isRunning,
       port: cfg.port,
       host: cfg.host,
+      allowWriteTools: cfg.allowWriteTools,
       isTokenProtected: cfg.isTokenProtected,
       error: lastError,
       errorCode,

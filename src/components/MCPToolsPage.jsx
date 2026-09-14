@@ -343,259 +343,358 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
           </div>
         </div>
 
-        {/* Filter Pills & Search */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
-          {/* Category Tabs */}
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-            {categories.map((cat) => {
-              const count = cat === "All" ? tools.length : tools.filter((t) => getToolCategory(t.name) === cat).length;
-              const isSel = selectedCategory === cat;
-              return (
+        {/* Two Column Layout (Left Sidebar) */}
+        <div className="mcp-tools-layout">
+          {/* Left Sidebar Area */}
+          <div className="mcp-tools-sidebar">
+            {/* Suite Breakdown Card */}
+            <div className="mcp-sidebar-card">
+              <h4 className="mcp-sidebar-card-title">
+                <Layers size={16} color="var(--accent-solid)" /> Capability Suites
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {categories.map((cat) => {
+                  const count = cat === "All" ? tools.length : tools.filter((t) => getToolCategory(t.name) === cat).length;
+                  const isSel = selectedCategory === cat;
+                  return (
+                    <div
+                      key={cat}
+                      className={`mcp-suite-item ${isSel ? "is-selected" : ""}`}
+                      onClick={() => setSelectedCategory(cat)}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {getCategoryIcon(cat)}
+                        <span>{cat}</span>
+                      </div>
+                      <span className="mcp-category-count">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Integration Setup Card */}
+            <div className="mcp-sidebar-card">
+              <h4 className="mcp-sidebar-card-title">
+                <Zap size={16} color="#eab308" /> Claude Desktop Client Config
+              </h4>
+              <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                Add this snippet to your <code>claude_desktop_config.json</code> to connect Claude Desktop directly to Notely.
+              </p>
+              <div style={{ position: "relative" }}>
+                <pre
+                  style={{
+                    background: "var(--surface-bg)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: "6px",
+                    padding: "10px 12px",
+                    fontSize: "11px",
+                    fontFamily: "monospace",
+                    color: "var(--app-text)",
+                    margin: 0,
+                    overflowX: "auto"
+                  }}
+                >
+{`{
+  "mcpServers": {
+    "notely": {
+      "url": "http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse"
+    }
+  }
+}`}
+                </pre>
                 <button
-                  key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`mcp-category-pill ${isSel ? "is-active" : ""}`}
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    const snippet = JSON.stringify({
+                      mcpServers: {
+                        notely: {
+                          url: `http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
+                        }
+                      }
+                    }, null, 2);
+                    navigator.clipboard.writeText(snippet);
+                    onNotify?.("Copied Claude Desktop configuration to clipboard!", "success");
+                  }}
+                  style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                 >
-                  {getCategoryIcon(cat)}
-                  {cat}
-                  <span className="mcp-category-count">{count}</span>
+                  <Copy size={13} /> Copy Config Snippet
                 </button>
-              );
-            })}
-          </div>
+              </div>
+            </div>
 
-          <div style={{ position: "relative", width: "280px" }}>
-            <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-            <input
-              type="text"
-              placeholder="Search tools by name or description…"
-              value={filterQuery}
-              onChange={(e) => setFilterQuery(e.target.value)}
-              className="text-input"
-              style={{ width: "100%", paddingLeft: "34px", fontSize: "12px", height: "34px", borderRadius: "8px", boxSizing: "border-box" }}
-            />
-          </div>
-        </div>
-
-        {/* Tool Cards */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading registered tools catalog…</div>
-        ) : filteredTools.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "8px" }}>
-            No capabilities match your query.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {filteredTools.map((tool) => {
-              const isExpanded = expandedTool === tool.name;
-              const category = getToolCategory(tool.name);
-              const hasProps = tool.inputSchema?.properties && Object.keys(tool.inputSchema.properties).length > 0;
-              const propKeys = hasProps ? Object.keys(tool.inputSchema.properties) : [];
-              const requiredKeys = Array.isArray(tool.inputSchema?.required) ? tool.inputSchema.required : [];
-
-              return (
-                <div
-                  key={tool.name}
-                  className={`mcp-tool-card-modern ${isExpanded ? "is-open" : ""}`}
+            {/* Quick Status / Security Notice */}
+            <div className="mcp-sidebar-card">
+              <h4 className="mcp-sidebar-card-title">
+                <Activity size={16} color="#10b981" /> Server Details
+              </h4>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)", display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Transport</span>
+                  <strong style={{ color: "var(--text-strong)" }}>HTTP SSE</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Host</span>
+                  <strong style={{ color: "var(--text-strong)" }}>{status?.host || "127.0.0.1"}</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Port</span>
+                  <strong style={{ color: "var(--text-strong)" }}>{status?.port || 3700}</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Total Tools</span>
+                  <strong style={{ color: "var(--accent-solid)" }}>{tools.length}</strong>
+                </div>
+              </div>
+              {onOpenSettings && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={onOpenSettings}
+                  style={{ width: "100%", fontSize: "12px", height: "28px", marginTop: "4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                 >
-                  {/* Tool Summary Bar */}
-                  <div
-                    className="mcp-tool-header-row"
-                    onClick={() => setExpandedTool(isExpanded ? null : tool.name)}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: 0 }}>
+                  <Settings size={13} /> Configure Permissions
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="mcp-tools-main">
+            {/* Search Bar Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", gap: "12px" }}>
+              <div className="mcp-search-wrap">
+                <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  placeholder="Search tools by name, suite, or description…"
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                  className="mcp-search-input"
+                />
+              </div>
+            </div>
+
+            {/* Tool Cards */}
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading registered tools catalog…</div>
+            ) : filteredTools.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "8px" }}>
+                No capabilities match your query.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {filteredTools.map((tool) => {
+                  const isExpanded = expandedTool === tool.name;
+                  const category = getToolCategory(tool.name);
+                  const hasProps = tool.inputSchema?.properties && Object.keys(tool.inputSchema.properties).length > 0;
+                  const propKeys = hasProps ? Object.keys(tool.inputSchema.properties) : [];
+                  const requiredKeys = Array.isArray(tool.inputSchema?.required) ? tool.inputSchema.required : [];
+
+                  return (
+                    <div
+                      key={tool.name}
+                      className={`mcp-tool-card-modern ${isExpanded ? "is-open" : ""}`}
+                    >
+                      {/* Tool Summary Bar */}
                       <div
-                        style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "8px",
-                          background: "var(--surface-subtle, rgba(255,255,255,0.04))",
-                          border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "var(--accent-solid, #3b82f6)",
-                          flexShrink: 0
-                        }}
+                        className="mcp-tool-header-row"
+                        onClick={() => setExpandedTool(isExpanded ? null : tool.name)}
                       >
-                        <Wrench size={18} />
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                          <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-strong)" }}>{tool.name}</code>
-                          <button
-                            type="button"
-                            className="btn-link"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToolName(tool.name);
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "8px",
+                              background: "var(--surface-subtle, rgba(255,255,255,0.04))",
+                              border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "var(--accent-solid, #3b82f6)",
+                              flexShrink: 0
                             }}
-                            title="Copy tool identifier"
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "2px" }}
                           >
-                            {copiedName === tool.name ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                          </button>
-                          <span className="mcp-tool-badge-cat">
-                            {category}
-                          </span>
-                        </div>
-                        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                          {tool.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                      <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 500 }}>
-                        {propKeys.length} param{propKeys.length !== 1 ? "s" : ""}
-                      </span>
-                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </div>
-                  </div>
-
-                  {/* Expanded Detail Pane */}
-                  {isExpanded && (
-                    <div style={{ borderTop: "1px solid var(--border-soft, rgba(255,255,255,0.08))", padding: "20px", background: "var(--surface-bg)" }}>
-                      {/* Parameters Schema Header */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                        <h4 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
-                          Parameters Schema
-                        </h4>
-                      </div>
-
-                      {propKeys.length === 0 ? (
-                        <p style={{ margin: "0 0 16px", fontSize: "12px", color: "var(--text-muted)" }}>No input parameters required for this tool.</p>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "18px" }}>
-                          {propKeys.map((k) => {
-                            const prop = tool.inputSchema.properties[k];
-                            const isReq = requiredKeys.includes(k);
-                            const pType = prop.type || "string";
-                            return (
-                              <div
-                                key={k}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                  padding: "8px 12px",
-                                  background: "var(--surface-elevated, var(--bg-card))",
-                                  border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
-                                  borderRadius: "8px",
-                                  fontSize: "12px"
-                                }}
-                              >
-                                <code style={{ fontWeight: 700, color: "var(--accent-solid, #3b82f6)", minWidth: "110px" }}>{k}</code>
-                                <span className={`mcp-param-tag type-${pType}`}>{pType}</span>
-                                {isReq ? (
-                                  <span style={{ color: "#ef4444", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
-                                ) : (
-                                  <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>OPTIONAL</span>
-                                )}
-                                <span style={{ flex: 1, color: "var(--text-muted)", fontSize: "12px" }}>{prop.description || "—"}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Interactive Console Block */}
-                      <div className="mcp-console-block">
-                        <div className="mcp-console-header">
-                          <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#e2e8f0" }}>
-                            <Terminal size={14} color="#3b82f6" /> Interactive Tool Runner
-                          </span>
-                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                            {hasProps && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => handlePrefillSample(tool)}
-                                style={{ fontSize: "11px", padding: "3px 8px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                              >
-                                <Sparkles size={12} color="#fbbf24" /> Auto-Fill JSON
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="btn btn-primary"
-                              disabled={runningTest}
-                              onClick={() => handleRunTool(tool)}
-                              style={{ fontSize: "11px", padding: "3px 12px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                            >
-                              <Play size={12} /> {runningTest ? "Executing..." : "Run Execution"}
-                            </button>
+                            <Wrench size={18} />
                           </div>
-                        </div>
-
-                        <textarea
-                          className="mcp-console-textarea"
-                          placeholder='// JSON arguments payload (e.g. {"query": "Search query"})\n{}'
-                          value={testArgs[tool.name] || ""}
-                          onChange={(e) => setTestArgs({ ...testArgs, [tool.name]: e.target.value })}
-                        />
-
-                        {/* Test Execution Result Console */}
-                        {testResult && testResult.toolName === tool.name && (
-                          <div className="mcp-console-result">
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                {testResult.response?.success ? (
-                                  <span style={{ color: "#10b981", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
-                                    <CheckCircle2 size={14} /> SUCCESS
-                                  </span>
-                                ) : (
-                                  <span style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
-                                    <XCircle size={14} /> FAILED
-                                  </span>
-                                )}
-                                <span style={{ color: "#94a3b8", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                  <Clock size={12} /> {testResult.durationMs}ms
-                                </span>
-                              </div>
-
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                              <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-strong)" }}>{tool.name}</code>
                               <button
                                 type="button"
                                 className="btn-link"
-                                onClick={() => copyResultOutput(testResult.response)}
-                                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToolName(tool.name);
+                                }}
+                                title="Copy tool identifier"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "2px" }}
                               >
-                                {copiedOutput ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
-                                {copiedOutput ? "Copied" : "Copy Output"}
+                                {copiedName === tool.name ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
                               </button>
+                              <span className="mcp-tool-badge-cat">
+                                {category}
+                              </span>
+                            </div>
+                            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                              {tool.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 500 }}>
+                            {propKeys.length} param{propKeys.length !== 1 ? "s" : ""}
+                          </span>
+                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                      </div>
+
+                      {/* Expanded Detail Pane */}
+                      {isExpanded && (
+                        <div style={{ borderTop: "1px solid var(--border-soft, rgba(255,255,255,0.08))", padding: "20px", background: "var(--surface-bg)" }}>
+                          {/* Parameters Schema Header */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                            <h4 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
+                              Parameters Schema
+                            </h4>
+                          </div>
+
+                          {propKeys.length === 0 ? (
+                            <p style={{ margin: "0 0 16px", fontSize: "12px", color: "var(--text-muted)" }}>No input parameters required for this tool.</p>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "18px" }}>
+                              {propKeys.map((k) => {
+                                const prop = tool.inputSchema.properties[k];
+                                const isReq = requiredKeys.includes(k);
+                                const pType = prop.type || "string";
+                                return (
+                                  <div
+                                    key={k}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "10px",
+                                      padding: "8px 12px",
+                                      background: "var(--surface-elevated, var(--bg-card))",
+                                      border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                                      borderRadius: "8px",
+                                      fontSize: "12px"
+                                    }}
+                                  >
+                                    <code style={{ fontWeight: 700, color: "var(--accent-solid, #3b82f6)", minWidth: "110px" }}>{k}</code>
+                                    <span className={`mcp-param-tag type-${pType}`}>{pType}</span>
+                                    {isReq ? (
+                                      <span style={{ color: "#ef4444", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
+                                    ) : (
+                                      <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>OPTIONAL</span>
+                                    )}
+                                    <span style={{ flex: 1, color: "var(--text-muted)", fontSize: "12px" }}>{prop.description || "—"}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Interactive Console Block */}
+                          <div className="mcp-console-block">
+                            <div className="mcp-console-header">
+                              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#e2e8f0" }}>
+                                <Terminal size={14} color="#3b82f6" /> Interactive Tool Runner
+                              </span>
+                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                {hasProps && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => handlePrefillSample(tool)}
+                                    style={{ fontSize: "11px", padding: "3px 8px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                  >
+                                    <Sparkles size={12} color="#fbbf24" /> Auto-Fill JSON
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="btn btn-primary"
+                                  disabled={runningTest}
+                                  onClick={() => handleRunTool(tool)}
+                                  style={{ fontSize: "11px", padding: "3px 12px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                >
+                                  <Play size={12} /> {runningTest ? "Executing..." : "Run Execution"}
+                                </button>
+                              </div>
                             </div>
 
-                            <pre
-                              style={{
-                                background: "#090d16",
-                                color: "#38bdf8",
-                                padding: "10px 12px",
-                                borderRadius: "6px",
-                                fontSize: "11.5px",
-                                maxHeight: "220px",
-                                overflowY: "auto",
-                                margin: 0,
-                                fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                border: "1px solid #1e293b"
-                              }}
-                            >
-                              {JSON.stringify(testResult.response, null, 2)}
-                            </pre>
+                            <textarea
+                              className="mcp-console-textarea"
+                              placeholder='// JSON arguments payload (e.g. {"query": "Search query"})\n{}'
+                              value={testArgs[tool.name] || ""}
+                              onChange={(e) => setTestArgs({ ...testArgs, [tool.name]: e.target.value })}
+                            />
+
+                            {/* Test Execution Result Console */}
+                            {testResult && testResult.toolName === tool.name && (
+                              <div className="mcp-console-result">
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    {testResult.response?.success ? (
+                                      <span style={{ color: "#10b981", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                        <CheckCircle2 size={14} /> SUCCESS
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                        <XCircle size={14} /> FAILED
+                                      </span>
+                                    )}
+                                    <span style={{ color: "#94a3b8", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                      <Clock size={12} /> {testResult.durationMs}ms
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    className="btn-link"
+                                    onClick={() => copyResultOutput(testResult.response)}
+                                    style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                  >
+                                    {copiedOutput ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                                    {copiedOutput ? "Copied" : "Copy Output"}
+                                  </button>
+                                </div>
+
+                                <pre
+                                  style={{
+                                    background: "#090d16",
+                                    color: "#38bdf8",
+                                    padding: "10px 12px",
+                                    borderRadius: "6px",
+                                    fontSize: "11.5px",
+                                    maxHeight: "220px",
+                                    overflowY: "auto",
+                                    margin: 0,
+                                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                                    border: "1px solid #1e293b"
+                                  }}
+                                >
+                                  {JSON.stringify(testResult.response, null, 2)}
+                                </pre>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
 export default MCPToolsPage;
-

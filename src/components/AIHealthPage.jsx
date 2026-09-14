@@ -283,7 +283,7 @@ export default function AIHealthPage({ onBack }) {
 
       {/* Main Two-Column Body */}
       <div className="ahp-body">
-        {/* Left Column: Subsystem Cards */}
+        {/* Left Column: Subsystem & Metrics Cards Sidebar */}
         <div className="ahp-left">
           {/* MCP Server Overview */}
           <div className="ahp-card">
@@ -404,7 +404,7 @@ export default function AIHealthPage({ onBack }) {
         {/* Right Column: Flight Log Inspector */}
         <div className="ahp-right">
           <div className="ahp-conv-list-header">
-            <Wrench size={14} /> MCP Activity & Tool Call Flight Log
+            <Wrench size={14} /> MCP Activity &amp; Tool Call Flight Log
             <span className="ahp-conv-count">{filteredCalls.length}</span>
           </div>
 

@@ -17,15 +17,19 @@ class McpServer {
    * @param {number} options.port
    * @param {string} options.host
    * @param {string} options.bearerToken
+   * @param {boolean} options.allowWriteTools
    * @param {import('./McpSessionManager.cjs').McpSessionManager} options.sessionManager
    * @param {Function} options.getWorkspaceRoot
+   * @param {Function} options.onTelemetryEvent
    */
   constructor(options = {}) {
     this.port = Number(options.port) || 3700;
     this.host = options.host || '127.0.0.1';
     this.bearerToken = options.bearerToken || '';
+    this.allowWriteTools = options.allowWriteTools !== undefined ? Boolean(options.allowWriteTools) : true;
     this.sessionManager = options.sessionManager;
     this.getWorkspaceRoot = typeof options.getWorkspaceRoot === 'function' ? options.getWorkspaceRoot : null;
+    this.onTelemetryEvent = typeof options.onTelemetryEvent === 'function' ? options.onTelemetryEvent : null;
 
     this.httpServer = null;
     this.transports = new Map(); // sessionId -> { transport, server }
@@ -34,11 +38,13 @@ class McpServer {
     this.errorCode = null;
   }
 
-  updateConfig({ port, host, bearerToken, getWorkspaceRoot }) {
+  updateConfig({ port, host, bearerToken, allowWriteTools, getWorkspaceRoot, onTelemetryEvent }) {
     if (port !== undefined) this.port = Number(port);
     if (host !== undefined) this.host = host;
     if (bearerToken !== undefined) this.bearerToken = bearerToken;
+    if (allowWriteTools !== undefined) this.allowWriteTools = Boolean(allowWriteTools);
     if (typeof getWorkspaceRoot === 'function') this.getWorkspaceRoot = getWorkspaceRoot;
+    if (typeof onTelemetryEvent === 'function') this.onTelemetryEvent = onTelemetryEvent;
   }
 
   _checkAuth(req) {
@@ -68,11 +74,24 @@ class McpServer {
         const result = await applicationToolRegistry.executeTool(name, args || {}, {
           caller: 'mcp_client',
           sessionId,
-          workspaceRoot: activeWorkspaceRoot
+          workspaceRoot: activeWorkspaceRoot,
+          allowWriteTools: this.allowWriteTools
         });
         const duration = Date.now() - start;
         if (this.sessionManager && typeof this.sessionManager.recordToolCall === 'function') {
-          this.sessionManager.recordToolCall(sessionId, name, duration, result.success, result.error?.message);
+          this.sessionManager.recordToolCall(sessionId, name, duration, result.success, result.error?.message, args, result.data);
+        }
+
+        if (typeof this.onTelemetryEvent === 'function') {
+          this.onTelemetryEvent({
+            sessionId,
+            toolName: name,
+            input: args,
+            output: result.data,
+            durationMs: duration,
+            success: result.success,
+            error: result.error?.message
+          });
         }
 
         let textContent = '';
@@ -95,8 +114,21 @@ class McpServer {
       } catch (err) {
         const duration = Date.now() - start;
         if (this.sessionManager && typeof this.sessionManager.recordToolCall === 'function') {
-          this.sessionManager.recordToolCall(sessionId, name, duration, false, err.message);
+          this.sessionManager.recordToolCall(sessionId, name, duration, false, err.message, args, null);
         }
+
+        if (typeof this.onTelemetryEvent === 'function') {
+          this.onTelemetryEvent({
+            sessionId,
+            toolName: name,
+            input: args,
+            output: null,
+            durationMs: duration,
+            success: false,
+            error: err.message
+          });
+        }
+
         return {
           content: [{ type: 'text', text: err.message || 'Execution error' }],
           isError: true
