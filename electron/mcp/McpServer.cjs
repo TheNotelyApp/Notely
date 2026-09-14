@@ -6,8 +6,10 @@
 
 const http = require('http');
 const { URL } = require('url');
+const { randomUUID } = require('crypto');
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
+const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
 const { ListToolsRequestSchema, CallToolRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
 const { applicationToolRegistry } = require('../tools/ApplicationToolRegistry.cjs');
 
@@ -32,7 +34,8 @@ class McpServer {
     this.onTelemetryEvent = typeof options.onTelemetryEvent === 'function' ? options.onTelemetryEvent : null;
 
     this.httpServer = null;
-    this.transports = new Map(); // sessionId -> { transport, server }
+    this.transports = new Map(); // sessionId -> { transport, server } (legacy SSE)
+    this.streamableTransports = new Map(); // sessionId -> { transport, server } (Streamable HTTP)
     this.isRunning = false;
     this.lastError = null;
     this.errorCode = null;
@@ -55,7 +58,14 @@ class McpServer {
     return authHeader.trim() === `Bearer ${this.bearerToken.trim()}`;
   }
 
-  _createServerInstance(sessionId) {
+  _createServerInstance(sessionIdOrFn) {
+    const getActiveSessionId = () => {
+      if (typeof sessionIdOrFn === 'function') {
+        return sessionIdOrFn() || 'mcp-session';
+      }
+      return sessionIdOrFn || 'mcp-session';
+    };
+
     const server = new Server(
       { name: 'notely', version: '0.1.41' },
       { capabilities: { tools: {} } }
@@ -72,6 +82,7 @@ class McpServer {
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       const start = Date.now();
+      const sessionId = getActiveSessionId();
       try {
         const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
         const result = await applicationToolRegistry.executeTool(name, args || {}, {
@@ -154,8 +165,9 @@ class McpServer {
       const server = http.createServer(async (req, res) => {
         // Handle CORS
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Accept, Last-Event-ID');
+        res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id, Mcp-Protocol-Version');
 
         if (req.method === 'OPTIONS') {
           res.writeHead(204);
@@ -175,7 +187,13 @@ class McpServer {
         const pathname = parsedUrl.pathname;
 
         // Health / Status ping
-        if (pathname === '/health' || pathname === '/status' || pathname === '/') {
+        const isGetHealth = req.method === 'GET' && (
+          pathname === '/health' ||
+          pathname === '/status' ||
+          (pathname === '/' && !req.headers.accept?.includes('text/event-stream') && !req.headers['mcp-session-id'])
+        );
+
+        if (isGetHealth) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           const allSchemas = applicationToolRegistry.toMcpSchemas();
           const advertisedSchemas = this.allowWriteTools
@@ -187,7 +205,7 @@ class McpServer {
             version: '0.1.41',
             port: this.port,
             toolsCount: advertisedSchemas.length,
-            activeSessions: this.sessionManager ? this.sessionManager.getActiveSessions().length : 0
+            activeSessions: (this.sessionManager ? this.sessionManager.getActiveSessions().length : 0) + this.streamableTransports.size
           }));
           return;
         }
@@ -208,21 +226,22 @@ class McpServer {
           return;
         }
 
-        // GET /sse: establish SSE transport
-        if (pathname === '/sse' && req.method === 'GET') {
-          if (!this._checkAuth(req)) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
-            return;
-          }
+        // Check authentication for all MCP endpoints
+        if (!this._checkAuth(req)) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
+          return;
+        }
 
+        // Legacy SSE handshake: GET /sse without Mcp-Session-Id header
+        if (pathname === '/sse' && req.method === 'GET' && !req.headers['mcp-session-id']) {
           try {
             const transport = new SSEServerTransport('/messages', res);
             const sessionId = transport.sessionId;
             const mcpInstance = this._createServerInstance(sessionId);
 
             if (this.sessionManager) {
-              const clientName = req.headers['user-agent'] || 'Unknown Client';
+              const clientName = req.headers['user-agent'] || 'Legacy SSE Client';
               if (typeof this.sessionManager.registerSession === 'function') {
                 this.sessionManager.registerSession(sessionId, clientName, '1.0.0', req.headers);
               } else if (typeof this.sessionManager.createSession === 'function') {
@@ -255,37 +274,109 @@ class McpServer {
           return;
         }
 
-        // POST /messages: incoming JSON-RPC from client
+        // Legacy SSE client POST: POST /messages with legacy session
         if (pathname === '/messages' && req.method === 'POST') {
-          if (!this._checkAuth(req)) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
-            return;
-          }
-
-          const sessionId = parsedUrl.searchParams.get('sessionId') || parsedUrl.searchParams.get('session_id');
-          if (!sessionId) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Missing sessionId query parameter' }));
-            return;
-          }
-
-          const session = this.transports.get(sessionId);
-          if (!session) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: `Session not found or expired: ${sessionId}` }));
-            return;
-          }
-
-          try {
-            await session.transport.handlePostMessage(req, res);
-          } catch (err) {
-            console.error(`[MCP Server] Error handling POST message for session ${sessionId}:`, err);
-            if (!res.headersSent) {
-              res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: err.message }));
+          const legacySessionId = parsedUrl.searchParams.get('sessionId') || parsedUrl.searchParams.get('session_id');
+          if (legacySessionId && this.transports.has(legacySessionId)) {
+            const session = this.transports.get(legacySessionId);
+            try {
+              await session.transport.handlePostMessage(req, res);
+            } catch (err) {
+              console.error(`[MCP Server] Error handling POST message for session ${legacySessionId}:`, err);
+              if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+              }
             }
+            return;
           }
+        }
+
+        // Streamable HTTP Transport (MCP Standard 2024-11-05 / Antigravity / Claude / Cursor)
+        const isStreamablePath = (
+          pathname === '/' ||
+          pathname === '/sse' ||
+          pathname === '/mcp' ||
+          pathname === '/api/mcp' ||
+          pathname === '/messages'
+        );
+
+        if (isStreamablePath) {
+          const sid = req.headers['mcp-session-id'] || parsedUrl.searchParams.get('sessionId') || parsedUrl.searchParams.get('session_id');
+
+          // Route to existing active Streamable HTTP session
+          if (sid && this.streamableTransports.has(sid)) {
+            const session = this.streamableTransports.get(sid);
+            try {
+              await session.transport.handleRequest(req, res);
+            } catch (err) {
+              console.error(`[MCP Server] Streamable transport error for session ${sid}:`, err);
+              if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  jsonrpc: '2.0',
+                  error: { code: -32603, message: err?.message || 'Internal error' },
+                  id: null
+                }));
+              }
+            }
+            return;
+          }
+
+          // New Streamable HTTP session (initialization handshake)
+          if (req.method === 'POST') {
+            let currentSessionId = null;
+            const transport = new StreamableHTTPServerTransport({
+              sessionIdGenerator: () => randomUUID(),
+              onsessioninitialized: (newSid) => {
+                currentSessionId = newSid;
+                this.streamableTransports.set(newSid, { transport, server: mcpInstance });
+                if (this.sessionManager && typeof this.sessionManager.registerSession === 'function') {
+                  const clientName = req.headers['user-agent'] || 'Streamable-HTTP Client';
+                  this.sessionManager.registerSession(newSid, clientName, '1.0.0', req.headers);
+                }
+              }
+            });
+
+            const mcpInstance = this._createServerInstance(() => currentSessionId);
+            transport.onclose = () => {
+              if (currentSessionId) {
+                this.streamableTransports.delete(currentSessionId);
+                if (this.sessionManager && typeof this.sessionManager.closeSession === 'function') {
+                  this.sessionManager.closeSession(currentSessionId);
+                }
+              }
+              try {
+                mcpInstance.close();
+              } catch {
+                // Connection closed
+              }
+            };
+
+            try {
+              await mcpInstance.connect(transport);
+              await transport.handleRequest(req, res);
+            } catch (err) {
+              console.error('[MCP Server] Streamable HTTP initialization error:', err);
+              if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  jsonrpc: '2.0',
+                  error: { code: -32603, message: err?.message || 'Internal error' },
+                  id: null
+                }));
+              }
+            }
+            return;
+          }
+
+          // Request with missing or invalid session ID
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            jsonrpc: '2.0',
+            error: { code: -32001, message: sid ? `Session not found: ${sid}` : 'Session not found' },
+            id: null
+          }));
           return;
         }
 
@@ -312,7 +403,7 @@ class McpServer {
         this.httpServer = server;
         this.lastError = null;
         this.errorCode = null;
-        console.log(`[MCP Server] Listening on http://${this.host}:${this.port} (SSE at /sse)`);
+        console.log(`[MCP Server] Listening on http://${this.host}:${this.port} (SSE at /sse, Streamable HTTP at /mcp)`);
         resolve({ port: this.port, host: this.host });
       });
     });
@@ -341,6 +432,23 @@ class McpServer {
       }
     }
     this.transports.clear();
+
+    for (const [sessionId, { transport, server }] of this.streamableTransports.entries()) {
+      try {
+        await transport.close();
+      } catch {
+        // Transport already closed
+      }
+      try {
+        await server.close();
+      } catch {
+        // Server instance already closed
+      }
+      if (this.sessionManager) {
+        this.sessionManager.closeSession(sessionId);
+      }
+    }
+    this.streamableTransports.clear();
 
     return new Promise((resolve) => {
       this.httpServer.close(() => {

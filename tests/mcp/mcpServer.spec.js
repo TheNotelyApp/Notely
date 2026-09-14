@@ -166,11 +166,70 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(res.headers['access-control-allow-origin'], '*');
     });
 
-    it('should execute tools registered in ApplicationToolRegistry and emit telemetry', async () => {
-      const schemas = applicationToolRegistry.toMcpSchemas();
-      assert.ok(schemas.length >= 40);
-      const personaList = schemas.find(s => s.name === 'personas.list');
-      assert.ok(personaList);
+    it('should support Streamable HTTP MCP initialization and session routing', async () => {
+      // 1. Initialize
+      const initRes = await httpRequest(`http://127.0.0.1:${testPort}/sse`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {},
+            clientInfo: { name: 'antigravity-test', version: '1.0.0' }
+          }
+        })
+      });
+
+      assert.strictEqual(initRes.statusCode, 200);
+      const sessionId = initRes.headers['mcp-session-id'];
+      assert.ok(sessionId, 'Should return Mcp-Session-Id header');
+      assert.ok(initRes.body.includes('notely'));
+
+      // 2. notifications/initialized
+      const notifRes = await httpRequest(`http://127.0.0.1:${testPort}/sse`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'mcp-session-id': sessionId
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'notifications/initialized',
+          params: {}
+        })
+      });
+      assert.strictEqual(notifRes.statusCode, 202);
+
+      // 3. tools/list using the established session
+      const toolsRes = await httpRequest(`http://127.0.0.1:${testPort}/sse`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'mcp-session-id': sessionId
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/list',
+          params: {}
+        })
+      });
+
+      assert.strictEqual(toolsRes.statusCode, 200);
+      assert.ok(toolsRes.body.includes('notes.read'));
+      assert.ok(toolsRes.body.includes('workspace.metadata'));
     });
   });
 });
+
