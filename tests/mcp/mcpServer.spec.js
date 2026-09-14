@@ -14,7 +14,7 @@ function httpRequest(url, options = {}) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(data); } catch {}
+        try { json = JSON.parse(data); } catch (_err) { json = null; }
         resolve({ statusCode: res.statusCode, headers: res.headers, body: data, json });
       });
     });

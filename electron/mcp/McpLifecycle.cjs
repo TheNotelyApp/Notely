@@ -14,25 +14,40 @@ class McpLifecycle {
     this.server = null;
     this.initialized = false;
     this.browserWindows = new Set();
+    this.getWorkspaceRoot = null;
   }
 
-  initialize(appDataDir) {
+  setWorkspaceRootProvider(fn) {
+    if (typeof fn === 'function') {
+      this.getWorkspaceRoot = fn;
+      if (this.server) {
+        this.server.updateConfig({ getWorkspaceRoot: fn });
+      }
+    }
+  }
+
+  initialize(appDataDir, getWorkspaceRoot = null) {
     if (this.initialized) return;
     this.config = new McpConfig(appDataDir);
     const cfg = this.config.getConfig();
+
+    if (typeof getWorkspaceRoot === 'function') {
+      this.getWorkspaceRoot = getWorkspaceRoot;
+    }
 
     this.server = new McpServer({
       port: cfg.port,
       host: cfg.host,
       bearerToken: cfg.bearerToken,
-      sessionManager: this.sessionManager
+      sessionManager: this.sessionManager,
+      getWorkspaceRoot: () => (this.getWorkspaceRoot ? this.getWorkspaceRoot() : null)
     });
 
     this.initialized = true;
 
     if (cfg.enabled) {
       this.start().catch((err) => {
-        console.warn('[MCP Lifecycle] Initial start encountered error:', err.message);
+        console.warn('[MCP Lifecycle] Initial start encountered error:', err?.message || err);
       });
     }
   }
@@ -58,7 +73,7 @@ class McpLifecycle {
       await this.server.start();
       this.broadcastStatus();
       return this.getStatus();
-    } catch (err) {
+    } catch {
       this.broadcastStatus();
       return this.getStatus();
     }
@@ -78,14 +93,14 @@ class McpLifecycle {
 
   async updateConfig(updates = {}) {
     if (!this.config) throw new Error('MCP config not initialized.');
-    const oldConfig = this.config.getConfig();
     const newConfig = this.config.save(updates);
 
     if (this.server) {
       this.server.updateConfig({
         port: newConfig.port,
         host: newConfig.host,
-        bearerToken: newConfig.bearerToken
+        bearerToken: newConfig.bearerToken,
+        getWorkspaceRoot: () => (this.getWorkspaceRoot ? this.getWorkspaceRoot() : null)
       });
     }
 

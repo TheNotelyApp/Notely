@@ -447,7 +447,22 @@ async function handleClearGraphData(_event, _payload) {
 
 async function handleGetEmbeddingsStatus(_event, payload) {
   try {
-    if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.embeddingDb) {
+    let db = aiService.agent?.embeddingDb;
+    let tempDb = null;
+    const workspaceRoot = aiService.workspaceRoot || aiService.agent?.workspaceRoot || null;
+
+    if (!db && workspaceRoot) {
+      try {
+        const EmbeddingDB = require('../../ai/embeddings/EmbeddingDB');
+        tempDb = new EmbeddingDB(workspaceRoot);
+        tempDb.initialize();
+        db = tempDb;
+      } catch (err) {
+        console.error('[AI IPC] Temp EmbeddingDB init failed:', err);
+      }
+    }
+
+    if (!db) {
       return new AIQueryResponse(true, {
         totalChunks: 0,
         indexedNotes: 0,
@@ -459,7 +474,7 @@ async function handleGetEmbeddingsStatus(_event, payload) {
         uninitialized: true
       });
     }
-    const db = aiService.agent.embeddingDb;
+
     const workerManager = require('./workerManager.cjs');
     const search = payload?.search || '';
     const limit = payload?.limit || 50;
@@ -469,7 +484,7 @@ async function handleGetEmbeddingsStatus(_event, payload) {
     const totalChunks = db.getChunkCount();
     const indexedNotes = db.getIndexedNotesCount();
     const queueStats = db.getQueueSize();
-    const logs = db.getLogs(30);
+    const logs = typeof db.getLogs === 'function' ? db.getLogs(30) : [];
 
     let dbSize = '0 KB';
     try {
@@ -486,6 +501,10 @@ async function handleGetEmbeddingsStatus(_event, payload) {
       console.error('[AI IPC] Failed to check db size:', err);
     }
 
+    if (tempDb) {
+      try { tempDb.close(); } catch { /* ignore */ }
+    }
+
     return new AIQueryResponse(true, {
       totalChunks,
       indexedNotes,
@@ -495,7 +514,8 @@ async function handleGetEmbeddingsStatus(_event, payload) {
       isWorking: workerManager.isWorking === true,
       chunks,
       logs,
-      dbSize
+      dbSize,
+      uninitialized: false
     });
   } catch (error) {
     console.error('[AI IPC] Get embeddings status failed:', error);

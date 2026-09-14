@@ -4,17 +4,12 @@ import {
   Search,
   Server,
   Play,
-  CheckCircle,
-  AlertCircle,
   Code,
   Copy,
   Check,
   ChevronDown,
   ChevronUp,
-  Settings,
-  Radio,
-  Clock,
-  Sparkles
+  Settings
 } from "lucide-react";
 import { listTools, executeTool } from "../services/electron/aiService";
 import { mcpGetStatus } from "../services/electronService";

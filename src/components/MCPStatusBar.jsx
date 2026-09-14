@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Server, AlertCircle, CheckCircle, Square } from "lucide-react";
+import { Server, AlertCircle, CheckCircle } from "lucide-react";
 import { mcpGetStatus, onMcpStatusChanged } from "../services/electronService";
 
 export function MCPStatusBar({ onClick }) {

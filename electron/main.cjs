@@ -439,6 +439,10 @@ function resolveInitialNotesRoot() {
 function applyNotesRoot(nextRootPath) {
   const previousNotesRoot = notesRoot;
   notesRoot = path.resolve(nextRootPath);
+  try {
+    const { aiService } = require("../ai/core/AIService.js");
+    aiService.workspaceRoot = notesRoot;
+  } catch { /* ignore */ }
   activeProjectSlug = ROOT_PROJECT_SLUG;
   appDataDir = path.join(notesRoot, ".notes-app");
   versionsRoot = path.join(appDataDir, "versions");
@@ -894,7 +898,7 @@ if (canRunApp) {
     // Register and initialize MCP server subsystem
     mcpLifecycle.registerIpcHandlers(ipcMain);
     const mcpAppDataDir = path.join(app.getPath("appData"), "Notely", "notely");
-    mcpLifecycle.initialize(mcpAppDataDir);
+    mcpLifecycle.initialize(mcpAppDataDir, () => notesRoot);
 
     app.on("browser-window-created", (_event, win) => {
       mcpLifecycle.trackWindow(win);

@@ -8,11 +8,8 @@ import {
   Check,
   AlertCircle,
   Shield,
-  Key,
   Globe,
-  Radio,
-  ExternalLink,
-  Users
+  Radio
 } from "lucide-react";
 import {
   mcpGetStatus,
@@ -182,7 +179,6 @@ export function MCPSettingsContent({ notify }) {
   };
 
   const isRunning = Boolean(status?.running);
-  const isError = Boolean(status?.error);
   const isPortConflict = status?.errorCode === "EADDRINUSE" || (status?.error && status.error.includes("in use"));
 
   return (
@@ -199,7 +195,7 @@ export function MCPSettingsContent({ notify }) {
                 <h3 className="mcp-hero-title">Notely MCP Server</h3>
                 <span className={`mcp-status-badge ${isPortConflict ? "is-conflict" : isRunning ? "is-running" : ""}`}>
                   <span className="mcp-status-badge-dot" />
-                  {isPortConflict ? "Port Conflict" : isRunning ? "Running" : "Stopped"}
+                  {loading ? "Loading..." : isPortConflict ? "Port Conflict" : isRunning ? "Running" : "Stopped"}
                 </span>
               </div>
               <p className="mcp-hero-subtitle">
@@ -287,7 +283,7 @@ export function MCPSettingsContent({ notify }) {
           <div>
             <label className="mcp-field-label">Enable MCP Server</label>
             <span className="mcp-field-help">
-              Start the Model Context Protocol server on application launch
+              Start the Model Context Protocol server on application launch {config?.isTokenProtected ? "(Protected)" : ""}
             </span>
           </div>
           <label className="mcp-toggle-label">

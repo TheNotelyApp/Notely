@@ -18,12 +18,14 @@ class McpServer {
    * @param {string} options.host
    * @param {string} options.bearerToken
    * @param {import('./McpSessionManager.cjs').McpSessionManager} options.sessionManager
+   * @param {Function} options.getWorkspaceRoot
    */
   constructor(options = {}) {
     this.port = Number(options.port) || 3700;
     this.host = options.host || '127.0.0.1';
     this.bearerToken = options.bearerToken || '';
     this.sessionManager = options.sessionManager;
+    this.getWorkspaceRoot = typeof options.getWorkspaceRoot === 'function' ? options.getWorkspaceRoot : null;
 
     this.httpServer = null;
     this.transports = new Map(); // sessionId -> { transport, server }
@@ -32,10 +34,11 @@ class McpServer {
     this.errorCode = null;
   }
 
-  updateConfig({ port, host, bearerToken }) {
+  updateConfig({ port, host, bearerToken, getWorkspaceRoot }) {
     if (port !== undefined) this.port = Number(port);
     if (host !== undefined) this.host = host;
     if (bearerToken !== undefined) this.bearerToken = bearerToken;
+    if (typeof getWorkspaceRoot === 'function') this.getWorkspaceRoot = getWorkspaceRoot;
   }
 
   _checkAuth(req) {
@@ -61,9 +64,11 @@ class McpServer {
       const { name, arguments: args } = request.params;
       const start = Date.now();
       try {
+        const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
         const result = await applicationToolRegistry.executeTool(name, args || {}, {
           caller: 'mcp_client',
-          sessionId
+          sessionId,
+          workspaceRoot: activeWorkspaceRoot
         });
         const duration = Date.now() - start;
         if (this.sessionManager) {
@@ -125,7 +130,7 @@ class McpServer {
 
         let parsedUrl;
         try {
-          parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+          parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
         } catch {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Malformed URL' }));
@@ -148,19 +153,20 @@ class McpServer {
           return;
         }
 
-        // Tools discovery list endpoint (HTTP convenience for testing)
+        // GET /tools
         if (pathname === '/tools' && req.method === 'GET') {
           if (!this._checkAuth(req)) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
             return;
           }
+          const tools = applicationToolRegistry.toMcpSchemas();
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ tools: applicationToolRegistry.toMcpSchemas() }, null, 2));
+          res.end(JSON.stringify({ tools }));
           return;
         }
 
-        // SSE endpoint: establish connection
+        // GET /sse: establish SSE transport
         if (pathname === '/sse' && req.method === 'GET') {
           if (!this._checkAuth(req)) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -171,12 +177,13 @@ class McpServer {
           try {
             const transport = new SSEServerTransport('/messages', res);
             const sessionId = transport.sessionId;
+            const mcpInstance = this._createServerInstance(sessionId);
 
             if (this.sessionManager) {
-              this.sessionManager.createSession(sessionId, req);
+              const clientName = req.headers['user-agent'] || 'Unknown Client';
+              this.sessionManager.registerSession(sessionId, clientName, '1.0.0', req.headers);
             }
 
-            const mcpInstance = this._createServerInstance(sessionId);
             this.transports.set(sessionId, { transport, server: mcpInstance });
 
             req.on('close', async () => {
@@ -186,7 +193,9 @@ class McpServer {
               }
               try {
                 await mcpInstance.close();
-              } catch {}
+              } catch {
+                // Connection closed
+              }
             });
 
             await mcpInstance.connect(transport);
@@ -273,10 +282,14 @@ class McpServer {
     for (const [sessionId, { transport, server }] of this.transports.entries()) {
       try {
         await transport.close();
-      } catch {}
+      } catch {
+        // Transport already closed
+      }
       try {
         await server.close();
-      } catch {}
+      } catch {
+        // Server instance already closed
+      }
       if (this.sessionManager) {
         this.sessionManager.closeSession(sessionId);
       }

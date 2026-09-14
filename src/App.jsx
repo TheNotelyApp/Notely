@@ -521,11 +521,6 @@ export default function App() {
     }
   }, [handleReloadWorkspace, openTabs, openDocument, handleCloseTab]);
 
-  const handlePreviewNote = useCallback((filePath, lineNum = null) => {
-    if (!filePath) return;
-    void handleOpenReferencedDocument(filePath, lineNum);
-  }, [handleOpenReferencedDocument]);
-
   const handleCopyLinkPath = useCallback((target) => {
     const filePath = typeof target === "object" ? target?.filePath : target;
     if (!filePath || !notesFolderPath) return;

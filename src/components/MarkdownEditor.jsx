@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import { Search, Copy, Settings, BookPlus } from "lucide-react";
+import { Search, Copy, Settings, BookPlus, Wand2 } from "lucide-react";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
@@ -311,18 +311,14 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const [docLength, setDocLength] = useState(String(value || "").length);
   const [activeTableInfo, setActiveTableInfo] = useState(null);
 
-  const handleSelectSlashCommand = useCallback(async (insertedText, cmd) => {
+  const handleSelectSlashCommand = useCallback(async (insertedText) => {
     if (!slashMenu || !viewRef.current) return;
     const view = viewRef.current;
-    const lineObj = view.state.doc.line(slashMenu.line);
-    const lineText = lineObj.text;
     const selection = view.state.selection.main;
     const fromPos = Number.isFinite(slashMenu.slashPos) ? slashMenu.slashPos : selection.head - 1;
     const toPos = selection.head;
 
     setSlashMenu(null);
-
-
 
     if (insertedText) {
       view.dispatch({
@@ -331,7 +327,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
       });
       onChange?.(view.state.doc.toString());
     }
-  }, [slashMenu, onChange, onNotify]);
+  }, [slashMenu, onChange]);
 
   const lastScrollTopRef = useRef(0);
 

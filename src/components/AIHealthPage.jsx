@@ -2,12 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Activity,
   Database,
-  Cpu,
   AlertCircle,
-  Terminal,
-  ArrowLeft,
-  CheckCircle,
-  XCircle,
   Wrench,
   Search,
   X,
@@ -16,16 +11,10 @@ import {
   Clock,
   Trash2,
   Zap,
-  ChevronDown,
-  ChevronUp,
-  Server,
   RefreshCw,
-  Sliders,
   Radio,
   FileCode,
   ShieldAlert,
-  Play,
-  Square,
   ChevronRight
 } from 'lucide-react';
 import {
@@ -43,13 +32,6 @@ import '../styles/AISettings.css';
 import '../styles/AIHealthPage.css';
 
 // ─── Formatting Helpers ──────────────────────────────────────────────────────
-
-function fmtTime(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
-  } catch { return iso; }
-}
 
 function fmtMs(ms) {
   if (ms == null || ms < 0) return '—';
@@ -90,16 +72,15 @@ function StatusDot({ ok }) {
   return <span className="ahp-status-dot" data-ok={ok ? 'true' : 'false'} />;
 }
 
-function DbRow({ label, count, countLabel, path, status }) {
+function DbRow({ label, count, countLabel, status }) {
   const ok = status === 'connected';
   return (
     <div className="ahp-db-row">
       <div className="ahp-db-row-header">
         <StatusDot ok={ok} />
         <span className="ahp-db-row-name">{label}</span>
-        <span className="ahp-db-row-count">{count} {countLabel}</span>
+        <span className="ahp-db-row-count">{count} {countLabel || ''}</span>
       </div>
-      <span className="ahp-db-row-path">{path || 'none'}</span>
     </div>
   );
 }
@@ -131,13 +112,13 @@ export default function AIHealthPage({ onBack }) {
         aiGetLogs(100).catch(() => [])
       ]);
 
-      if (hRes) setHealthData(hRes);
-      if (sRes) setMcpStatus(sRes);
-      if (sessRes) setMcpSessions(sessRes.active || []);
+      if (hRes) setHealthData(hRes.data || hRes);
+      if (sRes) setMcpStatus(sRes.data || sRes);
+      if (sessRes) setMcpSessions((sessRes.data?.active || sessRes.active) || []);
 
-      // Parse tool calls from logs or telemetry
-      if (Array.isArray(logsRes)) {
-        const calls = logsRes.map((item, idx) => {
+      const logsArray = Array.isArray(logsRes?.data) ? logsRes.data : (Array.isArray(logsRes) ? logsRes : []);
+      if (logsArray.length > 0) {
+        const calls = logsArray.map((item, idx) => {
           const meta = item.metadata || item;
           return {
             id: item.id || `call_${idx}_${Date.now()}`,
@@ -199,8 +180,8 @@ export default function AIHealthPage({ onBack }) {
     }
   };
 
-  const handleCopyCode = (text, keyId) => {
-    copyToClipboard(text, 'Payload JSON');
+  const handleCopyCode = (text, keyId, label = 'Content') => {
+    copyToClipboard(text, label);
     setCopiedId(keyId);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -235,8 +216,8 @@ export default function AIHealthPage({ onBack }) {
   const dbStats = healthData?.database || {};
 
   return (
-    <div className="ahp-root">
-      {/* Standard App Navigation Topbar */}
+    <div className="knowledge-graph-page">
+      {/* Unified topbar navigation breadcrumb */}
       <div className="detail-topbar">
         <nav className="detail-breadcrumb" aria-label="MCP Diagnostics location">
           <span className="detail-breadcrumb-part">
@@ -249,17 +230,51 @@ export default function AIHealthPage({ onBack }) {
           </span>
           <span className="detail-breadcrumb-current">MCP Diagnostics</span>
         </nav>
+      </div>
 
-        <div className="detail-topbar-actions">
-          <span className="ahp-pill" data-ok={isRunning ? 'true' : 'false'}>
-            {isRunning ? 'Running' : 'Stopped'}
+      {/* Header Actions Bar — matching Knowledge Graph & Embeddings page */}
+      <div className="kg-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', height: '52px', boxSizing: 'border-box' }}>
+        {/* Sleek Running Status Pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', height: '32px', boxSizing: 'border-box' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: isRunning ? 'var(--status-success-text)' : 'var(--status-danger-text)' }}>
+            <span style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: isRunning ? 'var(--status-success-text)' : 'var(--status-danger-text)',
+              boxShadow: isRunning ? '0 0 6px var(--status-success-text)' : 'none'
+            }} />
+            MCP Server {isRunning ? 'Running' : 'Stopped'}
           </span>
+          <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Port:</span>
+            <strong style={{ color: 'var(--text-strong)' }}>{serverPort}</strong>
+          </div>
+          <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Active Clients:</span>
+            <strong style={{ color: 'var(--text-strong)' }}>{activeConnCount}</strong>
+          </div>
+        </div>
 
-          <button className="btn btn-secondary" onClick={fetchData} title="Refresh telemetry metrics">
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={fetchData}
+            style={{ height: '32px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px', boxSizing: 'border-box' }}
+            title="Refresh telemetry metrics"
+          >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh</span>
           </button>
-          <button className="btn btn-secondary" onClick={handleClearLogs} style={{ color: 'var(--status-danger-text)' }} title="Clear telemetry logs">
+
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleClearLogs}
+            style={{ height: '32px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--status-danger-text)', boxSizing: 'border-box' }}
+            title="Clear telemetry logs"
+          >
             <Trash2 size={14} />
             <span>Clear Logs</span>
           </button>
@@ -278,14 +293,41 @@ export default function AIHealthPage({ onBack }) {
             <div className="ahp-card-rows">
               <div className="ahp-row">
                 <span>Server Endpoint</span>
-                <code style={{ fontSize: '11px', fontFamily: 'monospace' }}>http://{serverHost}:{serverPort}/sse</code>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <code style={{ fontSize: '11px', fontFamily: 'monospace' }}>http://{serverHost}:{serverPort}/sse</code>
+                  <button
+                    type="button"
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      width: '20px',
+                      height: '20px',
+                      padding: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      borderRadius: '4px'
+                    }}
+                    onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/sse`, 'endpoint_url', 'Server Endpoint URL')}
+                    title={copiedId === 'endpoint_url' ? 'Copied to clipboard' : 'Copy Server Endpoint URL'}
+                    aria-label="Copy Server Endpoint URL"
+                  >
+                    {copiedId === 'endpoint_url' ? <Check size={12} style={{ color: 'var(--status-success-text)' }} /> : <Copy size={12} />}
+                  </button>
+                </div>
               </div>
               <div className="ahp-row">
-                <span>Active Connections</span>
-                <span className="ahp-provider">{activeConnCount} client(s)</span>
+                <span>Transport Protocol</span>
+                <span className="ahp-provider">HTTP SSE (Server-Sent Events)</span>
               </div>
               <div className="ahp-row">
-                <span>Total Sessions</span>
+                <span>MCP Spec Version</span>
+                <span>2024-11-05</span>
+              </div>
+              <div className="ahp-row">
+                <span>Total Sessions Recorded</span>
                 <span>{mcpMetrics.totalSessions || mcpSessions.length || 0}</span>
               </div>
             </div>
@@ -342,23 +384,17 @@ export default function AIHealthPage({ onBack }) {
             <div className="ahp-db-list">
               <DbRow
                 label="Vector DB Chunks"
-                count={dbStats.totalChunks || 0}
-                countLabel="chunks"
-                path={dbStats.embeddingDBPath}
+                count={`${dbStats.totalChunks || 0} chunks (${dbStats.indexedNotes || 0} notes)`}
                 status={dbStats.status}
               />
               <DbRow
                 label="Knowledge Graph"
-                count={dbStats.totalRelations || 0}
-                countLabel="relations"
-                path={dbStats.graphDBPath}
+                count={`${dbStats.totalEntities || 0} nodes / ${dbStats.totalRelations || 0} edges`}
                 status={dbStats.status}
               />
               <DbRow
                 label="Telemetry Database"
-                count={totalCallsCount}
-                countLabel="logs"
-                path={dbStats.telemetryDBPath}
+                count={`${totalCallsCount} logs`}
                 status={dbStats.status}
               />
             </div>

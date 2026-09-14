@@ -588,13 +588,11 @@ class ApplicationToolRegistry {
       },
       execute: async () => {
         try {
-          const { PersonaDB } = require('../../ai/memory');
+          const PersonaManager = require('../../ai/personas/PersonaManager');
           const { app } = require('electron');
-          const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely', 'notely') : null;
-          if (!appDataDir) return [];
-          const db = new PersonaDB(appDataDir);
-          db.initialize();
-          return db.list();
+          const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely') : null;
+          const manager = new PersonaManager(null, null, appDataDir);
+          return manager.listAvailablePersonas();
         } catch {
           return [];
         }
@@ -622,16 +620,76 @@ class ApplicationToolRegistry {
       },
       execute: async (args) => {
         try {
-          const { PersonaDB } = require('../../ai/memory');
+          const PersonaManager = require('../../ai/personas/PersonaManager');
           const { app } = require('electron');
-          const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely', 'notely') : null;
-          if (!appDataDir) return null;
-          const db = new PersonaDB(appDataDir);
-          db.initialize();
-          return db.get(args.id);
+          const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely') : null;
+          const manager = new PersonaManager(null, null, appDataDir);
+          return manager.getPersona(args.id);
         } catch {
           return null;
         }
+      }
+    });
+
+    // 17. personas.create
+    this.registerTool({
+      name: 'personas.create',
+      version: 'v1',
+      aliases: ['create_persona'],
+      sdkName: 'create_persona',
+      capability: 'personas:create',
+      serviceName: 'PersonaService',
+      description: 'Create a new custom AI persona.',
+      schema: z.object({
+        name: z.string().describe('Name of the persona.'),
+        description: z.string().optional().describe('Short summary of the persona.'),
+        prompt: z.string().optional().describe('System prompt instructions.'),
+        tone: z.string().optional().describe('Tone guidelines.'),
+        verbosity: z.string().optional().describe('Verbosity setting.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Name of the persona.' },
+          description: { type: 'string', description: 'Short summary of the persona.' },
+          prompt: { type: 'string', description: 'System prompt instructions.' }
+        },
+        required: ['name']
+      },
+      execute: async (args) => {
+        const PersonaManager = require('../../ai/personas/PersonaManager');
+        const { app } = require('electron');
+        const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely') : null;
+        const manager = new PersonaManager(null, null, appDataDir);
+        return manager.createCustomPersona(args);
+      }
+    });
+
+    // 18. personas.delete
+    this.registerTool({
+      name: 'personas.delete',
+      version: 'v1',
+      aliases: ['delete_persona'],
+      sdkName: 'delete_persona',
+      capability: 'personas:delete',
+      serviceName: 'PersonaService',
+      description: 'Delete a custom persona by ID.',
+      schema: z.object({
+        id: z.string().describe('ID of custom persona to delete.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'ID of custom persona to delete.' }
+        },
+        required: ['id']
+      },
+      execute: async (args) => {
+        const PersonaManager = require('../../ai/personas/PersonaManager');
+        const { app } = require('electron');
+        const appDataDir = app ? require('path').join(app.getPath('appData'), 'Notely') : null;
+        const manager = new PersonaManager(null, null, appDataDir);
+        return manager.deletePersona(args.id);
       }
     });
   }
