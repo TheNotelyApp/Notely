@@ -4,8 +4,8 @@
  * and PDFs/documents with their referencing notes and line numbers.
  */
 
-import { getMediaTypeFromExtension } from "../utils/mediaUtils";
-import { isDiagramReference, parseDiagramReference } from "../utils/diagramFileUtils";
+import { getMediaTypeFromExtension } from "../utils/mediaUtils.js";
+import { isDiagramReference, parseDiagramReference } from "../utils/diagramFileUtils.js";
 
 /**
  * Determine the specific Mermaid diagram type from code content.

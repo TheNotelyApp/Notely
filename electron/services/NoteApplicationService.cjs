@@ -7,6 +7,16 @@
 const fs = require('fs');
 const path = require('path');
 
+function toWorkspaceRelative(targetPath, workspaceRoot) {
+  if (!targetPath || typeof targetPath !== 'string') return targetPath;
+  if (!workspaceRoot || typeof workspaceRoot !== 'string') return targetPath;
+  const resolvedRoot = path.resolve(workspaceRoot);
+  const resolvedTarget = path.resolve(targetPath);
+  const rel = path.relative(resolvedRoot, resolvedTarget);
+  if (rel === '') return '.';
+  return rel.split(/[\\/]+/).join('/');
+}
+
 function assertPathInWorkspace(targetPath, workspaceRoot) {
   if (!workspaceRoot || typeof workspaceRoot !== 'string') {
     throw new Error('Workspace root is required.');
@@ -15,9 +25,23 @@ function assertPathInWorkspace(targetPath, workspaceRoot) {
     throw new Error('Target path is required.');
   }
   const resolvedRoot = path.resolve(workspaceRoot);
-  const resolvedTarget = path.isAbsolute(targetPath)
-    ? path.resolve(targetPath)
-    : path.resolve(resolvedRoot, targetPath);
+  let cleaned = String(targetPath).trim();
+
+  // If path has a Windows drive letter (e.g. C:\foo or C:/foo), treat as full absolute disk path
+  const isWindowsAbsolute = /^[a-zA-Z]:[/\\]/.test(cleaned);
+
+  if (!isWindowsAbsolute) {
+    // Strip leading forward/back slashes and relative './' or '.\'
+    // so '/Welcome.md', '\notes\doc.md', and './docs/read.md' resolve cleanly relative to workspace root
+    cleaned = cleaned.replace(/^[/\\]+/, '');
+    while (cleaned.startsWith('./') || cleaned.startsWith('.\\')) {
+      cleaned = cleaned.slice(2);
+    }
+  }
+
+  const resolvedTarget = isWindowsAbsolute
+    ? path.resolve(cleaned)
+    : path.resolve(resolvedRoot, cleaned);
 
   const relative = path.relative(resolvedRoot, resolvedTarget);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -437,5 +461,6 @@ class NoteApplicationService {
 module.exports = {
   NoteApplicationService,
   assertPathInWorkspace,
+  toWorkspaceRelative,
   collectMarkdownFiles
 };

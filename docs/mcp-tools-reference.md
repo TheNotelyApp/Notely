@@ -16,11 +16,11 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - **Transport Protocol**: HTTP SSE listening by default on `http://127.0.0.1:3700/sse` (messages accepted at `/messages`).
 - **Security Guard (`allowWriteTools`)**: Configurable toggle in MCP Settings. When set to `false`, all write operations (`[W]`) are automatically hidden from MCP capability advertisement (`tools/list`) and blocked with a `WRITE_DISABLED` error envelope.
 - **Flight Log Telemetry**: All incoming tool call executions are recorded in the local SQLite telemetry database and broadcast via IPC to the **MCP Diagnostics** flight log viewer (`AIHealthPage`).
-- **Total Capabilities**: **129 Tools** across 14 specialized suites.
+- **Total Capabilities**: **133 Tools** across 14 specialized suites.
 
 ---
 
-## 2. Complete Tool Suites Reference (129 Tools)
+## 2. Complete Tool Suites Reference (133 Tools)
 
 ### Suite 1: Notes & Document Management (`notes.*`) — 33 Tools
 
@@ -65,8 +65,12 @@ Notely embeds an **HTTP SSE (Server-Sent Events) Model Context Protocol (MCP)** 
 - `index.get_tags`: Retrieve tag map and list of documents grouped by tag across the workspace.
 - `index.list_notes`: Return a flat list of all notes in the workspace index with titles and relative paths.
 
-### Suite 3: Workspace Metadata & Files (`workspace.*`) — 17 Tools
+### Suite 3: Workspace Metadata & Files (`workspace.*`) — 21 Tools
 
+- `workspace.list_workspaces`: List all known and recent workspaces in Notely, including active workspace and directory paths.
+- `workspace.current`: Get details and metrics for the currently active workspace.
+- `workspace.notes_index`: Generate structured index of all notes in the active workspace with word count, tags, task stats, and frontmatter.
+- `workspace.media_used_index`: Extract complete index of all media assets, diagrams, and attachments actively referenced across workspace notes.
 - `workspace.metadata`: Get workspace metadata, vault name, app version, root directory path, and environment details.
 - `workspace.update_metadata` **[W]**: Update workspace metadata settings and configuration flags.
 - `workspace.statistics`: Get workspace document counts, storage breakdown, task totals, and health metrics.

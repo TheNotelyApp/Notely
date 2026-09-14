@@ -563,6 +563,78 @@ class ApplicationToolRegistry {
 
     // ─── 3. WORKSPACE METADATA SUITE (`workspace.*`) ─────────────────────────
 
+    // workspace.list_workspaces
+    this.registerTool({
+      name: 'workspace.list_workspaces',
+      version: 'v1',
+      aliases: ['list_workspaces', 'workspaces.list'],
+      sdkName: 'list_workspaces',
+      serviceName: 'WorkspaceApplicationService',
+      description: 'List all known and recent workspaces in Notely, including active workspace and directory paths.',
+      isWrite: false,
+      schema: z.object({}),
+      jsonSchema: { type: 'object', properties: {} },
+      execute: async (args) => this.workspaceService.listWorkspaces(args)
+    });
+
+    // workspace.current
+    this.registerTool({
+      name: 'workspace.current',
+      version: 'v1',
+      aliases: ['current_workspace', 'workspace.current_workspace'],
+      sdkName: 'get_current_workspace',
+      serviceName: 'WorkspaceApplicationService',
+      description: 'Get details and metrics for the currently active workspace.',
+      isWrite: false,
+      schema: z.object({}),
+      jsonSchema: { type: 'object', properties: {} },
+      execute: async (args) => this.workspaceService.getCurrentWorkspace(args)
+    });
+
+    // workspace.notes_index
+    this.registerTool({
+      name: 'workspace.notes_index',
+      version: 'v1',
+      aliases: ['notes_index', 'notes.index', 'index.notes_index'],
+      sdkName: 'get_notes_index',
+      serviceName: 'WorkspaceApplicationService',
+      description: 'Generate structured index of all notes in the active workspace with word count, tags, task stats, and frontmatter.',
+      isWrite: false,
+      schema: z.object({
+        folder: z.string().optional().describe('Workspace-relative folder path to scope the index.'),
+        tag: z.string().optional().describe('Filter notes by tag.')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          folder: { type: 'string', description: 'Workspace-relative folder path to scope the index.' },
+          tag: { type: 'string', description: 'Filter notes by tag.' }
+        }
+      },
+      execute: async (args) => this.workspaceService.getNotesIndex(args)
+    });
+
+    // workspace.media_used_index
+    this.registerTool({
+      name: 'workspace.media_used_index',
+      version: 'v1',
+      aliases: ['media_used_index', 'media.used_index'],
+      sdkName: 'get_media_used_index',
+      serviceName: 'WorkspaceApplicationService',
+      description: 'Extract complete index of all media assets, diagrams, and attachments actively referenced across workspace notes.',
+      isWrite: false,
+      schema: z.object({
+        category: z.string().optional().describe('Optional media category filter (image, diagram, pdf, etc.).')
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          category: { type: 'string', description: 'Optional media category filter (image, diagram, pdf, etc.).' }
+        }
+      },
+      execute: async (args) => this.workspaceService.getMediaUsedIndex(args)
+    });
+
     // workspace.metadata
     this.registerTool({
       name: 'workspace.metadata',
@@ -988,7 +1060,8 @@ class ApplicationToolRegistry {
       execute: async (args) => {
         const fs = require('fs');
         const path = require('path');
-        const full = path.isAbsolute(args.assetPath) ? args.assetPath : path.join(args.workspaceRoot || '', args.assetPath);
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+        const full = assertPathInWorkspace(args.assetPath, args.workspaceRoot);
         if (!fs.existsSync(full)) throw new Error(`Asset at path "${args.assetPath}" not found.`);
 
         const stat = fs.statSync(full);
@@ -1028,15 +1101,16 @@ class ApplicationToolRegistry {
       execute: async (args) => {
         const path = require('path');
         const fs = require('fs');
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
         const root = args.workspaceRoot;
         if (!root) throw new Error('Workspace root required.');
 
-        const dir = path.join(root, 'assets');
+        const target = assertPathInWorkspace(path.join('assets', args.fileName), root);
+        const dir = path.dirname(target);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        const target = path.join(dir, args.fileName);
         const cleanBase64 = args.base64Data.replace(/^data:image\/\w+;base64,/, '');
         fs.writeFileSync(target, Buffer.from(cleanBase64, 'base64'));
-        return { saved: true, path: target, relativePath: `assets/${args.fileName}` };
+        return { saved: true, path: target, relativePath: path.relative(root, target).split(/[\\/]+/).join('/') };
       }
     });
 
@@ -1060,9 +1134,9 @@ class ApplicationToolRegistry {
         required: ['assetPath']
       },
       execute: async (args) => {
-        const path = require('path');
         const fs = require('fs');
-        const target = path.isAbsolute(args.assetPath) ? args.assetPath : path.join(args.workspaceRoot || '', args.assetPath);
+        const { assertPathInWorkspace } = require('../services/NoteApplicationService.cjs');
+        const target = assertPathInWorkspace(args.assetPath, args.workspaceRoot);
         if (fs.existsSync(target)) fs.unlinkSync(target);
         return { deleted: true, path: target };
       }
@@ -1509,9 +1583,8 @@ class ApplicationToolRegistry {
       jsonSchema: { type: 'object', properties: {} },
       execute: async () => {
         try {
-          const AIHealth = require('../../ai/diagnostics/AIHealth');
-          const health = new AIHealth();
-          return health.getHealthStatus();
+          const { getSubsystemHealth } = require('../../ai/diagnostics/AIHealth');
+          return getSubsystemHealth();
         } catch (err) {
           return { status: 'degraded', error: err.message };
         }
