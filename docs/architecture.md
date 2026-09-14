@@ -110,7 +110,7 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 
 ### E. Model Context Protocol (MCP) Subsystem (`McpServer.cjs`)
 * **Streamable HTTP & SSE Server**: Embedded dual-transport MCP server listening by default on port `3700` exposing workspace capabilities to external AI clients (Google Antigravity, Claude Desktop, Cursor, IDE agents).
-* **Capability Suites**: Registers **129 tools across 15 suites** (`notes`, `index`, `workspace`, `diagrams`, `drawio`, `excalidraw`, `media`, `tasks`, `search`, `knowledge`, `git`, `diagnostics`, `web`, `personas`, `export`). See [`docs/mcp-tools-reference.md`](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/docs/mcp-tools-reference.md).
+* **Enterprise Capabilities**: Registers **7 unified enterprise tools** (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`) and **5 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`). See [`docs/mcp-tools-reference.md`](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/docs/mcp-tools-reference.md).
 * **Permission Control**: Enforces `allowWriteTools` configuration toggle; rejects unauthorized write operations (`[W]`) automatically.
 * **Telemetry Flight Log**: Records tool execution events in SQLite database and streams updates via IPC to `AIHealthPage.jsx`.
 
@@ -128,7 +128,7 @@ The following diagram shows the full request path from the React UI through each
 * **Streamable HTTP & SSE Server (`McpServer.cjs`)**: Embedded MCP server (default port `3700`) exposing Notely workspace capabilities over Streamable HTTP (`/mcp`, `/sse`, `/`) and legacy SSE (`/sse`, `/messages`) with Bearer token authentication and session ID tracking.
 * **Lifecycle Controller (`McpLifecycle.cjs`)**: Manages MCP server lifecycle, port settings (`mcp-config.json`), IPC status broadcasting (`mcp:status-changed`), and graceful app shutdown.
 * **Session Manager (`McpSessionManager.cjs`)**: Tracks active client connections, remote User-Agents, request durations, and tool invocation stats.
-* **Application Tool Registry (`ApplicationToolRegistry.cjs`)**: Exposes 129 typed tools for note operations, workspace full-text search, knowledge graph queries, task management, Excalidraw canvas diagrams, media scanning, git operations, diagnostics, and workspace metadata.
+* **Application Tool Registry (`ApplicationToolRegistry.cjs`)**: Exposes 7 self-sufficient enterprise tools for note operations, workspace multi-modal search, knowledge graph queries, task management, diagram management, git operations, and workspace metadata.
 * **Capabilities & Diagnostics UI**: Integrated React views `MCPToolsPage.jsx` (Interactive capabilities catalog & terminal test runner) and `AIHealthPage.jsx` (MCP server telemetry & Streamable HTTP / SSE session diagnostics). See [Developer MCP Guide](/developer/mcp) for detailed API schemas.
 
 ```mermaid

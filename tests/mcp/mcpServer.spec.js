@@ -72,8 +72,8 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(session.id, 'sess_test_1');
       assert.strictEqual(manager.getActiveSessions().length, 1);
 
-      manager.recordToolCall('sess_test_1', 'notes.read', 12, true);
-      manager.recordToolCall('sess_test_1', 'search.notes', 25, false, 'Simulated error');
+      manager.recordToolCall('sess_test_1', 'read_note', 12, true);
+      manager.recordToolCall('sess_test_1', 'search', 25, false, 'Simulated error');
 
       const stats = manager.getStats();
       assert.strictEqual(stats.totalToolCalls, 2);
@@ -89,15 +89,15 @@ describe('Notely MCP Server Subsystem Tests', () => {
   describe('ApplicationToolRegistry Security & Execution', () => {
     it('should block write tools when allowWriteTools is false', async () => {
       const writeRes = await applicationToolRegistry.executeTool(
-        'notes.create',
-        { title: 'Security Test Note' },
+        'edit_note',
+        { operation: 'create', target: 'Security Test Note.md', content: 'hello' },
         { allowWriteTools: false, workspaceRoot: tempDir }
       );
       assert.strictEqual(writeRes.success, false);
       assert.strictEqual(writeRes.error.code, 'WRITE_DISABLED');
 
       const readRes = await applicationToolRegistry.executeTool(
-        'workspace.statistics',
+        'workspace_overview',
         {},
         { allowWriteTools: false, workspaceRoot: tempDir }
       );
@@ -134,7 +134,7 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(res.json.status, 'ok');
       assert.strictEqual(res.json.server, 'notely-mcp');
       assert.strictEqual(res.json.port, testPort);
-      assert.ok(res.json.toolsCount >= 40);
+      assert.ok(res.json.toolsCount >= 7);
     });
 
     it('should enforce Bearer token authentication when configured', async () => {
@@ -149,13 +149,13 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(resAuth.statusCode, 200);
       assert.ok(Array.isArray(resAuth.json.tools));
       const toolNames = resAuth.json.tools.map(t => t.name);
-      assert.ok(toolNames.includes('notes.read'));
-      assert.ok(toolNames.includes('notes.create'));
-      assert.ok(toolNames.includes('diagrams.render'));
-      assert.ok(toolNames.includes('index.build_index'));
-      assert.ok(toolNames.includes('workspace.metadata'));
-      assert.ok(toolNames.includes('media.list_assets'));
-      assert.ok(toolNames.includes('git.status'));
+      assert.ok(toolNames.includes('search'));
+      assert.ok(toolNames.includes('read_note'));
+      assert.ok(toolNames.includes('edit_note'));
+      assert.ok(toolNames.includes('manage_tasks'));
+      assert.ok(toolNames.includes('manage_diagrams'));
+      assert.ok(toolNames.includes('workspace_overview'));
+      assert.ok(toolNames.includes('git_control'));
     });
 
     it('should handle CORS preflight', async () => {
@@ -227,8 +227,8 @@ describe('Notely MCP Server Subsystem Tests', () => {
       });
 
       assert.strictEqual(toolsRes.statusCode, 200);
-      assert.ok(toolsRes.body.includes('notes.read'));
-      assert.ok(toolsRes.body.includes('workspace.metadata'));
+      assert.ok(toolsRes.body.includes('read_note'));
+      assert.ok(toolsRes.body.includes('workspace_overview'));
     });
   });
 });

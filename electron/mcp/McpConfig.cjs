@@ -11,7 +11,8 @@ const DEFAULT_CONFIG = {
   port: 3700,
   host: '127.0.0.1',
   bearerToken: '',
-  allowWriteTools: true
+  allowWriteTools: true,
+  toolMode: 'all'
 };
 
 class McpConfig {
@@ -31,7 +32,8 @@ class McpConfig {
           ...DEFAULT_CONFIG,
           ...parsed,
           port: Number(parsed.port) || DEFAULT_CONFIG.port,
-          allowWriteTools: parsed.allowWriteTools !== undefined ? Boolean(parsed.allowWriteTools) : DEFAULT_CONFIG.allowWriteTools
+          allowWriteTools: parsed.allowWriteTools !== undefined ? Boolean(parsed.allowWriteTools) : DEFAULT_CONFIG.allowWriteTools,
+          toolMode: parsed.toolMode || DEFAULT_CONFIG.toolMode
         };
       }
     } catch (err) {
@@ -65,6 +67,9 @@ class McpConfig {
       if (updates.allowWriteTools !== undefined) {
         next.allowWriteTools = Boolean(updates.allowWriteTools);
       }
+      if (updates.toolMode !== undefined) {
+        next.toolMode = String(updates.toolMode).trim();
+      }
 
       this.config = next;
       const dir = path.dirname(this.configPath);
@@ -86,6 +91,7 @@ class McpConfig {
       host: this.config.host || DEFAULT_CONFIG.host,
       bearerToken: this.config.bearerToken || '',
       allowWriteTools: this.config.allowWriteTools !== undefined ? Boolean(this.config.allowWriteTools) : true,
+      toolMode: this.config.toolMode || DEFAULT_CONFIG.toolMode,
       isTokenProtected: Boolean(this.config.bearerToken && this.config.bearerToken.trim().length > 0)
     };
   }

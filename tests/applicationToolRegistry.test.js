@@ -25,32 +25,33 @@ describe('Application Tool Registry Architecture Tests', () => {
 
   it('should list and resolve registered tools', () => {
     const schemas = registry.toMcpSchemas();
-    expect(schemas.length).toBeGreaterThan(0);
+    expect(schemas.length).toBe(7);
     
-    const readTool = schemas.find(s => s.name === 'notes.read');
+    const readTool = schemas.find(s => s.name === 'read_note');
     expect(readTool).toBeDefined();
     expect(readTool.inputSchema).toBeDefined();
   });
 
-  it('should safely execute notes.create and notes.read within workspace boundaries', async () => {
-    const createRes = await registry.executeTool('notes.create', {
-      title: 'Architecture Test Note',
+  it('should safely execute edit_note and read_note within workspace boundaries', async () => {
+    const createRes = await registry.executeTool('edit_note', {
+      operation: 'create',
+      filePath: 'Architecture Test Note.md',
       content: 'This is test content.'
     }, { workspaceRoot: tmpDir });
 
     expect(createRes.success).toBe(true);
-    expect(createRes.data.created).toBe(true);
-    expect(createRes.metadata.toolName).toBe('notes.create');
+    expect(createRes.data.operation).toBe('create');
+    expect(createRes.metadata.toolName).toBe('edit_note');
 
-    const createdPath = createRes.data.path;
+    const createdPath = path.join(tmpDir, 'Architecture Test Note.md');
     expect(fs.existsSync(createdPath)).toBe(true);
 
-    const readRes = await registry.executeTool('notes.read', {
-      filePath: createdPath
+    const readRes = await registry.executeTool('read_note', {
+      pathOrTitle: 'Architecture Test Note.md'
     }, { workspaceRoot: tmpDir });
 
     expect(readRes.success).toBe(true);
-    expect(readRes.data.content).toContain('This is test content.');
+    expect(readRes.data.content.raw).toContain('This is test content.');
   });
 
   it('should reject path traversal attempts outside workspace root', async () => {
@@ -69,10 +70,10 @@ describe('Application Tool Registry Architecture Tests', () => {
     await expect(service.deleteNote({})).rejects.toThrow(/filePath/);
   });
 
-  it('should calculate workspace statistics cleanly', async () => {
+  it('should calculate workspace overview cleanly', async () => {
     fs.writeFileSync(path.join(tmpDir, 'test1.md'), '# Test\n- [ ] Task 1\n[[Link1]]', 'utf8');
 
-    const statsRes = await registry.executeTool('workspace.statistics', {}, { workspaceRoot: tmpDir });
+    const statsRes = await registry.executeTool('workspace_overview', {}, { workspaceRoot: tmpDir });
     expect(statsRes.success).toBe(true);
     expect(statsRes.data.noteCount).toBe(1);
     expect(statsRes.data.taskCount).toBe(1);
@@ -82,9 +83,9 @@ describe('Application Tool Registry Architecture Tests', () => {
   it('should search notes cleanly without exposing storage internals', async () => {
     fs.writeFileSync(path.join(tmpDir, 'search_target.md'), '# Secret Topic\nUnique keyword antigravity.', 'utf8');
 
-    const searchRes = await registry.executeTool('search.notes', { query: 'antigravity' }, { workspaceRoot: tmpDir });
+    const searchRes = await registry.executeTool('search', { query: 'antigravity' }, { workspaceRoot: tmpDir });
     expect(searchRes.success).toBe(true);
-    expect(searchRes.data.length).toBe(1);
-    expect(searchRes.data[0].title).toBe('search_target.md');
+    expect(searchRes.data.hits.length).toBe(1);
+    expect(searchRes.data.hits[0].title).toBe('Secret Topic');
   });
 });

@@ -10,8 +10,9 @@ const { randomUUID } = require('crypto');
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
-const { ListToolsRequestSchema, CallToolRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
+const { ListToolsRequestSchema, CallToolRequestSchema, ListPromptsRequestSchema, GetPromptRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
 const { applicationToolRegistry } = require('../tools/ApplicationToolRegistry.cjs');
+const { mcpPromptsRegistry } = require('./McpPrompts.cjs');
 
 class McpServer {
   /**
@@ -20,6 +21,7 @@ class McpServer {
    * @param {string} options.host
    * @param {string} options.bearerToken
    * @param {boolean} options.allowWriteTools
+   * @param {string} [options.toolMode] - 'unified' | 'legacy' | 'all'
    * @param {import('./McpSessionManager.cjs').McpSessionManager} options.sessionManager
    * @param {Function} options.getWorkspaceRoot
    * @param {Function} options.onTelemetryEvent
@@ -29,6 +31,7 @@ class McpServer {
     this.host = options.host || '127.0.0.1';
     this.bearerToken = options.bearerToken || '';
     this.allowWriteTools = options.allowWriteTools !== undefined ? Boolean(options.allowWriteTools) : true;
+    this.toolMode = options.toolMode || 'all';
     this.sessionManager = options.sessionManager;
     this.getWorkspaceRoot = typeof options.getWorkspaceRoot === 'function' ? options.getWorkspaceRoot : null;
     this.onTelemetryEvent = typeof options.onTelemetryEvent === 'function' ? options.onTelemetryEvent : null;
@@ -41,11 +44,12 @@ class McpServer {
     this.errorCode = null;
   }
 
-  updateConfig({ port, host, bearerToken, allowWriteTools, getWorkspaceRoot, onTelemetryEvent }) {
+  updateConfig({ port, host, bearerToken, allowWriteTools, toolMode, getWorkspaceRoot, onTelemetryEvent }) {
     if (port !== undefined) this.port = Number(port);
     if (host !== undefined) this.host = host;
     if (bearerToken !== undefined) this.bearerToken = bearerToken;
     if (allowWriteTools !== undefined) this.allowWriteTools = Boolean(allowWriteTools);
+    if (toolMode !== undefined) this.toolMode = toolMode;
     if (typeof getWorkspaceRoot === 'function') this.getWorkspaceRoot = getWorkspaceRoot;
     if (typeof onTelemetryEvent === 'function') this.onTelemetryEvent = onTelemetryEvent;
   }
@@ -68,15 +72,24 @@ class McpServer {
 
     const server = new Server(
       { name: 'notely', version: '0.1.41' },
-      { capabilities: { tools: {} } }
+      { capabilities: { tools: {}, prompts: {} } }
     );
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const allTools = applicationToolRegistry.toMcpSchemas();
+      const allTools = applicationToolRegistry.toMcpSchemas({ mode: this.toolMode });
       const tools = this.allowWriteTools
         ? allTools
         : allTools.filter(t => !t.isWrite);
       return { tools };
+    });
+
+    server.setRequestHandler(ListPromptsRequestSchema, async () => {
+      return { prompts: mcpPromptsRegistry.listPrompts() };
+    });
+
+    server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+      return mcpPromptsRegistry.getPrompt(name, args || {});
     });
 
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -195,7 +208,7 @@ class McpServer {
 
         if (isGetHealth) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          const allSchemas = applicationToolRegistry.toMcpSchemas();
+          const allSchemas = applicationToolRegistry.toMcpSchemas({ mode: this.toolMode });
           const advertisedSchemas = this.allowWriteTools
             ? allSchemas
             : allSchemas.filter(t => !t.isWrite);
@@ -205,6 +218,7 @@ class McpServer {
             version: '0.1.41',
             port: this.port,
             toolsCount: advertisedSchemas.length,
+            promptsCount: mcpPromptsRegistry.listPrompts().length,
             activeSessions: (this.sessionManager ? this.sessionManager.getActiveSessions().length : 0) + this.streamableTransports.size
           }));
           return;
@@ -217,12 +231,24 @@ class McpServer {
             res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
             return;
           }
-          const allTools = applicationToolRegistry.toMcpSchemas();
+          const allTools = applicationToolRegistry.toMcpSchemas({ mode: this.toolMode });
           const tools = this.allowWriteTools
             ? allTools
             : allTools.filter(t => !t.isWrite);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ tools }));
+          return;
+        }
+
+        // GET /prompts
+        if (pathname === '/prompts' && req.method === 'GET') {
+          if (!this._checkAuth(req)) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ prompts: mcpPromptsRegistry.listPrompts() }));
           return;
         }
 
