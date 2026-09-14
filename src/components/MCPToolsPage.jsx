@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Wrench,
   Search,
@@ -9,24 +9,94 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Settings
+  Settings,
+  Sparkles,
+  FileJson,
+  Terminal,
+  Activity,
+  Layers,
+  Zap,
+  Filter,
+  FileText,
+  Folder,
+  Cpu,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Clock
 } from "lucide-react";
 import { listTools, executeTool } from "../services/electron/aiService";
-import { mcpGetStatus } from "../services/electronService";
+import { mcpGetStatus, onMcpStatusChanged } from "../services/electronService";
 import "../styles/KnowledgeGraph.css";
 import "../styles/AISettings.css";
 import "../styles/MCPSettings.css";
+
+function generateSampleArgs(tool) {
+  const props = tool?.inputSchema?.properties;
+  if (!props || Object.keys(props).length === 0) {
+    return "{}";
+  }
+  const sample = {};
+  for (const [key, prop] of Object.entries(props)) {
+    const type = prop.type || "string";
+    if (type === "number" || type === "integer") {
+      sample[key] = 1;
+    } else if (type === "boolean") {
+      sample[key] = true;
+    } else if (type === "array") {
+      sample[key] = [];
+    } else if (type === "object") {
+      sample[key] = {};
+    } else {
+      if (key.toLowerCase().includes("path") || key.toLowerCase().includes("file")) {
+        sample[key] = "Untitled.md";
+      } else if (key.toLowerCase().includes("query")) {
+        sample[key] = "project goals";
+      } else {
+        sample[key] = prop.description ? prop.description.slice(0, 35) : "sample";
+      }
+    }
+  }
+  return JSON.stringify(sample, null, 2);
+}
+
+function getToolCategory(name = "") {
+  const n = name.toLowerCase();
+  if (n.includes("note") || n.includes("doc") || n.includes("content") || n.includes("read") || n.includes("write") || n.includes("create")) {
+    return "Notes & Docs";
+  }
+  if (n.includes("search") || n.includes("graph") || n.includes("embed") || n.includes("query") || n.includes("find") || n.includes("rag")) {
+    return "Search & Graph";
+  }
+  if (n.includes("workspace") || n.includes("folder") || n.includes("file") || n.includes("list") || n.includes("dir")) {
+    return "Workspace & Files";
+  }
+  return "System & AI";
+}
+
+function getCategoryIcon(cat) {
+  switch (cat) {
+    case "Notes & Docs": return <FileText size={14} />;
+    case "Search & Graph": return <Search size={14} />;
+    case "Workspace & Files": return <Folder size={14} />;
+    case "System & AI": return <Cpu size={14} />;
+    default: return <Layers size={14} />;
+  }
+}
 
 export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [tools, setTools] = useState([]);
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filterQuery, setFilterQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [expandedTool, setExpandedTool] = useState(null);
   const [testArgs, setTestArgs] = useState({});
   const [testResult, setTestResult] = useState(null);
   const [runningTest, setRunningTest] = useState(false);
   const [copiedName, setCopiedName] = useState(null);
+  const [copiedManifest, setCopiedManifest] = useState(false);
+  const [copiedOutput, setCopiedOutput] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -51,16 +121,30 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
   useEffect(() => {
     loadData();
+    const unsub = onMcpStatusChanged((updatedStatus) => {
+      setStatus(updatedStatus);
+    });
+    return () => unsub?.();
   }, [loadData]);
 
-  const filteredTools = tools.filter((t) => {
-    const q = filterQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      t.name.toLowerCase().includes(q) ||
-      (t.description && t.description.toLowerCase().includes(q))
-    );
-  });
+  const categories = useMemo(() => {
+    const set = new Set(["All"]);
+    tools.forEach((t) => set.add(getToolCategory(t.name)));
+    return Array.from(set);
+  }, [tools]);
+
+  const filteredTools = useMemo(() => {
+    return tools.filter((t) => {
+      const q = filterQuery.toLowerCase().trim();
+      const matchesCategory = selectedCategory === "All" || getToolCategory(t.name) === selectedCategory;
+      if (!matchesCategory) return false;
+      if (!q) return true;
+      return (
+        t.name.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q))
+      );
+    });
+  }, [tools, filterQuery, selectedCategory]);
 
   const handleRunTool = async (tool) => {
     try {
@@ -112,11 +196,36 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
     setTimeout(() => setCopiedName(null), 1500);
   };
 
+  const copyManifest = () => {
+    try {
+      const manifestStr = JSON.stringify(tools, null, 2);
+      navigator.clipboard.writeText(manifestStr);
+      setCopiedManifest(true);
+      onNotify?.(`Copied MCP tools manifest (${tools.length} capabilities) to clipboard.`, "success");
+      setTimeout(() => setCopiedManifest(false), 2000);
+    } catch (err) {
+      onNotify?.(`Failed to copy manifest: ${err.message}`, "error");
+    }
+  };
+
+  const copyResultOutput = (data) => {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setCopiedOutput(true);
+      setTimeout(() => setCopiedOutput(false), 1500);
+    } catch { /* ignore */ }
+  };
+
+  const handlePrefillSample = (tool) => {
+    const sampleStr = generateSampleArgs(tool);
+    setTestArgs({ ...testArgs, [tool.name]: sampleStr });
+  };
+
   const isRunning = Boolean(status?.running);
   const isPortConflict = status?.errorCode === "EADDRINUSE";
 
   return (
-    <div className="knowledge-graph-page ahp-root" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div className="mcp-tools-page-wrapper">
       {/* Top Header Breadcrumb */}
       <div className="detail-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <nav className="detail-breadcrumb" aria-label="Location">
@@ -131,108 +240,156 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
           <span className="detail-breadcrumb-current">MCP Tools &amp; Capabilities</span>
         </nav>
 
-        {onOpenSettings && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={onOpenSettings}
+            onClick={loadData}
+            title="Reload tools and status"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
           >
-            <Settings size={14} /> MCP Settings
+            <RefreshCw size={14} className={loading ? "spin" : ""} /> Refresh
           </button>
-        )}
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={copyManifest}
+            title="Copy full JSON manifest of all registered MCP tools"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
+          >
+            {copiedManifest ? <Check size={14} color="#10b981" /> : <FileJson size={14} />}
+            {copiedManifest ? "Manifest Copied" : "Export Manifest"}
+          </button>
+
+          {onOpenSettings && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onOpenSettings}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
+            >
+              <Settings size={14} /> MCP Settings
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", maxWidth: "1200px", margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-        {/* Status Banner */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            background: isPortConflict
-              ? "rgba(239, 68, 68, 0.1)"
-              : isRunning
-              ? "rgba(16, 185, 129, 0.08)"
-              : "var(--bg-card)",
-            border: isPortConflict
-              ? "1px solid var(--status-danger-border, #ef4444)"
-              : isRunning
-              ? "1px solid var(--status-success-border, #10b981)"
-              : "1px solid var(--border-subtle)",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-            gap: "12px"
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Server size={18} style={{ color: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)" }} />
+      <div className="mcp-tools-scroll-content">
+        {/* Status Hero Banner */}
+        <div className={`mcp-hero-banner ${isPortConflict ? "is-conflict" : isRunning ? "is-running" : ""}`}>
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div
+              style={{
+                width: "42px",
+                height: "42px",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: isPortConflict
+                  ? "rgba(239, 68, 68, 0.2)"
+                  : isRunning
+                  ? "rgba(16, 185, 129, 0.2)"
+                  : "var(--surface-muted)",
+                color: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)"
+              }}
+            >
+              <Server size={20} />
+            </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <strong style={{ fontSize: "13px" }}>Notely MCP Server</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <strong style={{ fontSize: "15px", fontWeight: 700 }}>Notely MCP Server</strong>
+                {isRunning && <span className="mcp-pulse-dot" title="Server Active" />}
                 <span
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: "10px",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    background: isPortConflict ? "rgba(239, 68, 68, 0.2)" : isRunning ? "rgba(16, 185, 129, 0.2)" : "var(--bg-muted)",
-                    color: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)"
-                  }}
+                  className={`mcp-status-badge ${isPortConflict ? "is-conflict" : isRunning ? "is-running" : ""}`}
                 >
-                  {isPortConflict ? "Port Conflict" : isRunning ? `Running (Port ${status?.port || 3700})` : "Stopped"}
+                  {isPortConflict ? "Port Conflict" : isRunning ? `Running · Port ${status?.port || 3700}` : "Stopped"}
                 </span>
               </div>
-              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+              <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px", display: "block" }}>
                 {isRunning
                   ? `Exposing ${tools.length} capabilities to external AI clients over SSE at http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
-                  : "Start the server from MCP Settings to allow external AI connections."}
+                  : "Server offline. Enable from MCP Settings to connect Claude Desktop, IDE agents, or external tools."}
               </span>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-              Active Sessions: <strong>{status?.activeSessions || 0}</strong>
-            </span>
+          <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                Capabilities
+              </div>
+              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>{tools.length}</div>
+            </div>
+
+            <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
+
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                Active Sessions
+              </div>
+              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>{status?.activeSessions || 0}</div>
+            </div>
+
+            <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
+
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                Invocations
+              </div>
+              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--accent-solid, #3b82f6)" }}>{status?.totalToolCalls || 0}</div>
+            </div>
           </div>
         </div>
 
-        {/* Search & Tool Count Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", gap: "16px" }}>
-          <div>
-            <h2 style={{ fontSize: "16px", margin: 0, fontWeight: 600 }}>Registered Tools</h2>
-            <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>
-              External AI agents can discover and invoke these tools via MCP protocol.
-            </p>
+        {/* Filter Pills & Search */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
+          {/* Category Tabs */}
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            {categories.map((cat) => {
+              const count = cat === "All" ? tools.length : tools.filter((t) => getToolCategory(t.name) === cat).length;
+              const isSel = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`mcp-category-pill ${isSel ? "is-active" : ""}`}
+                >
+                  {getCategoryIcon(cat)}
+                  {cat}
+                  <span className="mcp-category-count">{count}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ position: "relative", width: "260px" }}>
-            <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+          <div style={{ position: "relative", width: "280px" }}>
+            <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
             <input
               type="text"
-              placeholder="Filter tools by name or description…"
+              placeholder="Search tools by name or description…"
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               className="text-input"
-              style={{ width: "100%", paddingLeft: "32px", fontSize: "12px", height: "32px", boxSizing: "border-box" }}
+              style={{ width: "100%", paddingLeft: "34px", fontSize: "12px", height: "34px", borderRadius: "8px", boxSizing: "border-box" }}
             />
           </div>
         </div>
 
         {/* Tool Cards */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>Loading tools catalog…</div>
+          <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading registered tools catalog…</div>
         ) : filteredTools.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)", background: "var(--bg-card)", borderRadius: "8px" }}>
-            No tools match your query.
+          <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "8px" }}>
+            No capabilities match your query.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {filteredTools.map((tool) => {
               const isExpanded = expandedTool === tool.name;
+              const category = getToolCategory(tool.name);
               const hasProps = tool.inputSchema?.properties && Object.keys(tool.inputSchema.properties).length > 0;
               const propKeys = hasProps ? Object.keys(tool.inputSchema.properties) : [];
               const requiredKeys = Array.isArray(tool.inputSchema?.required) ? tool.inputSchema.required : [];
@@ -240,43 +397,33 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               return (
                 <div
                   key={tool.name}
-                  style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "8px",
-                    overflow: "hidden"
-                  }}
+                  className={`mcp-tool-card-modern ${isExpanded ? "is-open" : ""}`}
                 >
-                  {/* Tool summary bar */}
+                  {/* Tool Summary Bar */}
                   <div
-                    style={{
-                      padding: "12px 16px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      cursor: "pointer",
-                      userSelect: "none"
-                    }}
+                    className="mcp-tool-header-row"
                     onClick={() => setExpandedTool(isExpanded ? null : tool.name)}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          width: "30px",
-                          height: "30px",
-                          borderRadius: "6px",
-                          background: "var(--bg-subtle)",
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "8px",
+                          background: "var(--surface-subtle, rgba(255,255,255,0.04))",
+                          border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "var(--accent-default)"
+                          color: "var(--accent-solid, #3b82f6)",
+                          flexShrink: 0
                         }}
                       >
-                        <Wrench size={16} />
+                        <Wrench size={18} />
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <code style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-strong)" }}>{tool.name}</code>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-strong)" }}>{tool.name}</code>
                           <button
                             type="button"
                             className="btn-link"
@@ -284,117 +431,153 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                               e.stopPropagation();
                               copyToolName(tool.name);
                             }}
-                            title="Copy tool name"
+                            title="Copy tool identifier"
                             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "2px" }}
                           >
-                            {copiedName === tool.name ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                            {copiedName === tool.name ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
                           </button>
+                          <span className="mcp-tool-badge-cat">
+                            {category}
+                          </span>
                         </div>
-                        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                           {tool.description}
                         </p>
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                      <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 500 }}>
                         {propKeys.length} param{propKeys.length !== 1 ? "s" : ""}
                       </span>
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </div>
                   </div>
 
-                  {/* Expanded detail pane */}
+                  {/* Expanded Detail Pane */}
                   {isExpanded && (
-                    <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "16px", background: "var(--bg-subtle)" }}>
-                      {/* Parameters Table */}
-                      <h4 style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 600 }}>Parameters Schema</h4>
+                    <div style={{ borderTop: "1px solid var(--border-soft, rgba(255,255,255,0.08))", padding: "20px", background: "var(--surface-bg)" }}>
+                      {/* Parameters Schema Header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <h4 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
+                          Parameters Schema
+                        </h4>
+                      </div>
+
                       {propKeys.length === 0 ? (
-                        <p style={{ margin: "0 0 16px", fontSize: "12px", color: "var(--text-muted)" }}>No parameters required.</p>
+                        <p style={{ margin: "0 0 16px", fontSize: "12px", color: "var(--text-muted)" }}>No input parameters required for this tool.</p>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "18px" }}>
                           {propKeys.map((k) => {
                             const prop = tool.inputSchema.properties[k];
                             const isReq = requiredKeys.includes(k);
+                            const pType = prop.type || "string";
                             return (
                               <div
                                 key={k}
                                 style={{
                                   display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: "8px",
-                                  padding: "6px 10px",
-                                  background: "var(--bg-card)",
-                                  borderRadius: "6px",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  padding: "8px 12px",
+                                  background: "var(--surface-elevated, var(--bg-card))",
+                                  border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                                  borderRadius: "8px",
                                   fontSize: "12px"
                                 }}
                               >
-                                <code style={{ fontWeight: 600, color: "var(--accent-default)" }}>{k}</code>
-                                <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>({prop.type || "any"})</span>
-                                {isReq && (
-                                  <span style={{ color: "var(--status-danger-text, #ef4444)", fontSize: "10px", fontWeight: 600 }}>REQUIRED</span>
+                                <code style={{ fontWeight: 700, color: "var(--accent-solid, #3b82f6)", minWidth: "110px" }}>{k}</code>
+                                <span className={`mcp-param-tag type-${pType}`}>{pType}</span>
+                                {isReq ? (
+                                  <span style={{ color: "#ef4444", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
+                                ) : (
+                                  <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>OPTIONAL</span>
                                 )}
-                                <span style={{ flex: 1, color: "var(--text-muted)" }}>{prop.description || "—"}</span>
+                                <span style={{ flex: 1, color: "var(--text-muted)", fontSize: "12px" }}>{prop.description || "—"}</span>
                               </div>
                             );
                           })}
                         </div>
                       )}
 
-                      {/* Interactive Test Runner */}
-                      <div style={{ background: "var(--bg-card)", borderRadius: "6px", padding: "12px", border: "1px solid var(--border-subtle)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                          <span style={{ fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-                            <Code size={14} /> Test Execution
+                      {/* Interactive Console Block */}
+                      <div className="mcp-console-block">
+                        <div className="mcp-console-header">
+                          <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#e2e8f0" }}>
+                            <Terminal size={14} color="#3b82f6" /> Interactive Tool Runner
                           </span>
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            disabled={runningTest}
-                            onClick={() => handleRunTool(tool)}
-                            style={{ fontSize: "11px", padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                          >
-                            <Play size={12} /> {runningTest ? "Running..." : "Execute Tool"}
-                          </button>
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                            {hasProps && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => handlePrefillSample(tool)}
+                                style={{ fontSize: "11px", padding: "3px 8px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                              >
+                                <Sparkles size={12} color="#fbbf24" /> Auto-Fill JSON
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={runningTest}
+                              onClick={() => handleRunTool(tool)}
+                              style={{ fontSize: "11px", padding: "3px 12px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                            >
+                              <Play size={12} /> {runningTest ? "Executing..." : "Run Execution"}
+                            </button>
+                          </div>
                         </div>
 
                         <textarea
-                          placeholder='JSON arguments e.g. {"query": "test"} or leave empty'
+                          className="mcp-console-textarea"
+                          placeholder='// JSON arguments payload (e.g. {"query": "Search query"})\n{}'
                           value={testArgs[tool.name] || ""}
                           onChange={(e) => setTestArgs({ ...testArgs, [tool.name]: e.target.value })}
-                          style={{
-                            width: "100%",
-                            height: "60px",
-                            fontFamily: "monospace",
-                            fontSize: "11.5px",
-                            padding: "8px",
-                            boxSizing: "border-box",
-                            borderRadius: "4px",
-                            border: "1px solid var(--border-subtle)",
-                            background: "var(--bg-subtle)",
-                            color: "var(--text-strong)"
-                          }}
                         />
 
-                        {/* Test Execution Result */}
+                        {/* Test Execution Result Console */}
                         {testResult && testResult.toolName === tool.name && (
-                          <div style={{ marginTop: "10px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", fontSize: "11px" }}>
-                              <span style={{ fontWeight: 600, color: testResult.response?.success ? "#10b981" : "#ef4444" }}>
-                                {testResult.response?.success ? "SUCCESS" : "FAILED"}
-                              </span>
-                              <span style={{ color: "var(--text-muted)" }}>({testResult.durationMs}ms)</span>
+                          <div className="mcp-console-result">
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                {testResult.response?.success ? (
+                                  <span style={{ color: "#10b981", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                    <CheckCircle2 size={14} /> SUCCESS
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                    <XCircle size={14} /> FAILED
+                                  </span>
+                                )}
+                                <span style={{ color: "#94a3b8", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                  <Clock size={12} /> {testResult.durationMs}ms
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                className="btn-link"
+                                onClick={() => copyResultOutput(testResult.response)}
+                                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                              >
+                                {copiedOutput ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                                {copiedOutput ? "Copied" : "Copy Output"}
+                              </button>
                             </div>
+
                             <pre
                               style={{
-                                background: "var(--bg-subtle)",
-                                padding: "8px",
-                                borderRadius: "4px",
-                                fontSize: "11px",
-                                maxHeight: "180px",
+                                background: "#090d16",
+                                color: "#38bdf8",
+                                padding: "10px 12px",
+                                borderRadius: "6px",
+                                fontSize: "11.5px",
+                                maxHeight: "220px",
                                 overflowY: "auto",
                                 margin: 0,
-                                fontFamily: "monospace"
+                                fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                                border: "1px solid #1e293b"
                               }}
                             >
                               {JSON.stringify(testResult.response, null, 2)}
@@ -415,3 +598,4 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 }
 
 export default MCPToolsPage;
+

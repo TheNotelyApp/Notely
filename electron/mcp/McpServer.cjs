@@ -71,7 +71,7 @@ class McpServer {
           workspaceRoot: activeWorkspaceRoot
         });
         const duration = Date.now() - start;
-        if (this.sessionManager) {
+        if (this.sessionManager && typeof this.sessionManager.recordToolCall === 'function') {
           this.sessionManager.recordToolCall(sessionId, name, duration, result.success, result.error?.message);
         }
 
@@ -94,7 +94,7 @@ class McpServer {
         };
       } catch (err) {
         const duration = Date.now() - start;
-        if (this.sessionManager) {
+        if (this.sessionManager && typeof this.sessionManager.recordToolCall === 'function') {
           this.sessionManager.recordToolCall(sessionId, name, duration, false, err.message);
         }
         return {
@@ -181,14 +181,18 @@ class McpServer {
 
             if (this.sessionManager) {
               const clientName = req.headers['user-agent'] || 'Unknown Client';
-              this.sessionManager.registerSession(sessionId, clientName, '1.0.0', req.headers);
+              if (typeof this.sessionManager.registerSession === 'function') {
+                this.sessionManager.registerSession(sessionId, clientName, '1.0.0', req.headers);
+              } else if (typeof this.sessionManager.createSession === 'function') {
+                this.sessionManager.createSession(sessionId, req);
+              }
             }
 
             this.transports.set(sessionId, { transport, server: mcpInstance });
 
             req.on('close', async () => {
               this.transports.delete(sessionId);
-              if (this.sessionManager) {
+              if (this.sessionManager && typeof this.sessionManager.closeSession === 'function') {
                 this.sessionManager.closeSession(sessionId);
               }
               try {
