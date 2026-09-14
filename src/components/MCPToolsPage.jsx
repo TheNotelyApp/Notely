@@ -23,10 +23,15 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  BookOpen,
+  HelpCircle,
+  ShieldAlert,
+  ShieldCheck,
+  Ban
 } from "lucide-react";
 import { listTools, executeTool } from "../services/electron/aiService";
-import { mcpGetStatus, onMcpStatusChanged } from "../services/electronService";
+import { mcpGetStatus, mcpGetConfig, onMcpStatusChanged } from "../services/electronService";
 import "../styles/KnowledgeGraph.css";
 import "../styles/AISettings.css";
 import "../styles/MCPSettings.css";
@@ -72,6 +77,8 @@ function getToolCategory(name = "") {
   if (n.startsWith("knowledge.")) return "Knowledge & Vector RAG";
   if (n.startsWith("git.") || n.startsWith("diagnostics.")) return "Git & Diagnostics";
   if (n.startsWith("web.") || n.startsWith("personas.")) return "Web & Personas";
+  if (n.startsWith("search.")) return "Knowledge & Vector RAG";
+  if (n.startsWith("export.")) return "Workspace Metadata";
 
   if (n.includes("note") || n.includes("doc")) return "Notes & Docs";
   if (n.includes("index") || n.includes("toc")) return "Workspace Index";
@@ -106,6 +113,7 @@ function getCategoryIcon(cat) {
 export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [tools, setTools] = useState([]);
   const [status, setStatus] = useState(null);
+  const [allowWrite, setAllowWrite] = useState(true);
   const [loading, setLoading] = useState(true);
   const [filterQuery, setFilterQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -114,15 +122,17 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [testResult, setTestResult] = useState(null);
   const [runningTest, setRunningTest] = useState(false);
   const [copiedName, setCopiedName] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
   const [copiedManifest, setCopiedManifest] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [res, st] = await Promise.all([
+      const [res, st, cfg] = await Promise.all([
         listTools().catch(() => null),
-        mcpGetStatus().catch(() => null)
+        mcpGetStatus().catch(() => null),
+        mcpGetConfig().catch(() => null)
       ]);
       const toolArray = Array.isArray(res)
         ? res
@@ -131,6 +141,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
         : [];
       setTools(toolArray);
       setStatus(st);
+      if (cfg) {
+        setAllowWrite(cfg.allowWriteTools !== undefined ? Boolean(cfg.allowWriteTools) : true);
+      }
     } catch (err) {
       console.error("[MCPToolsPage] Failed to load data:", err);
     } finally {
@@ -142,6 +155,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
     loadData();
     const unsub = onMcpStatusChanged((updatedStatus) => {
       setStatus(updatedStatus);
+      if (updatedStatus?.allowWriteTools !== undefined) {
+        setAllowWrite(Boolean(updatedStatus.allowWriteTools));
+      }
     });
     return () => unsub?.();
   }, [loadData]);
@@ -182,8 +198,25 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
         }
       }
 
+      if (tool.isWrite && !allowWrite) {
+        onNotify?.(`Tool "${tool.name}" cannot be executed: Write operations are disabled in MCP Settings.`, "error");
+        setTestResult({
+          toolName: tool.name,
+          durationMs: 0,
+          response: {
+            success: false,
+            error: {
+              code: "WRITE_DISABLED",
+              message: `Tool "${tool.name}" is a write operation, but write tools are disabled in MCP Configuration.`
+            }
+          }
+        });
+        setRunningTest(false);
+        return;
+      }
+
       const start = Date.now();
-      const res = await executeTool(tool.name, parsedArgs);
+      const res = await executeTool(tool.name, parsedArgs, { allowWriteTools: allowWrite });
       const durationMs = Date.now() - start;
 
       setTestResult({
@@ -273,6 +306,26 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
           <button
             type="button"
             className="btn btn-secondary"
+            onClick={() => setShowHelp(!showHelp)}
+            title="Toggle MCP Server & Client Documentation Guide"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "12px",
+              height: "26px",
+              padding: "0 10px",
+              background: showHelp ? "var(--accent-subtle, rgba(59,130,246,0.15))" : undefined,
+              borderColor: showHelp ? "var(--accent-solid, #3b82f6)" : undefined,
+              color: showHelp ? "var(--accent-solid, #3b82f6)" : undefined
+            }}
+          >
+            <BookOpen size={14} /> {showHelp ? "Hide Docs" : "Docs & Guide"}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
             onClick={copyManifest}
             title="Copy full JSON manifest of all registered MCP tools"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
@@ -317,7 +370,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <Server size={20} />
             </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <strong style={{ fontSize: "15px", fontWeight: 700 }}>Notely MCP Server</strong>
                 {isRunning && <span className="mcp-pulse-dot" title="Server Active" />}
                 <span
@@ -325,10 +378,51 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                 >
                   {isPortConflict ? "Port Conflict" : isRunning ? `Running · Port ${status?.port || 3700}` : "Stopped"}
                 </span>
+                {!allowWrite ? (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "11px",
+                      fontWeight: 800,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      padding: "2px 8px",
+                      borderRadius: "5px",
+                      background: "rgba(239, 68, 68, 0.18)",
+                      color: "#ef4444",
+                      border: "1px solid rgba(239, 68, 68, 0.35)"
+                    }}
+                  >
+                    <ShieldAlert size={12} /> READ ONLY MODE
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      padding: "2px 8px",
+                      borderRadius: "5px",
+                      background: "rgba(16, 185, 129, 0.15)",
+                      color: "#10b981",
+                      border: "1px solid rgba(16, 185, 129, 0.3)"
+                    }}
+                  >
+                    <ShieldCheck size={12} /> READ + WRITE
+                  </span>
+                )}
               </div>
               <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px", display: "block" }}>
                 {isRunning
-                  ? `Exposing ${tools.length} capabilities to external AI clients over SSE at http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
+                  ? !allowWrite
+                    ? `Running in READ-ONLY MODE. Exposing ${tools.filter(t => !t.isWrite).length} safe query tools over SSE. All ${tools.filter(t => t.isWrite).length} write tools are blocked.`
+                    : `Exposing all ${tools.length} capabilities to external AI clients over SSE at http://${status?.host || "127.0.0.1"}:${status?.port || 3700}/sse`
                   : "Server offline. Enable from MCP Settings to connect Claude Desktop, IDE agents, or external tools."}
               </span>
             </div>
@@ -339,7 +433,14 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                 Capabilities
               </div>
-              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>{tools.length}</div>
+              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>
+                {allowWrite ? tools.length : tools.filter(t => !t.isWrite).length}
+                {!allowWrite && tools.some(t => t.isWrite) && (
+                  <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: 600, marginLeft: "6px" }}>
+                    ({tools.filter(t => t.isWrite).length} hidden)
+                  </span>
+                )}
+              </div>
             </div>
 
             <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
@@ -443,40 +544,6 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               </div>
             </div>
 
-            {/* Quick Status / Security Notice */}
-            <div className="mcp-sidebar-card">
-              <h4 className="mcp-sidebar-card-title">
-                <Activity size={16} color="#10b981" /> Server Details
-              </h4>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)", display: "flex", flexDirection: "column", gap: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Transport</span>
-                  <strong style={{ color: "var(--text-strong)" }}>HTTP SSE</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Host</span>
-                  <strong style={{ color: "var(--text-strong)" }}>{status?.host || "127.0.0.1"}</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Port</span>
-                  <strong style={{ color: "var(--text-strong)" }}>{status?.port || 3700}</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Total Tools</span>
-                  <strong style={{ color: "var(--accent-solid)" }}>{tools.length}</strong>
-                </div>
-              </div>
-              {onOpenSettings && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onOpenSettings}
-                  style={{ width: "100%", fontSize: "12px", height: "28px", marginTop: "4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                >
-                  <Settings size={14} /> Configure Permissions
-                </button>
-              )}
-            </div>
           </div>
 
           {/* Main Content Area */}
@@ -495,6 +562,117 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               </div>
             </div>
 
+            {/* In-Page Help & Documentation Panel */}
+            {showHelp && (
+              <div
+                style={{
+                  background: "var(--surface-elevated, #161b26)",
+                  border: "1px solid var(--border-soft, rgba(255,255,255,0.08))",
+                  borderLeft: "4px solid var(--accent-solid, #3b82f6)",
+                  borderRadius: "8px",
+                  padding: "18px 20px",
+                  marginBottom: "20px",
+                  color: "var(--app-text)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <BookOpen size={16} color="var(--accent-solid, #3b82f6)" />
+                    <strong style={{ fontSize: "14px", fontWeight: 700 }}>Notely Model Context Protocol (MCP) Guide</strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-link"
+                    onClick={() => setShowHelp(false)}
+                    style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px" }}
+                  >
+                    Close Guide
+                  </button>
+                </div>
+
+                <div style={{ fontSize: "12.5px", lineHeight: "1.6", color: "var(--text-muted)" }}>
+                  <p style={{ margin: "0 0 10px" }}>
+                    Notely embeds an <strong>HTTP Server-Sent Events (SSE)</strong> MCP server. External AI agents (Claude Desktop, Cursor, IDE assistants) connect to discover, query, and edit notes in real time.
+                  </p>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px", marginTop: "12px" }}>
+                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                      <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
+                        🛡️ Write Access Controls
+                      </strong>
+                      Tools marked <span style={{ color: "#ef4444", fontWeight: 700 }}>[W]</span> perform workspace modifications (create, update, delete, rename, commit). When <em>Allow Write Tools</em> is disabled in MCP Settings, all write tools are filtered from discovery and blocked.
+                    </div>
+
+                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                      <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
+                        ⚡ Interactive Test Console
+                      </strong>
+                      Click any tool card below to expand its JSON Schema parameters. Click <em>Auto-Fill JSON</em> to generate a valid test payload, then press <em>Run Execution</em> to test it directly from the app.
+                    </div>
+
+                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                      <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
+                        📡 Client Connection URL
+                      </strong>
+                      External SSE endpoint: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>. Messages endpoint: <code style={{ color: "#38bdf8" }}>/messages</code>. Copy the ready-made JSON snippet from the left sidebar.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Read-Only Mode Warning Banner */}
+            {!allowWrite && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  padding: "14px 16px",
+                  borderRadius: "8px",
+                  background: "rgba(239, 68, 68, 0.08)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderLeft: "4px solid #ef4444",
+                  marginBottom: "16px",
+                  color: "var(--app-text)"
+                }}
+              >
+                <Ban size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: "2px" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <strong style={{ fontSize: "13px", color: "#ef4444" }}>
+                      READ-ONLY MODE ACTIVE
+                    </strong>
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: "4px",
+                        background: "rgba(239, 68, 68, 0.2)",
+                        color: "#ef4444"
+                      }}
+                    >
+                      {tools.filter(t => t.isWrite).length} TOOLS BLOCKED
+                    </span>
+                  </div>
+                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    Write operations are disabled in MCP Settings. The highlighted red tools below (<span style={{ color: "#ef4444", fontWeight: 600 }}>WRITE BLOCKED</span>) cannot modify files and are hidden from external AI clients (Claude Desktop, Cursor). Only the {tools.filter(t => !t.isWrite).length} read-only search and inspection tools remain available.
+                  </p>
+                </div>
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={onOpenSettings}
+                    style={{ fontSize: "11px", height: "26px", padding: "0 10px", flexShrink: 0, alignSelf: "center" }}
+                  >
+                    Enable Writes
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Tool Cards */}
             {loading ? (
               <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading registered tools catalog…</div>
@@ -507,6 +685,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                 {filteredTools.map((tool) => {
                   const isExpanded = expandedTool === tool.name;
                   const category = getToolCategory(tool.name);
+                  const isWriteBlocked = tool.isWrite && !allowWrite;
                   const hasProps = tool.inputSchema?.properties && Object.keys(tool.inputSchema.properties).length > 0;
                   const propKeys = hasProps ? Object.keys(tool.inputSchema.properties) : [];
                   const requiredKeys = Array.isArray(tool.inputSchema?.required) ? tool.inputSchema.required : [];
@@ -514,7 +693,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   return (
                     <div
                       key={tool.name}
-                      className={`mcp-tool-card-modern ${isExpanded ? "is-open" : ""}`}
+                      className={`mcp-tool-card-modern ${isExpanded ? "is-open" : ""} ${isWriteBlocked ? "is-write-blocked" : ""}`}
                     >
                       {/* Tool Summary Bar */}
                       <div
@@ -527,20 +706,24 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                               width: "36px",
                               height: "36px",
                               borderRadius: "8px",
-                              background: "var(--surface-subtle, rgba(255,255,255,0.04))",
-                              border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                              background: isWriteBlocked
+                                ? "rgba(239, 68, 68, 0.2)"
+                                : "var(--surface-subtle, rgba(255,255,255,0.04))",
+                              border: isWriteBlocked
+                                ? "1.5px solid rgba(239, 68, 68, 0.5)"
+                                : "1px solid var(--border-soft, rgba(255,255,255,0.06))",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              color: "var(--accent-solid, #3b82f6)",
+                              color: isWriteBlocked ? "#ef4444" : "var(--accent-solid, #3b82f6)",
                               flexShrink: 0
                             }}
                           >
-                            <Wrench size={18} />
+                            {isWriteBlocked ? <Ban size={18} /> : <Wrench size={18} />}
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                              <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-strong)" }}>{tool.name}</code>
+                              <code style={{ fontSize: "14px", fontWeight: 700, color: isWriteBlocked ? "#ef4444" : "var(--text-strong)" }}>{tool.name}</code>
                               <button
                                 type="button"
                                 className="btn-link"
@@ -556,6 +739,11 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                               <span className="mcp-tool-badge-cat">
                                 {category}
                               </span>
+                              {isWriteBlocked && (
+                                <span className="mcp-write-blocked-badge">
+                                  WRITE BLOCKED
+                                </span>
+                              )}
                             </div>
                             <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                               {tool.description}
@@ -637,11 +825,20 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                 <button
                                   type="button"
                                   className="btn btn-primary"
-                                  disabled={runningTest}
+                                  disabled={runningTest || isWriteBlocked}
                                   onClick={() => handleRunTool(tool)}
-                                  style={{ fontSize: "11px", padding: "3px 12px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                  style={{
+                                    fontSize: "11px",
+                                    padding: "3px 12px",
+                                    height: "24px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    opacity: isWriteBlocked ? 0.45 : 1,
+                                    cursor: isWriteBlocked ? "not-allowed" : "pointer"
+                                  }}
                                 >
-                                  <Play size={12} /> {runningTest ? "Executing..." : "Run Execution"}
+                                  <Play size={12} /> {runningTest ? "Executing..." : isWriteBlocked ? "Write Blocked" : "Run Execution"}
                                 </button>
                               </div>
                             </div>

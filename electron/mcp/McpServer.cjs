@@ -62,7 +62,10 @@ class McpServer {
     );
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const tools = applicationToolRegistry.toMcpSchemas();
+      const allTools = applicationToolRegistry.toMcpSchemas();
+      const tools = this.allowWriteTools
+        ? allTools
+        : allTools.filter(t => !t.isWrite);
       return { tools };
     });
 
@@ -174,12 +177,16 @@ class McpServer {
         // Health / Status ping
         if (pathname === '/health' || pathname === '/status' || pathname === '/') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
+          const allSchemas = applicationToolRegistry.toMcpSchemas();
+          const advertisedSchemas = this.allowWriteTools
+            ? allSchemas
+            : allSchemas.filter(t => !t.isWrite);
           res.end(JSON.stringify({
             status: 'ok',
             server: 'notely-mcp',
             version: '0.1.41',
             port: this.port,
-            toolsCount: applicationToolRegistry.toMcpSchemas().length,
+            toolsCount: advertisedSchemas.length,
             activeSessions: this.sessionManager ? this.sessionManager.getActiveSessions().length : 0
           }));
           return;
@@ -192,7 +199,10 @@ class McpServer {
             res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
             return;
           }
-          const tools = applicationToolRegistry.toMcpSchemas();
+          const allTools = applicationToolRegistry.toMcpSchemas();
+          const tools = this.allowWriteTools
+            ? allTools
+            : allTools.filter(t => !t.isWrite);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ tools }));
           return;

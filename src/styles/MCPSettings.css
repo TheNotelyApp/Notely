@@ -99,8 +99,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  border-radius: 5px;
   font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -469,6 +469,34 @@
 .mcp-tool-card-modern.is-open {
   border-color: var(--border-default);
   box-shadow: var(--shadow-sm);
+}
+
+.mcp-tool-card-modern.is-write-blocked {
+  border-left: 4px solid #ef4444;
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.035);
+}
+
+.mcp-tool-card-modern.is-write-blocked:hover {
+  border-left-color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.065);
+}
+
+.mcp-tool-card-modern.is-write-blocked .mcp-tool-header-row code {
+  color: #ef4444;
+}
+
+.mcp-write-blocked-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .mcp-tool-header-row {
