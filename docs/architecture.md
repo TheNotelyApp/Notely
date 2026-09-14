@@ -108,11 +108,11 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 * **Security**: AES-256 encrypted bundle (not readable by generic ZIP tools). Each file is SHA-256 hashed and verified on import to reject tampered packages. Optional password protection stores a salted SHA-256 signature in the manifest.
 * **Import**: Decrypts and verifies bundle integrity, resolves asset path conflicts, and places all files into the active workspace. See [Export & Import Reference](/export-reference) for full user-facing documentation.
 
-### E. AI & Context Engine Subsystem (`aiService.cjs`)
+### E. Knowledge Graph & Vector Embedding Subsystem
 * **Vector Embeddings Engine (`EmbeddingDB.js`)**: Stores 384-dimensional `BGE-small` vector chunks in `{workspace}/.notes-app/ai-embeddings.db`. Features physical vector dimension validation (`verifyModelDimensions`) to prevent dimension mismatches.
 * **Knowledge Graph Subsystem (`GraphService.js`, `GraphDB.js`)**: Maps note relations, tags, mentions, Wikilinks, Images, Local Documents, and External URLs in `{workspace}/.notes-app/ai-graph.db`. Executes relation traversals via SQLite **Recursive Common Table Expressions (CTEs)**.
-* **Agent & Tool Orchestration**: Integrates with a local embedding runtime and cloud LLMs (Gemini, Groq, OpenAI) using the Vercel AI SDK.
-* **Local ONNX Neural Models**: Vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph entity/relationship extraction (`gliner2-multi-v1-onnx`) run 100% on-device and offline using `onnxruntime-node`.
+* **Local ONNX Embedder**: Vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph entity/relationship extraction run on-device and offline using `onnxruntime-node`.
+* **MCP Integration**: Inbuilt LLM chat was replaced by the embedded **Model Context Protocol (MCP)** server, allowing external AI clients (Claude Desktop, Cursor, AI agents) to query the knowledge graph and search vector indices.
 
 #### AI Layer Architecture
 

@@ -95,6 +95,7 @@ export default withMermaid(
             { text: "Tasks", link: "/workspace/tasks" },
             { text: "Calendar", link: "/workspace/calendar" },
             { text: "Media", link: "/workspace/media" },
+            { text: "Embedded Terminal", link: "/workspace/terminal" },
             { text: "Screen Capture & Recording", link: "/workspace/screen-capture" },
             { text: "Workspace Graph", link: "/workspace/graph" },
             { text: "Downloads & History", link: "/workspace/downloads" },
@@ -123,13 +124,10 @@ export default withMermaid(
           ],
         },
         {
-          text: "AI Features",
+          text: "AI Features & Graph",
           collapsed: false,
           items: [
-            { text: "AI Overview", link: "/ai/" },
-            { text: "AI Setup", link: "/ai/setup" },
-            { text: "AI Features", link: "/ai/features" },
-            { text: "AI Architecture", link: "/ai/architecture" },
+            { text: "AI & Graph Overview", link: "/ai/" },
             { text: "Knowledge Graph Engine", link: "/ai/knowledge-graph" },
           ],
         },
@@ -157,10 +155,11 @@ export default withMermaid(
           ],
         },
         {
-          text: "Developer",
+          text: "Developer & MCP",
           collapsed: true,
           items: [
             { text: "Developer Docs", link: "/developer/" },
+            { text: "MCP Protocol Integration", link: "/developer/mcp" },
             { text: "Application Architecture", link: "/architecture" },
             { text: "License", link: "/license" },
           ],
