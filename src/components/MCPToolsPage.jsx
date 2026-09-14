@@ -438,7 +438,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   }}
                   style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                 >
-                  <Copy size={13} /> Copy Config Snippet
+                  <Copy size={14} /> Copy Config Snippet
                 </button>
               </div>
             </div>
@@ -473,7 +473,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   onClick={onOpenSettings}
                   style={{ width: "100%", fontSize: "12px", height: "28px", marginTop: "4px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                 >
-                  <Settings size={13} /> Configure Permissions
+                  <Settings size={14} /> Configure Permissions
                 </button>
               )}
             </div>

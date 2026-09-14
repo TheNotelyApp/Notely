@@ -246,6 +246,192 @@ class NoteApplicationService {
       deleted: true
     };
   }
+  /**
+   * Bulk search and replace across notes in the workspace.
+   */
+  async searchReplace({ workspaceRoot, query, replace = '', isRegex = false, notePath }) {
+    if (!query) throw new Error('Search query is required.');
+    const files = notePath
+      ? [assertPathInWorkspace(notePath, workspaceRoot)]
+      : collectMarkdownFiles(workspaceRoot);
+
+    let regex;
+    if (isRegex) {
+      regex = new RegExp(query, 'g');
+    } else {
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      regex = new RegExp(escaped, 'g');
+    }
+
+    let modifiedCount = 0;
+    let totalReplacements = 0;
+    const modifiedFiles = [];
+
+    for (const filePath of files) {
+      if (!fs.existsSync(filePath)) continue;
+      try {
+        const text = fs.readFileSync(filePath, 'utf8');
+        const matches = text.match(regex);
+        if (matches && matches.length > 0) {
+          const newText = text.replace(regex, replace);
+          fs.writeFileSync(filePath, newText, 'utf8');
+          modifiedCount++;
+          totalReplacements += matches.length;
+          modifiedFiles.push({ path: filePath, replacements: matches.length });
+        }
+      } catch { /* skip */ }
+    }
+
+    return {
+      query,
+      replace,
+      modifiedFilesCount: modifiedCount,
+      totalReplacements,
+      modifiedFiles
+    };
+  }
+
+  /**
+   * Read raw Mermaid code blocks from a target note.
+   */
+  async readDiagram({ workspaceRoot, filePath }) {
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    if (!fs.existsSync(validPath)) throw new Error(`File at "${filePath}" does not exist.`);
+    const text = fs.readFileSync(validPath, 'utf8');
+    const regex = /```mermaid\r?\n([\s\S]*?)\r?\n```/g;
+    const diagrams = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      diagrams.push({
+        code: match[1],
+        fullMatch: match[0]
+      });
+    }
+    return { filePath: validPath, totalDiagrams: diagrams.length, diagrams };
+  }
+
+  /**
+   * Update or replace a Mermaid code block in a note file.
+   */
+  async updateDiagram({ workspaceRoot, filePath, code, diagramIndex = 0 }) {
+    if (!code) throw new Error('Diagram code is required.');
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    if (!fs.existsSync(validPath)) throw new Error(`File at "${filePath}" does not exist.`);
+    let text = fs.readFileSync(validPath, 'utf8');
+    const regex = /```mermaid\r?\n([\s\S]*?)\r?\n```/g;
+    const matches = Array.from(text.matchAll(regex));
+
+    if (matches.length === 0) {
+      // Append new mermaid block if none exists
+      text += `\n\n\`\`\`mermaid\n${code}\n\`\`\`\n`;
+    } else {
+      const targetMatch = matches[Math.min(diagramIndex, matches.length - 1)];
+      const replacement = `\`\`\`mermaid\n${code}\n\`\`\``;
+      text = text.substring(0, targetMatch.index) + replacement + text.substring(targetMatch.index + targetMatch[0].length);
+    }
+
+    fs.writeFileSync(validPath, text, 'utf8');
+    return { filePath: validPath, updated: true, diagramIndex };
+  }
+
+  /**
+   * Read raw Excalidraw JSON or Draw.io XML from drawing files.
+   */
+  async readDrawio({ workspaceRoot, filePath }) {
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    if (!fs.existsSync(validPath)) throw new Error(`Drawing file at "${filePath}" does not exist.`);
+    const raw = fs.readFileSync(validPath, 'utf8');
+    let parsed = null;
+    let format = 'text';
+    if (validPath.endsWith('.excalidraw') || raw.trim().startsWith('{')) {
+      format = 'excalidraw-json';
+      try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+    } else if (raw.trim().startsWith('<')) {
+      format = 'drawio-xml';
+      parsed = raw;
+    }
+    return { filePath: validPath, format, data: parsed };
+  }
+
+  /**
+   * Write back updated Excalidraw JSON or Draw.io XML to drawing files.
+   */
+  async updateDrawio({ workspaceRoot, filePath, content }) {
+    if (!filePath || content == null) throw new Error('filePath and content are required.');
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    const targetDir = path.dirname(validPath);
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+    let stringified = typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content);
+    fs.writeFileSync(validPath, stringified, 'utf8');
+    return { filePath: validPath, updated: true, bytesWritten: Buffer.byteLength(stringified, 'utf8') };
+  }
+
+  /**
+   * Find unlinked plain text mentions of note titles that could be wikilinked.
+   */
+  async unlinkedMentions({ workspaceRoot, noteTitle }) {
+    if (!noteTitle) throw new Error('noteTitle is required.');
+    const files = collectMarkdownFiles(workspaceRoot);
+    const targetTitle = noteTitle.trim().toLowerCase();
+    const unlinked = [];
+
+    for (const filePath of files) {
+      if (!fs.existsSync(filePath)) continue;
+      const baseName = path.basename(filePath, '.md').toLowerCase();
+      if (baseName === targetTitle) continue;
+
+      try {
+        const text = fs.readFileSync(filePath, 'utf8');
+        const lines = text.split(/\r?\n/);
+        lines.forEach((line, idx) => {
+          // Check if line contains title but not already inside [[Title]]
+          const regex = new RegExp(`(?<!\\[\\[)${noteTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!\\]\\])`, 'gi');
+          if (regex.test(line)) {
+            unlinked.push({
+              filePath,
+              fileName: path.basename(filePath),
+              line: idx + 1,
+              snippet: line.trim()
+            });
+          }
+        });
+      } catch { /* skip */ }
+    }
+
+    return { noteTitle, totalUnlinkedMentions: unlinked.length, mentions: unlinked.slice(0, 50) };
+  }
+
+  /**
+   * Automatically convert unlinked text mentions into [[Wikilinks]] inside a note.
+   */
+  async autoWikilink({ workspaceRoot, filePath }) {
+    const validPath = assertPathInWorkspace(filePath, workspaceRoot);
+    if (!fs.existsSync(validPath)) throw new Error(`Note file at "${filePath}" does not exist.`);
+
+    const files = collectMarkdownFiles(workspaceRoot);
+    const availableTitles = files.map(f => path.basename(f, '.md')).filter(Boolean);
+
+    let text = fs.readFileSync(validPath, 'utf8');
+    let replacementCount = 0;
+
+    for (const title of availableTitles) {
+      if (title.length < 3) continue; // Skip very short titles to avoid false positives
+      const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?<!\\[\\[)\\b${escaped}\\b(?!\\]\\])`, 'gi');
+      const matches = text.match(regex);
+      if (matches) {
+        text = text.replace(regex, `[[${title}]]`);
+        replacementCount += matches.length;
+      }
+    }
+
+    if (replacementCount > 0) {
+      fs.writeFileSync(validPath, text, 'utf8');
+    }
+
+    return { filePath: validPath, replacementCount, updated: replacementCount > 0 };
+  }
 }
 
 module.exports = {
