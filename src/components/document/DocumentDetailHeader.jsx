@@ -3,7 +3,6 @@ import {
   CheckSquare,
   Square,
   ListTree,
-  Sparkles,
   Maximize,
   Minimize,
   ListChecks,
@@ -33,9 +32,6 @@ export function DocumentDetailHeader({
   handleManualSave,
   showMetadataPanel,
   setShowMetadataPanel,
-  aiPanelVisible,
-  aiEnabled,
-  onShowAI,
   toggleFocusMode,
   _onTransferWorkspace,
   onToggleTimeMachine,
@@ -197,17 +193,6 @@ export function DocumentDetailHeader({
         <span>Details</span>
       </AppButton>
 
-      {/* Workspace Action: AI Assistant */}
-      <AppButton
-        variant="small"
-        className={aiPanelVisible ? "active" : ""}
-        data-tooltip={aiEnabled ? "Toggle AI Assistant Chat" : "Configure AI to toggle Assistant"}
-        onClick={onShowAI}
-        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-      >
-        <Sparkles size={14} />
-        <span>{aiPanelVisible ? "Hide AI" : "AI Assistant"}</span>
-      </AppButton>
 
       {/* View Action: Time Machine */}
       <AppButton

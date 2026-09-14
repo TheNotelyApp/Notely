@@ -63,14 +63,19 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("window:menu-updated", listener);
     return () => ipcRenderer.removeListener("window:menu-updated", listener);
   },
-  aiQuery: (payload) => ipcRenderer.invoke("ai:query", payload),
-  aiQueryStream: (payload) => ipcRenderer.invoke("ai:query:stream", payload),
-  aiQueryAbort: (payload) => ipcRenderer.invoke("ai:query:abort", payload),
-  onChatStreamChunk: (callback) => {
-    if (typeof callback !== 'function') return () => {};
+  // MCP (Model Context Protocol) Server
+  mcpGetStatus: () => ipcRenderer.invoke("mcp:get-status"),
+  mcpGetConfig: () => ipcRenderer.invoke("mcp:get-config"),
+  mcpSetConfig: (updates) => ipcRenderer.invoke("mcp:set-config", updates),
+  mcpStart: () => ipcRenderer.invoke("mcp:start"),
+  mcpStop: () => ipcRenderer.invoke("mcp:stop"),
+  mcpRestart: () => ipcRenderer.invoke("mcp:restart"),
+  mcpGetSessions: () => ipcRenderer.invoke("mcp:get-sessions"),
+  onMcpStatusChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
     const listener = (_event, payload) => callback(payload);
-    ipcRenderer.on('ai:chat:chunk', listener);
-    return () => ipcRenderer.removeListener('ai:chat:chunk', listener);
+    ipcRenderer.on("mcp:status-changed", listener);
+    return () => ipcRenderer.removeListener("mcp:status-changed", listener);
   },
   aiGetApiKey: (payload) => ipcRenderer.invoke("ai:config:get-api-key", payload),
   aiSetApiKey: (payload) => ipcRenderer.invoke("ai:config:set-api-key", payload),

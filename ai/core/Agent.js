@@ -117,39 +117,9 @@ class Agent {
     }
   }
 
-  /**
-   * Process a query via AIFlow orchestrator
-   */
-  async query(userQuery, context = {}) {
-    if (!this.isInitialized) {
-      throw new Error('Agent not initialized');
-    }
 
-    if (this.aiFlow) {
-      return this.aiFlow.execute(userQuery, context);
-    }
+  // query() and stream() removed — chat moved to MCP layer
 
-    const AIFlow = require('./AIFlow');
-    this.aiFlow = new AIFlow(this);
-    return this.aiFlow.execute(userQuery, context);
-  }
-
-  /**
-   * Process a query with streaming output via AIFlow orchestrator
-   */
-  async stream(userQuery, context = {}, onChunk, abortSignal) {
-    if (!this.isInitialized) {
-      throw new Error('Agent not initialized');
-    }
-
-    if (this.aiFlow) {
-      return this.aiFlow.stream(userQuery, context, onChunk, abortSignal);
-    }
-
-    const AIFlow = require('./AIFlow');
-    this.aiFlow = new AIFlow(this);
-    return this.aiFlow.stream(userQuery, context, onChunk, abortSignal);
-  }
 
   /**
    * Generate embeddings for workspace

@@ -4,9 +4,7 @@
 
 const IPC_EVENTS = {
   AI_INIT: 'ai:init',
-  AI_QUERY: 'ai:query',
-  AI_QUERY_STREAM: 'ai:query:stream',
-  AI_QUERY_ABORT: 'ai:query:abort',
+  // AI_QUERY/STREAM/ABORT removed — chat moved to MCP layer
   AI_STATUS: 'ai:status',
   AI_GENERATE_EMBEDDINGS: 'ai:embeddings:generate',
   AI_BUILD_GRAPH: 'ai:graph:build',
@@ -28,7 +26,7 @@ const IPC_EVENTS = {
   AI_GRAPH_MODEL_DOWNLOAD: 'ai:graph-model:download',
   AI_GRAPH_MODEL_DELETE: 'ai:graph-model:delete',
   AI_GRAPH_MODEL_STATUS: 'ai:graph-model:status',
-  AI_DETECT_PATTERNS: 'ai:patterns:detect',
+  // AI_DETECT_PATTERNS removed — chat-only
   AI_LOGS_GET: 'ai:logs:get',
   AI_LOGS_CLEAR: 'ai:logs:clear',
   AI_NOTE_STATS: 'ai:note:stats',
@@ -44,23 +42,14 @@ const IPC_EVENTS = {
   AI_ENABLE: 'ai:enable',
   AI_DISABLE: 'ai:disable',
   AI_HEALTH_GET: 'ai:health:get',
-  AI_CONVERSATION_LIST: 'ai:conversation:list',
-  AI_CONVERSATION_GET: 'ai:conversation:get',
-  AI_CONVERSATION_CREATE: 'ai:conversation:create',
-  AI_CONVERSATION_DELETE: 'ai:conversation:delete',
-  AI_CONVERSATION_CLEAR: 'ai:conversation:clear',
-  AI_CONVERSATION_SET_PERSONA: 'ai:conversation:set-persona',
-  AI_CONVERSATION_GET_MESSAGES: 'ai:conversation:get-messages',
-  AI_CONVERSATION_ADD_MESSAGE: 'ai:conversation:add-message',
+  // AI_CONVERSATION_* removed — chat moved to MCP layer
   AI_PERSONA_LIST: 'ai:persona:list',
   AI_PERSONA_GET: 'ai:persona:get',
   AI_PERSONA_SAVE: 'ai:persona:save',
   AI_PERSONA_DELETE: 'ai:persona:delete',
   AI_PERSONA_IMPORT: 'ai:persona:import',
   AI_PERSONA_EXPORT: 'ai:persona:export',
-  AI_KNOWLEDGE_LIST_PENDING: 'ai:knowledge:list-pending',
-  AI_KNOWLEDGE_APPROVE: 'ai:knowledge:approve',
-  AI_KNOWLEDGE_REJECT: 'ai:knowledge:reject',
+  // AI_KNOWLEDGE_* removed — chat-only
   AI_SHUTDOWN: 'ai:shutdown',
   TOOL_EXECUTE: 'tool:execute',
   TOOL_LIST: 'tool:list'

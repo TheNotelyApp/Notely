@@ -41,6 +41,7 @@ const { createMainHelpers } = require("./lib/core/mainHelpers.cjs");
 const { registerWorkspaceExportIpcHandlers } = require("./lib/export/workspaceExportIpc.cjs");
 const { setupDiagramHandlers } = require("./diagram-handlers.cjs");
 const { initializeAIHandlers } = require("./ai/aiHandlers.cjs");
+const { mcpLifecycle } = require("./mcp/McpLifecycle.cjs");
 const { registerGitIpcHandlers } = require("./lib/git/gitIpc.cjs");
 const gitService = require("./lib/git/gitService.cjs");
 const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
@@ -438,6 +439,10 @@ function resolveInitialNotesRoot() {
 function applyNotesRoot(nextRootPath) {
   const previousNotesRoot = notesRoot;
   notesRoot = path.resolve(nextRootPath);
+  try {
+    const { aiService } = require("../ai/core/AIService.js");
+    aiService.workspaceRoot = notesRoot;
+  } catch { /* ignore */ }
   activeProjectSlug = ROOT_PROJECT_SLUG;
   appDataDir = path.join(notesRoot, ".notes-app");
   versionsRoot = path.join(appDataDir, "versions");
@@ -889,8 +894,21 @@ if (canRunApp) {
 
     // Register AI IPC handlers in the ready phase so renderer calls never race missing handlers.
     initializeAIHandlers(app, aiAgent);
+
+    // Register and initialize MCP server subsystem
+    mcpLifecycle.registerIpcHandlers(ipcMain);
+    const mcpAppDataDir = path.join(app.getPath("appData"), "Notely", "notely");
+    mcpLifecycle.initialize(mcpAppDataDir, () => notesRoot);
+
+    app.on("browser-window-created", (_event, win) => {
+      mcpLifecycle.trackWindow(win);
+    });
+
     windowLifecycle.applyContentSecurityPolicy();
-    windowLifecycle.focusOrCreateWindow();
+    const mainWin = windowLifecycle.focusOrCreateWindow();
+    if (mainWin) {
+      mcpLifecycle.trackWindow(mainWin);
+    }
     broadcastThemeChange();
 
     // Defer workspace init so splash window has time to paint before sync FS/git work starts.
@@ -910,6 +928,8 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  mcpLifecycle.shutdown();
+
   shutdownAISystemRef();
 
   webPreview.dispose();

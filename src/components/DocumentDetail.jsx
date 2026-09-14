@@ -364,15 +364,14 @@ export function DocumentDetail({
   onBack,
   breadcrumbs = [],
   onNavigateBreadcrumb,
-  onOpenAIRequest,
   onInlineAIRequest,
   onRegisterAIEditor,
   inlineGhostSuggestion,
   onAcceptInlineGhost,
   onRejectInlineGhost,
   aiEnabled = true,
-  aiPanelVisible = true,
-  onShowAI,
+  _aiPanelVisible = true,
+  _onShowAI,
   onOpenAISettings,
   onOpenDocument,
   initialLine = null,
@@ -1421,9 +1420,6 @@ export function DocumentDetail({
           handleManualSave={handleManualSave}
           showMetadataPanel={showMetadataPanel}
           setShowMetadataPanel={setShowMetadataPanel}
-          aiPanelVisible={aiPanelVisible}
-          aiEnabled={aiEnabled}
-          onShowAI={onShowAI}
           toggleFocusMode={toggleFocusMode}
           onTransferWorkspace={onTransferWorkspace}
           onToggleTimeMachine={() => setIsTimeMachineOpen((prev) => !prev)}
@@ -1666,7 +1662,6 @@ export function DocumentDetail({
                 onOpenFind={openFindInNotePanel}
                 onToggleFind={toggleFindInNotePanel}
                 aiEnabled={aiEnabled}
-                onOpenAIRequest={onOpenAIRequest}
                 onOpenAISettings={onOpenAISettings}
                 onInlineAIContinue={() => {
                   onInlineAIRequest?.({

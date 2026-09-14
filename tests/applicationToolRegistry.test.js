@@ -63,10 +63,10 @@ describe('Application Tool Registry Architecture Tests', () => {
     })).rejects.toThrow(/Path traversal rejected/);
   });
 
-  it('should throw error for deferred notes.update and notes.delete capabilities', async () => {
+  it('should validate inputs for notes.update and notes.delete capabilities', async () => {
     const service = new NoteApplicationService();
-    await expect(service.updateNote()).rejects.toThrow(/deferred/);
-    await expect(service.deleteNote()).rejects.toThrow(/deferred/);
+    await expect(service.updateNote({})).rejects.toThrow(/filePath/);
+    await expect(service.deleteNote({})).rejects.toThrow(/filePath/);
   });
 
   it('should calculate workspace statistics cleanly', async () => {

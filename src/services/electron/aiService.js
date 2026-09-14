@@ -1,36 +1,7 @@
 import { getNotesApi } from "./base";
 
-export async function aiQuery(query, context = {}) {
-  const api = getNotesApi();
-  if (typeof api.aiQuery !== "function") {
-    throw new Error("AI queries are unavailable. Please restart the app.");
-  }
-  return api.aiQuery({ query, context });
-}
+// aiQuery, aiQueryStream, aiQueryAbort, onChatStreamChunk removed — chat moved to MCP layer
 
-export async function aiQueryStream(query, context = {}, queryId) {
-  const api = getNotesApi();
-  if (typeof api.aiQueryStream !== "function") {
-    throw new Error("AI streaming queries are unavailable. Please restart the app.");
-  }
-  return api.aiQueryStream({ query, context, queryId });
-}
-
-export async function aiQueryAbort(queryId) {
-  const api = getNotesApi();
-  if (typeof api.aiQueryAbort !== "function") {
-    throw new Error("AI query cancellation is unavailable. Please restart the app.");
-  }
-  return api.aiQueryAbort({ queryId });
-}
-
-export function onChatStreamChunk(callback) {
-  const api = getNotesApi();
-  if (typeof api.onChatStreamChunk !== "function") {
-    return () => {};
-  }
-  return api.onChatStreamChunk(callback);
-}
 
 export async function aiGetApiKey(provider) {
   const api = getNotesApi();
@@ -286,61 +257,17 @@ export async function aiClearGraphData() {
   return api.aiClearGraphData();
 }
 
-export async function aiDetectPatterns() {
-  const api = getNotesApi();
-  if (typeof api.aiDetectPatterns !== "function") {
-    throw new Error("AI pattern detection is unavailable. Please restart the app.");
-  }
-  return api.aiDetectPatterns({});
-}
-
+// Conversation store removed from local AI — fallback stubs for health diagnostics
 export async function aiListConversations() {
-  const api = getNotesApi();
-  if (typeof api.aiListConversations !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiListConversations();
+  return { success: true, data: [] };
+}
+export async function aiGetMessages() {
+  return { success: true, data: [] };
+}
+export async function aiClearConversations() {
+  return { success: true };
 }
 
-export async function aiGetConversation(id) {
-  const api = getNotesApi();
-  if (typeof api.aiGetConversation !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiGetConversation({ id });
-}
-
-export async function aiCreateConversation(title, persona) {
-  const api = getNotesApi();
-  if (typeof api.aiCreateConversation !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiCreateConversation({ title, persona });
-}
-
-export async function aiDeleteConversation(id) {
-  const api = getNotesApi();
-  if (typeof api.aiDeleteConversation !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiDeleteConversation({ id });
-}
-
-export async function aiClearConversations(beforeTimestamp = null) {
-  const api = getNotesApi();
-  if (typeof api.aiClearConversations !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiClearConversations({ beforeTimestamp });
-}
-
-export async function aiSetConversationPersona(conversationId, personaId) {
-  const api = getNotesApi();
-  if (typeof api.aiSetConversationPersona !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiSetConversationPersona({ conversationId, personaId });
-}
-
-export async function aiGetMessages(conversationId) {
-  const api = getNotesApi();
-  if (typeof api.aiGetMessages !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiGetMessages({ conversationId });
-}
-
-export async function aiAddMessage(conversationId, role, content, metadata = null) {
-  const api = getNotesApi();
-  if (typeof api.aiAddMessage !== 'function') throw new Error('Conversation API unavailable.');
-  return api.aiAddMessage({ conversationId, role, content, metadata });
-}
 
 export async function aiListPersonas() {
   const api = getNotesApi();
@@ -378,23 +305,8 @@ export async function aiExportPersona(id, destPath) {
   return api.aiExportPersona({ id, destPath });
 }
 
-export async function aiListPendingKnowledge() {
-  const api = getNotesApi();
-  if (typeof api.aiListPendingKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
-  return api.aiListPendingKnowledge();
-}
+// aiListPendingKnowledge/aiApproveKnowledge/aiRejectKnowledge removed — chat-only
 
-export async function aiApproveKnowledge(id) {
-  const api = getNotesApi();
-  if (typeof api.aiApproveKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
-  return api.aiApproveKnowledge({ id });
-}
-
-export async function aiRejectKnowledge(id) {
-  const api = getNotesApi();
-  if (typeof api.aiRejectKnowledge !== 'function') throw new Error('Knowledge API unavailable.');
-  return api.aiRejectKnowledge({ id });
-}
 
 export async function executeTool(toolName, args = {}, context = {}) {
   const api = getNotesApi();

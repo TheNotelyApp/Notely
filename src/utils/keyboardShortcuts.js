@@ -224,10 +224,14 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     group: "AI",
   },
   {
-    keys: "Ctrl/Cmd+J",
-    action: "Toggle AI Assistant Chat",
+    keys: "Ctrl/Cmd+Shift+M",
+    action: "Open MCP Tools & Capabilities",
     group: "AI",
-    notes: "Available on document screens.",
+  },
+  {
+    keys: "Ctrl/Cmd+J",
+    action: "Open Downloads & Export History",
+    group: "Exports",
   },
   {
     keys: "Ctrl/Cmd+Shift+G",

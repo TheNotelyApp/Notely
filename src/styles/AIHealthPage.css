@@ -24,14 +24,21 @@
 /* Two-column body */
 .ahp-body {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 340px minmax(0, 1fr);
   gap: 16px;
   flex: 1;
   overflow: hidden;
   padding: 16px 20px 20px;
 }
 
-/* Left column */
+@media (max-width: 1024px) {
+  .ahp-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+}
+
+/* Subsystem Cards Sidebar */
 .ahp-left {
   display: flex;
   flex-direction: column;
@@ -56,6 +63,11 @@
   border: 1px solid var(--border-soft);
   background: var(--surface-bg);
   overflow: hidden;
+  transition: border-color var(--motion-fast, 0.15s ease), background var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease);
+}
+
+.ahp-card:hover {
+  border-color: var(--border-default);
 }
 
 .ahp-card-header {
@@ -623,18 +635,29 @@
 .ahp-root .ahp-back-btn,
 .ahp-root .ahp-refresh-btn,
 .ahp-root select,
-.ahp-root .ahp-conv-search {
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08)) !important;
+.ahp-root .ahp-conv-search,
+.knowledge-graph-page .btn,
+.knowledge-graph-page .btn-secondary,
+.ahp-card button,
+.kg-header-actions .btn-secondary {
+  border: 1px solid var(--border-soft) !important;
   border-radius: var(--radius-md, 6px);
-  transition: border-color var(--motion-fast, 0.15s ease), background var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease);
+  background: var(--surface-bg);
+  color: var(--app-text);
+  transition: border-color var(--motion-fast, 0.15s ease), background var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease), color var(--motion-fast, 0.15s ease);
 }
 
 .ahp-root .btn-secondary:hover:not(:disabled),
 .ahp-root .ahp-back-btn:hover:not(:disabled),
 .ahp-root select:hover,
-.ahp-root .ahp-conv-search:focus {
-  border-color: var(--border-default, rgba(255, 255, 255, 0.16)) !important;
-  background: var(--surface-subtle, rgba(255, 255, 255, 0.04));
+.ahp-root .ahp-conv-search:focus,
+.knowledge-graph-page .btn-secondary:hover:not(:disabled),
+.ahp-card button:hover:not(:disabled),
+.kg-header-actions .btn-secondary:hover:not(:disabled) {
+  border-color: var(--border-default) !important;
+  background: var(--surface-subtle) !important;
+  color: var(--text-strong) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .ahp-root .btn-primary {

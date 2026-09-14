@@ -32,11 +32,10 @@ const GlobalSearchOverlay = lazy(() =>
 const KeyboardShortcutsModal = lazy(() =>
   import("./components/KeyboardShortcutsModal").then((m) => ({ default: m.KeyboardShortcutsModal }))
 );
-const AIChatPanel = lazy(() =>
-  import("./components/AIChatPanel").then((m) => ({ default: m.default || m.AIChatPanel }))
-);
+
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
+import { MCPStatusBar } from "./components/MCPStatusBar";
 
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
@@ -74,7 +73,11 @@ import {
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
-import { useAIAssistant } from "./hooks/useAIAssistant";
+import {
+  aiGenerateEmbeddings,
+  aiBuildGraph,
+  aiClearData,
+} from "./services/electron/aiService";
 import { useDocumentManager } from "./hooks/useDocumentManager";
 import { useWorkspaceScopedStorage } from "./hooks/useWorkspaceScopedStorage";
 import { useUIState } from "./contexts/UIStateContext";
@@ -518,11 +521,6 @@ export default function App() {
     }
   }, [handleReloadWorkspace, openTabs, openDocument, handleCloseTab]);
 
-  const handlePreviewNote = useCallback((filePath, lineNum = null) => {
-    if (!filePath) return;
-    void handleOpenReferencedDocument(filePath, lineNum);
-  }, [handleOpenReferencedDocument]);
-
   const handleCopyLinkPath = useCallback((target) => {
     const filePath = typeof target === "object" ? target?.filePath : target;
     if (!filePath || !notesFolderPath) return;
@@ -933,48 +931,51 @@ export default function App() {
     handleResolveConflict,
     handleOpenNextConflict,
   } = useP2PSync({ notify, setError, loadDocumentsData, syncStateRef });
-  const {
-    aiSettingsOpen,
-    setAiSettingsOpen,
-    aiQueryLoading,
-    aiQueryError,
-    aiContextSummary,
-    aiPaletteIntent,
-    aiChatMessages,
-    isAIConfigured,
-    aiPanelVisible,
-    setAiPanelVisible,
-    inlineGhostSuggestion,
-    aiEditorRef,
-    refreshAIConfiguration,
-    handleAIEmbeddings,
-    handleAIGraph,
-    handleAIClearCache,
-    handleOpenAIPalette,
-    handleInlineAIRequest,
-    handleApplyAIResult,
-    handleAIChatSend,
-    handleAIChatAbort,
-    handleClearAIChat,
-    handleRejectInlineGhost,
-    handleAcceptInlineGhost,
-    activeProvider,
-    activePersona,
-    setActivePersona,
-    activeQueryId,
-    conversations,
-    loadConversations,
-    loadConversation,
-    deleteConversation,
-  } = useAIAssistant({
-    current,
-    activeTab,
-    mode,
-    activeProject,
-    landingFolderPath,
-    notesFolderPath,
-    notify,
-  });
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [mcpToolsPageOpen, setMcpToolsPageOpen] = useState(false);
+
+  const handleAIEmbeddings = useCallback(async () => {
+    notify("Generating embeddings...", "info");
+    try {
+      const result = await aiGenerateEmbeddings(true);
+      if (result?.success) {
+        notify("Embeddings generated successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to generate embeddings", "error");
+      }
+    } catch (err) {
+      notify(err?.message || "Failed to generate embeddings", "error");
+    }
+  }, [notify]);
+
+  const handleAIGraph = useCallback(async () => {
+    notify("Building knowledge graph...", "info");
+    try {
+      const result = await aiBuildGraph();
+      if (result?.success) {
+        notify("Knowledge graph built successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to build knowledge graph", "error");
+      }
+    } catch (err) {
+      console.error("[AI] Graph build error:", err);
+      notify(err?.message || "Failed to build knowledge graph", "error");
+    }
+  }, [notify]);
+
+  const handleAIClearCache = useCallback(async () => {
+    notify("Clearing AI cache...", "info");
+    try {
+      const result = await aiClearData();
+      if (result?.success) {
+        notify("AI cache cleared successfully!", "success");
+      } else {
+        notify(result?.error || "Failed to clear cache", "error");
+      }
+    } catch (err) {
+      notify(err?.message || "Failed to clear cache", "error");
+    }
+  }, [notify]);
 
   useEffect(() => {
     if (p2pStatusOpen) {
@@ -2084,10 +2085,7 @@ export default function App() {
         return;
       }
 
-      if (action === "open-ai-palette") {
-        handleOpenAIPalette({ forceOpen: true });
-        return;
-      }
+
 
       if (action === "ai-generate-embeddings") {
         handleAIEmbeddings();
@@ -2107,6 +2105,11 @@ export default function App() {
 
       if (action === "open-health-page") {
         setHealthPageOpen(true);
+        return;
+      }
+
+      if (action === "open-mcp-tools") {
+        setMcpToolsPageOpen(true);
         return;
       }
 
@@ -2313,7 +2316,8 @@ export default function App() {
   const paletteCommandsBase = [
     { id: "restart-app", label: "Restart Notely", group: "App", aliases: "restart relaunch reboot app application" },
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document write jot capture" },
-    { id: "open-ai-palette", label: "Open AI Palette", group: "AI", shortcut: "Ctrl/Cmd+Shift+I", aliases: "assistant ask ai prompt summarize rewrite" },
+    { id: "open-mcp-tools", label: "Open MCP Tools & Capabilities", group: "AI", shortcut: "Ctrl/Cmd+Shift+M", aliases: "mcp tools agent external server api" },
+
     { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
     { id: "open-feedback", label: "Report Bug / Feedback", group: "Help", aliases: "feedback bug report issue feature request" },
     { id: "open-about", label: "Open About Notely", group: "Help", aliases: "about version build" },
@@ -2631,10 +2635,12 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-ai-palette") {
-      handleOpenAIPalette({ forceOpen: true });
+    if (resolvedCommandId === "open-mcp-tools") {
+      setMcpToolsPageOpen(true);
       return;
     }
+
+
 
     if (resolvedCommandId === "open-help-center") {
       setHelpConfirmationOpen(true);
@@ -2930,16 +2936,6 @@ export default function App() {
       return;
     }
 
-    if (action === "ai") {
-      if (!isAIConfigured) {
-        notify("Configure an AI provider key in AI Settings to use AI chat.", "warning");
-        setAiSettingsOpen(true);
-        return;
-      }
-      setAiPanelVisible((visible) => !visible);
-      return;
-    }
-
     if (action === "trash") {
       setTrashDialogOpen(true);
     }
@@ -3029,37 +3025,7 @@ export default function App() {
     [favoriteNotes, recentDashboardNotes, continueDashboardNotes]
   );
 
-  const aiSidebarComponent = aiPanelVisible && isAIConfigured ? (
-    <ErrorBoundary label="AI chat">
-      <Suspense fallback={<div className="lazy-loading">Loading AI…</div>}>
-        <AIChatPanel
-          onHide={() => setAiPanelVisible(false)}
-          onClear={handleClearAIChat}
-          onSend={handleAIChatSend}
-          onAbort={handleAIChatAbort}
-          activeQueryId={activeQueryId}
-          onApply={handleApplyAIResult}
-          onOpenDocument={handleOpenReferencedDocumentFromUI}
-          onPreviewNote={handlePreviewNote}
-          isLoading={aiQueryLoading}
-          error={aiQueryError || null}
-          contextSummary={aiContextSummary}
-          intent={aiPaletteIntent}
-          messages={aiChatMessages}
-          noteTitle={current?.title || "Current Note"}
-          activeProvider={activeProvider}
-          activePersona={activePersona}
-          setActivePersona={setActivePersona}
-          workspaceStorageScope={workspaceStorageScope}
-          conversations={conversations}
-          onLoadConversations={loadConversations}
-          onLoadConversation={loadConversation}
-          onDeleteConversation={deleteConversation}
-        />
 
-      </Suspense>
-    </ErrorBoundary>
-  ) : null;
 
   return (
     <div className={`app-shell${showTerminal ? " terminal-open" : ""}${current ? " document-screen" : " landing-screen"}${focusModeEnabled && current ? " focus-mode-active" : ""}`}>
@@ -3154,6 +3120,10 @@ export default function App() {
               onClick={() => setGitVCOpen(true)}
             />
             <AIStatusBar onClick={() => setAiSettingsOpen(true)} />
+            <MCPStatusBar onClick={() => {
+              setSettingsTab("mcp");
+              setSettingsOpen(true);
+            }} />
             {current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
                 {documentStats ? (
@@ -3188,17 +3158,7 @@ export default function App() {
             documents={documents}
             workspaceTaskDocuments={workspaceTaskDocuments}
             loading={loading}
-            aiSidebar={aiSidebarComponent}
-            aiPanelVisible={aiPanelVisible}
-            isAIConfigured={isAIConfigured}
-            onShowAI={() => {
-              if (!isAIConfigured) {
-                notify("Configure an AI provider key in AI Settings to use AI chat.", "warning");
-                setAiSettingsOpen(true);
-                return;
-              }
-              setAiPanelVisible((visible) => !visible);
-            }}
+
             onOpenListItem={handleOpenListItem}
             onOpenReferencedDocument={(task) => handleOpenReferencedDocument(task?.filePath)}
             onOpenAllTasks={() => {
@@ -3297,25 +3257,7 @@ export default function App() {
               if (!didLeave) return;
               await handleLandingNavigateTo(targetPath);
             }}
-            onOpenAI={handleOpenAIPalette}
-            onOpenAIRequest={handleOpenAIPalette}
-            onInlineAIRequest={handleInlineAIRequest}
-            onRegisterAIEditor={(api) => {
-              aiEditorRef.current = api;
-            }}
-            inlineGhostSuggestion={inlineGhostSuggestion}
-            onAcceptInlineGhost={handleAcceptInlineGhost}
-            onRejectInlineGhost={handleRejectInlineGhost}
-            aiEnabled={isAIConfigured}
-            aiPanelVisible={aiPanelVisible}
-            onShowAI={() => {
-              if (!isAIConfigured) {
-                notify("Configure an AI provider key in AI Settings to use AI chat.", "warning");
-                setAiSettingsOpen(true);
-                return;
-              }
-              setAiPanelVisible((visible) => !visible);
-            }}
+
             onOpenAISettings={() => setAiSettingsOpen(true)}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
             initialLine={initialLine}
@@ -3335,7 +3277,6 @@ export default function App() {
             scrollSyncEnabled={scrollSyncEnabled}
             onScrollSyncEnabledChange={setScrollSyncEnabled}
             onReloadFromDisk={(filePath) => handleReloadCurrentFromDisk(filePath)}
-            aiSidebar={aiSidebarComponent}
           />
         </Suspense>
       )}
@@ -3511,9 +3452,9 @@ export default function App() {
       {settingsOpen ? (
         <SettingsModal
           isOpen={settingsOpen}
+          notify={notify}
           onClose={() => {
             setSettingsOpen(false);
-            refreshAIConfiguration();
           }}
           activeTab={settingsTab}
           themePreference={themePreference}
@@ -3851,6 +3792,12 @@ export default function App() {
         setWorkspaceIndexOpen={setWorkspaceIndexOpen}
         diagramsMediaOpen={diagramsMediaOpen}
         setDiagramsMediaOpen={setDiagramsMediaOpen}
+        mcpToolsPageOpen={mcpToolsPageOpen}
+        setMcpToolsPageOpen={setMcpToolsPageOpen}
+        onOpenMcpSettings={() => {
+          setSettingsTab("mcp");
+          setSettingsOpen(true);
+        }}
         onSelectHeader={(docId, line) => {
           handleOpenReferencedDocument(docId, line);
         }}

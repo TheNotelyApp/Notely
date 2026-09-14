@@ -86,8 +86,6 @@ npm run test:p2p
 - `electron/lib/ipc/codeExecutorIpc.test.js`: Code execution runner tests.
 - `electron/p2p/p2pLive.test.js`: Peer-to-peer discovery and encrypted handshake tests.
 
----
-
 ## 5. Build & Packaging Scripts
 
 For generating standalone distribution packages:
@@ -95,4 +93,11 @@ For generating standalone distribution packages:
 - **Windows Executable Build Script (`build-windows-exe.sh`)**: Compiles and bundles a standalone Windows executable.
 - **Release Packaging Script (`release.sh`)**: Automates version stamping, package archive creation, and release checksum generation.
 - **Icon Generation (`scripts/generate-icon.cjs`)**: Generates app icons from source image assets (`process.env.NOTELY_ICON_SOURCE`).
+
+---
+
+## 6. Related Developer Documentation
+
+- [Model Context Protocol (MCP) Integration](/developer/mcp) — Comprehensive guide for Notely's embedded MCP server, SSE transport, JSON-RPC tools, and UI diagnostics.
+- [Application Architecture](/architecture) — Deep dive into Electron process model, subsystems, LogDB, and SQLite storage layers.
 

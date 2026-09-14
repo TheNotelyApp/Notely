@@ -16,57 +16,10 @@ import {
   Calendar,
   Minus,
   Quote,
-  Sparkles,
-  Wand2,
 } from "lucide-react";
 import "../styles/SlashMenuOverlay.css";
 
 const SLASH_COMMANDS = [
-  {
-    id: "ai-summarize",
-    label: "AI: Summarize Block",
-    description: "Summarize this block briefly using AI",
-    icon: Wand2,
-    isAI: true,
-    prompt: "Summarize the following text briefly. Return only the summary text without introduction: ",
-    keywords: ["ai", "summarize", "summary", "shorten"],
-  },
-  {
-    id: "ai-grammar",
-    label: "AI: Fix Grammar",
-    description: "Fix spelling and grammar errors using AI",
-    icon: Sparkles,
-    isAI: true,
-    prompt: "Fix grammar, spelling, and punctuation errors in the following text, keeping the meaning identical. Return only the corrected text: ",
-    keywords: ["ai", "grammar", "spelling", "fix", "proofread"],
-  },
-  {
-    id: "ai-tasks",
-    label: "AI: Extract Tasks",
-    description: "Convert text to checklist tasks using AI",
-    icon: CheckSquare,
-    isAI: true,
-    prompt: "Extract any action items or tasks from the following text and format them as a markdown task list (- [ ] task). Return only the tasks: ",
-    keywords: ["ai", "tasks", "action", "extract", "todo"],
-  },
-  {
-    id: "ai-professional",
-    label: "AI: Make Professional",
-    description: "Rewrite block in professional tone using AI",
-    icon: Sparkles,
-    isAI: true,
-    prompt: "Rewrite the following text in a professional, clear, and business-appropriate tone. Return only the rewritten text: ",
-    keywords: ["ai", "professional", "tone", "formal", "rewrite"],
-  },
-  {
-    id: "ai-casual",
-    label: "AI: Make Casual",
-    description: "Rewrite block in casual tone using AI",
-    icon: Sparkles,
-    isAI: true,
-    prompt: "Rewrite the following text in a casual, friendly, and conversational tone. Return only the rewritten text: ",
-    keywords: ["ai", "casual", "friendly", "tone", "rewrite"],
-  },
   {
     id: "h1",
     label: "Heading 1",
