@@ -109,7 +109,7 @@ export default function AIHealthPage({ onBack }) {
         aiGetHealth().catch(() => null),
         mcpGetStatus().catch(() => null),
         mcpGetSessions().catch(() => ({ active: [] })),
-        aiGetLogs(100).catch(() => [])
+        aiGetLogs('mcp', 100).catch(() => [])
       ]);
 
       if (hRes) setHealthData(hRes.data || hRes);
@@ -117,25 +117,23 @@ export default function AIHealthPage({ onBack }) {
       if (sessRes) setMcpSessions((sessRes.data?.active || sessRes.active) || []);
 
       const logsArray = Array.isArray(logsRes?.data) ? logsRes.data : (Array.isArray(logsRes) ? logsRes : []);
-      if (logsArray.length > 0) {
-        const calls = logsArray.map((item, idx) => {
-          const meta = item.metadata || item;
-          return {
-            id: item.id || `call_${idx}_${Date.now()}`,
-            callId: meta.callId || item.call_id || `call_${idx}`,
-            sessionId: meta.sessionId || item.session_id || 'default',
-            clientName: meta.clientName || item.client_name || 'Claude / External Client',
-            toolName: meta.toolName || item.tool_name || item.query || 'mcp_tool',
-            input: meta.input || meta.input_payload || item.payload || item.input,
-            output: meta.output || meta.output_payload || item.output,
-            durationMs: meta.durationMs || meta.totalDurationMs || item.duration_ms || 0,
-            status: (meta.status || item.status || 'SUCCESS').toUpperCase(),
-            error: meta.error || item.error || null,
-            calledAt: item.timestamp || item.created_at || meta.calledAt || new Date().toISOString()
-          };
-        });
-        setToolCalls(calls);
-      }
+      const calls = logsArray.map((item, idx) => {
+        const meta = item.metadata || item;
+        return {
+          id: item.id || `call_${idx}_${Date.now()}`,
+          callId: item.callId || meta.callId || item.call_id || `call_${idx}`,
+          sessionId: item.sessionId || meta.sessionId || item.session_id || 'default',
+          clientName: item.clientName || meta.clientName || item.client_name || 'Antigravity / External Client',
+          toolName: item.toolName || meta.toolName || item.tool_name || item.query || 'mcp_tool',
+          input: item.input !== undefined ? item.input : (meta.input || meta.input_payload || item.payload),
+          output: item.output !== undefined ? item.output : (meta.output || meta.output_payload),
+          durationMs: item.durationMs ?? meta.durationMs ?? meta.totalDurationMs ?? item.duration_ms ?? 0,
+          status: (item.status || meta.status || 'SUCCESS').toUpperCase(),
+          error: item.error || meta.error || null,
+          calledAt: item.calledAt || item.timestamp || item.created_at || meta.calledAt || new Date().toISOString()
+        };
+      });
+      setToolCalls(calls);
     } catch (err) {
       console.error('[MCP Diagnostics] Fetch failed:', err);
     } finally {

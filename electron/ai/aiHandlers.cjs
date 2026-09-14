@@ -1387,13 +1387,15 @@ async function handleGetLogs(_event, payload) {
     const limit = payload?.limit || 200;
     const conversationId = payload?.conversationId || null;
 
-    if (subsystem === 'FlowTracker' || conversationId) {
+    if (subsystem === 'mcp' || subsystem === 'mcp_tools' || subsystem === 'telemetry' || subsystem === 'FlowTracker' || conversationId) {
       const telDb = getTelemetryDbInstance();
       if (telDb) {
-        const telLogs = conversationId 
-          ? telDb.getTelemetryByConversation(conversationId, limit)
-          : telDb.getLatestTelemetry(limit);
-        return new AIQueryResponse(true, telLogs);
+        if (conversationId) {
+          const telLogs = telDb.getTelemetryByConversation(conversationId, limit);
+          return new AIQueryResponse(true, telLogs);
+        }
+        const toolCalls = telDb.getMcpToolCalls({ limit });
+        return new AIQueryResponse(true, toolCalls);
       }
       return new AIQueryResponse(true, []);
     }

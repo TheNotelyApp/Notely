@@ -528,6 +528,16 @@ class TelemetryDB {
     }
   }
 
+  getLatestTelemetry(limit = 100) {
+    if (!this.db || !this.isInitialized) return [];
+    try {
+      return this.getMcpToolCalls({ limit });
+    } catch (err) {
+      log.error('Failed to fetch latest telemetry:', err.message);
+      return [];
+    }
+  }
+
   getTelemetryByTrace(traceId) {
     if (!this.db || !this.isInitialized) return null;
     try {
