@@ -42,14 +42,7 @@ const IPC_EVENTS = {
   AI_ENABLE: 'ai:enable',
   AI_DISABLE: 'ai:disable',
   AI_HEALTH_GET: 'ai:health:get',
-  // AI_CONVERSATION_* removed — chat moved to MCP layer
-  AI_PERSONA_LIST: 'ai:persona:list',
-  AI_PERSONA_GET: 'ai:persona:get',
-  AI_PERSONA_SAVE: 'ai:persona:save',
-  AI_PERSONA_DELETE: 'ai:persona:delete',
-  AI_PERSONA_IMPORT: 'ai:persona:import',
-  AI_PERSONA_EXPORT: 'ai:persona:export',
-  // AI_KNOWLEDGE_* removed — chat-only
+  // AI_PERSONA_* removed — chat moved to MCP layer
   AI_SHUTDOWN: 'ai:shutdown',
   TOOL_EXECUTE: 'tool:execute',
   TOOL_LIST: 'tool:list'

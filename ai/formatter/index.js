@@ -4,16 +4,12 @@
  */
 
 const { formatResponse } = require('../utils/aiUtils');
-const { GroundingEngine } = require('../grounding');
-
 const { TaskSummaryFormatter, formatFileUriLink } = require('./TaskSummaryFormatter');
 
 module.exports = {
   formatResponse,
   TaskSummaryFormatter,
   formatFileUriLink,
-  formatLineNumberLinks: (text, workspaceFiles) => GroundingEngine.formatLineNumberLinks(text, workspaceFiles),
-  verifyCitations: (text) => GroundingEngine.verifyCitations(text),
   
   formatToolOutput: (val) => {
     if (typeof val === 'string') return val.trim();

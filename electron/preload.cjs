@@ -135,26 +135,6 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on('ai:telemetry:event', listener);
     return () => ipcRenderer.removeListener('ai:telemetry:event', listener);
   },
-  // Phase 5 — Conversations
-  aiListConversations: () => ipcRenderer.invoke("ai:conversation:list"),
-  aiGetConversation: (p) => ipcRenderer.invoke("ai:conversation:get", p),
-  aiCreateConversation: (p) => ipcRenderer.invoke("ai:conversation:create", p),
-  aiDeleteConversation: (p) => ipcRenderer.invoke("ai:conversation:delete", p),
-  aiClearConversations: (payload) => ipcRenderer.invoke("ai:conversation:clear", payload),
-  aiSetConversationPersona: (p) => ipcRenderer.invoke("ai:conversation:set-persona", p),
-  aiGetMessages: (p) => ipcRenderer.invoke("ai:conversation:get-messages", p),
-  aiAddMessage: (p) => ipcRenderer.invoke("ai:conversation:add-message", p),
-  // Phase 5 — Personas
-  aiListPersonas: () => ipcRenderer.invoke("ai:persona:list"),
-  aiGetPersona: (p) => ipcRenderer.invoke("ai:persona:get", p),
-  aiSavePersona: (p) => ipcRenderer.invoke("ai:persona:save", p),
-  aiDeletePersona: (p) => ipcRenderer.invoke("ai:persona:delete", p),
-  aiImportPersona: (p) => ipcRenderer.invoke("ai:persona:import", p),
-  aiExportPersona: (p) => ipcRenderer.invoke("ai:persona:export", p),
-  // Phase 5 — Candidate Knowledge
-  aiListPendingKnowledge: () => ipcRenderer.invoke("ai:knowledge:list-pending"),
-  aiApproveKnowledge: (p) => ipcRenderer.invoke("ai:knowledge:approve", p),
-  aiRejectKnowledge: (p) => ipcRenderer.invoke("ai:knowledge:reject", p),
   getNotesRootSetting: () => ipcRenderer.invoke("settings:get-notes-root"),
   getAppInfo: () => ipcRenderer.invoke("settings:get-app-info"),
   checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),

@@ -14,273 +14,20 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const {
   assertPathInWorkspace,
   toWorkspaceRelative,
-  collectMarkdownFiles
+  collectMarkdownFiles,
+  cleanMarkdown,
+  levenshteinDistance,
+  resolveNotePath,
+  atomicWriteFile,
+  safeDeleteFile,
+  getFileGitHistory,
+  getNoteBacklinks
 } = require('../services/NoteApplicationService.cjs');
 
-// ─── HELPER UTILITIES ────────────────────────────────────────────────────────
-
-/**
- * Strips markdown syntax, YAML frontmatter, and code fences into clean, readable text.
- */
-function cleanMarkdown(rawMarkdown) {
-  if (!rawMarkdown || typeof rawMarkdown !== 'string') return '';
-  let text = rawMarkdown;
-
-  // 1. Remove YAML frontmatter
-  text = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
-
-  // 2. Remove fenced code blocks
-  text = text.replace(/```[\s\S]*?```/g, '');
-
-  // 3. Remove inline code
-  text = text.replace(/`([^`]+)`/g, '$1');
-
-  // 4. Remove images ![alt](url)
-  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
-
-  // 5. Convert links [text](url) -> text, and [[WikiLink|Alias]] -> Alias or WikiLink
-  text = text.replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g, '$2');
-  text = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
-  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-
-  // 6. Remove HTML tags
-  text = text.replace(/<[^>]+>/g, '');
-
-  // 7. Remove headers, blockquotes, bold/italic, strikethrough, list markers
-  text = text.replace(/^#{1,6}\s+/gm, '');
-  text = text.replace(/^\s*[-*+]\s+\[[ xX/]\]\s+/gm, '');
-  text = text.replace(/^\s*[-*+]\s+/gm, '');
-  text = text.replace(/^\s*\d+\.\s+/gm, '');
-  text = text.replace(/^\s*>\s+/gm, '');
-  text = text.replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, '$1');
-
-  // 8. Collapse whitespace
-  return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).join('\n');
-}
-
-/**
- * Calculate simple Levenshtein distance for fuzzy matching.
- */
-function levenshteinDistance(s1, s2) {
-  const m = s1.length;
-  const n = s2.length;
-  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (s1[i - 1] === s2[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1];
-      } else {
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1,      // deletion
-          dp[i][j - 1] + 1,      // insertion
-          dp[i - 1][j - 1] + 1   // substitution
-        );
-      }
-    }
-  }
-  return dp[m][n];
-}
-
-/**
- * Resilient Note Path Resolver with fuzzy "didYouMean" fallbacks.
- * Matches by exact relative path, base filename, title in H1/frontmatter, or wikilink syntax.
- */
-function resolveNotePath(pathOrTitle, workspaceRoot) {
-  if (!pathOrTitle || typeof pathOrTitle !== 'string' || !workspaceRoot) {
-    return { resolvedPath: null, relativePath: null, exists: false, didYouMean: [] };
-  }
-
-  const raw = pathOrTitle.trim().replace(/^\[\[/, '').replace(/\]\]$/, '');
-  const candidateMd = raw.endsWith('.md') ? raw : `${raw}.md`;
-
-  // 1. Direct path check
-  try {
-    const directPath = assertPathInWorkspace(candidateMd, workspaceRoot);
-    if (fs.existsSync(directPath) && fs.statSync(directPath).isFile()) {
-      return {
-        resolvedPath: directPath,
-        relativePath: toWorkspaceRelative(directPath, workspaceRoot),
-        exists: true,
-        didYouMean: []
-      };
-    }
-  } catch {
-    // continue to search
-  }
-
-  // Also test raw path without adding .md
-  try {
-    const directRaw = assertPathInWorkspace(raw, workspaceRoot);
-    if (fs.existsSync(directRaw) && fs.statSync(directRaw).isFile()) {
-      return {
-        resolvedPath: directRaw,
-        relativePath: toWorkspaceRelative(directRaw, workspaceRoot),
-        exists: true,
-        didYouMean: []
-      };
-    }
-  } catch {
-    // continue to search
-  }
-
-  // 2. Scan workspace notes for filename, title, or H1 match
-  const allFiles = collectMarkdownFiles(workspaceRoot);
-  const targetLower = raw.toLowerCase();
-  const targetBaseLower = path.basename(candidateMd, '.md').toLowerCase();
-
-  const exactMatches = [];
-  const fuzzyCandidates = [];
-
-  for (const filePath of allFiles) {
-    const relPath = toWorkspaceRelative(filePath, workspaceRoot);
-    const fileName = path.basename(filePath);
-    const baseName = path.basename(filePath, '.md');
-    const baseNameLower = baseName.toLowerCase();
-
-    if (baseNameLower === targetBaseLower || fileName.toLowerCase() === targetLower) {
-      exactMatches.push({ resolvedPath: filePath, relativePath: relPath });
-      continue;
-    }
-
-    // Check frontmatter title or H1 heading
-    let noteTitle = '';
-    try {
-      const headerChunk = fs.readFileSync(filePath, 'utf8').slice(0, 1000);
-      const fmMatch = headerChunk.match(/^title:\s*["']?([^"'\r\n]+)["']?/m);
-      if (fmMatch) {
-        noteTitle = fmMatch[1].trim();
-      } else {
-        const h1Match = headerChunk.match(/^#\s+(.+)$/m);
-        if (h1Match) noteTitle = h1Match[1].trim();
-      }
-    } catch {
-      // skip
-    }
-
-    if (noteTitle && noteTitle.toLowerCase() === targetLower) {
-      exactMatches.push({ resolvedPath: filePath, relativePath: relPath });
-      continue;
-    }
-
-    // Distance computation for fuzzy candidate
-    const dist = levenshteinDistance(baseNameLower, targetBaseLower);
-    const isSubstring = baseNameLower.includes(targetBaseLower) || targetBaseLower.includes(baseNameLower);
-    if (dist <= 3 || isSubstring) {
-      fuzzyCandidates.push({ relPath, score: dist - (isSubstring ? 2 : 0) });
-    }
-  }
-
-  if (exactMatches.length > 0) {
-    return {
-      resolvedPath: exactMatches[0].resolvedPath,
-      relativePath: exactMatches[0].relativePath,
-      exists: true,
-      didYouMean: []
-    };
-  }
-
-  fuzzyCandidates.sort((a, b) => a.score - b.score);
-  return {
-    resolvedPath: null,
-    relativePath: null,
-    exists: false,
-    didYouMean: fuzzyCandidates.slice(0, 5).map(c => c.relPath)
-  };
-}
-
-/**
- * Safely writes file content using atomic rename (.tmp -> dest).
- */
-function atomicWriteFile(targetPath, content, createBackup = false) {
-  const dir = path.dirname(targetPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  if (createBackup && fs.existsSync(targetPath)) {
-    try {
-      fs.copyFileSync(targetPath, `${targetPath}.bak`);
-    } catch {
-      // ignore backup error
-    }
-  }
-
-  const tmpPath = `${targetPath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 7)}`;
-  fs.writeFileSync(tmpPath, content, 'utf8');
-  fs.renameSync(tmpPath, targetPath);
-}
-
-/**
- * Extracts recent git commit history for a file if inside a git repository.
- */
-function getFileGitHistory(filePath, workspaceRoot, limit = 5) {
-  try {
-    const gitDir = path.join(workspaceRoot, '.git');
-    if (!fs.existsSync(gitDir)) return [];
-
-    const relPath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
-    const out = execSync(`git log -n ${limit} --pretty=format:"%h|%an|%ad|%s" --date=short -- "${relPath}"`, {
-      cwd: workspaceRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: 2500
-    });
-
-    if (!out || !out.trim()) return [];
-
-    return out.trim().split(/\r?\n/).map(line => {
-      const [hash, author, date, ...rest] = line.split('|');
-      return {
-        hash: hash ? hash.trim() : '',
-        author: author ? author.trim() : '',
-        date: date ? date.trim() : '',
-        message: rest.join('|').trim()
-      };
-    }).filter(c => c.hash);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Finds all notes in workspace that link to target note (backlinks).
- */
-function getNoteBacklinks(targetRelativePath, targetTitle, workspaceRoot) {
-  const files = collectMarkdownFiles(workspaceRoot);
-  const targetBase = path.basename(targetRelativePath, '.md');
-  const backlinks = [];
-
-  const escapedBase = targetBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const escapedTitle = targetTitle ? targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
-  const escapedRel = targetRelativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const patternStr = escapedTitle && escapedTitle !== escapedBase
-    ? `\\[\\[(?:${escapedBase}|${escapedTitle}|${escapedRel})(?:\\|[^\\]]+)?\\]\\]|\\]\\((?:${escapedRel}|${escapedBase}\\.md)\\)`
-    : `\\[\\[(?:${escapedBase}|${escapedRel})(?:\\|[^\\]]+)?\\]\\]|\\]\\((?:${escapedRel}|${escapedBase}\\.md)\\)`;
-
-  const linkRegex = new RegExp(patternStr, 'i');
-
-  for (const file of files) {
-    if (path.resolve(file) === path.resolve(workspaceRoot, targetRelativePath)) continue;
-    try {
-      const content = fs.readFileSync(file, 'utf8');
-      if (linkRegex.test(content)) {
-        backlinks.push(toWorkspaceRelative(file, workspaceRoot));
-      }
-    } catch {
-      // skip
-    }
-  }
-
-  return backlinks;
-}
 
 // ─── ENTERPRISE CAPABILITY SUITE CLASS ────────────────────────────────────────
 
@@ -340,11 +87,22 @@ class EnterpriseToolSuite {
 
     // Check if regex mode
     let regex = null;
-    if (mode === 'regex' || (mode === 'auto' && query.startsWith('/') && query.endsWith('/') && query.length > 2)) {
+    if (mode === 'regex' || (mode === 'auto' && /^\/.+\/[a-z]*$/i.test(query))) {
       try {
-        const pattern = query.replace(/^\/|\/$/g, '');
-        regex = new RegExp(pattern, 'i');
-      } catch {
+        let pattern = query;
+        let flags = 'i';
+        const slashMatch = query.match(/^\/(.+)\/([a-z]*)$/i);
+        if (slashMatch) {
+          pattern = slashMatch[1];
+          if (slashMatch[2]) flags = slashMatch[2];
+        }
+        if (/([*+?{]|\{[0-9]+,[0-9]*\}|\{[0-9]+\})\s*([*+?{]|\{[0-9]+,[0-9]*\}|\{[0-9]+\})/.test(pattern) ||
+            /\([^)]*([*+])\)[*+]/.test(pattern)) {
+          throw new Error('Unsafe regular expression pattern: potential ReDoS detected.');
+        }
+        regex = new RegExp(pattern, flags.includes('i') ? flags : `${flags}i`);
+      } catch (err) {
+        if (mode === 'regex') throw err;
         regex = null;
       }
     }
@@ -816,7 +574,7 @@ class EnterpriseToolSuite {
         throw new Error(`Cannot delete note "${filePath}": note does not exist.`);
       }
       if (!dryRun) {
-        fs.unlinkSync(targetAbsPath);
+        await safeDeleteFile(targetAbsPath);
       }
       return {
         path: toWorkspaceRelative(targetAbsPath, workspaceRoot),
@@ -1520,8 +1278,8 @@ class EnterpriseToolSuite {
       throw new Error(`Workspace at "${workspaceRoot}" is not a git repository (missing .git directory).`);
     }
 
-    const runGit = (cmd) => {
-      return execSync(`git ${cmd}`, {
+    const runGit = (gitArgs) => {
+      return execFileSync('git', gitArgs, {
         cwd: workspaceRoot,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -1531,8 +1289,11 @@ class EnterpriseToolSuite {
 
     switch (action) {
       case 'status': {
-        const out = runGit('status --short');
-        const branch = runGit('branch --show-current') || 'detached';
+        const out = runGit(['status', '--short']);
+        let branch = 'detached';
+        try {
+          branch = runGit(['branch', '--show-current']) || 'detached';
+        } catch { /* ignore */ }
         const lines = out ? out.split(/\r?\n/) : [];
         return {
           action: 'status',
@@ -1544,8 +1305,12 @@ class EnterpriseToolSuite {
       }
 
       case 'diff': {
-        const scopedPath = args.path ? ` -- "${args.path}"` : '';
-        const diffText = runGit(`diff${scopedPath}`);
+        const gitArgs = ['diff'];
+        if (args.path) {
+          assertPathInWorkspace(args.path, workspaceRoot);
+          gitArgs.push('--', args.path);
+        }
+        const diffText = runGit(gitArgs);
         return {
           action: 'diff',
           hasDiff: Boolean(diffText),
@@ -1555,8 +1320,12 @@ class EnterpriseToolSuite {
 
       case 'log': {
         const limit = Math.min(Number(args.limit || 10), 30);
-        const scopedPath = args.path ? ` -- "${args.path}"` : '';
-        const out = runGit(`log -n ${limit} --pretty=format:"%h|%an|%ad|%s" --date=short${scopedPath}`);
+        const gitArgs = ['log', `-n`, String(limit), '--pretty=format:%h|%an|%ad|%s', '--date=short'];
+        if (args.path) {
+          assertPathInWorkspace(args.path, workspaceRoot);
+          gitArgs.push('--', args.path);
+        }
+        const out = runGit(gitArgs);
         const commits = out ? out.split(/\r?\n/).map(l => {
           const [hash, author, date, ...rest] = l.split('|');
           return { hash, author, date, message: rest.join('|') };
@@ -1567,43 +1336,46 @@ class EnterpriseToolSuite {
       case 'commit': {
         const msg = args.message;
         if (!msg) throw new Error('message is required for git commit.');
-        runGit('add -A');
-        const out = runGit(`commit -m "${msg.replace(/"/g, '\\"')}"`);
+        runGit(['add', '-A']);
+        const out = runGit(['commit', '-m', msg]);
         return { action: 'commit', success: true, output: out };
       }
 
       case 'branch': {
-        const branchList = runGit('branch --list').split(/\r?\n/).map(b => b.replace(/^\*\s*/, '').trim());
-        const current = runGit('branch --show-current');
+        const branchList = runGit(['branch', '--list']).split(/\r?\n/).map(b => b.replace(/^\*\s*/, '').trim()).filter(Boolean);
+        let current = 'detached';
+        try {
+          current = runGit(['branch', '--show-current']);
+        } catch { /* ignore */ }
         return { action: 'branch', current, branches: branchList };
       }
 
       case 'checkout': {
         const branchName = args.branchName;
         if (!branchName) throw new Error('branchName is required for checkout.');
-        const out = runGit(`checkout "${branchName}"`);
+        const out = runGit(['checkout', branchName]);
         return { action: 'checkout', success: true, output: out };
       }
 
       case 'pull': {
-        const out = runGit('pull');
+        const out = runGit(['pull']);
         return { action: 'pull', output: out };
       }
 
       case 'push': {
-        const out = runGit('push');
+        const out = runGit(['push']);
         return { action: 'push', output: out };
       }
 
       case 'stash': {
-        const out = runGit('stash');
+        const out = runGit(['stash']);
         return { action: 'stash', output: out };
       }
 
       case 'revert': {
         const commitHash = args.commitHash;
         if (!commitHash) throw new Error('commitHash is required for git revert.');
-        const out = runGit(`revert --no-edit "${commitHash}"`);
+        const out = runGit(['revert', '--no-edit', commitHash]);
         return { action: 'revert', success: true, output: out };
       }
 
@@ -1877,11 +1649,11 @@ class EnterpriseToolSuite {
         execute: async (args, context) => this.workspaceOverview(args, context),
         jsonSchema: {
           type: 'object',
-          required: ['operation'],
           properties: {
             operation: {
               type: 'string',
               enum: ['summary', 'tree', 'graph', 'lint', 'index', 'recent_activity'],
+              default: 'summary',
               description: '"summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink nodes & edges), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)'
             },
             folder: {

@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryExecutor } from '../../../ai/executor';
 import OpenAICompatibleProvider from '../../../ai/providers/OpenAICompatibleProvider';
 
 // Mock dependencies
@@ -59,31 +58,6 @@ describe('AI Subsystem Tests', () => {
         getActiveProvider: vi.fn()
       }
     };
-  });
-
-  describe('QueryExecutor', () => {
-    it('should map return type to "query" to avoid SQLite CHECK constraint failures', async () => {
-      const mockLlm = {
-        name: 'gemini',
-        baseUrl: 'https://generativelanguage.googleapis.com',
-        apiKey: 'mock-key',
-        model: 'gemini-2.0-flash-lite',
-        getModelInstance: vi.fn().mockResolvedValue({})
-      };
-      mockAgent.llmRegistry.getActiveProvider.mockReturnValue(mockLlm);
-
-      const executor = new QueryExecutor(mockAgent);
-      vi.spyOn(executor, 'execute').mockResolvedValue({
-        type: 'query',
-        result: 'Vercel AI response text'
-      });
-      const result = await executor.execute('Hello');
-
-      expect(result.type).toBe('query');
-      expect(result.result).toBe('Vercel AI response text');
-    });
-
-
   });
 
   describe('OpenAICompatibleProvider', () => {

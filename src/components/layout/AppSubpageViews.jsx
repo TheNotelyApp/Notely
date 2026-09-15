@@ -9,9 +9,7 @@ const KnowledgeGraph = lazy(() =>
 const EmbeddingsPage = lazy(() =>
   import("../EmbeddingsPage").then((m) => ({ default: m.default || m.EmbeddingsPage }))
 );
-const AIPersonasManager = lazy(() =>
-  import("../AIPersonasManager").then((m) => ({ default: m.default || m.AIPersonasManager }))
-);
+
 const AIHealthPage = lazy(() =>
   import("../AIHealthPage").then((m) => ({ default: m.default || m.AIHealthPage }))
 );
@@ -121,13 +119,7 @@ export function AppSubpageViews({
         </div>
       )}
 
-      {personasPageOpen && (
-        <div style={fullScreenOverlayStyle}>
-          <Suspense fallback={<div className="lazy-loading">Loading Personas…</div>}>
-            <AIPersonasManager onBack={() => setPersonasPageOpen(false)} />
-          </Suspense>
-        </div>
-      )}
+
 
       {healthPageOpen && (
         <div style={fullScreenOverlayStyle}>

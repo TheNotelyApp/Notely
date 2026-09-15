@@ -15,6 +15,34 @@ class McpLifecycle {
     this.initialized = false;
     this.browserWindows = new Set();
     this.getWorkspaceRoot = null;
+    this.telemetryDbInstance = null;
+    this.telemetryDbRoot = null;
+  }
+
+  getTelemetryDb(root) {
+    if (!root) return null;
+    if (this.telemetryDbInstance && this.telemetryDbRoot === root) {
+      return this.telemetryDbInstance;
+    }
+    if (this.telemetryDbInstance) {
+      try {
+        if (this.telemetryDbInstance.db && typeof this.telemetryDbInstance.db.close === 'function') {
+          this.telemetryDbInstance.db.close();
+        }
+      } catch { /* ignore */ }
+      this.telemetryDbInstance = null;
+      this.telemetryDbRoot = null;
+    }
+    try {
+      const TelemetryDB = require('../../ai/telemetry/TelemetryDB');
+      const db = new TelemetryDB(root);
+      db.initialize();
+      this.telemetryDbInstance = db;
+      this.telemetryDbRoot = root;
+      return db;
+    } catch {
+      return null;
+    }
   }
 
   setWorkspaceRootProvider(fn) {
@@ -79,19 +107,19 @@ class McpLifecycle {
     try {
       const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
       if (root) {
-        const TelemetryDB = require('../../ai/telemetry/TelemetryDB');
-        const db = new TelemetryDB(root);
-        db.initialize();
-        db.recordMcpToolCall({
-          sessionId: eventData.sessionId,
-          clientName: eventData.clientName || 'MCP Client',
-          toolName: eventData.toolName,
-          input: eventData.input,
-          output: eventData.output,
-          durationMs: eventData.durationMs,
-          success: eventData.success,
-          error: eventData.error
-        });
+        const db = this.getTelemetryDb(root);
+        if (db) {
+          db.recordMcpToolCall({
+            sessionId: eventData.sessionId,
+            clientName: eventData.clientName || 'MCP Client',
+            toolName: eventData.toolName,
+            input: eventData.input,
+            output: eventData.output,
+            durationMs: eventData.durationMs,
+            success: eventData.success,
+            error: eventData.error
+          });
+        }
       }
     } catch {
       // Telemetry persistence is non-blocking
@@ -212,6 +240,15 @@ class McpLifecycle {
       await this.server.stop();
     }
     this.sessionManager.clear();
+    if (this.telemetryDbInstance) {
+      try {
+        if (this.telemetryDbInstance.db && typeof this.telemetryDbInstance.db.close === 'function') {
+          this.telemetryDbInstance.db.close();
+        }
+      } catch { /* ignore */ }
+      this.telemetryDbInstance = null;
+      this.telemetryDbRoot = null;
+    }
   }
 }
 

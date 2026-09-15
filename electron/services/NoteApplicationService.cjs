@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 function toWorkspaceRelative(targetPath, workspaceRoot) {
   if (!targetPath || typeof targetPath !== 'string') return targetPath;
@@ -64,6 +65,279 @@ function collectMarkdownFiles(dirPath, fileList = []) {
     }
   }
   return fileList;
+}
+
+/**
+ * Strips markdown syntax, YAML frontmatter, and code fences into clean, readable text.
+ */
+function cleanMarkdown(rawMarkdown) {
+  if (!rawMarkdown || typeof rawMarkdown !== 'string') return '';
+  let text = rawMarkdown;
+
+  // 1. Remove YAML frontmatter
+  text = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+
+  // 2. Remove fenced code blocks
+  text = text.replace(/```[\s\S]*?```/g, '');
+
+  // 3. Remove inline code
+  text = text.replace(/`([^`]+)`/g, '$1');
+
+  // 4. Remove images ![alt](url)
+  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+
+  // 5. Convert links [text](url) -> text, and [[WikiLink|Alias]] -> Alias or WikiLink
+  text = text.replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g, '$2');
+  text = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+  // 6. Remove HTML tags
+  text = text.replace(/<[^>]+>/g, '');
+
+  // 7. Remove headers, blockquotes, bold/italic, strikethrough, list markers
+  text = text.replace(/^#{1,6}\s+/gm, '');
+  text = text.replace(/^\s*[-*+]\s+\[[ xX/]\]\s+/gm, '');
+  text = text.replace(/^\s*[-*+]\s+/gm, '');
+  text = text.replace(/^\s*\d+\.\s+/gm, '');
+  text = text.replace(/^\s*>\s+/gm, '');
+  text = text.replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, '$1');
+
+  // 8. Collapse whitespace
+  return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).join('\n');
+}
+
+/**
+ * Calculate simple Levenshtein distance for fuzzy matching.
+ */
+function levenshteinDistance(s1, s2) {
+  const m = s1.length;
+  const n = s2.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,      // deletion
+          dp[i][j - 1] + 1,      // insertion
+          dp[i - 1][j - 1] + 1   // substitution
+        );
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * Resilient Note Path Resolver with fuzzy "didYouMean" fallbacks.
+ */
+function resolveNotePath(pathOrTitle, workspaceRoot) {
+  if (!pathOrTitle || typeof pathOrTitle !== 'string' || !workspaceRoot) {
+    return { resolvedPath: null, relativePath: null, exists: false, didYouMean: [] };
+  }
+
+  const raw = pathOrTitle.trim().replace(/^\[\[/, '').replace(/\]\]$/, '');
+  const candidateMd = raw.endsWith('.md') ? raw : `${raw}.md`;
+
+  // 1. Direct path check
+  try {
+    const directPath = assertPathInWorkspace(candidateMd, workspaceRoot);
+    if (fs.existsSync(directPath) && fs.statSync(directPath).isFile()) {
+      return {
+        resolvedPath: directPath,
+        relativePath: toWorkspaceRelative(directPath, workspaceRoot),
+        exists: true,
+        didYouMean: []
+      };
+    }
+  } catch (err) {
+    if (err && err.message && err.message.includes('Path traversal rejected')) {
+      throw err;
+    }
+  }
+
+  // Also test raw path without adding .md
+  try {
+    const directRaw = assertPathInWorkspace(raw, workspaceRoot);
+    if (fs.existsSync(directRaw) && fs.statSync(directRaw).isFile()) {
+      return {
+        resolvedPath: directRaw,
+        relativePath: toWorkspaceRelative(directRaw, workspaceRoot),
+        exists: true,
+        didYouMean: []
+      };
+    }
+  } catch (err) {
+    if (err && err.message && err.message.includes('Path traversal rejected')) {
+      throw err;
+    }
+  }
+
+  // 2. Scan workspace notes for filename, title, or H1 match
+  const allFiles = collectMarkdownFiles(workspaceRoot);
+  const targetLower = raw.toLowerCase();
+  const targetBaseLower = path.basename(candidateMd, '.md').toLowerCase();
+
+  const exactMatches = [];
+  const fuzzyCandidates = [];
+
+  for (const filePath of allFiles) {
+    const relPath = toWorkspaceRelative(filePath, workspaceRoot);
+    const fileName = path.basename(filePath);
+    const baseName = path.basename(filePath, '.md');
+    const baseNameLower = baseName.toLowerCase();
+
+    if (baseNameLower === targetBaseLower || fileName.toLowerCase() === targetLower) {
+      exactMatches.push({ resolvedPath: filePath, relativePath: relPath });
+      continue;
+    }
+
+    // Read H1 or frontmatter title
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const h1Match = content.match(/^#\s+(.+)$/m);
+      const h1Title = h1Match ? h1Match[1].trim() : null;
+      if (h1Title && h1Title.toLowerCase() === targetLower) {
+        exactMatches.push({ resolvedPath: filePath, relativePath: relPath });
+        continue;
+      }
+
+      // Check distance for fuzzy match
+      const dist = levenshteinDistance(targetBaseLower, baseNameLower);
+      if (dist <= 3) {
+        fuzzyCandidates.push({ relPath, dist });
+      }
+    } catch {
+      // skip unreadable
+    }
+  }
+
+  if (exactMatches.length > 0) {
+    return {
+      resolvedPath: exactMatches[0].resolvedPath,
+      relativePath: exactMatches[0].relativePath,
+      exists: true,
+      didYouMean: []
+    };
+  }
+
+  fuzzyCandidates.sort((a, b) => a.dist - b.dist);
+  const didYouMean = fuzzyCandidates.slice(0, 3).map(f => f.relPath);
+
+  return {
+    resolvedPath: null,
+    relativePath: null,
+    exists: false,
+    didYouMean
+  };
+}
+
+/**
+ * Atomically writes content to file using temp file staging.
+ */
+function atomicWriteFile(targetPath, content, createBackup = false) {
+  const dir = path.dirname(targetPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  if (createBackup && fs.existsSync(targetPath)) {
+    try {
+      fs.copyFileSync(targetPath, `${targetPath}.bak`);
+    } catch {
+      // ignore backup error
+    }
+  }
+
+  const tmpPath = `${targetPath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 7)}`;
+  fs.writeFileSync(tmpPath, content, 'utf8');
+  fs.renameSync(tmpPath, targetPath);
+}
+
+/**
+ * Safely deletes a file using Electron trashItem if available, or unlinks.
+ */
+async function safeDeleteFile(filePath) {
+  try {
+    const { shell } = require('electron');
+    if (shell && typeof shell.trashItem === 'function') {
+      await shell.trashItem(filePath);
+      return true;
+    }
+  } catch {
+    // fallback
+  }
+  fs.unlinkSync(filePath);
+  return true;
+}
+
+/**
+ * Extracts recent git commit history for a file.
+ */
+function getFileGitHistory(filePath, workspaceRoot, limit = 5) {
+  try {
+    const gitDir = path.join(workspaceRoot, '.git');
+    if (!fs.existsSync(gitDir)) return [];
+
+    const relPath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
+    const out = execFileSync('git', ['log', `-n`, String(limit), '--pretty=format:%h|%an|%ad|%s', '--date=short', '--', relPath], {
+      cwd: workspaceRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 2500
+    });
+
+    if (!out || !out.trim()) return [];
+
+    return out.trim().split(/\r?\n/).map(line => {
+      const [hash, author, date, ...rest] = line.split('|');
+      return {
+        hash: hash ? hash.trim() : '',
+        author: author ? author.trim() : '',
+        date: date ? date.trim() : '',
+        message: rest.join('|').trim()
+      };
+    }).filter(c => c.hash);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Finds all notes in workspace that link to target note (backlinks).
+ */
+function getNoteBacklinks(targetRelativePath, targetTitle, workspaceRoot) {
+  const files = collectMarkdownFiles(workspaceRoot);
+  const targetBase = path.basename(targetRelativePath, '.md');
+  const backlinks = [];
+
+  const escapedBase = targetBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedTitle = targetTitle ? targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
+  const escapedRel = targetRelativePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const patternStr = escapedTitle && escapedTitle !== escapedBase
+    ? `\\[\\[(?:${escapedBase}|${escapedTitle}|${escapedRel})(?:\\|[^\\]]+)?\\]\\]|\\]\\((?:${escapedRel}|${escapedBase}\\.md)\\)`
+    : `\\[\\[(?:${escapedBase}|${escapedRel})(?:\\|[^\\]]+)?\\]\\]|\\]\\((?:${escapedRel}|${escapedBase}\\.md)\\)`;
+
+  const linkRegex = new RegExp(patternStr, 'i');
+
+  for (const file of files) {
+    if (path.resolve(file) === path.resolve(workspaceRoot, targetRelativePath)) continue;
+    try {
+      const content = fs.readFileSync(file, 'utf8');
+      if (linkRegex.test(content)) {
+        backlinks.push(toWorkspaceRelative(file, workspaceRoot));
+      }
+    } catch {
+      // skip
+    }
+  }
+
+  return backlinks;
 }
 
 class NoteApplicationService {
@@ -462,5 +736,12 @@ module.exports = {
   NoteApplicationService,
   assertPathInWorkspace,
   toWorkspaceRelative,
-  collectMarkdownFiles
+  collectMarkdownFiles,
+  cleanMarkdown,
+  levenshteinDistance,
+  resolveNotePath,
+  atomicWriteFile,
+  safeDeleteFile,
+  getFileGitHistory,
+  getNoteBacklinks
 };

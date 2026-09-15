@@ -125,37 +125,17 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       console.warn('[AI System] Background Index Worker failed to boot:', embBootErr.message);
     }
 
-    // Phase 5 — Context Engine subsystem
+    // Context and Retrievers initialization (pure capability retrieval)
     try {
-      const path = require('path');
-      const { MemoryDB, PersonaDB, ConversationStore } = require('./memory');
-      const { SemanticRetriever, GraphRetriever, HybridRetriever, ContextEngine } = require('./context');
-
-      const memoryDB = new MemoryDB(workspaceRoot);
-      memoryDB.initialize();
-
-      const personaDB = new PersonaDB(path.join(appDataDir, 'notely'));
-      personaDB.initialize();
-
-      const store = new ConversationStore(memoryDB, personaDB);
-      aiAgent.conversationStore = store;
-      aiAgent.personaDB = personaDB;
-
       if (aiAgent.embeddingDb && aiAgent.embeddingService) {
         const { GraphDB } = require('./graph');
         if (!aiAgent.graphDb) {
           aiAgent.graphDb = new GraphDB(workspaceRoot);
           aiAgent.graphDb.initialize();
         }
-        const semanticRetriever = new SemanticRetriever(aiAgent.embeddingDb, aiAgent.embeddingService);
-        const graphRetriever = new GraphRetriever(aiAgent.graphDb);
-        const hybridRetriever = new HybridRetriever(semanticRetriever, graphRetriever);
-        aiAgent.contextEngine = new ContextEngine(store, semanticRetriever, graphRetriever, hybridRetriever);
       }
-
-      console.log('[AI System] Phase 5 Context Engine ready');
-    } catch (p5Err) {
-      console.warn('[AI System] Phase 5 Context Engine skipped:', p5Err.message);
+    } catch (retrieverErr) {
+      console.warn('[AI System] Capability initialization skipped:', retrieverErr.message);
     }
 
     console.log('[AI System] Initialized successfully');

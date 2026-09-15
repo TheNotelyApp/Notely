@@ -1686,11 +1686,7 @@ export default function App() {
         return;
       }
 
-      if (action === "open-personas-page") {
-        closeAllFullscreenViews();
-        setPersonasPageOpen(true);
-        return;
-      }
+
 
       if (action === "open-app-logs") {
         closeAllFullscreenViews();
@@ -2099,10 +2095,7 @@ export default function App() {
       }
 
 
-      if (action === "open-personas-page") {
-        setPersonasPageOpen(true);
-        return;
-      }
+
 
       if (action === "open-health-page") {
         setHealthPageOpen(true);
@@ -2727,10 +2720,7 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-personas-page") {
-      setPersonasPageOpen(true);
-      return;
-    }
+
 
     if (resolvedCommandId === "open-tasks-panel" || resolvedCommandId === "open-all-tasks") {
       setTaskWorkspaceContext(null);

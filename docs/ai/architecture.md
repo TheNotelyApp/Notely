@@ -1,209 +1,123 @@
 ---
-title: AI Architecture
-description: Comprehensive architecture documentation for Notely's local-first AI subsystem, AIFlow master orchestrator, 4-Layer Decoupled Planning Architecture, Context Compaction engine, vector search, knowledge graph, prompt pipeline, and telemetry tracing.
-keywords: AI architecture, AIFlow, CompactionEngine, ContextOrchestrator, IntentAnalyzer, CapabilityResolver, Planner, QueryExecutor, PromptPipeline, retrievalQuality, plannerDecision, LLM fallback, vector embeddings, graph DB, SQLite, CTE, ReAct, SelfCorrectionEngine, Module Facades
+title: AI Architecture & Capability Model
+description: Architecture documentation for Notely's local-first AI subsystem, Model Context Protocol (MCP) server integration, application capabilities, knowledge graph, and vector search.
+keywords: AI architecture, MCP, Model Context Protocol, SSE, Streamable HTTP, Vector Embeddings, Knowledge Graph, GLiNER2-Relex, SQLite WAL, Telemetry
 category: AI
 ---
 
-# AI Subsystem & Master Flow Architecture
+# AI Subsystem & MCP Capability Architecture
 
-Notely implements a local-first, offline-ready 13-domain AI architecture designed for privacy, low latency, multi-tool evidence orchestration, zero-latency context compaction, and deterministic grounding. Markdown notes remain the single source of truth, parsed and indexed into offline-first SQLite databases.
+Notely operates as a **local-first capability provider** via the **Model Context Protocol (MCP)**. Native conversational AI and chat loops have been decommissioned in favor of exposing application capabilities directly to external AI agents and clients (e.g. Claude Desktop, OpenCode, Cursor, local agent runtimes).
+
+Local AI models and background workers are retained solely for deterministic knowledge extraction and semantic indexing:
+- **Vector Embeddings**: BGE-small-en ONNX model generating embeddings for hybrid search.
+- **Knowledge Graph**: GLiNER2-Relex ONNX model extracting entities and semantic relationships between notes.
+- **MCP Server & Tool Registry**: Exposing unified, enterprise-grade capabilities to external agents over SSE and Streamable HTTP.
 
 ---
 
-## 13-Domain Decoupled Module Facade Blueprint
-
-All 13 sub-domains expose a mandatory single entry point facade (`index.js`). No external module or Electron handler is permitted to import private internal files of another module. All query executions are coordinated by the master orchestrator **`AIFlow.js`** through a 5-stage pipeline with structured telemetry logging to `LogDB` (`FlowTracker`) and zero-latency **Context Compaction** (`ai/compaction/`).
+## High-Level Architecture Blueprint
 
 ```mermaid
 flowchart TD
-    subgraph Renderer["Renderer Process (React / Vite)"]
-        direction LR
-        AICP["AIChatPanel (Sidebar Chat)"] & AIP["AIPalette (Inline AI)"] & AIH["AIHealthPage (Diagnostics & Traces)"] & KGV["KnowledgeGraph (Visualizer)"]
+    subgraph ExternalAgents ["External AI Clients / Agents"]
+        CLAUDE["Claude Desktop / Claude Code"]
+        CURSOR["Cursor / OpenCode"]
+        MCPCLI["MCP CLI / Custom Agents"]
     end
 
-    subgraph Preload["Preload Bridge (preload.cjs)"]
-        CB["window.notesApi.ai* (45+ IPC methods)"]
+    subgraph MCPLayer ["Model Context Protocol (MCP) Subsystem"]
+        MCPSRV["McpServer.cjs\n(HTTP :3700 / SSE & Streamable HTTP)"]
+        AUTH["Security Guards & Path Traversal Checks"]
+        RESOURCES["MCP Resources\n(notely://workspace/tree, /stats)"]
+        PROMPTS["MCP Prompts\n(summarize-notes, analyze-tasks, extract-insights)"]
+        REGISTRY["ApplicationToolRegistry.cjs\n(Schema Validation & Dispatch)"]
     end
 
-    subgraph Handlers["AI IPC Handlers (aiHandlers.cjs)"]
-        TRUST["Trusted Sender Guard"]
-        CHAN["IPC_EVENTS Protocol Constants (ai/utils/ipcProtocol.js)"]
+    subgraph Capabilities ["Unified Enterprise Capabilities (EnterpriseToolSuite.cjs)"]
+        T1["search (Fulltext, Semantic & Regex)"]
+        T2["read_note (Path-Safe Note Reader)"]
+        T3["edit_note (Atomic Write, Trash, Git History)"]
+        T4["manage_tasks (CRUD & Priority)"]
+        T5["manage_diagrams (Mermaid & Excalidraw)"]
+        T6["workspace_overview (Structure, Health & Stats)"]
+        T7["git_control (Branch, Commit, Status via execFileSync)"]
     end
 
-    subgraph AIService["AI Service Coordinator (AIService.js)"]
-        SW["Master Enable / Disable Switch"]
-        AIFLOW["AIFlow.js (Master 5-Stage Orchestrator)"]
+    subgraph InternalAI ["Internal AI & Background Indexing Subsystem"]
+        EMBED["Vector Embeddings Engine\n(BGE ONNX + SQLite WAL)"]
+        GRAPH["Knowledge Graph Engine\n(GLiNER2-Relex ONNX + SQLite GraphDB)"]
+        WORKER["Utility Process\n(electron/ai/workerProcess.cjs)"]
     end
 
-    subgraph Domains ["13 Decoupled Domain Modules (index.js Facades)"]
-        COMP["compaction (CompactionEngine)"]
-        PLAN["planner (IntentAnalyzer, CapabilityResolver, Planner)"]
-        PERS["personas (PersonaDB, PersonaStore)"]
-        PROM["prompts (PromptPipeline, PromptLoader)"]
-        CTX["context (ContextEngine, HybridRetriever)"]
-        GRAPH["graph (GraphDB, GraphService, EvidenceStore)"]
-        EMB["embeddings (EmbeddingDB, ONNXEmbedder)"]
-        MEM["memory (MemoryDB, ConversationStore)"]
-        EXEC["executor (QueryExecutor, SelfCorrectionEngine)"]
-        TOOL["tools (ToolRegistry, getRegisteredTools)"]
-        GND["grounding (GroundingEngine)"]
-        FMT["formatter (TaskSummaryFormatter)"]
-        TEST["testing (PipelineRegression)"]
+    subgraph Storage ["SQLite Storage (WAL Mode) & Markdown Files"]
+        MD[("Markdown Notes (Single Source of Truth)")]
+        EMBDB[("ai-embeddings.db")]
+        GRDB[("ai-graph.db")]
+        TELDB[("ai-telemetry.db")]
     end
 
-    subgraph BackgroundProcess ["Utility Process (electron/ai/workerProcess.cjs)"]
-        INDEXWRK["IndexWorker (Embeddings)"] & GRAPHWRK["GraphWorker (Knowledge Graph)"]
-    end
-
-    subgraph Storage ["SQLite Storage — WAL Mode"]
-        direction LR
-        EMBDB[("ai-embeddings.db")] & GRDB[("ai-graph.db")] & MEMDB[("ai-memory.db / personas.db")] & TELDB[("ai-telemetry.db")] & LOGDB[("ai-logs.db")]
-    end
-
-    Renderer -->|"IPC · contextBridge"| Preload
-    Preload -->|"ipcMain.handle / IPC_EVENTS"| Handlers
-    Handlers --> AIService
-    AIService --> AIFLOW
-    AIFLOW --> Domains
-    Domains --> Storage
-    BackgroundProcess -->|"Consumes Facades"| Domains
+    ExternalAgents -->|"HTTP POST /mcp or GET /sse"| MCPSRV
+    MCPSRV --> AUTH
+    AUTH --> REGISTRY
+    MCPSRV --> RESOURCES
+    MCPSRV --> PROMPTS
+    REGISTRY --> Capabilities
+    Capabilities --> MD
+    Capabilities --> Storage
+    WORKER --> EMBED
+    WORKER --> GRAPH
+    EMBED --> EMBDB
+    GRAPH --> GRDB
+    Capabilities -.->|"Hybrid / Semantic Search"| EMBDB
+    Capabilities -.->|"Graph Exploration"| GRDB
 ```
 
 ---
 
-## 1. Master Flow Orchestrator (`AIFlow.js`) & 5-Stage Execution Pipeline
+## 1. Model Context Protocol (MCP) Subsystem
 
-Every query executes through `AIFlow.js`:
+External agents connect to Notely via standard MCP over:
+1. **Streamable HTTP**: `POST /mcp` for direct JSON-RPC request-response cycles.
+2. **Server-Sent Events (SSE)**: `GET /sse` for persistent event streaming.
+3. **Health Check**: `GET /health` providing server status, connected sessions, tools count, and resources count.
 
-1. **Stage 1 (Context & Persona Resolution)**: Resolves conversation state, loads active persona, and applies 0ms context compaction (`ai/compaction/`).
-2. **Stage 2 (Intent Planning & Hybrid Retrieval)**: `ContextOrchestrator` executes the 4-layer planning architecture, running tool capability discovery, parallel retrieval, relevance filtering (`score >= 0.25`), and logging `plannerDecision` and `retrievalQuality` metrics.
-3. **Stage 3 (System Prompt Assembly & Safety Audit)**: `PromptPipeline` assembles system prompt using pre-compiled static policy caching and runs safety invariant audit.
-4. **Stage 4 (Runtime Dynamic Strategy Execution & Tools)**: `QueryExecutor` resolves runtime strategy (multi-step tool loop, LLM provider fallback sequence) and runs `GroundingEngine`.
-5. **Stage 5 (Memory Persistence & Telemetry Logging)**: Persists turn to `ConversationStore` and logs full 5-stage trace payload to `LogDB` (`FlowTracker`).
+### Unified Capabilities (7 Tools)
+Rather than fragmenting operations into dozens of micro-endpoints, Notely provides 7 canonical enterprise tools:
 
----
-
-## 2. 4-Layer Decoupled Planning Architecture
-
-The planning system maps user queries into dynamic tool execution DAGs without hardcoded query strings or function signatures.
-
-```mermaid
-flowchart LR
-    L1["Layer 1: IntentAnalyzer\n(Intent & Needs Extraction)"] --> L2["Layer 2: CapabilityResolver\n(Tool Registry & Capability Binding)"]
-    L2 --> L3["Layer 3: Planner\n(DAG Execution Plan & Deduplication)"]
-    L3 --> L4["Layer 4: ContextOrchestrator\n(Parallel Execution & Evidence Aggregation)"]
-```
-
-### Layer 1: Intent Analysis (`IntentAnalyzer.js`)
-- Dynamically matches query terms against registered tool metadata in `ApplicationToolRegistry`.
-- Classifies intents such as `workspace_task_summary` (confidence >0.80), `explore_knowledge_graph`, `reconstruct_project_timeline`, and `fetch_external_web_data`.
-- Enforces capability priority: Task Intent > Workspace Search > Graph Exploration.
-
-### Layer 2: Capability Resolution (`CapabilityResolver.js`)
-- Resolves abstract information needs (`action_items`, `tasks`, `entity_relationships`, `recent_changes`) into bound tool capabilities (`tasks:extract`, `notes:search`, `graph:traverse`).
-
-### Layer 3: Plan DAG Generation (`Planner.js`)
-- Constructs deduplicated execution plan steps by `toolName`.
-- Restricts graph search (`explore_topic_graph`) for task queries unless relation/graph traversal is explicitly requested in the query.
-- Emits structured `plannerDecision` telemetry:
-  ```json
-  {
-    "intent": "workspace_task_summary",
-    "confidence": 0.92,
-    "selectedStrategy": "task_pipeline",
-    "rejectedStrategies": ["graph_search"]
-  }
-  ```
-
-### Layer 4: Multi-Tool Context Orchestration (`ContextOrchestrator.js`)
-- **Retrieval Priority Ordering**:
-  1. Primary Task Database / Tool (`get_tasks`)
-  2. Markdown Task Syntax Parser (`- [ ]`, `TODO`, `FIXME`, status fields)
-  3. Recent Workspace Activity (`workspace.recent_activity`)
-  4. Vector Semantic Search (`search_notes`)
-  5. Graph Traversal (`explore_topic_graph`, only when requested)
-- **Empty Retrieval Handling**: If `get_tasks()` returns empty, executes markdown task syntax parsing and recent workspace activity. If still empty, returns `"No tasks found in your workspace."` without fabricating unrelated notes or running graph search.
-- **Relevance Filtering**: Rejects evidence items with similarity score `< 0.25`.
-- **Evidence Quality Telemetry**: Captures `retrievalQuality` items:
-  ```json
-  {
-    "sourceType": "notes.extract_tasks",
-    "similarityScore": 0.02,
-    "accepted": false,
-    "rejectedReason": "below relevance threshold"
-  }
-  ```
+| Tool Name | Scope & Capabilities | Security / Safeguards |
+| :--- | :--- | :--- |
+| `search` | Fulltext keyword, semantic vector similarity, and regex search across notes | ReDoS-safe regex validation, max quantifier limits |
+| `read_note` | Read markdown note contents, frontmatter, and backlink references | Path traversal rejection (`..` escaping prohibited) |
+| `edit_note` | Create, update, append, prepend, delete, and fetch Git file history | Atomic write via temp file, OS trash bin integration, write-protection enforcement |
+| `manage_tasks` | List, filter, toggle, create, and prioritize tasks across workspace | Schema-enforced operations, date validation |
+| `manage_diagrams`| Create, render, and update Mermaid and Excalidraw diagrams | Strict syntax validation |
+| `workspace_overview` | Summary stats, note directory tree, orphans, tags, and health audits | Default operation fallbacks, scoped path traversal check |
+| `git_control` | Workspace status, diff, log, commit, branch checkout | `execFileSync` parameter isolation (immune to shell injection) |
 
 ---
 
-## 3. Persona Registry & Markdown Source of Truth
+## 2. Standard MCP Resources
 
-Notely treats **Markdown (`.md`) files as the single source of truth for both system prompts and personas**:
+Notely exposes workspace state as read-only MCP resources:
+- `notely://workspace/tree`: Returns recursive folder and file structure with file size and modification timestamps.
+- `notely://workspace/stats`: Returns aggregated workspace statistics (note count, task counts, word count, disk usage).
 
-- **Markdown Storage**: Builtin personas reside in `resources/prompts/personas/*.md` and custom user personas reside in `appData/personas/*.md`.
-- **Frontmatter & Body**: Personas use YAML frontmatter for metadata (`id`, `name`, `tone`, `verbosity`, `responseStructure`) and Markdown body for role definitions & instructions.
-- **SQLite Indexing**: SQLite (`personas.db`) acts purely as a fast metadata index registry (without redundant prompt body columns). Frontmatter metadata and prompt body are hydrated dynamically from `.md` files at runtime.
-- **Automatic Migration**: Persona DB migrations automatically drop obsolete string columns (`ALTER TABLE personas DROP COLUMN prompt`) during startup.
-
----
-
-## 4. Static Prompt Assembly Caching (`PromptPipeline.js`)
-
-To optimize prompt construction latency and prevent redundant byte joins, `PromptPipeline` splits system prompts into static and dynamic blocks:
-
-- **Static Block (Pre-compiled & Cached)**: Core foundational policies (`base-system`, `behavior-policy`, `safety-policy`, `response-policy`, `conversation-policy`, `formatting-policy`, `permission-policy`, `grounding-policy`) and Tool Calling Discipline in `planning-policy.md`.
-- **Dynamic Block**: Runtime context (`persona`, `workspaceContext`, `retrievedEvidence`, `uiContext`).
-- **Clean Evidence Truncation**: Evidence payloads are capped at 4,000 characters with newline-aware truncation (`lastIndexOf('\n')`) to avoid slicing words mid-sentence.
-- **Evidence Sanitation**: Tool execution errors, missing capability messages, and duplicate error strings are stripped prior to prompt injection.
+External agents can read these resources directly without calling tools.
 
 ---
 
-## 4. Multi-Tier LLM Provider Fallback (`QueryExecutor.js`)
+## 3. Background Workers & Local ONNX Indexing
 
-When an active LLM provider fails (e.g. rate limit 429, network timeout, API error):
-
-1. Attempts execution via secondary configured LLM provider in `LLMRegistry`.
-2. Falls back to local ONNX model (`local-onnx`).
-3. Returns structured error payload if all providers fail.
-4. Emits `llmFallbackTriggered: true` in execution telemetry.
+Notely preserves local ONNX inference infrastructure strictly for non-conversational indexing:
+- **Embeddings Worker**: Runs in a separate Node.js utility process to avoid blocking the main UI thread. Chunks markdown documents, computes 384-dimensional dense vectors using BGE-small-en ONNX, and persists vectors to SQLite WAL tables.
+- **Graph Worker**: Runs local GLiNER2-Relex ONNX model to extract named entities (people, concepts, technologies, projects) and typed relationships directly from markdown notes.
 
 ---
 
-## 5. Zero-Latency Context Compaction Engine (`ai/compaction/`)
+## 4. Telemetry & Audit Logs
 
-- **2-Tier Sliding Window Algorithm**:
-  - **Tier 1 (Verbatim Window)**: Recent 4 messages preserved verbatim for immediate context.
-  - **Tier 2 (Executive Memory Summary)**: Older turns programmatically compressed into structured bullet points using 0ms NLP intent & outcome extraction heuristics:
-    ```markdown
-    [EXECUTIVE MEMORY SUMMARY OF PAST TURNS]
-    - Turn 1: User requested "explain auth" -> Referenced notes: Architecture Notes
-    - Turn 2: User requested "add telemetry" -> Generated code snippet/action
-    ```
-- **Benefits**: ~75-80% input token reduction, faster LLM latency, zero text redundancy.
-
----
-
-## 6. UI Diagnostics & Flow Telemetry (`AIHealthPage.jsx`)
-
-- **Messages Tab**: Clean conversation transcript (technical tool call boxes removed).
-- **Flow Telemetry Tab**: Interactive 5-stage execution trace view displaying:
-  1. Timeline & duration per stage
-  2. Persona & active note context
-  3. Pre-retrieval trace steps, confidence score & `plannerDecision`
-  4. System prompt viewer with Copy & Expand
-  5. `retrievalQuality` list with similarity scores and acceptance/rejection reasons
-  6. Tool calls with input arguments & output payloads
-  7. Compaction stats (`compactedTurnsCount`, `isCompacted`)
-  8. Token consumption, latency breakdown & `llmFallbackTriggered` flag
-
----
-
-## 7. Automated Test Verification
-
-Covered by Vitest test suites under `tests/ai/` (**62 test files / 270 tests passing 100%**):
-* `tests/ai/pipelineRegression.spec.js`: Task intent routing, graph restriction, task parser fallback, relevance filtering (<0.25 rejection), and concept graph retrieval regression tests.
-* `tests/ai/flow.spec.js`: Master `AIFlow` 5-stage orchestration & telemetry tests.
-* `tests/ai/decoupledPlanning.spec.js`: 4-Layer Decoupled Planning Architecture tests.
-* `tests/ai/compaction.spec.js`: Zero-latency NLP intent extraction & sliding window compaction tests.
-* `tests/ai/grounding.spec.js`: Citation link verification & prompt composition tests.
+All MCP tool invocations, execution durations, errors, and caller identities are persisted to `.notes-app/ai-telemetry.db`:
+- Managed via `McpLifecycle.cjs` with pooled database instance reuse per workspace.
+- Exposed via `/health` metrics and internal developer logs.
+- Automatic cleanup on application shutdown.

@@ -25,7 +25,6 @@ try {
   // Fallback: define minimal IPC_EVENTS to prevent complete crash
   IPC_EVENTS = {
     AI_INIT: 'ai:init',
-    AI_QUERY: 'ai:query',
     AI_STATUS: 'ai:status',
     AI_GENERATE_EMBEDDINGS: 'ai:embeddings:generate',
     AI_BUILD_GRAPH: 'ai:graph:build',
@@ -241,13 +240,7 @@ function initializeAIHandlers(electronApp, agent) {
 
   // Phase 5 — Conversations removed (chat moved to MCP layer)
 
-  // Phase 5 — Personas
-  registerHandler(IPC_EVENTS.AI_PERSONA_LIST, handlePersonaList);
-  registerHandler(IPC_EVENTS.AI_PERSONA_GET, handlePersonaGet);
-  registerHandler(IPC_EVENTS.AI_PERSONA_SAVE, handlePersonaSave);
-  registerHandler(IPC_EVENTS.AI_PERSONA_DELETE, handlePersonaDelete);
-  registerHandler(IPC_EVENTS.AI_PERSONA_IMPORT, handlePersonaImport);
-  registerHandler(IPC_EVENTS.AI_PERSONA_EXPORT, handlePersonaExport);
+  // Phase 5 — Conversations & Personas removed (chat moved to MCP layer)
 
   // Candidate Knowledge — removed (chat-only)
 
@@ -1238,7 +1231,7 @@ async function handleDisableAI(_event, _payload) {
 
 async function handleGetAIHealth(_event, _payload) {
   try {
-    const { getSubsystemHealth } = require('../../ai/diagnostics');
+    const { getSubsystemHealth } = require('../../ai/diagnostics/AIHealth');
     const health = getSubsystemHealth();
     return new AIQueryResponse(true, health);
   } catch (error) {
@@ -1247,86 +1240,7 @@ async function handleGetAIHealth(_event, _payload) {
   }
 }
 
-// ─── Personas (exposed via MCP; backed by PersonaDB) ──────────────────────
-// ConversationStore and chat-scoped conversation handlers removed.
-// Persona handlers now load PersonaDB directly.
-
-function _getPersonaDB() {
-  const agent = aiService.agent;
-  if (agent?.personaDB) return agent.personaDB;
-  // Fallback: direct PersonaDB access (agent may not be running)
-  const { PersonaDB } = require('../../ai/memory');
-  const { app } = require('electron');
-  const appDataDir = require('path').join(app.getPath('appData'), 'Notely', 'notely');
-  const db = new PersonaDB(appDataDir);
-  db.initialize();
-  return db;
-}
-
-
-async function handlePersonaList(_event, _payload) {
-  try {
-    return new AIQueryResponse(true, _getPersonaDB().list());
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handlePersonaGet(_event, payload) {
-  try {
-    const p = _getPersonaDB().get(payload?.id);
-    if (!p) return new AIQueryResponse(false, null, 'Persona not found.');
-    return new AIQueryResponse(true, p);
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handlePersonaSave(_event, payload) {
-  try {
-    _getPersonaDB().save(payload);
-    return new AIQueryResponse(true, { ok: true });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handlePersonaDelete(_event, payload) {
-  try {
-    _getPersonaDB().delete(payload?.id);
-    return new AIQueryResponse(true, { deleted: payload?.id });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handlePersonaImport(_event, payload) {
-  try {
-    const result = _getPersonaDB().importFromFile(payload?.filePath);
-    return new AIQueryResponse(true, result);
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
-
-async function handlePersonaExport(_event, payload) {
-  try {
-    const dest = _getPersonaDB().exportToFile(payload?.id, payload?.destPath);
-    try {
-      const { getExportManager } = require("../lib/export/ExportManager.cjs");
-      const exportManager = getExportManager();
-      await exportManager.runExport({
-        type: "persona",
-        payload: { destPath: dest, personaId: payload?.id }
-      });
-    } catch (exportErr) {
-      console.warn("[aiHandlers] ExportManager record warning for persona:", exportErr);
-    }
-    return new AIQueryResponse(true, { path: dest });
-  } catch (err) {
-    return new AIQueryResponse(false, null, err.message);
-  }
-}
+// ─── Personas removed (conversational AI decommissioned) ──────────────────
 
 // ─── Candidate Knowledge removed (chat-only) ─────────────────────────────
 

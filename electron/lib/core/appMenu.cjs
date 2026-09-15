@@ -895,10 +895,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           label: "Embeddings",
           click: () => sendMenuAction(win, "open-embeddings-page")
         },
-        {
-          label: "Personas",
-          click: () => sendMenuAction(win, "open-personas-page")
-        },
         { type: "separator" },
         {
           label: "AI Health & Diagnostics",

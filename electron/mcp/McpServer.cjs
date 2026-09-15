@@ -10,7 +10,14 @@ const { randomUUID } = require('crypto');
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
-const { ListToolsRequestSchema, CallToolRequestSchema, ListPromptsRequestSchema, GetPromptRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
+const {
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema
+} = require('@modelcontextprotocol/sdk/types.js');
 const { applicationToolRegistry } = require('../tools/ApplicationToolRegistry.cjs');
 const { mcpPromptsRegistry } = require('./McpPrompts.cjs');
 
@@ -72,7 +79,7 @@ class McpServer {
 
     const server = new Server(
       { name: 'notely', version: '0.1.41' },
-      { capabilities: { tools: {}, prompts: {} } }
+      { capabilities: { tools: {}, prompts: {}, resources: {} } }
     );
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -90,6 +97,61 @@ class McpServer {
     server.setRequestHandler(GetPromptRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       return mcpPromptsRegistry.getPrompt(name, args || {});
+    });
+
+    server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      return {
+        resources: [
+          {
+            uri: 'notely://workspace/tree',
+            name: 'Workspace File Tree',
+            description: 'Hierarchical directory tree of the active Notely workspace.',
+            mimeType: 'application/json'
+          },
+          {
+            uri: 'notely://workspace/stats',
+            name: 'Workspace Statistics',
+            description: 'Summary statistics including note count, tasks, links, and health.',
+            mimeType: 'application/json'
+          }
+        ]
+      };
+    });
+
+    server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const { uri } = request.params;
+      const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
+      if (!activeWorkspaceRoot) {
+        throw new Error('No active workspace configured.');
+      }
+
+      if (uri === 'notely://workspace/tree') {
+        const tree = await applicationToolRegistry.workspaceService.listTree({ workspaceRoot: activeWorkspaceRoot, maxDepth: 4 });
+        return {
+          contents: [
+            {
+              uri,
+              mimeType: 'application/json',
+              text: JSON.stringify(tree, null, 2)
+            }
+          ]
+        };
+      }
+
+      if (uri === 'notely://workspace/stats') {
+        const stats = await applicationToolRegistry.workspaceService.getStatistics({ workspaceRoot: activeWorkspaceRoot });
+        return {
+          contents: [
+            {
+              uri,
+              mimeType: 'application/json',
+              text: JSON.stringify(stats, null, 2)
+            }
+          ]
+        };
+      }
+
+      throw new Error(`Resource not found: "${uri}".`);
     });
 
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -121,6 +183,7 @@ class McpServer {
           });
         }
 
+        const isSuccess = Boolean(result.success && !(result.data && result.data.exists === false));
         let textContent = '';
         if (result.data !== null && result.data !== undefined) {
           if (typeof result.data === 'string') {
@@ -136,7 +199,7 @@ class McpServer {
 
         return {
           content: [{ type: 'text', text: textContent }],
-          isError: !result.success
+          isError: !isSuccess
         };
       } catch (err) {
         const duration = Date.now() - start;
@@ -219,6 +282,7 @@ class McpServer {
             port: this.port,
             toolsCount: advertisedSchemas.length,
             promptsCount: mcpPromptsRegistry.listPrompts().length,
+            resourcesCount: 2,
             activeSessions: (this.sessionManager ? this.sessionManager.getActiveSessions().length : 0) + this.streamableTransports.size
           }));
           return;

@@ -67,7 +67,7 @@ class ApplicationToolRegistry {
     const fullName = this.resolveToolName(toolNameOrAlias);
 
     const caller = context.caller || 'internal_ai';
-    const workspaceRoot = context.workspaceRoot || rawArgs.workspaceRoot || null;
+    const workspaceRoot = context.workspaceRoot || null;
 
     if (!fullName || !this.tools.has(fullName)) {
       return this._buildResponse({
@@ -105,7 +105,7 @@ class ApplicationToolRegistry {
       });
     }
 
-    // Validate inputs if schema exists
+    // Validate inputs against Zod schema or JSON Schema
     let validatedArgs = rawArgs || {};
     if (toolDef.schema && typeof toolDef.schema.parse === 'function') {
       try {
@@ -126,12 +126,30 @@ class ApplicationToolRegistry {
           }
         });
       }
+    } else if (toolDef.jsonSchema && typeof toolDef.jsonSchema === 'object') {
+      const validationError = this._validateJsonSchema(toolDef.jsonSchema, validatedArgs, toolDef.name);
+      if (validationError) {
+        return this._buildResponse({
+          success: false,
+          data: null,
+          toolName: toolDef.name,
+          version: toolDef.version,
+          startTime,
+          caller,
+          sessionId: context.sessionId || null,
+          executionPath: `ApplicationToolRegistry -> SchemaValidation -> ${toolDef.name}`,
+          error: {
+            code: 'INVALID_INPUT',
+            message: `Input validation failed for tool "${toolDef.name}": ${validationError}`
+          }
+        });
+      }
     }
 
-    // Merge context workspaceRoot into validatedArgs if needed
+    // Enforce trusted context workspaceRoot without allowing caller to override
     const finalArgs = {
       ...validatedArgs,
-      workspaceRoot: validatedArgs.workspaceRoot || workspaceRoot
+      workspaceRoot: workspaceRoot || validatedArgs.workspaceRoot || null
     };
 
     try {
@@ -162,6 +180,64 @@ class ApplicationToolRegistry {
         }
       });
     }
+  }
+
+  _validateJsonSchema(schema, args, _toolName) {
+    if (!schema || typeof schema !== 'object') return null;
+
+    // Apply defaults if available
+    if (schema.properties && typeof schema.properties === 'object') {
+      for (const [key, propDef] of Object.entries(schema.properties)) {
+        if (args[key] === undefined && propDef.default !== undefined) {
+          args[key] = propDef.default;
+        }
+      }
+    }
+
+    // Check required properties
+    if (Array.isArray(schema.required)) {
+      for (const reqKey of schema.required) {
+        if (args[reqKey] === undefined || args[reqKey] === null || args[reqKey] === '') {
+          return `Missing required parameter: "${reqKey}".`;
+        }
+      }
+    }
+
+    // Check property constraints (enum, type)
+    if (schema.properties && typeof schema.properties === 'object') {
+      for (const [key, propDef] of Object.entries(schema.properties)) {
+        const val = args[key];
+        if (val === undefined || val === null) continue;
+
+        // Enum check
+        if (Array.isArray(propDef.enum)) {
+          const valStr = String(val).toLowerCase();
+          const match = propDef.enum.some(e => String(e).toLowerCase() === valStr);
+          if (!match) {
+            return `Invalid value "${val}" for parameter "${key}". Expected one of: [${propDef.enum.join(', ')}].`;
+          }
+        }
+
+        // Type check
+        if (propDef.type === 'string' && typeof val !== 'string') {
+          return `Parameter "${key}" must be a string, received ${typeof val}.`;
+        }
+        if (propDef.type === 'number' && typeof val !== 'number' && Number.isNaN(Number(val))) {
+          return `Parameter "${key}" must be a number, received ${typeof val}.`;
+        }
+        if (propDef.type === 'boolean' && typeof val !== 'boolean') {
+          return `Parameter "${key}" must be a boolean, received ${typeof val}.`;
+        }
+        if (propDef.type === 'array' && !Array.isArray(val)) {
+          return `Parameter "${key}" must be an array.`;
+        }
+        if (propDef.type === 'object' && (typeof val !== 'object' || Array.isArray(val))) {
+          return `Parameter "${key}" must be an object.`;
+        }
+      }
+    }
+
+    return null;
   }
 
   _buildResponse({ success, data, toolName, version, startTime, caller, sessionId = null, executionPath, error = null, warnings = [] }) {

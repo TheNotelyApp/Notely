@@ -4,16 +4,9 @@
 
 const { DocumentReader: DocumentService } = require('../tools');
 const { EmbeddingService } = require('../embeddings');
-const { QueryExecutor } = require('../executor');
 const { ContextManager } = require('../context');
 const { InteractionLog: MemoryManager } = require('../memory');
 const { GraphDB, GraphService, GraphBuilder } = require('../graph');
-
-const { WorkspaceBrain, ReasoningBrain, ActionBrain } = require('../brains');
-const { ContextOrchestrator } = require('../planner');
-
-const { PromptLoader, PromptPipeline } = require('../prompts');
-const { PersonaManager } = require('../personas');
 const { LogDB } = require('../logs');
 
 class Agent {
@@ -22,24 +15,12 @@ class Agent {
     this.llmRegistry = llmRegistry;
     this.logDb = null;
 
-    // Prompt Architecture Infrastructure
-    this.promptLoader = new PromptLoader();
-    this.promptPipeline = new PromptPipeline(this.promptLoader);
-    this.personaManager = new PersonaManager(this.promptLoader);
-
-    // Initialize 3-Brain Architecture & Context Orchestrator
-    this.workspaceBrain = new WorkspaceBrain(this);
-    this.reasoningBrain = new ReasoningBrain(this.llmRegistry);
-    this.actionBrain = new ActionBrain(this);
-    this.contextOrchestrator = new ContextOrchestrator(this);
-
     // Initialize services — EmbeddingService receives null here; the actual
     // embeddingProvider is injected after construction via setEmbeddingProvider()
     // (called from initializeAISystem once the HF token is resolved).
     this.documentService = new DocumentService(this.db, '');
     this.embeddingService = new EmbeddingService(this.db, null);
     this.relationshipService = null;
-    this.queryExecutor = new QueryExecutor(this);
     this.contextManager = new ContextManager(this.db, this.documentService);
     this.memoryManager = new MemoryManager(this.db);
 
@@ -50,7 +31,6 @@ class Agent {
 
     this.isInitialized = false;
     this.workspaceRoot = null;
-    this.aiFlow = null;
   }
 
   setGraphProvider(provider) {

@@ -269,41 +269,7 @@ export async function aiClearConversations() {
 }
 
 
-export async function aiListPersonas() {
-  const api = getNotesApi();
-  if (typeof api.aiListPersonas !== 'function') throw new Error('Persona API unavailable.');
-  return api.aiListPersonas();
-}
 
-export async function aiGetPersona(id) {
-  const api = getNotesApi();
-  if (typeof api.aiGetPersona !== 'function') throw new Error('Persona API unavailable.');
-  return api.aiGetPersona({ id });
-}
-
-export async function aiSavePersona(persona) {
-  const api = getNotesApi();
-  if (typeof api.aiSavePersona !== 'function') throw new Error('Persona API unavailable.');
-  return api.aiSavePersona(persona);
-}
-
-export async function aiDeletePersona(id) {
-  const api = getNotesApi();
-  if (typeof api.aiDeletePersona !== 'function') throw new Error('Persona API unavailable.');
-  return api.aiDeletePersona({ id });
-}
-
-export async function aiImportPersona(filePath) {
-  const api = getNotesApi();
-  if (typeof api.aiImportPersona !== 'function') throw new Error('Persona API unavailable.');
-  return api.aiImportPersona({ filePath });
-}
-
-export async function aiExportPersona(id, destPath) {
-  const api = getNotesApi();
-  if (typeof api.aiExportPersona !== 'function') throw new Error('Persona API unavailable.');
-  return api.aiExportPersona({ id, destPath });
-}
 
 // aiListPendingKnowledge/aiApproveKnowledge/aiRejectKnowledge removed — chat-only
 
