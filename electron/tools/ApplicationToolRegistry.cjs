@@ -195,10 +195,7 @@ class ApplicationToolRegistry {
     const vercelTools = {};
 
     for (const [fullName, toolDef] of this.tools.entries()) {
-      // Use alias name or primary name for Vercel AI SDK compatibility
-      const sdkName = toolDef.sdkName || toolDef.aliases?.[0] || toolDef.name.replace(/\./g, '_');
-      
-      vercelTools[sdkName] = tool({
+      const toolInstance = tool({
         description: toolDef.description,
         parameters: toolDef.schema || z.object({}),
         execute: async (args) => {
@@ -209,9 +206,25 @@ class ApplicationToolRegistry {
           if (res.data && typeof res.data.content === 'string') {
             return res.data.content;
           }
+          if (res.data && res.data.content && typeof res.data.content.raw === 'string') {
+            return res.data.content.raw;
+          }
           return typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2);
         }
       });
+
+      // Export primary name
+      vercelTools[toolDef.name] = toolInstance;
+
+      // Export aliases for internal AI planner / RAG compatibility
+      if (toolDef.sdkName) {
+        vercelTools[toolDef.sdkName] = toolInstance;
+      }
+      if (Array.isArray(toolDef.aliases)) {
+        for (const alias of toolDef.aliases) {
+          vercelTools[alias] = toolInstance;
+        }
+      }
     }
 
     return vercelTools;

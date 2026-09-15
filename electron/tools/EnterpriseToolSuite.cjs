@@ -518,7 +518,7 @@ class EnterpriseToolSuite {
     const workspaceRoot = context.workspaceRoot || args.workspaceRoot;
     if (!workspaceRoot) throw new Error('Workspace root is required.');
 
-    const targetInput = args.pathOrTitle || args.filePath || args.title;
+    const targetInput = args.pathOrTitle || args.filePath || args.file_path || args.path || args.title;
     if (!targetInput) throw new Error('pathOrTitle is required for read_note.');
 
     const resolved = resolveNotePath(targetInput, workspaceRoot);
@@ -559,13 +559,24 @@ class EnterpriseToolSuite {
     const includeStats = inc.stats !== false;
 
     // Pagination
-    const startLine = Math.max(1, Number(args.startLine || 1));
-    const maxLines = Math.min(Math.max(1, Number(args.maxLines || 400)), 2000);
+    const startLine = Math.max(1, Number(args.startLine || args.start_line || 1));
+    let maxLines = Number(args.maxLines || args.max_lines || 400);
+    if (args.endLine || args.end_line) {
+      const endLine = Number(args.endLine || args.end_line);
+      maxLines = Math.max(1, endLine - startLine + 1);
+    }
+    maxLines = Math.min(Math.max(1, maxLines), 10000);
+
     const startIdx = startLine - 1;
     const endIdx = Math.min(totalLines, startIdx + maxLines);
     const pagedLines = lines.slice(startIdx, endIdx);
-    const pagedRaw = pagedLines.join('\n');
-    const hasMore = endIdx < totalLines;
+    let pagedRaw = pagedLines.join('\n');
+    let hasMore = endIdx < totalLines;
+
+    if (pagedRaw.length > 10000) {
+      pagedRaw = pagedRaw.slice(0, 10000) + '\n\n... [Content truncated due to size. Use start_line and max_lines parameters to read further.]';
+      hasMore = true;
+    }
 
     // Frontmatter parsing
     let frontmatter = {};
@@ -1280,10 +1291,14 @@ class EnterpriseToolSuite {
       };
       scanDir(workspaceRoot);
 
+      const filtered = (type && type !== 'auto' && type !== 'all')
+        ? diagrams.filter(d => d.type === type || d.subType === type)
+        : diagrams;
+
       return {
         operation: 'list',
-        totalDiagrams: diagrams.length,
-        diagrams
+        totalDiagrams: filtered.length,
+        diagrams: filtered
       };
     }
 
@@ -1604,7 +1619,9 @@ class EnterpriseToolSuite {
       {
         name: 'search',
         version: 'v1',
-        capability: 'search:all',
+        capability: 'notes:search',
+        aliases: ['search_notes'],
+        informationNeeds: ['workspace_content_search', 'search'],
         description: 'Multi-modal search engine for Notely notes & workspace. Supports fulltext keyword matching, regex, YAML frontmatter tags, author, and semantic graph. Optionally queries the web when source is "web" or "all". Returns scored hits with match breakdown.',
         isWrite: false,
         annotations: { readOnly: true, idempotent: true },
@@ -1754,7 +1771,9 @@ class EnterpriseToolSuite {
       {
         name: 'manage_tasks',
         version: 'v1',
-        capability: 'tasks:manage',
+        capability: 'tasks:extract',
+        aliases: ['get_tasks'],
+        informationNeeds: ['action_items', 'tasks'],
         description: 'Workspace-wide and note-level checklist & task manager. Finds, creates, toggles, moves, or archives tasks (- [ ], - [x]). Can filter by status (open, completed, in-progress) and due dates (today, overdue).',
         isWrite: true,
         annotations: { readOnly: false },
@@ -1849,7 +1868,9 @@ class EnterpriseToolSuite {
       {
         name: 'workspace_overview',
         version: 'v1',
-        capability: 'workspace:overview',
+        capability: 'graph:traverse',
+        aliases: ['explore_topic_graph', 'get_graph'],
+        informationNeeds: ['entity_relationships', 'knowledge_graph', 'workspace_metadata'],
         description: 'Workspace intelligence, structure, health, and diagnostics. Returns hierarchical folder trees, knowledge graph relationships, disk storage stats, link integrity audits (broken wikilinks), and recent file activity.',
         isWrite: false,
         annotations: { readOnly: true, idempotent: true },
