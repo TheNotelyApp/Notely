@@ -3742,8 +3742,6 @@ export default function App() {
         setGraphPanelOpen={setGraphPanelOpen}
         embeddingsPageOpen={embeddingsPageOpen}
         setEmbeddingsPageOpen={setEmbeddingsPageOpen}
-        personasPageOpen={personasPageOpen}
-        setPersonasPageOpen={setPersonasPageOpen}
         healthPageOpen={healthPageOpen}
         setHealthPageOpen={setHealthPageOpen}
         appLogsOpen={appLogsOpen}

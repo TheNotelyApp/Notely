@@ -61,8 +61,6 @@ export function AppSubpageViews({
   setGraphPanelOpen,
   embeddingsPageOpen,
   setEmbeddingsPageOpen,
-  personasPageOpen,
-  setPersonasPageOpen,
   healthPageOpen,
   setHealthPageOpen,
   appLogsOpen,

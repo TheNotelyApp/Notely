@@ -185,10 +185,11 @@ class ApplicationToolRegistry {
   _validateJsonSchema(schema, args, _toolName) {
     if (!schema || typeof schema !== 'object') return null;
 
-    // Apply defaults if available
+    // Apply defaults if available (checking snake_case alias before defaulting)
     if (schema.properties && typeof schema.properties === 'object') {
       for (const [key, propDef] of Object.entries(schema.properties)) {
-        if (args[key] === undefined && propDef.default !== undefined) {
+        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+        if (args[key] === undefined && args[snakeKey] === undefined && propDef.default !== undefined) {
           args[key] = propDef.default;
         }
       }
@@ -197,7 +198,12 @@ class ApplicationToolRegistry {
     // Check required properties
     if (Array.isArray(schema.required)) {
       for (const reqKey of schema.required) {
-        if (args[reqKey] === undefined || args[reqKey] === null || args[reqKey] === '') {
+        let isPresent = args[reqKey] !== undefined && args[reqKey] !== null && args[reqKey] !== '';
+        // Alias check for pathOrTitle
+        if (!isPresent && reqKey === 'pathOrTitle') {
+          isPresent = Boolean(args.filePath || args.file_path || args.path || args.title);
+        }
+        if (!isPresent) {
           return `Missing required parameter: "${reqKey}".`;
         }
       }

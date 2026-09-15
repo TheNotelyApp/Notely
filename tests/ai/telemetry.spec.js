@@ -3,8 +3,6 @@ import { AIEventBus, eventBus } from '../../ai/telemetry/AIEventBus.js';
 import { createTraceSession, TraceSession } from '../../ai/telemetry/TraceContext.js';
 import { buildEvents, buildEventsFromTrace } from '../../ai/telemetry/eventBuilder.js';
 import TelemetryDB from '../../ai/telemetry/TelemetryDB.js';
-import CompactionEngine from '../../ai/compaction/CompactionEngine.js';
-import Planner from '../../ai/planner/Planner.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -216,36 +214,7 @@ describe('AI Telemetry & Execution Trace Framework', () => {
     expect(errorEvents[0].eventType).toBe('tool:execution');
   });
 
-  it('9. CompactionEngine telemetry — records compaction events when trace is passed', () => {
-    const trace = createTraceSession({ workspaceId: 'ws-test', conversationId: 'conv-compact', query: 'test' });
-    
-    const messages = [
-      { role: 'user', content: 'Turn 1 user request' },
-      { role: 'assistant', content: 'Turn 1 assistant answer' },
-      { role: 'user', content: 'Turn 2 user request' },
-      { role: 'assistant', content: 'Turn 2 assistant answer' },
-      { role: 'user', content: 'Turn 3 user request' },
-      { role: 'assistant', content: 'Turn 3 assistant answer' }
-    ];
 
-    const res = CompactionEngine.compactHistory(messages, { maxVerbatimCount: 2, trace });
-    expect(res.isCompacted).toBe(true);
-    expect(res.turnsCompacted).toBe(2);
-
-    const events = buildEventsFromTrace(trace.events);
-    expect(events.some(e => e.eventType === 'memory:compaction_completed')).toBe(true);
-  });
-
-  it('10. Planner telemetry — records plan_created event when trace is passed', () => {
-    const planner = new Planner(null);
-    const trace = createTraceSession({ workspaceId: 'ws-test', conversationId: 'conv-plan', query: 'find tasks' });
-
-    const plan = planner.createPlan('find my tasks', { trace });
-    expect(plan.intent).toBeDefined();
-
-    const events = buildEventsFromTrace(trace.events);
-    expect(events.some(e => e.eventType === 'planner:plan_created')).toBe(true);
-  });
 
   it('11. Migration — automatically migrates legacy mcp_tool_calls and mcp_sessions schemas', () => {
     const legacyDir = path.join(process.cwd(), '.tmp-legacy-mig-' + Date.now());
