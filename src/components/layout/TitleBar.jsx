@@ -5,9 +5,9 @@ import {
   Undo2, Redo2, Scissors, Clipboard, CheckSquare, Search, Replace, Camera, BookOpen, Command,
   SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
-  ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu, UserCheck, Stethoscope,
+  ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
-  Upload, Download, FolderOutput, Layers
+  Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -26,7 +26,7 @@ const MENU_ICON_MAP = {
   "save": Save,
   "save*": Save,
   "auto save": RefreshCw,
-  "export pdf": FileText,
+  "export pdf": FileDown,
   "export note package": Upload,
   "import note package": Download,
   "export/import note package": Package,
@@ -114,10 +114,24 @@ const MENU_ICON_MAP = {
 
   "open ai palette": Sparkles,
   "ai settings": Bot,
+  "mcp server settings": Server,
   "knowledge graph": Brain,
   "embeddings": Cpu,
-  "personas": UserCheck,
-  "diagnostics": Stethoscope,
+  "mcp diagnostics health": HeartPulse,
+  "mcp diagnostics & health": HeartPulse,
+  "mcp diagnostics": HeartPulse,
+  "ai health diagnostics": HeartPulse,
+  "ai health & diagnostics": HeartPulse,
+  "diagnostics": HeartPulse,
+  "mcp tools capabilities": Wrench,
+  "mcp tools & capabilities": Wrench,
+  "mcp capabilities": Wrench,
+
+  "diagrams media gallery": ImageIcon,
+  "diagrams & media gallery": ImageIcon,
+  "trash / removed items": Trash2,
+  "trash removed items": Trash2,
+
 
   "help center": HelpCircle,
   "markdown guide": Book,
@@ -132,6 +146,7 @@ const MENU_ICON_MAP = {
 
 function getItemIcon(item) {
   if (!item) return null;
+
   const rawLabel = String(item.label || "").toLowerCase().replace(/&/g, " ").replace(/\s+/g, " ").trim();
   const cleanLabel = rawLabel.replace(/…/g, "").replace(/\.\.\./g, "").trim();
   const roleKey = String(item.role || "").toLowerCase().trim();
@@ -159,7 +174,7 @@ function getItemIcon(item) {
       IconComponent = Clock;
     } else if (rawLabel.includes("export") || rawLabel.includes("import")) {
       IconComponent = Package;
-    } else if (rawLabel.includes("theme") || rawLabel.includes("dark") || rawLabel.includes("light")) {
+    } else if (rawLabel.includes("theme")) {
       IconComponent = SunMoon;
     } else if (rawLabel.includes("zoom")) {
       IconComponent = ZoomIn;
@@ -183,8 +198,6 @@ function getItemIcon(item) {
       IconComponent = RefreshCw;
     } else if (rawLabel.includes("help") || rawLabel.includes("about")) {
       IconComponent = HelpCircle;
-    } else {
-      IconComponent = FileText;
     }
   }
 
@@ -412,6 +425,8 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
             setActiveSubmenuPath(newPath);
           };
 
+          const itemIcon = getItemIcon(item);
+
           return (
             <li
               key={item.label || index}
@@ -423,11 +438,14 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
               }}
             >
               <div className="titlebar-menu-item-check">
-                {item.checked ? <Check size={12} /> : getItemIcon(item)}
+                {itemIcon || (item.checked ? <Check size={12} /> : null)}
               </div>
               <span className="titlebar-menu-item-label">
                 {getLabel(item)}
               </span>
+              {item.checked && itemIcon && (
+                <Check size={12} className="titlebar-menu-item-checked-icon" style={{ marginLeft: "8px", color: "var(--accent-solid)", flexShrink: 0 }} />
+              )}
               {item.accelerator && (
                 <span className="titlebar-menu-item-shortcut">
                   {formatAccelerator(item.accelerator)}
