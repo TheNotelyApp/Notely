@@ -115,7 +115,7 @@ function DbRow({ label, count, countLabel, status }) {
 
 // ─── Main MCP Diagnostics Component ─────────────────────────────────────────
 
-export default function AIHealthPage({ onBack }) {
+export default function MCPDiagnosticsPage({ onBack }) {
   const { confirm } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [healthData, setHealthData] = useState(null);
@@ -614,3 +614,5 @@ export default function AIHealthPage({ onBack }) {
     </div>
   );
 }
+
+export { MCPDiagnosticsPage as AIHealthPage };

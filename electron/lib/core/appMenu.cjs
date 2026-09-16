@@ -879,14 +879,16 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
     {
       label: "AI",
       submenu: [
-
         {
           label: "AI Settings",
           accelerator: "CmdOrCtrl+Shift+,",
           click: () => sendMenuAction(win, "open-ai-settings")
         },
+        {
+          label: "MCP Server Settings",
+          click: () => sendMenuAction(win, "open-mcp-settings")
+        },
         { type: "separator" },
-
         {
           label: "Knowledge Graph",
           click: () => sendMenuAction(win, "open-knowledge-graph")
@@ -897,7 +899,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
-          label: "AI Health & Diagnostics",
+          label: "MCP Diagnostics & Health",
           click: () => sendMenuAction(win, "open-health-page")
         }
       ]

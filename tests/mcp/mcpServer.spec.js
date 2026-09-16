@@ -229,6 +229,26 @@ describe('Notely MCP Server Subsystem Tests', () => {
       assert.strictEqual(toolsRes.statusCode, 200);
       assert.ok(toolsRes.body.includes('read_note'));
       assert.ok(toolsRes.body.includes('workspace_overview'));
+
+      // 4. resources/templates/list
+      const templatesRes = await httpRequest(`http://127.0.0.1:${testPort}/sse`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'mcp-session-id': sessionId
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'resources/templates/list',
+          params: {}
+        })
+      });
+
+      assert.strictEqual(templatesRes.statusCode, 200);
+      assert.ok(templatesRes.body.includes('notely://notes/{path}'));
     });
   });
 });

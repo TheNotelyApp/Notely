@@ -25,13 +25,6 @@ export function EditorPane({
   canRedo = false,
   onOpenFind,
   onToggleFind,
-  aiEnabled = true,
-  onOpenAIRequest,
-  onOpenAISettings,
-  onInlineAIContinue,
-  ghostSuggestion,
-  onAcceptInlineGhost,
-  onRejectInlineGhost,
   findMatches = [],
   activeFindMatchIndex = -1,
   showOriginalImages = false,
@@ -426,13 +419,7 @@ export function EditorPane({
       onRedo={onRedo}
       onOpenFind={onOpenFind}
       onToggleFind={onToggleFind}
-      aiEnabled={aiEnabled}
-      onOpenAIRequest={onOpenAIRequest}
-      onOpenAISettings={onOpenAISettings}
-      onInlineAIContinue={onInlineAIContinue}
-      ghostSuggestion={ghostSuggestion}
-      onAcceptInlineGhost={onAcceptInlineGhost}
-      onRejectInlineGhost={onRejectInlineGhost}
+
       findMatches={findMatches}
       activeFindMatchIndex={activeFindMatchIndex}
       tableEditorEnabled={tableEditorEnabled}

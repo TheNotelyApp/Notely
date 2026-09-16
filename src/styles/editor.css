@@ -830,9 +830,6 @@
   }
 
   .workspace,
-  .workspace.with-ai-chat,
-  .workspace.with-ai-chat.outline-panel-collapsed,
-  .workspace.with-ai-chat.focus-mode,
   .split-pane {
     grid-template-columns: 1fr;
   }
@@ -876,23 +873,6 @@
     display: none;
   }
 
-  .ai-panel-reveal {
-    top: auto;
-    right: 12px;
-    bottom: 12px;
-    width: auto;
-    min-height: 34px;
-    writing-mode: horizontal-tb;
-    transform: none;
-    border-right: 1px solid #d9dedb;
-    border-radius: 8px;
-    padding: 0 12px;
-    box-shadow: 0 2px 8px rgba(19, 39, 43, 0.12);
-  }
-
-  .ai-activity-bar {
-    display: none;
-  }
 
   .workspace .split-resizer,
   .split-pane .split-resizer {
@@ -1844,80 +1824,6 @@
   color: #e8cb8b !important;
 }
 
-/* â”€â”€ AI Chat Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-:root[data-theme="dark"] .ai-chat-panel {
-  background: linear-gradient(180deg, var(--surface-bg) 0%, var(--surface-subtle) 100%) !important;
-  border-color: var(--border-default) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-context-bar {
-  background: var(--surface-accent) !important;
-  border-bottom-color: var(--border-default) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-scope-chip {
-  background: var(--surface-elevated) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-muted) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-scope-chip.active {
-  background: var(--accent-strong) !important;
-  border-color: var(--accent-strong) !important;
-  color: var(--text-on-accent) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-context-copy,
-:root[data-theme="dark"] .ai-chat-scope-help {
-  color: var(--text-subtle) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-empty {
-  background: var(--surface-elevated) !important;
-  border-color: var(--border-soft) !important;
-  color: var(--text-muted) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-empty strong {
-  color: var(--text-strong) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-starter {
-  background: var(--surface-elevated) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-strong) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-starter:hover {
-  background: var(--surface-accent) !important;
-  border-color: var(--border-soft) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-message.assistant {
-  background: var(--surface-elevated) !important;
-  color: var(--app-text) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-error {
-  background: var(--status-danger-bg) !important;
-  border-color: var(--status-danger-border) !important;
-  color: var(--status-danger-text) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-composer {
-  background: var(--surface-subtle) !important;
-  border-top-color: var(--border-default) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-input {
-  background: var(--surface-bg) !important;
-  border-color: var(--border-default) !important;
-  color: var(--app-text) !important;
-}
-
-:root[data-theme="dark"] .ai-chat-hint {
-  color: var(--text-subtle) !important;
-}
 
 /* â”€â”€ Sidebar Docs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .sidebar-docs button {
@@ -2498,16 +2404,7 @@
   background: color-mix(in srgb, var(--status-danger-bg) 55%, var(--surface-bg)) !important;
 }
 
-:root[data-theme="dark"] .ai-diff-row.changed {
-  background: color-mix(in srgb, var(--status-warning-bg) 55%, var(--surface-bg)) !important;
-}
 
-/* â”€â”€ AI Panel Reveal Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-:root[data-theme="dark"] .ai-panel-reveal {
-  background: var(--surface-elevated) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-muted) !important;
-}
 
 /* â”€â”€ Tabs / Mode Switch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .tabs button,

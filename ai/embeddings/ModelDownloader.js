@@ -9,9 +9,6 @@ const log = createLogger('ModelDownloader');
 let isDownloadingEmbedding = false;
 let embeddingProgress = 0;
 
-let isDownloadingGraph = false;
-let graphProgress = 0;
-
 class ModelDownloader {
   constructor(appDataDir) {
     this.modelDir = path.join(appDataDir, 'notely', 'ai-model');
@@ -19,80 +16,6 @@ class ModelDownloader {
     const vocabUrlPart = 'resolve/main/vocab.txt';
     this.vocabUrl = `https://huggingface.co/Xenova/bge-small-en-v1.5/${vocabUrlPart}`;
     this.progressCallback = null;
-
-    this.smolLM2ONNXDir = path.join(this.modelDir, 'smollm2-135m-onnx');
-    this.smolLM2ONNXFiles = [
-      { name: 'config.json', url: 'https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main/config.json' },
-      { name: 'generation_config.json', url: 'https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main/generation_config.json' },
-      { name: 'special_tokens_map.json', url: 'https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main/special_tokens_map.json' },
-      { name: 'tokenizer.json', url: 'https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main/tokenizer.json' },
-      { name: 'tokenizer_config.json', url: 'https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main/tokenizer_config.json' },
-      { name: 'onnx/model_quantized.onnx', url: 'https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main/onnx/model_quantized.onnx' }
-    ];
-  }
-
-  isGraphModelDownloaded() {
-    return this.smolLM2ONNXFiles.every(file => fs.existsSync(path.join(this.smolLM2ONNXDir, file.name)));
-  }
-
-  async downloadGraphModel(onProgress = null) {
-    if (this.isGraphModelDownloaded()) {
-      log.info('Graph SmolLM2 ONNX model already downloaded');
-      return true;
-    }
-    if (isDownloadingGraph) {
-      log.info('Download already in progress');
-      return false;
-    }
-
-    isDownloadingGraph = true;
-    graphProgress = 0;
-    this.progressCallback = onProgress;
-
-    try {
-      if (!fs.existsSync(this.smolLM2ONNXDir)) {
-        fs.mkdirSync(this.smolLM2ONNXDir, { recursive: true });
-      }
-
-      log.info('Starting SmolLM2 ONNX model download from HuggingFace...');
-      
-      let completedCount = 0;
-      for (const file of this.smolLM2ONNXFiles) {
-        const destPath = path.join(this.smolLM2ONNXDir, file.name);
-        const destDir = path.dirname(destPath);
-        if (!fs.existsSync(destDir)) {
-          fs.mkdirSync(destDir, { recursive: true });
-        }
-
-        log.info(`Downloading SmolLM2 ONNX asset: ${file.name}...`);
-        
-        await this.downloadFile(file.url, destPath, (bytesRead, totalBytes) => {
-          if (totalBytes > 0) {
-            const baseProgress = Math.round((completedCount / this.smolLM2ONNXFiles.length) * 100);
-            const currentFileProgress = Math.round((bytesRead / totalBytes) * (100 / this.smolLM2ONNXFiles.length));
-            graphProgress = Math.min(99, baseProgress + currentFileProgress);
-            if (this.progressCallback) {
-              this.progressCallback(graphProgress);
-            }
-          }
-        });
-        
-        completedCount++;
-        graphProgress = Math.round((completedCount / this.smolLM2ONNXFiles.length) * 100);
-        if (this.progressCallback) {
-          this.progressCallback(graphProgress);
-        }
-      }
-
-      log.info('SmolLM2 ONNX model downloaded successfully');
-      isDownloadingGraph = false;
-      graphProgress = 100;
-      return true;
-    } catch (err) {
-      isDownloadingGraph = false;
-      log.error('Failed to download SmolLM2 ONNX model', err);
-      throw err;
-    }
   }
 
   isModelDownloaded() {
@@ -108,13 +31,6 @@ class ModelDownloader {
     };
   }
 
-  getGraphProgress() {
-    return {
-      isDownloading: isDownloadingGraph,
-      progress: graphProgress
-    };
-  }
-
   deleteModel() {
     try {
       const modelPath = path.join(this.modelDir, 'model.onnx');
@@ -125,19 +41,6 @@ class ModelDownloader {
       return true;
     } catch (err) {
       log.error('Failed to delete embedding model files', err);
-      throw err;
-    }
-  }
-
-  deleteGraphModel() {
-    try {
-      if (fs.existsSync(this.smolLM2ONNXDir)) {
-        fs.rmSync(this.smolLM2ONNXDir, { recursive: true, force: true });
-      }
-      log.info('Deleted local graph ONNX model files.');
-      return true;
-    } catch (err) {
-      log.error('Failed to delete graph model files', err);
       throw err;
     }
   }

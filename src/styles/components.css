@@ -1977,32 +1977,16 @@
   gap: 8px;
 }
 
-.workspace.with-ai-chat {
-  grid-template-columns: minmax(0, 1fr) 190px 380px;
-}
-
 .workspace.outline-panel-disabled {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.workspace.with-ai-chat.outline-panel-disabled {
-  grid-template-columns: minmax(0, 1fr) 380px;
 }
 
 .workspace.outline-panel-collapsed {
   grid-template-columns: minmax(0, 1fr) 28px;
 }
 
-.workspace.with-ai-chat.outline-panel-collapsed {
-  grid-template-columns: minmax(0, 1fr) 28px 380px;
-}
-
 .workspace.focus-mode {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.workspace.with-ai-chat.focus-mode {
-  grid-template-columns: minmax(0, 1fr) 380px;
 }
 
 .workspace.focus-mode .outline-panel {

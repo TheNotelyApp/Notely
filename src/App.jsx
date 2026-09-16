@@ -331,7 +331,6 @@ export default function App() {
     gitVCInitialTab, setGitVCInitialTab,
     graphPanelOpen, setGraphPanelOpen,
     embeddingsPageOpen, setEmbeddingsPageOpen,
-    personasPageOpen, setPersonasPageOpen,
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,
     recentNotesPanelOpen, setRecentNotesPanelOpen,
@@ -1454,8 +1453,7 @@ export default function App() {
       healthPageOpen ||
       gitVCOpen ||
       embeddingsPageOpen ||
-      graphPanelOpen ||
-      personasPageOpen
+      graphPanelOpen
     );
 
     let currentNoteSubfolder = "";
@@ -1495,7 +1493,7 @@ export default function App() {
       currentNoteSubfolder,
       autosaveEnabled,
     });
-  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, personasPageOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
@@ -1653,7 +1651,6 @@ export default function App() {
       const closeAllFullscreenViews = () => {
         setGraphPanelOpen(false);
         setEmbeddingsPageOpen(false);
-        setPersonasPageOpen(false);
         setHealthPageOpen(false);
         setAppLogsOpen(false);
         setGitVCOpen(false);
@@ -2077,6 +2074,12 @@ export default function App() {
         return;
       }
 
+      if (action === "open-mcp-settings") {
+        setSettingsTab("mcp");
+        setSettingsOpen(true);
+        return;
+      }
+
       if (action === "open-knowledge-graph") {
         setGraphPanelOpen(true);
         return;
@@ -2341,6 +2344,8 @@ export default function App() {
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
     { id: "open-embeddings-page", label: "Open Embeddings Dashboard", group: "AI", aliases: "vector database indexing onnx local bge segments" },
     { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
+    { id: "open-mcp-settings", label: "Open MCP Server Settings", group: "AI", aliases: "mcp server tools model context protocol" },
+    { id: "open-mcp-diagnostics", label: "Open MCP Diagnostics", group: "AI", aliases: "mcp health telemetry diagnostics status" },
     { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
     {
       id: "toggle-view-mode",
@@ -2769,6 +2774,17 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-mcp-settings") {
+      setSettingsTab("mcp");
+      setSettingsOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-mcp-diagnostics") {
+      setHealthPageOpen(true);
+      return;
+    }
+
     if (resolvedCommandId === "toggle-terminal") {
       setShowTerminal((open) => !open);
       return;
@@ -3115,7 +3131,7 @@ export default function App() {
               setSettingsTab("mcp");
               setSettingsOpen(true);
             }} />
-            {current && !(graphPanelOpen || embeddingsPageOpen || personasPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
+            {current && !(graphPanelOpen || embeddingsPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
                 {documentStats ? (
                   <span

@@ -10,7 +10,6 @@ const GeminiProvider = require('./GeminiProvider');
 const GroqProvider = require('./GroqProvider');
 const OpenAICompatibleProvider = require('./OpenAICompatibleProvider');
 const HuggingFaceEmbeddingProvider = require('./HuggingFaceEmbeddingProvider');
-const LocalONNXProvider = require('./LocalONNXProvider');
 
 module.exports = {
   LLMRegistry,
@@ -23,7 +22,6 @@ module.exports = {
   GroqProvider,
   OpenAICompatibleProvider,
   HuggingFaceEmbeddingProvider,
-  LocalONNXProvider,
 
   createLLMRegistry: () => new LLMRegistry()
 };

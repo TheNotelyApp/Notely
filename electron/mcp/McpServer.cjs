@@ -16,10 +16,19 @@ const {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
   ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema
 } = require('@modelcontextprotocol/sdk/types.js');
 const { applicationToolRegistry } = require('../tools/ApplicationToolRegistry.cjs');
 const { mcpPromptsRegistry } = require('./McpPrompts.cjs');
+
+let appVersion = '0.1.41';
+try {
+  const pkg = require('../../package.json');
+  if (pkg && pkg.version) appVersion = pkg.version;
+} catch {
+  // fallback
+}
 
 class McpServer {
   /**
@@ -78,7 +87,7 @@ class McpServer {
     };
 
     const server = new Server(
-      { name: 'notely', version: '0.1.41' },
+      { name: 'notely', version: appVersion },
       { capabilities: { tools: {}, prompts: {}, resources: {} } }
     );
 
@@ -118,6 +127,19 @@ class McpServer {
       };
     });
 
+    server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+      return {
+        resourceTemplates: [
+          {
+            uriTemplate: 'notely://notes/{path}',
+            name: 'Workspace Note Document',
+            description: 'Direct read access to any markdown note within the active workspace by relative path.',
+            mimeType: 'text/markdown'
+          }
+        ]
+      };
+    });
+
     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       const { uri } = request.params;
       const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
@@ -146,6 +168,23 @@ class McpServer {
               uri,
               mimeType: 'application/json',
               text: JSON.stringify(stats, null, 2)
+            }
+          ]
+        };
+      }
+
+      if (uri.startsWith('notely://notes/')) {
+        const noteRelPath = decodeURIComponent(uri.slice('notely://notes/'.length));
+        const res = await applicationToolRegistry.noteService.readNote({
+          workspaceRoot: activeWorkspaceRoot,
+          filePath: noteRelPath
+        });
+        return {
+          contents: [
+            {
+              uri,
+              mimeType: 'text/markdown',
+              text: res.content || ''
             }
           ]
         };

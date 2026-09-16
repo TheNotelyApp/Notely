@@ -39,50 +39,6 @@ import { TaskDetailModal } from "./TaskDetailModal";
 import { DocumentDetailHeader } from "./document/DocumentDetailHeader";
 import { useConfirm } from "../hooks/useConfirm";
 
-function getBlockRange(value, anchorIndex) {
-  const text = String(value || "");
-  const safeAnchor = Math.max(0, Math.min(Number(anchorIndex) || 0, text.length));
-
-  let start = safeAnchor;
-  while (start > 0) {
-    const previousBreak = text.lastIndexOf("\n\n", start - 1);
-    if (previousBreak === -1) {
-      start = 0;
-      break;
-    }
-
-    const candidate = text.slice(previousBreak + 2, safeAnchor).trim();
-    if (candidate) {
-      start = previousBreak + 2;
-      break;
-    }
-
-    start = previousBreak;
-  }
-
-  let end = safeAnchor;
-  while (end < text.length) {
-    const nextBreak = text.indexOf("\n\n", end);
-    if (nextBreak === -1) {
-      end = text.length;
-      break;
-    }
-
-    const candidate = text.slice(safeAnchor, nextBreak).trim();
-    if (candidate) {
-      end = nextBreak;
-      break;
-    }
-
-    end = nextBreak + 2;
-  }
-
-  return {
-    start,
-    end,
-    text: text.slice(start, end),
-  };
-}
 
 
 
@@ -364,15 +320,6 @@ export function DocumentDetail({
   onBack,
   breadcrumbs = [],
   onNavigateBreadcrumb,
-  onInlineAIRequest,
-  onRegisterAIEditor,
-  inlineGhostSuggestion,
-  onAcceptInlineGhost,
-  onRejectInlineGhost,
-  aiEnabled = true,
-  _aiPanelVisible = true,
-  _onShowAI,
-  onOpenAISettings,
   onOpenDocument,
   initialLine = null,
   workspaceTagSuggestions = [],
@@ -389,7 +336,6 @@ export function DocumentDetail({
   onTableEditorToggle,
   scrollSyncEnabled,
   onScrollSyncEnabledChange,
-  aiSidebar = null,
   ignoredSpellingWords = [],
   onIgnoreSpellingWord,
   onForceSaveDocument,
@@ -460,16 +406,6 @@ export function DocumentDetail({
     },
   });
 
-  const [aiSidebarWidth, setAiSidebarWidth] = useWorkspaceScopedStorage({
-    workspaceScope: workspaceStorageScope,
-    key: "notes:ai-sidebar-width",
-    defaultValue: 380,
-    normalize: (value) => {
-      const parsed = parseInt(value, 10);
-      return Number.isNaN(parsed) ? 380 : parsed;
-    },
-  });
-
   const [targetLine, setTargetLine] = useState(initialLine);
 
   useEffect(() => {
@@ -481,7 +417,6 @@ export function DocumentDetail({
   const workspaceLayoutRef = useRef(null);
 
   const clampOutlineWidth = (w) => Math.min(Math.max(w, 150), 350);
-  const clampAiSidebarWidth = (w) => Math.min(Math.max(w, 260), 600);
 
   const startOutlineResize = (event) => {
     const workspace = workspaceLayoutRef.current;
@@ -489,7 +424,7 @@ export function DocumentDetail({
     event.preventDefault();
     const updateWidth = (clientX) => {
       const bounds = workspace.getBoundingClientRect();
-      const nextWidth = bounds.right - clientX - (aiSidebar ? aiSidebarWidth + 8 : 0);
+      const nextWidth = bounds.right - clientX;
       setOutlineWidth(clampOutlineWidth(nextWidth));
     };
     const handlePointerMove = (moveEvent) => {
@@ -517,43 +452,6 @@ export function DocumentDetail({
     } else if (event.key === "End") {
       event.preventDefault();
       setOutlineWidth(350);
-    }
-  };
-
-  const startAiResize = (event) => {
-    const workspace = workspaceLayoutRef.current;
-    if (!workspace) return;
-    event.preventDefault();
-    const updateWidth = (clientX) => {
-      const bounds = workspace.getBoundingClientRect();
-      const nextWidth = bounds.right - clientX;
-      setAiSidebarWidth(clampAiSidebarWidth(nextWidth));
-    };
-    const handlePointerMove = (moveEvent) => {
-      updateWidth(moveEvent.clientX);
-    };
-    const handlePointerUp = () => {
-      document.removeEventListener("pointermove", handlePointerMove);
-      document.removeEventListener("pointerup", handlePointerUp);
-    };
-    document.addEventListener("pointermove", handlePointerMove);
-    document.addEventListener("pointerup", handlePointerUp);
-  };
-
-  const handleAiResizerKeyDown = (event) => {
-    const STEP = event.shiftKey ? 20 : 5;
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      setAiSidebarWidth((w) => clampAiSidebarWidth(w + STEP));
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      setAiSidebarWidth((w) => clampAiSidebarWidth(w - STEP));
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      setAiSidebarWidth(260);
-    } else if (event.key === "End") {
-      event.preventDefault();
-      setAiSidebarWidth(600);
     }
   };
 
@@ -809,98 +707,7 @@ export function DocumentDetail({
     [document.filePath, document.fileName],
   );
 
-  const getCurrentAIContext = () => {
-    const editor = textareaRef.current;
-    const currentValue = String(content || "");
-    const selectionStart = Number(editor?.selectionStart) || 0;
-    const selectionEnd = Number(editor?.selectionEnd) || selectionStart;
-    const hasSelection = selectionEnd > selectionStart;
-    const selectedText = hasSelection
-      ? currentValue.slice(selectionStart, selectionEnd)
-      : "";
-    const anchor = hasSelection ? selectionStart : selectionEnd;
-    const currentBlock = getBlockRange(currentValue, anchor);
 
-    return {
-      tab: activeTab,
-      field: activeEditorField,
-      selectionStart,
-      selectionEnd,
-      hasSelection,
-      selectedText,
-      currentBlock,
-      cursorOffset: selectionEnd,
-      contentLength: currentValue.length,
-      value: currentValue,
-    };
-  };
-
-  const applyAIResult = ({ text, mode, previewOnly = false, insertAt = null }) => {
-    const editor = textareaRef.current;
-    const currentValue = String(content || "");
-    const insertion = String(text || "");
-    if (!editor || !insertion) {
-      return { applied: false, reason: "No editor target available." };
-    }
-
-    const selectionStart = Number(editor.selectionStart) || 0;
-    const selectionEnd = Number(editor.selectionEnd) || selectionStart;
-    const currentBlock = getBlockRange(currentValue, selectionEnd);
-
-    let start = Number.isInteger(insertAt) ? insertAt : selectionEnd;
-    let end = Number.isInteger(insertAt) ? insertAt : selectionEnd;
-
-    if (mode === "replace-selection") {
-      start = selectionStart;
-      end = selectionEnd;
-      if (end <= start) {
-        return { applied: false, reason: "Select text to replace." };
-      }
-    } else if (mode === "replace-block") {
-      start = currentBlock.start;
-      end = currentBlock.end;
-      if (end <= start) {
-        return { applied: false, reason: "No current block found." };
-      }
-    }
-
-    if (previewOnly && mode !== "insert") {
-      return {
-        applied: false,
-        preview: true,
-        mode,
-        currentText: currentValue.slice(start, end),
-        nextText: insertion,
-        start,
-        end,
-      };
-    }
-
-    const nextValue = `${currentValue.slice(0, start)}${insertion}${currentValue.slice(end)}`;
-    updateContent(nextValue);
-
-    requestAnimationFrame(() => {
-      if (!textareaRef.current) return;
-      textareaRef.current.focus();
-      const nextCursor = start + insertion.length;
-      textareaRef.current.selectionStart = nextCursor;
-      textareaRef.current.selectionEnd = nextCursor;
-    });
-
-    return { applied: true, mode, start, end };
-  };
-
-  useEffect(() => {
-    if (typeof onRegisterAIEditor !== "function") return undefined;
-
-    onRegisterAIEditor({
-      getContext: getCurrentAIContext,
-      applyResult: applyAIResult,
-    });
-
-    return () => onRegisterAIEditor(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onRegisterAIEditor, content, activeTab, activeEditorField]);
 
   useEffect(() => {
     historyStateRef.current = {
@@ -1359,19 +1166,12 @@ export function DocumentDetail({
 
 
   const hasOutline = isOutlineEnabled && !isOutlineCollapsed;
-  const hasAi = !!aiSidebar;
 
   let gridColumnsStyle = "minmax(0, 1fr)";
-  if (hasOutline && hasAi) {
-    gridColumnsStyle = `minmax(0, 1fr) 8px ${outlineWidth}px 8px ${aiSidebarWidth}px`;
-  } else if (hasOutline) {
+  if (hasOutline) {
     gridColumnsStyle = `minmax(0, 1fr) 8px ${outlineWidth}px`;
-  } else if (isOutlineEnabled && isOutlineCollapsed && hasAi) {
-    gridColumnsStyle = `minmax(0, 1fr) 28px 8px ${aiSidebarWidth}px`;
   } else if (isOutlineEnabled && isOutlineCollapsed) {
     gridColumnsStyle = `minmax(0, 1fr) 28px`;
-  } else if (hasAi) {
-    gridColumnsStyle = `minmax(0, 1fr) 8px ${aiSidebarWidth}px`;
   }
   const workspaceStyle = isFocusMode ? {} : { gridTemplateColumns: gridColumnsStyle, gap: 0 };
 
@@ -1480,7 +1280,7 @@ export function DocumentDetail({
       <div 
         ref={workspaceLayoutRef}
         style={workspaceStyle}
-        className={`workspace ${changedOnDisk ? "workspace-disabled" : ""} ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""} ${aiSidebar ? "with-ai-chat" : ""}`}
+        className={`workspace ${changedOnDisk ? "workspace-disabled" : ""} ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""}`}
         onKeyDown={(e) => {
           if (changedOnDisk) {
             // Let Ctrl+Shift+R pass through, block all other shortcuts/keys
@@ -1661,18 +1461,7 @@ export function DocumentDetail({
                 canRedo={canRedo}
                 onOpenFind={openFindInNotePanel}
                 onToggleFind={toggleFindInNotePanel}
-                aiEnabled={aiEnabled}
-                onOpenAISettings={onOpenAISettings}
-                onInlineAIContinue={() => {
-                  onInlineAIRequest?.({
-                    initialQuery: "Continue the current paragraph naturally in the same tone and structure.",
-                    target: "block",
-                    source: "inline-continue",
-                  });
-                }}
-                ghostSuggestion={inlineGhostSuggestion}
-                onAcceptInlineGhost={onAcceptInlineGhost}
-                onRejectInlineGhost={onRejectInlineGhost}
+
                 findMatches={findMatches}
                 activeFindMatchIndex={activeFindMatchIndex}
                 showOriginalImages={showOriginalImages}
@@ -1717,27 +1506,6 @@ export function DocumentDetail({
           onJumpToLine={jumpToLine}
           style={hasOutline ? { width: `${outlineWidth}px` } : {}}
         />
-        {hasAi && (
-          <div
-            className="split-resizer"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize AI sidebar"
-            aria-valuemin={260}
-            aria-valuemax={600}
-            aria-valuenow={aiSidebarWidth}
-            aria-valuetext={`${aiSidebarWidth}px AI width`}
-            tabIndex={0}
-            onPointerDown={startAiResize}
-            onKeyDown={handleAiResizerKeyDown}
-          />
-        )}
-        {aiSidebar && (
-          <div style={{ width: `${aiSidebarWidth}px`, flexShrink: 0, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {aiSidebar}
-          </div>
-        )}
-
       </div>
 
 

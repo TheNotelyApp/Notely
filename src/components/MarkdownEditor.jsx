@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import { Search, Copy, Settings, BookPlus, Wand2 } from "lucide-react";
+import { Search, Copy, BookPlus, Wand2 } from "lucide-react";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
-import { Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
+import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { createMediaMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertMediaFromFiles } from "../services/imageService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
@@ -96,84 +96,6 @@ function buildFindMatchDecorations(matches, activeMatchIndex) {
 }
 
 
-class AIGhostSuggestionWidget extends WidgetType {
-  constructor(text, onAccept, onReject) {
-    super();
-    this.text = text;
-    this.onAccept = onAccept;
-    this.onReject = onReject;
-  }
-
-  eq(other) {
-    return other.text === this.text;
-  }
-
-  toDOM() {
-    const wrap = document.createElement("div");
-    wrap.className = "cm-ai-ghost-widget";
-
-    const header = document.createElement("div");
-    header.className = "cm-ai-ghost-header";
-    const title = document.createElement("span");
-    title.textContent = "AI suggestion";
-    header.appendChild(title);
-
-    const actions = document.createElement("div");
-    actions.className = "cm-ai-ghost-actions";
-    const accept = document.createElement("button");
-    accept.type = "button";
-    accept.className = "cm-ai-ghost-button accept";
-    accept.textContent = "Accept";
-    accept.onclick = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.onAccept?.();
-    };
-    const reject = document.createElement("button");
-    reject.type = "button";
-    reject.className = "cm-ai-ghost-button reject";
-    reject.textContent = "Reject";
-    reject.onclick = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.onReject?.();
-    };
-    actions.appendChild(accept);
-    actions.appendChild(reject);
-    header.appendChild(actions);
-
-    const body = document.createElement("div");
-    body.className = "cm-ai-ghost-body";
-    body.textContent = this.text;
-
-    wrap.appendChild(header);
-    wrap.appendChild(body);
-    return wrap;
-  }
-
-  ignoreEvent() {
-    return false;
-  }
-}
-
-function buildGhostSuggestionDecorations(ghostSuggestion, onAccept, onReject, docLength) {
-  const builder = new RangeSetBuilder();
-  if (!ghostSuggestion?.text) {
-    return builder.finish();
-  }
-
-  const anchor = Math.max(0, Math.min(Number(ghostSuggestion.insertAt) || 0, docLength));
-  builder.add(
-    anchor,
-    anchor,
-    Decoration.widget({
-      widget: new AIGhostSuggestionWidget(ghostSuggestion.text, onAccept, onReject),
-      side: 1,
-      block: true,
-    })
-  );
-  return builder.finish();
-}
 
 function createEditorAdapter(view) {
   const clamp = (value) => Math.max(0, Math.min(Number(value) || 0, view.state.doc.length));
@@ -272,16 +194,10 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   onRedo,
   onOpenFind,
   onToggleFind,
-  aiEnabled = true,
-  onOpenAISettings,
   onSearchRequest,
-  ghostSuggestion,
-  onAcceptInlineGhost,
-  onRejectInlineGhost,
   findMatches = [],
   activeFindMatchIndex = -1,
   onEditorReady,
-  onInlineAIContinue,
   _tableEditorEnabled = true,
   basePath,
 }) {
@@ -397,19 +313,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
 
-  // Explicit hotkey trigger for inline AI completion (Alt-\)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.altKey && e.key === '\\') {
-        e.preventDefault();
-        if (aiEnabled && onInlineAIContinue) {
-          onInlineAIContinue();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [aiEnabled, onInlineAIContinue]);
+
 
   const positionSuggestionFlyout = (containerElement) => {
     if (!containerElement) return;
@@ -448,13 +352,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
     if (!decorationsSynced) return Decoration.none;
     return buildDecorationSet(value, validationIssues);
   }, [decorationsSynced, value, validationIssues]);
-  const ghostSuggestionDecorations = useMemo(
-    () => {
-      if (!decorationsSynced) return Decoration.none;
-      return buildGhostSuggestionDecorations(ghostSuggestion, onAcceptInlineGhost, onRejectInlineGhost, valueLength);
-    },
-    [decorationsSynced, ghostSuggestion, onAcceptInlineGhost, onRejectInlineGhost, valueLength]
-  );
+
   const findMatchDecorations = useMemo(
     () => {
       if (!decorationsSynced) return Decoration.none;
@@ -654,8 +552,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         }
       } else if (action === "find-in-document") {
         onSearchRequest?.(payload);
-      } else if (action === "configure-ai-settings") {
-        onOpenAISettings?.();
       } else if (action === "apply-issue-action") {
         if (payload) {
           applyIssueAction(payload);
@@ -674,12 +570,10 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
   }, [
     onJumpToLine,
     onSearchRequest,
-    onOpenAISettings,
     onNotify,
     onIgnoreSpellingWord,
     value,
     onChange,
-    aiEnabled,
     applyIssueAction,
     applyIssueSuggestion,
   ]);
@@ -689,7 +583,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
     editorTheme,
     EditorView.decorations.of(findMatchDecorations),
     EditorView.decorations.of(validationDecorations),
-    EditorView.decorations.of(ghostSuggestionDecorations),
     EditorView.lineWrapping,
     EditorView.domEventHandlers({
       contextmenu(event, view) {
@@ -736,48 +629,6 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
               label: "Find in document",
               action: "find-in-document",
               payload: selectedText,
-            });
-            menuTemplate.push({ type: "separator" });
-
-            if (aiEnabled) {
-              menuTemplate.push({
-                label: "Ask AI about selection",
-                action: "ask-ai-selection",
-              });
-              menuTemplate.push({
-                label: "Rewrite selection with AI",
-                action: "rewrite-ai-selection",
-              });
-              menuTemplate.push({
-                label: "Find related notes in workspace",
-                action: "find-related-workspace-selection",
-              });
-              menuTemplate.push({
-                label: "Turn selection into action items",
-                action: "turn-selection-actions",
-              });
-            }
-          } else if (aiEnabled) {
-            menuTemplate.push({
-              label: "Ask AI about this section",
-              action: "ask-ai-block",
-            });
-            menuTemplate.push({
-              label: "Continue this section with AI",
-              action: "continue-ai-block",
-            });
-            menuTemplate.push({
-              label: "Explore related workspace notes",
-              action: "explore-related-workspace-block",
-            });
-            menuTemplate.push({
-              label: "Summarize current block",
-              action: "summarize-ai-block",
-            });
-          } else {
-            menuTemplate.push({
-              label: "Configure AI settings",
-              action: "configure-ai-settings",
             });
           }
 
@@ -934,22 +785,8 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
       {
-        key: "Tab",
-        run(_view) {
-          if (ghostSuggestion?.text) {
-            onAcceptInlineGhost?.();
-            return true;
-          }
-          return false;
-        },
-      },
-      {
         key: "Escape",
         run(_view) {
-          if (ghostSuggestion?.text) {
-            onRejectInlineGhost?.();
-            return true;
-          }
           if (slashMenu) {
             setSlashMenu(null);
             return true;
@@ -965,7 +802,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         },
       },
     ]),
-  ], [basePath, findMatchDecorations, ghostSuggestionDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, aiEnabled, onAcceptInlineGhost, onRejectInlineGhost, ghostSuggestion, slashMenu]);
+  ], [basePath, findMatchDecorations, handlePaste, onChange, onNotify, onOpenFind, onRedo, onToggleFind, onUndo, validationDecorations, validationIssues, _activeLine, slashMenu]);
 
   return (
     <div
@@ -1013,9 +850,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
         }}
         onUpdate={(update) => {
           setDocLength(update.state.doc.length);
-          if (update.docChanged && ghostSuggestion?.text && onRejectInlineGhost) {
-            onRejectInlineGhost();
-          }
+
           const position = update.state.selection.main.head;
           const { line } = getLineColumnFromIndex(update.state.doc.toString(), position);
           setActiveLine(line);
@@ -1112,21 +947,7 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
               </button>
             </>
           ) : null}
-          {onOpenAISettings ? (
-            <div className="editor-context-menu-group">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onOpenAISettings?.();
-                  setContextMenu(null);
-                }}
-              >
-                <Settings size={16} />
-                Configure AI settings
-              </button>
-            </div>
-          ) : null}
+
           {contextMenu.issues.length ? (
             <div className="editor-context-menu-group">
               <div className="editor-context-menu-label">Fixes</div>

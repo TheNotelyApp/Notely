@@ -18,7 +18,7 @@ Internal AI models and background workers are retained strictly for deterministi
 | **`ai/memory/`** | `index.js` | `MemoryDB`, `InteractionLog`, `MemoryOptimizer`, `PatternAnalyzer` |
 | **`ai/telemetry/`**| `index.js` | `TelemetryDB`, `AIEventBus`, structured logging of MCP tool calls and durations |
 | **`ai/logs/`**     | `index.js` | `LogDB` persistent log storage for indexing operations |
-| **`ai/providers/`**| `index.js` | `LLMRegistry`, `HuggingFaceEmbeddingProvider`, `LocalONNXProvider`, `GeminiProvider` |
+| **`ai/providers/`**| `index.js` | `LLMRegistry`, `HuggingFaceEmbeddingProvider`, `GeminiProvider`, `GroqProvider`, `OpenAICompatibleProvider` |
 | **`ai/diagnostics/`**| `index.js`| `AIHealth` metrics aggregator for MCP `/health` and status screens |
 | **`ai/formatter/`**| `index.js` | Markdown response formatting and task summary formatters |
 

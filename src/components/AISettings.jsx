@@ -547,69 +547,8 @@ export const AISettingsContent = ({ _onClose }) => {
                   </div>
                 </div>
 
-                {selectedProvider === 'local' ? (
-                  <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginBottom: "8px" }}>
-                    <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (GLiNER + GLiREL ONNX)</h4>
-                    {modelStatus.downloaded ? (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
-                          <Database size={12} />
-                          <span>GLiNER & GLiREL ONNX model weights downloaded and ready offline.</span>
-                        </div>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={async () => {
-                            if (!window.confirm('Delete local GLiNER and GLiREL ONNX weights from disk?')) return;
-                            try {
-                              const { aiDeleteGraphModel } = await import('../services/electronService');
-                              await aiDeleteGraphModel();
-                              setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                          style={{ display: "flex", gap: "4px", alignItems: "center", padding: "3px 6px", fontSize: "10px", color: "var(--text-danger)" }}
-                        >
-                          <Trash2 size={12} /> Delete
-                        </button>
-                      </div>
-                    ) : modelStatus.isDownloading ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
-                          <span>Downloading GLiNER & GLiREL weights...</span>
-                          <span>{modelStatus.progress}%</span>
-                        </div>
-                        <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
-                          <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }}></div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>GLiNER + GLiREL ONNX models not found. Click below or go to Knowledge Graph tab to download.</span>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={async () => {
-                            try {
-                              const { aiDownloadGraphModel } = await import('../services/electronService');
-                              const res = await aiDownloadGraphModel();
-                              if (res.success) {
-                                setModelStatus(prev => ({ ...prev, isDownloading: true, progress: 0 }));
-                              }
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                          style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", width: "fit-content" }}
-                        >
-                          <Download size={12} />
-                          <span>Download GLiNER & GLiREL Models</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="api-key-group compact" style={{ marginBottom: "8px" }}>
-                    <label htmlFor="api-key" style={{ fontSize: "11px" }}>
+                <div className="api-key-group compact" style={{ marginBottom: "8px" }}>
+                  <label htmlFor="api-key" style={{ fontSize: "11px" }}>
                       {selectedProvider ? (selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)) : 'API'} Key
                     </label>
                     <div className="api-key-combined-row" style={{ marginTop: "2px" }}>
@@ -737,7 +676,6 @@ export const AISettingsContent = ({ _onClose }) => {
                       )}
                     </div>
                   </div>
-                )}
 
                 {getCapabilityWarnings().length > 0 && (
                   <div className="ai-settings-capability-warnings" style={{ marginTop: "4px", marginBottom: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -1000,43 +938,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <span>Discover relationships</span>
                   </label>
                 </div>
-              </section>
-
-              <section className="ai-settings-section ai-settings-generation-card" style={{ gridColumn: "1 / -1" }}>
-                <h3>Generation</h3>
-                <div className="ai-settings-range-row">
-                  <div className="ai-settings-range-label">
-                    <span>Context Token Budget (max tokens)</span>
-                    <strong>{preferences.maxTokensPerQuery}</strong>
-                  </div>
-                  <AppInput
-                    type="range"
-                    min="512"
-                    max="8192"
-                    step="256"
-                    value={preferences.maxTokensPerQuery}
-                    onChange={(e) => handlePreferenceChange('maxTokensPerQuery', parseInt(e.target.value, 10))}
-                    disabled={loading}
-                    className="slider"
-                  />
-                </div>
-                <div className="ai-settings-range-row">
-                  <div className="ai-settings-range-label">
-                    <span>Temperature</span>
-                    <strong>{preferences.temperature.toFixed(2)}</strong>
-                  </div>
-                  <AppInput
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={preferences.temperature}
-                    onChange={(e) => handlePreferenceChange('temperature', parseFloat(e.target.value))}
-                    disabled={loading}
-                    className="slider"
-                  />
-                </div>
-                <div className="ai-settings-inline-actions compact">
+                <div className="ai-settings-inline-actions compact" style={{ marginTop: "12px" }}>
                   <button
                     className="btn btn-primary"
                     onClick={async () => {
@@ -1048,7 +950,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     disabled={loading}
                     type="button"
                   >
-                    <Save size={12} /> Save
+                    <Save size={12} /> Save Preferences
                   </button>
                 </div>
               </section>

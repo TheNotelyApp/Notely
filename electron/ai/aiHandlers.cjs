@@ -1005,24 +1005,20 @@ async function handleSetPreferences(event, payload) {
       }
     }
 
-    // Apply graph provider choice (local vs text-provider)
+    // Apply graph provider choice (gliner2-relex ONNX vs text-provider Cloud LLM)
     if (aiService.agent) {
-      const graphProviderPref = preferences.graphProvider || 'text-provider';
-      if (graphProviderPref === 'local') {
+      const graphProviderPref = preferences.graphProvider || 'gliner2-relex';
+      if (graphProviderPref === 'gliner2-relex') {
         try {
           const { app } = require('electron');
           const appDataDir = path.join(app.getPath('appData'), 'Notely');
-          const ModelDownloader = require('../../ai/embeddings/ModelDownloader');
-          const modelDownloader = new ModelDownloader(appDataDir);
-          if (modelDownloader.isGraphModelDownloaded()) {
-            const { LocalONNXProvider } = require('../../ai/providers');
-            const localLlm = new LocalONNXProvider({ appDataDir });
-            await localLlm.initialize();
-            aiService.agent.llmRegistry.register('local', localLlm);
-            aiService.agent.setGraphProvider(localLlm);
+          const GraphModelDownloader = require('../../ai/graph/GraphModelDownloader');
+          const modelDownloader = new GraphModelDownloader(appDataDir);
+          if (modelDownloader.isModelDownloaded()) {
+            aiService.agent.setGraphProvider('gliner2-relex');
           }
         } catch (graphErr) {
-          console.warn('[AI IPC] Local ONNX graph provider set failed:', graphErr.message);
+          console.warn('[AI IPC] Local GLiNER2-Relex ONNX graph provider set notice:', graphErr.message);
         }
       } else {
         aiService.agent.setGraphProvider(null);
@@ -1038,24 +1034,8 @@ async function handleSetPreferences(event, payload) {
       const savedModel = aiConfig.getProviderModel(activeProviderName);
       const { PROVIDER_REGISTRY } = require('../../ai/providers');
       const modelId = savedModel || PROVIDER_REGISTRY[activeProviderName]?.defaultModel;
-      
-      if (activeProviderName === 'local') {
-        try {
-          const { app } = require('electron');
-          const appDataDir = path.join(app.getPath('appData'), 'Notely');
-          const ModelDownloader = require('../../ai/embeddings/ModelDownloader');
-          const modelDownloader = new ModelDownloader(appDataDir);
-          if (modelDownloader.isGraphModelDownloaded()) {
-            const { LocalONNXProvider } = require('../../ai/providers');
-            const localLlm = new LocalONNXProvider({ appDataDir });
-            await localLlm.initialize();
-            aiService.agent.llmRegistry.register('local', localLlm);
-            await aiService.agent.llmRegistry.activateProvider('local', {});
-          }
-        } catch (localLlmErr) {
-          console.warn('[AI IPC] Local ONNX registration on preference set failed:', localLlmErr.message);
-        }
-      } else if (apiKey && modelId) {
+
+      if (apiKey && modelId) {
         try {
           await aiService.agent.llmRegistry.activateProvider(activeProviderName, { apiKey, model: modelId });
         } catch (activationErr) {
