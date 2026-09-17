@@ -12,6 +12,13 @@
 - **Recycle Bin Panel & Safe Deletion** — Drag notes directly to the Recycle Bin panel on the bottom left rail. Actions prompt a confirmation modal before moving notes to `.notes-app/removed/notes/`, complete with a 1-click **[Undo]** toast.
 - **Updated View Mode Iconography & Menu Integration** — Clean modern icons (`Grid2X2`, `Rows3`, `FolderTree`) with `Dashboard View` native menu items and Command Palette actions.
 
+### Keyboard Shortcuts & Accelerator Normalization
+
+- **Native Collision Fixes** — Resolved OS-level accelerator collisions in Electron menu between Git Commit (`Ctrl/Cmd + Alt + K`), Calendar, Workspace Index (`Ctrl/Cmd + Alt + I`), and Workspace Zip Export (`Ctrl/Cmd + Alt + E`), unblocking in-editor Reference Note (`Ctrl/Cmd + Shift + K`) and Reference Link (`Ctrl/Cmd + Shift + L`).
+- **Editor Formatting Hotkeys** — Added standard editing keymaps for Bold (`Ctrl/Cmd + B`), Italic (`Ctrl/Cmd + I`), Inline Code (`Ctrl/Cmd + E`), Strikethrough (`Ctrl/Cmd + Shift + X`), Task Checkbox toggle (`Ctrl/Cmd + Enter`), and Tab / Shift+Tab line indentation.
+- **Tab Management** — Added `Ctrl/Cmd + W` to quickly close the active document tab without closing the window.
+- **Synchronized Help Reference** — Updated the in-app Keyboard Shortcuts modal, Markdown Guide, and documentation references.
+
 ---
 
 ## 2026-08-19

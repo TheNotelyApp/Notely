@@ -264,6 +264,11 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           click: () => sendMenuAction(win, "save-document")
         },
         {
+          label: "Close Tab",
+          accelerator: "CmdOrCtrl+W",
+          click: () => sendMenuAction(win, "close-current-tab")
+        },
+        {
           label: "Auto Save",
           type: "checkbox",
           checked: Boolean(context?.autosaveEnabled),
@@ -730,7 +735,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         {
           label: "Calendar",
-          accelerator: "CmdOrCtrl+Shift+L",
           click: () => sendMenuAction(win, "open-calendar")
         },
         { type: "separator" },
@@ -740,7 +744,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         {
           label: "Workspace Index",
-          accelerator: "CmdOrCtrl+Shift+I",
+          accelerator: "CmdOrCtrl+Alt+I",
           click: () => sendMenuAction(win, "open-workspace-index")
         },
         {
@@ -792,7 +796,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         {
           label: "Export Workspace as Zip",
-          accelerator: "CmdOrCtrl+Shift+E",
+          accelerator: "CmdOrCtrl+Alt+E",
           click: () => sendMenuAction(win, "export-workspace-zip")
         }
       ]
@@ -808,7 +812,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         { type: "separator" },
         {
           label: "Commit\u2026",
-          accelerator: "CmdOrCtrl+Shift+K",
+          accelerator: "CmdOrCtrl+Alt+K",
           click: () => sendMenuAction(win, "git-commit")
         },
         {

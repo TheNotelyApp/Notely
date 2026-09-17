@@ -25,6 +25,11 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     group: "Global",
   },
   {
+    keys: "Ctrl/Cmd+,",
+    action: "Open Settings",
+    group: "Global",
+  },
+  {
     keys: "Ctrl/Cmd+N",
     action: "Create New Note",
     group: "Notes",
@@ -139,6 +144,46 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     group: "Editor",
   },
   {
+    keys: "Ctrl/Cmd+W",
+    action: "Close Current Tab",
+    group: "Editor",
+  },
+  {
+    keys: "Ctrl/Cmd+B",
+    action: "Bold Selection",
+    group: "Editor",
+  },
+  {
+    keys: "Ctrl/Cmd+I",
+    action: "Italic Selection",
+    group: "Editor",
+  },
+  {
+    keys: "Ctrl/Cmd+E",
+    action: "Inline Code",
+    group: "Editor",
+  },
+  {
+    keys: "Ctrl/Cmd+Shift+X",
+    action: "Strikethrough Selection",
+    group: "Editor",
+  },
+  {
+    keys: "Ctrl/Cmd+Enter",
+    action: "Toggle Task Checkbox",
+    group: "Editor",
+  },
+  {
+    keys: "Tab",
+    action: "Indent Line or Selection",
+    group: "Editor",
+  },
+  {
+    keys: "Shift+Tab",
+    action: "Outdent Line or Selection",
+    group: "Editor",
+  },
+  {
     keys: "Ctrl/Cmd+\\",
     action: "Toggle Split Preview",
     group: "Editor",
@@ -179,7 +224,7 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     group: "Find Panel",
   },
   {
-    keys: "Ctrl/Cmd+Shift+E",
+    keys: "Ctrl/Cmd+Alt+E",
     action: "Export Workspace as Zip",
     group: "Landing",
   },
@@ -242,6 +287,16 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     keys: "Ctrl/Cmd+Shift+G",
     action: "Open Workspace Graph",
     group: "Workspace",
+  },
+  {
+    keys: "Ctrl/Cmd+Alt+I",
+    action: "Open Workspace Index",
+    group: "Workspace",
+  },
+  {
+    keys: "Ctrl/Cmd+Alt+K",
+    action: "Commit Changes",
+    group: "Version Control",
   },
   {
     keys: "Ctrl/Cmd+=",

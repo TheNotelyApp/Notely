@@ -108,3 +108,6 @@ Use **File → Open Recent** or the command palette (`Ctrl + K`) to reopen a rec
 | `Ctrl + /` | Open Keyboard Shortcuts |
 | `Ctrl + K` | Open Command Palette |
 | `Ctrl + Shift + F` | Search all notes |
+| `Ctrl + W` | Close current tab |
+
+For the complete list of hotkeys, see the [Keyboard Shortcuts Reference](../keyboard-shortcuts.md).

@@ -4,6 +4,7 @@ import { Search, Copy, BookPlus, Wand2 } from "lucide-react";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, keymap } from "@codemirror/view";
+import { indentWithTab } from "@codemirror/commands";
 import { createMediaMarkdown, insertTextAtCursor } from "../utils/markdownUtils";
 import { insertMediaFromFiles } from "../services/imageService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
@@ -11,6 +12,61 @@ import { editorTheme } from "../utils/editorTheme";
 import { generateDiagramId } from "../utils/diagramFileUtils";
 import { useClipboardPaste } from "../hooks/useClipboardPaste";
 import SlashMenuOverlay from "./SlashMenuOverlay";
+
+function wrapSelection(view, before, after = before, placeholder = "") {
+  const changes = view.state.changeByRange((range) => {
+    if (range.empty) {
+      const insert = before + placeholder + after;
+      return {
+        changes: { from: range.from, insert },
+        range: EditorSelection.range(range.from + before.length, range.from + before.length + placeholder.length),
+      };
+    }
+    const text = view.state.sliceDoc(range.from, range.to);
+    if (text.startsWith(before) && text.endsWith(after) && text.length >= before.length + after.length) {
+      const unwrapped = text.slice(before.length, text.length - after.length);
+      return {
+        changes: { from: range.from, to: range.to, insert: unwrapped },
+        range: EditorSelection.range(range.from, range.from + unwrapped.length),
+      };
+    }
+    return {
+      changes: { from: range.from, to: range.to, insert: before + text + after },
+      range: EditorSelection.range(range.from + before.length, range.to + before.length),
+    };
+  });
+  view.dispatch(changes);
+  return true;
+}
+
+function toggleTaskCheckbox(view) {
+  const changes = view.state.changeByRange((range) => {
+    const line = view.state.doc.lineAt(range.from);
+    const lineText = line.text;
+    let nextText = null;
+
+    if (/^(\s*[-*+]\s+)\[ \]\s*/.test(lineText)) {
+      nextText = lineText.replace(/^(\s*[-*+]\s+)\[ \]\s*/, "$1[x] ");
+    } else if (/^(\s*[-*+]\s+)\[[xX]\]\s*/.test(lineText)) {
+      nextText = lineText.replace(/^(\s*[-*+]\s+)\[[xX]\]\s*/, "$1[ ] ");
+    } else if (/^(\s*[-*+]\s+)/.test(lineText)) {
+      nextText = lineText.replace(/^(\s*[-*+]\s+)/, "$1[ ] ");
+    } else if (/^(\s*)/.test(lineText)) {
+      nextText = lineText.replace(/^(\s*)/, "$1- [ ] ");
+    }
+
+    if (nextText !== null) {
+      const diff = nextText.length - lineText.length;
+      return {
+        changes: { from: line.from, to: line.to, insert: nextText },
+        range: EditorSelection.cursor(Math.max(line.from, range.from + diff)),
+      };
+    }
+    return { range };
+  });
+  view.dispatch(changes);
+  return true;
+}
 
 function getLineStartIndex(text, lineNumber) {
   const targetLine = Math.max(lineNumber, 1);
@@ -759,6 +815,37 @@ export const MarkdownEditor = memo(function MarkdownEditorContent({
       },
     }),
     keymap.of([
+      indentWithTab,
+      {
+        key: "Mod-b",
+        run(view) {
+          return wrapSelection(view, "**", "**", "bold text");
+        },
+      },
+      {
+        key: "Mod-i",
+        run(view) {
+          return wrapSelection(view, "_", "_", "italic text");
+        },
+      },
+      {
+        key: "Mod-e",
+        run(view) {
+          return wrapSelection(view, "`", "`", "code");
+        },
+      },
+      {
+        key: "Mod-Shift-x",
+        run(view) {
+          return wrapSelection(view, "~~", "~~", "strikethrough");
+        },
+      },
+      {
+        key: "Mod-Enter",
+        run(view) {
+          return toggleTaskCheckbox(view);
+        },
+      },
       {
         key: "Mod-f",
         run() {

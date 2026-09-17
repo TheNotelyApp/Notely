@@ -27,13 +27,13 @@ Use a single `# H1` per note (the note title). Start sections at `## H2`. Screen
 
 ## Text Formatting
 
-| Format | Syntax | Result |
-|---|---|---|
-| Bold | `**bold**` or `__bold__` | **bold** |
-| Italic | `*italic*` or `_italic_` | *italic* |
-| Bold + Italic | `***both***` | ***both*** |
-| Strikethrough | `~~strike~~` | ~~strike~~ |
-| Inline code | `` `code` `` | `code` |
+| Format | Syntax | Shortcut | Result |
+|---|---|---|---|
+| Bold | `**bold**` or `__bold__` | `Ctrl/Cmd + B` | **bold** |
+| Italic | `*italic*` or `_italic_` | `Ctrl/Cmd + I` | *italic* |
+| Bold + Italic | `***both***` | — | ***both*** |
+| Strikethrough | `~~strike~~` | `Ctrl/Cmd + Shift + X` | ~~strike~~ |
+| Inline code | `` `code` `` | `Ctrl/Cmd + E` | `code` |
 
 ## Paragraphs and Line Breaks
 
@@ -80,7 +80,7 @@ Line two
 - [ ] Another open task
 ```
 
-Rendered task checkboxes are interactive in Preview mode — click to toggle state (changes are written back to the Markdown source).
+Rendered task checkboxes are interactive in Preview mode — click to toggle state (changes are written back to the Markdown source). In the editor, press `Ctrl/Cmd + Enter` on any line to toggle or add a task checkbox.
 
 ## Links
 

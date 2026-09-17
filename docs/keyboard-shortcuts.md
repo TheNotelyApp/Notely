@@ -18,9 +18,11 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Open Keyboard Shortcuts | `Ctrl/Cmd + /` | Global |
 | Open Help Center | `F1` | Global |
 | Open Markdown Guide | `Ctrl/Cmd + M` | Global |
+| Open Settings | `Ctrl/Cmd + ,` | Global |
 | Open Workspace | `Ctrl/Cmd + Shift + N` | Workspace |
 | Open Workspace Activity | `Ctrl/Cmd + Shift + A` | Workspace |
 | Open Workspace Graph | `Ctrl/Cmd + Shift + G` | Workspace |
+| Open Workspace Index | `Ctrl/Cmd + Alt + I` | Workspace |
 | Open P2P Status | `Ctrl/Cmd + Shift + P` | Sync |
 | Switch to Next Tab | `Ctrl + Tab` | Editor |
 | Switch to Previous Tab | `Ctrl + Shift + Tab` | Editor |
@@ -31,12 +33,20 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 |---|---|---|
 | Create New Note | `Ctrl/Cmd + N` | Notes |
 | Save Current Note | `Ctrl/Cmd + S` | Editor |
+| Close Current Tab | `Ctrl/Cmd + W` | Editor |
 | Rename Current Note | `F2` | Editor |
 | Move Note to Removed | `Ctrl/Cmd + Delete` | Editor |
 | Reload Current Note from Disk | `Ctrl/Cmd + Shift + R` | Editor |
 | Back to Notes / Close Dialog | `Esc` | Editor / Dialogs |
 | Undo | `Ctrl/Cmd + Z` | Editor |
 | Redo | `Ctrl/Cmd + Y` or `Ctrl/Cmd + Shift + Z` | Editor |
+| Bold Selection | `Ctrl/Cmd + B` | Editor |
+| Italic Selection | `Ctrl/Cmd + I` | Editor |
+| Inline Code | `Ctrl/Cmd + E` | Editor |
+| Strikethrough Selection | `Ctrl/Cmd + Shift + X` | Editor |
+| Toggle Task Checkbox | `Ctrl/Cmd + Enter` | Editor |
+| Indent Line or Selection | `Tab` | Editor |
+| Outdent Line or Selection | `Shift + Tab` | Editor |
 | Toggle Split Preview | `Ctrl/Cmd + \` | Editor |
 | Switch to Edit Mode | `Ctrl/Cmd + 1` | Editor |
 | Switch to Split Mode | `Ctrl/Cmd + 2` | Editor |
@@ -60,6 +70,7 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Action | Shortcut | Scope / Notes |
 |---|---|---|
 | Open AI Palette | `Ctrl/Cmd + Shift + I` | AI (Document screens) |
+| Open MCP Tools & Capabilities | `Ctrl/Cmd + Shift + M` | AI |
 | Open Downloads & Export History | `Ctrl/Cmd + J` | Global |
 | Open AI Settings | `Ctrl/Cmd + Shift + ,` | AI |
 
@@ -69,6 +80,9 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 |---|---|---|
 | Open Versions / History | `Ctrl/Cmd + Shift + H` | Editor |
 | Export PDF | `Ctrl/Cmd + Shift + E` | Editor |
+| Export Workspace as Zip | `Ctrl/Cmd + Alt + E` | Workspace / Landing |
+| Commit Changes | `Ctrl/Cmd + Alt + K` | Version Control |
+| Move Current Folder to Removed | `Ctrl/Cmd + Shift + Delete` | Landing |
 | Open Note in VS Code | `Ctrl/Cmd + Shift + O` | Editor |
 | Open Website View | `Ctrl/Cmd + Shift + W` | Editor |
 | Capture Screen Area (Windows) | `Ctrl/Cmd + Shift + S` | Media |
@@ -78,4 +92,3 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Landing Tile / Table / Tree View | `Ctrl/Cmd + 1` / `2` / `3` | Landing View |
 | Landing Comfortable / Compact Density | `Ctrl/Cmd + 4` / `5` | Landing View |
 | Open Diagrams & Media Gallery | `Ctrl/Cmd + Alt + M` | Workspace |
-

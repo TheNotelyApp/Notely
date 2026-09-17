@@ -1363,6 +1363,15 @@ export default function App() {
 
   useEffect(() => {
     const handleTabSwitchKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key && e.key.toLowerCase() === "w") {
+        if (activeTabPath) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleCloseTab(activeTabPath);
+        }
+        return;
+      }
+
       if (e.ctrlKey && e.key === "Tab") {
         e.preventDefault();
         e.stopPropagation();
@@ -1385,7 +1394,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handleTabSwitchKeyDown, true);
     return () => window.removeEventListener("keydown", handleTabSwitchKeyDown, true);
-  }, [openTabs, activeTabPath, openDocument]);
+  }, [openTabs, activeTabPath, openDocument, handleCloseTab]);
 
   useEffect(() => {
     function handleCustomSearch(e) {
@@ -1498,6 +1507,13 @@ export default function App() {
 
   useEffect(() => {
     const handleAction = (action) => {
+      if (action === "close-current-tab") {
+        if (activeTabPath) {
+          handleCloseTab(activeTabPath);
+        }
+        return;
+      }
+
       if (action === "toggle-autosave") {
         setAutosaveEnabled((prev) => !prev);
         return;
@@ -2330,6 +2346,7 @@ export default function App() {
     { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
     { id: "reload-workspace", label: "Reload Workspace from Disk", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+R", aliases: "refresh reload workspace disk" },
     { id: "reload-document", label: "Reload Current Note from Disk", group: "Editor", shortcut: "Ctrl/Cmd+Shift+R", disabled: !current, aliases: "refresh reload note file disk" },
+    { id: "close-tab", label: "Close Current Tab", group: "Editor", shortcut: "Ctrl/Cmd+W", disabled: !activeTabPath, aliases: "close tab dismiss exit" },
     { id: "export-workspace-zip", label: "Export Workspace as Zip", group: "Workspace", aliases: "export backup archive zip workspace" },
     { id: "open-export-package", label: "Export Note Package...", group: "Package", aliases: "export note package nly note package backup share" },
     { id: "open-import-package", label: "Import Note Package...", group: "Package", aliases: "import note package nly note package restore open" },
@@ -2634,6 +2651,13 @@ export default function App() {
 
     if (resolvedCommandId === "reload-document") {
       await handleReloadCurrentFromDisk();
+      return;
+    }
+
+    if (resolvedCommandId === "close-tab") {
+      if (activeTabPath) {
+        handleCloseTab(activeTabPath);
+      }
       return;
     }
 
