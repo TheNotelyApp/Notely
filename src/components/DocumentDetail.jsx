@@ -360,6 +360,7 @@ export function DocumentDetail({
   onReloadFromDisk,
   onOpenAllTasks,
   onTransferWorkspace,
+  aiSidebar = null,
 }) {
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
@@ -1280,7 +1281,7 @@ export function DocumentDetail({
       <div 
         ref={workspaceLayoutRef}
         style={workspaceStyle}
-        className={`workspace ${changedOnDisk ? "workspace-disabled" : ""} ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""}`}
+        className={`workspace ${changedOnDisk ? "workspace-disabled" : ""} ${isOutlineEnabled ? "" : "outline-panel-disabled"} ${isOutlineCollapsed ? "outline-panel-collapsed" : ""}${aiSidebar ? " with-ai-chat" : ""}`}
         onKeyDown={(e) => {
           if (changedOnDisk) {
             // Let Ctrl+Shift+R pass through, block all other shortcuts/keys
@@ -1506,6 +1507,7 @@ export function DocumentDetail({
           onJumpToLine={jumpToLine}
           style={hasOutline ? { width: `${outlineWidth}px` } : {}}
         />
+        {aiSidebar}
       </div>
 
 

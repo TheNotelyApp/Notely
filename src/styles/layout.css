@@ -3671,7 +3671,6 @@
   right: 8px;
   height: 2px;
   background: var(--accent-strong, #3b82f6);
-  border-radius: 1px;
   z-index: 10;
   box-shadow: 0 0 4px var(--accent-strong, #3b82f6);
   pointer-events: none;
@@ -3691,7 +3690,6 @@
   right: 8px;
   height: 2px;
   background: var(--accent-strong, #3b82f6);
-  border-radius: 1px;
   z-index: 10;
   box-shadow: 0 0 4px var(--accent-strong, #3b82f6);
   pointer-events: none;
