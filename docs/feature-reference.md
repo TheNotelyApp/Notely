@@ -44,13 +44,16 @@ The landing view includes lightweight workspace overview panels so you can resum
 - Customize the icon and color of any folder or note by right-clicking it and selecting "Customize icon & color..." or from the context menu in the open tabs.
 - Rename and delete notes from list actions.
 
-### Trash Recovery Bin
+### Trash & Recycle Bin
 
-When folders or notes are deleted, they are moved to a temporary Trash Bin instead of being permanently erased immediately. The Trash Bin recovery drawer (`Trash` quick action on the landing view) supports:
+When folders or notes are deleted, they are moved to a temporary Trash Bin (`.notes-app/removed/`) instead of being permanently erased immediately. Notely features a dedicated Recycle Bin on the dashboard rail and a full recovery dialog:
 
-- Browsing deleted files and folders with their deletion timestamps.
-- Restoring items back to their original paths.
-- Permanently emptying the trash bin to free up disk space.
+- **Dashboard Recycle Bin Panel**: Positioned at the bottom of the left dashboard rail, displaying a live badge with the count of currently trashed items.
+- **Drag-to-Trash**: Drag any note card, table row, or tree node directly over the Recycle Bin panel. The panel illuminates in warning red as a visual drop target.
+- **Safe Deletion with Confirmation**: Dropping a note into the Recycle Bin triggers an explicit confirmation modal to prevent accidental loss.
+- **1-Click Undo Toast**: After confirming deletion or moving notes between folders, an instant **Undo** action toast appears.
+- **Trash Recovery Dialog**: Click the Recycle Bin panel (or select `Trash` from landing view actions) to browse deleted notes/folders with their original paths and deletion timestamps.
+- **Restore & Empty**: Restore any deleted item back to its original location in one click, or choose **Empty Trash** to permanently erase items and free up disk space.
 
 ### Copying and moving notes across workspaces and folders
 
