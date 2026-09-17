@@ -809,6 +809,10 @@ function renameDocumentFile(filePath, payload) {
   return documentFileOps.renameDocumentFile(filePath, payload);
 }
 
+function moveDocumentFile(sourcePath, targetFolderPath) {
+  return documentFileOps.moveDocumentFile(sourcePath, targetFolderPath);
+}
+
 function deleteDocumentFile(filePath) {
   return documentFileOps.deleteDocumentFile(filePath);
 }
@@ -1237,6 +1241,7 @@ registerDocumentIpcHandlers(ipcMain, {
   createDocumentInProject,
   createFolderInProject,
   renameDocumentFile,
+  moveDocumentFile,
   deleteDocumentFile,
   deleteFolderInProject,
   parseDocument,

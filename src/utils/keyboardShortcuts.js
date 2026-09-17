@@ -205,11 +205,16 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
   },
   {
     keys: "Ctrl/Cmd+3",
-    action: "Use Comfortable Density",
+    action: "Use Tree View",
     group: "Landing",
   },
   {
     keys: "Ctrl/Cmd+4",
+    action: "Use Comfortable Density",
+    group: "Landing",
+  },
+  {
+    keys: "Ctrl/Cmd+5",
     action: "Use Compact Density",
     group: "Landing",
   },

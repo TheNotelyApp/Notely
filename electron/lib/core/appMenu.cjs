@@ -645,17 +645,24 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
               checked: viewMode === "table",
               click: () => sendMenuAction(win, "view-table")
             },
+            {
+              label: "Tree Notes",
+              accelerator: "CmdOrCtrl+3",
+              type: "checkbox",
+              checked: viewMode === "tree",
+              click: () => sendMenuAction(win, "view-tree")
+            },
             { type: "separator" },
             {
               label: "Comfortable Density",
-              accelerator: "CmdOrCtrl+3",
+              accelerator: "CmdOrCtrl+4",
               type: "checkbox",
               checked: densityMode === "comfortable",
               click: () => sendMenuAction(win, "view-density-comfortable")
             },
             {
               label: "Compact Density",
-              accelerator: "CmdOrCtrl+4",
+              accelerator: "CmdOrCtrl+5",
               type: "checkbox",
               checked: densityMode === "compact",
               click: () => sendMenuAction(win, "view-density-compact")

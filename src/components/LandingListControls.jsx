@@ -1,4 +1,5 @@
 import AppSelect from "./AppSelect";
+import { Grid2X2, Rows3, FolderTree } from "lucide-react";
 
 export function LandingListControls({
   query,
@@ -7,6 +8,8 @@ export function LandingListControls({
   onTypeFilterChange,
   sortBy,
   onSortByChange,
+  viewMode = "tile",
+  onViewModeChange,
   visibleCount,
   totalCount,
   totalFolderCount,
@@ -51,6 +54,72 @@ export function LandingListControls({
           <option value="title-desc">Title (Z-A)</option>
         </AppSelect>
       </label>
+
+      <div className="landing-list-view-modes" style={{ display: "grid", gap: "4px" }}>
+        <span style={{ fontSize: "var(--font-size-caption)", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-subtle)" }}>View</span>
+        <div className="segmented-view-control" style={{ display: "flex", background: "var(--surface-bg)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)", padding: "2px", height: "32px", boxSizing: "border-box" }}>
+          <button
+            type="button"
+            className={`view-mode-btn ${viewMode === "tile" ? "active" : ""}`}
+            onClick={() => onViewModeChange?.("tile")}
+            data-tooltip="Tile View"
+            aria-label="Tile View"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 8px",
+              background: viewMode === "tile" ? "var(--surface-active, rgba(255,255,255,0.12))" : "transparent",
+              color: viewMode === "tile" ? "var(--accent-strong, #3b82f6)" : "var(--text-muted)",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              cursor: "pointer",
+            }}
+          >
+            <Grid2X2 size={14} />
+          </button>
+          <button
+            type="button"
+            className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
+            onClick={() => onViewModeChange?.("table")}
+            data-tooltip="Table View"
+            aria-label="Table View"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 8px",
+              background: viewMode === "table" ? "var(--surface-active, rgba(255,255,255,0.12))" : "transparent",
+              color: viewMode === "table" ? "var(--accent-strong, #3b82f6)" : "var(--text-muted)",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              cursor: "pointer",
+            }}
+          >
+            <Rows3 size={14} />
+          </button>
+          <button
+            type="button"
+            className={`view-mode-btn ${viewMode === "tree" ? "active" : ""}`}
+            onClick={() => onViewModeChange?.("tree")}
+            data-tooltip="Tree View"
+            aria-label="Tree View"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 8px",
+              background: viewMode === "tree" ? "var(--surface-active, rgba(255,255,255,0.12))" : "transparent",
+              color: viewMode === "tree" ? "var(--accent-strong, #3b82f6)" : "var(--text-muted)",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              cursor: "pointer",
+            }}
+          >
+            <FolderTree size={14} />
+          </button>
+        </div>
+      </div>
 
       <div className="landing-list-count" aria-live="polite">
         <span className="landing-list-count-item">

@@ -1,13 +1,14 @@
 import { formatDate } from "../utils/dateUtils";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { readImage } from "../services/electronService";
+import { readImage, listDocuments } from "../services/electronService";
 import { DocumentEntryActions } from "./DocumentEntryActions";
 import { getDocumentDensityProfile, normalizeDocumentDensity } from "./documentDensityProfiles";
 import { useWorkspaceMetadata } from "../hooks/useWorkspaceMetadata";
 import { getContrastColor } from "../utils/colorUtils";
 import { IconColorPickerModal } from "./IconColorPickerModal";
 import * as LucideIcons from "lucide-react";
+import { useNoteDragDrop } from "../utils/noteDragDrop";
 
 function EntryIcon({ entryType, icon }) {
   const className = `document-kind-icon ${entryType} ${icon ? 'custom-avatar' : ''}`;
@@ -44,6 +45,7 @@ export function DocumentList({
   documents,
   onOpen,
   onRemove,
+  onMoveDocument,
   loading,
   viewMode = "tile",
   density = "comfortable",
@@ -58,6 +60,46 @@ export function DocumentList({
   const [contextMenu, setContextMenu] = useState(null);
   const menuRef = useRef(null);
   const [resolvedPreviewImages, setResolvedPreviewImages] = useState({});
+
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [folderChildren, setFolderChildren] = useState({});
+  const [loadingFolders, setLoadingFolders] = useState({});
+
+  const toggleFolder = useCallback(async (folderPath) => {
+    setExpandedFolders((prev) => {
+      const isCurrentlyExpanded = Boolean(prev[folderPath]);
+      const nextExpanded = !isCurrentlyExpanded;
+
+      if (nextExpanded && !folderChildren[folderPath]) {
+        setLoadingFolders((l) => ({ ...l, [folderPath]: true }));
+        listDocuments(folderPath)
+          .then((children) => {
+            setFolderChildren((fc) => ({ ...fc, [folderPath]: Array.isArray(children) ? children : [] }));
+          })
+          .catch((err) => console.error("Failed to load subfolder documents:", err))
+          .finally(() => setLoadingFolders((l) => ({ ...l, [folderPath]: false })));
+      }
+
+      return { ...prev, [folderPath]: nextExpanded };
+    });
+  }, [folderChildren]);
+
+  const {
+    draggedPath,
+    dragTargetFolder,
+    dropLine,
+    bindDraggableNote,
+    bindFolderDrop,
+  } = useNoteDragDrop({
+    onMove: (sourcePath, targetFolder) => {
+      onMoveDocument?.(sourcePath, targetFolder);
+      setFolderChildren((fc) => {
+        const next = { ...fc };
+        delete next[targetFolder];
+        return next;
+      });
+    },
+  });
   const normalizedDensity = normalizeDocumentDensity(density);
   const densityProfile = getDocumentDensityProfile(normalizedDensity);
   const densityStyle = {
@@ -210,6 +252,185 @@ export function DocumentList({
     return <div className="empty-state">{emptyMessage || "No folders or markdown files found here yet. Create a folder or add a note to get started."}</div>;
   }
 
+  const renderModals = () => (
+    <>
+      {pickerState.isOpen && (
+        <IconColorPickerModal
+          isOpen={true}
+          onClose={() => setPickerState({ isOpen: false, entry: null })}
+          initialIcon={getMetadata(pickerState.entry?.filePath)?.icon}
+          initialColor={getMetadata(pickerState.entry?.filePath)?.color}
+          targetName={pickerState.entry?.title}
+          onSave={(updates) => updateMetadata(pickerState.entry?.filePath, updates)}
+        />
+      )}
+      {contextMenu && createPortal(
+        <div
+          ref={menuRef}
+          className="editor-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          role="menu"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setPickerState({ isOpen: true, entry: contextMenu.entry });
+              setContextMenu(null);
+            }}
+          >
+            <LucideIcons.Palette size={14} /> Customize icon & color...
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onCopyLinkPath?.(contextMenu.entry);
+              setContextMenu(null);
+            }}
+          >
+            <LucideIcons.Link size={14} /> Copy Link Path
+          </button>
+        </div>,
+        document.getElementById('root') || document.body
+      )}
+    </>
+  );
+
+  const renderTreeNode = (entry, depth = 0, parentFolderPath = null) => {
+    const meta = getMetadata(entry.filePath);
+    const isFolder = entry.entryType === "folder";
+    const isExpanded = Boolean(expandedFolders[entry.filePath]);
+    const isLoading = Boolean(loadingFolders[entry.filePath]);
+    const children = folderChildren[entry.filePath] || [];
+    const isTarget = dragTargetFolder === entry.filePath && isFolder;
+    const isDraggingThis = draggedPath === entry.filePath;
+    const isDropLineTop = dropLine?.filePath === entry.filePath && dropLine?.position === "top";
+    const isDropLineBottom = dropLine?.filePath === entry.filePath && dropLine?.position === "bottom";
+    const dragDropProps = isFolder
+      ? bindFolderDrop(entry, { onExpand: toggleFolder, isExpanded })
+      : bindDraggableNote(entry, { parentFolderPath });
+
+    return (
+      <div key={entry.filePath} style={{ display: "flex", flexDirection: "column" }}>
+        <div
+          className={`document-tree-row${isTarget ? " drop-target-active" : ""}${isDropLineTop ? " drop-line-top" : ""}${isDropLineBottom ? " drop-line-bottom" : ""}${isDraggingThis ? " is-dragging" : ""}${meta.color ? " custom-colored-item" : ""}`}
+          style={{
+            paddingLeft: `${12 + depth * 20}px`,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            height: "36px",
+            borderRadius: "var(--radius-md)",
+            cursor: "pointer",
+            background: meta.color ? "var(--custom-bg-color)" : undefined,
+            color: meta.color ? "var(--custom-text-color)" : undefined,
+            ...(meta.color ? {
+              "--custom-bg-color": meta.color,
+              "--custom-text-color": getContrastColor(meta.color)
+            } : {})
+          }}
+          {...dragDropProps}
+          onClick={() => {
+            if (isFolder) {
+              toggleFolder(entry.filePath);
+            } else {
+              onOpen(entry);
+            }
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setContextMenu({ x: e.clientX, y: e.clientY, entry });
+          }}
+        >
+          {isFolder ? (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFolder(entry.filePath);
+              }}
+              style={{ display: "inline-flex", cursor: "pointer", opacity: 0.7, padding: "2px" }}
+              aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
+            >
+              {isExpanded ? <LucideIcons.ChevronDown size={14} /> : <LucideIcons.ChevronRight size={14} />}
+            </span>
+          ) : (
+            <span style={{ width: "18px", display: "inline-block" }} />
+          )}
+
+          <EntryIcon entryType={entry.entryType} icon={meta.icon} color={meta.color} />
+
+          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: isFolder ? 600 : 400 }}>
+            {entry.title}
+          </span>
+
+          <span style={{ width: "160px", fontSize: "11px", opacity: 0.6, flexShrink: 0 }}>
+            {formatDate(entry.updatedAt)}
+          </span>
+
+          <span style={{ width: "80px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+            <DocumentEntryActions
+              entry={entry}
+              isFavorite={favoriteSet.has(entry.filePath)}
+              onToggleFavorite={onToggleFavorite}
+              onRemove={onRemove}
+              showFavorite={!isFolder}
+            />
+          </span>
+        </div>
+
+        {isFolder && isExpanded && (
+          <div
+            style={{ display: "flex", flexDirection: "column" }}
+            {...bindFolderDrop(entry, { onExpand: toggleFolder, isExpanded: true })}
+          >
+            {isLoading ? (
+              <div style={{ paddingLeft: `${36 + depth * 20}px`, fontSize: "11px", opacity: 0.5, padding: "4px 0" }}>
+                Loading folder…
+              </div>
+            ) : children.length === 0 ? (
+              <div style={{ paddingLeft: `${36 + depth * 20}px`, fontSize: "11px", opacity: 0.5, padding: "8px 0" }}>
+                (Empty folder)
+              </div>
+            ) : (
+              children.map((child) => renderTreeNode(child, depth + 1, entry.filePath))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (viewMode === "tree") {
+    return (
+      <div
+        className={`document-tree-wrap ${normalizedDensity}`}
+        style={densityStyle}
+        data-density={normalizedDensity}
+      >
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "6px 12px",
+          borderBottom: "1px solid var(--border-soft)",
+          fontSize: "var(--font-size-caption, 11px)",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+          color: "var(--text-subtle)",
+          marginBottom: "4px"
+        }}>
+          <span style={{ flex: 1 }}>Name</span>
+          <span style={{ width: "160px" }}>Updated</span>
+          <span style={{ width: "80px", textAlign: "right" }}>Actions</span>
+        </div>
+        {documents.map((doc) => renderTreeNode(doc, 0))}
+        {renderModals()}
+      </div>
+    );
+  }
+
   if (viewMode === "table") {
     return (
       <div
@@ -230,14 +451,24 @@ export function DocumentList({
           <tbody>
             {documents.map((doc) => {
               const meta = getMetadata(doc.filePath);
+              const isFolder = doc.entryType === "folder";
+              const isTarget = dragTargetFolder === doc.filePath && isFolder;
+              const isDraggingThis = draggedPath === doc.filePath;
+              const isDropLineTop = dropLine?.filePath === doc.filePath && dropLine?.position === "top";
+              const isDropLineBottom = dropLine?.filePath === doc.filePath && dropLine?.position === "bottom";
+              const dragDropProps = isFolder
+                ? bindFolderDrop(doc, { onExpand: toggleFolder, isExpanded: Boolean(expandedFolders[doc.filePath]) })
+                : bindDraggableNote(doc);
+
               return (
               <tr
                 key={doc.filePath}
-                className={meta.color ? "custom-colored-item" : ""}
+                className={`${meta.color ? "custom-colored-item" : ""}${isTarget ? " drop-target-active" : ""}${isDropLineTop ? " drop-line-top" : ""}${isDropLineBottom ? " drop-line-bottom" : ""}${isDraggingThis ? " is-dragging" : ""}`}
                 style={meta.color ? {
                   "--custom-bg-color": meta.color,
                   "--custom-text-color": getContrastColor(meta.color)
                 } : {}}
+                {...dragDropProps}
                 onClick={() => onOpen(doc)}
                 onDoubleClick={() => onOpen(doc)}
                 onContextMenu={(e) => {
@@ -300,46 +531,7 @@ export function DocumentList({
             )})}
           </tbody>
         </table>
-        {pickerState.isOpen && (
-          <IconColorPickerModal
-            isOpen={true}
-            onClose={() => setPickerState({ isOpen: false, entry: null })}
-            initialIcon={getMetadata(pickerState.entry?.filePath)?.icon}
-            initialColor={getMetadata(pickerState.entry?.filePath)?.color}
-            targetName={pickerState.entry?.title}
-            onSave={(updates) => updateMetadata(pickerState.entry?.filePath, updates)}
-          />
-        )}
-        {contextMenu && createPortal(
-          <div
-            ref={menuRef}
-            className="editor-context-menu"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            role="menu"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setPickerState({ isOpen: true, entry: contextMenu.entry });
-                setContextMenu(null);
-              }}
-            >
-              <LucideIcons.Palette size={14} /> Customize icon & color...
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onCopyLinkPath?.(contextMenu.entry);
-                setContextMenu(null);
-              }}
-            >
-              <LucideIcons.Link size={14} /> Copy Link Path
-            </button>
-          </div>,
-          document.body
-        )}
+        {renderModals()}
       </div>
     );
   }
@@ -353,6 +545,13 @@ export function DocumentList({
     >
       {documents.map((doc) => {
         const meta = getMetadata(doc.filePath);
+        const isFolder = doc.entryType === "folder";
+        const isTarget = dragTargetFolder === doc.filePath;
+        const isDraggingThis = draggedPath === doc.filePath;
+        const dragDropProps = isFolder
+          ? bindFolderDrop(doc, { onExpand: toggleFolder, isExpanded: Boolean(expandedFolders[doc.filePath]) })
+          : bindDraggableNote(doc);
+
         const previewTiles = (doc.previewImages || []).slice(0, 4).map((image, index) => {
           const key = `${doc.filePath}:${index}:${image.sourceFilePath || doc.filePath}:${image.path}`;
           const resolved = resolvedPreviewImages[key];
@@ -362,12 +561,13 @@ export function DocumentList({
 
         return (
           <button 
-            className={`document-card${meta.color ? " custom-colored-item" : ""}`} 
+            className={`document-card${meta.color ? " custom-colored-item" : ""}${isTarget ? " drop-target-active" : ""}${isDraggingThis ? " is-dragging" : ""}`} 
             key={doc.filePath} 
             style={meta.color ? {
               "--custom-bg-color": meta.color,
               "--custom-text-color": getContrastColor(meta.color)
             } : {}}
+            {...dragDropProps}
             onClick={() => onOpen(doc)} 
             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, entry: doc }); }}>
             <span className="document-card-header">
@@ -399,46 +599,7 @@ export function DocumentList({
           </button>
         );
       })}
-      {pickerState.isOpen && (
-        <IconColorPickerModal
-          isOpen={true}
-          onClose={() => setPickerState({ isOpen: false, entry: null })}
-          initialIcon={getMetadata(pickerState.entry?.filePath)?.icon}
-          initialColor={getMetadata(pickerState.entry?.filePath)?.color}
-          targetName={pickerState.entry?.title}
-          onSave={(updates) => updateMetadata(pickerState.entry?.filePath, updates)}
-        />
-      )}
-      {contextMenu && createPortal(
-        <div
-          ref={menuRef}
-          className="editor-context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          role="menu"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setPickerState({ isOpen: true, entry: contextMenu.entry });
-              setContextMenu(null);
-            }}
-          >
-            <LucideIcons.Palette size={14} /> Customize icon & color...
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onCopyLinkPath?.(contextMenu.entry);
-              setContextMenu(null);
-            }}
-          >
-            <LucideIcons.Link size={14} /> Copy Link Path
-          </button>
-        </div>,
-        document.getElementById('root') || document.body
-      )}
+      {renderModals()}
     </div>
   );
 }

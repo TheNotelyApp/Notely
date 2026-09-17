@@ -3,6 +3,7 @@ import { useMemo, useEffect, useState } from "react";
 import { formatDate } from "../utils/dateUtils";
 import { extractOpenTasksFromDocuments, getTaskCountsFromDocuments } from "../utils/taskUtils";
 import { listTasks } from "../services/electronService";
+import { useNoteDragDrop } from "../utils/noteDragDrop";
 
 const DASHBOARD_SECTION_LIMIT = 3;
 
@@ -27,11 +28,22 @@ function getDisplayName(filePath) {
   return getCleanFilename(filePath);
 }
 
-export function DashboardPanels({ documents, taskDocuments = documents, loading, onOpen, onOpenTask, onOpenAllTasks, onOpenRecentNotes, onOpenFavorites, onAction, continueNotes = [], favorites = [], layout = "bar" }) {
+export function DashboardPanels({ documents, taskDocuments = documents, loading, onOpen, onOpenTask, onOpenAllTasks, onOpenRecentNotes, onOpenFavorites, onAction, continueNotes = [], favorites = [], layout = "bar", onDropToTrash }) {
   const safeDocuments = useMemo(() => (Array.isArray(documents) ? documents : []), [documents]);
   const safeTaskDocuments = useMemo(() => (Array.isArray(taskDocuments) ? taskDocuments : []), [taskDocuments]);
   const safeContinueNotes = useMemo(() => (Array.isArray(continueNotes) ? continueNotes : []), [continueNotes]);
   const safeFavorites = useMemo(() => (Array.isArray(favorites) ? favorites : []), [favorites]);
+
+  const [trashCount, setTrashCount] = useState(0);
+  const { isDragOverTrash, bindTrashDrop } = useNoteDragDrop({ onTrash: onDropToTrash });
+
+  useEffect(() => {
+    if (window.notesApi?.trashList) {
+      window.notesApi.trashList()
+        .then((list) => setTrashCount(Array.isArray(list) ? list.length : 0))
+        .catch(() => setTrashCount(0));
+    }
+  }, [safeDocuments]);
 
   const recentNotes = getRecentNotes(safeDocuments);
   const continueCandidates = safeContinueNotes
@@ -255,6 +267,36 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
           ) : (
             <p className="dashboard-empty">No open tasks. Great work!</p>
           )}
+        </article>
+
+        <article
+          className={`dashboard-panel trash-panel ${isDragOverTrash ? "is-drag-over-trash" : ""}`}
+          style={{
+            marginTop: "auto",
+            border: isDragOverTrash ? "1.5px dashed var(--danger, #ef4444)" : "1px solid var(--border-soft)",
+            background: isDragOverTrash ? "var(--danger-subtle, rgba(239, 68, 68, 0.15))" : "var(--surface-card)",
+            borderRadius: "var(--radius-md)",
+            padding: "8px 10px",
+            transition: "all 0.15s ease",
+            cursor: "pointer",
+          }}
+          {...bindTrashDrop()}
+          onClick={() => onAction("trash")}
+          data-tooltip="Click to view Trash, or drag notes here to delete"
+          aria-label="Recycle Bin"
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: isDragOverTrash ? "var(--danger, #ef4444)" : "var(--text-muted)" }}>
+              <Trash2 size={14} style={{ color: isDragOverTrash ? "var(--danger, #ef4444)" : "inherit" }} />
+              <span style={{ fontSize: "12px", fontWeight: "600" }}>Recycle Bin</span>
+            </div>
+            <span style={{ fontSize: "11px", opacity: 0.7, background: "var(--surface-bg)", padding: "1px 6px", borderRadius: "10px", fontWeight: "600" }}>
+              {trashCount}
+            </span>
+          </div>
+          <div style={{ fontSize: "10px", opacity: 0.5, marginTop: "4px" }}>
+            Drag notes here to remove
+          </div>
         </article>
       </section>
     );

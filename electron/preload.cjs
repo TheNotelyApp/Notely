@@ -208,6 +208,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   createFolder: (payload) => ipcRenderer.invoke("folders:create", payload),
   deleteFolder: (payload) => ipcRenderer.invoke("folders:delete", payload),
   renameDocument: (payload) => ipcRenderer.invoke("documents:rename", payload),
+  moveDocument: (payload) => ipcRenderer.invoke("documents:move", payload),
   deleteDocument: (payload) => ipcRenderer.invoke("documents:delete", payload),
   transferDocumentWorkspace: (payload) => ipcRenderer.invoke("notes:transfer-workspace", payload),
   readDocument: (filePath) => ipcRenderer.invoke("documents:read", filePath),

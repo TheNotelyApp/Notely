@@ -4,6 +4,7 @@ import { DashboardPanels } from "../DashboardPanels";
 import { LandingListControls } from "../LandingListControls";
 import { DocumentList } from "../DocumentList";
 import { useWorkspaceScopedStorage } from "../../hooks/useWorkspaceScopedStorage";
+import { useNoteDragDrop } from "../../utils/noteDragDrop";
 
 export function LandingView({
   isRootLandingView,
@@ -32,9 +33,11 @@ export function LandingView({
   folderCount,
   noteCount,
   notesViewMode,
+  setNotesViewMode,
   notesDensityMode,
   onToggleFavorite,
   onRemoveListEntry,
+  onMoveDocument,
   landingTitle,
   breadcrumbSegments,
   onLandingNavigateTo,
@@ -56,6 +59,8 @@ export function LandingView({
       return Number.isNaN(parsed) ? 380 : parsed;
     },
   });
+
+  const { bindBreadcrumbDrop } = useNoteDragDrop({ onMove: onMoveDocument });
 
   const startAiResize = (pointerDownEvent) => {
     pointerDownEvent.preventDefault();
@@ -169,6 +174,7 @@ export function LandingView({
             continueNotes={continueDashboardNotes}
             favorites={favoriteNotes}
             layout="rail"
+            onDropToTrash={onRemoveListEntry}
           />
         </aside>
         <div
@@ -194,18 +200,20 @@ export function LandingView({
                 <nav className="landing-path" aria-label="Folder path">
                   {breadcrumbSegments.map((segment, index) => {
                     const isLast = index === breadcrumbSegments.length - 1;
+                    const dropProps = !isLast ? bindBreadcrumbDrop(segment) : {};
                     return (
                       <span className="landing-path-part" key={segment.path}>
                         <button
                           className={`landing-path-segment${isLast ? " active" : ""}`}
                           type="button"
                           disabled={isLast}
-                          data-tooltip={segment.label}
+                          data-tooltip={!isLast ? `Drop note here to move to ${segment.label}` : segment.label}
                           onClick={() => {
                             if (!isLast) {
                               void onLandingNavigateTo(segment.path);
                             }
                           }}
+                          {...dropProps}
                         >
                           {segment.label}
                         </button>
@@ -224,6 +232,8 @@ export function LandingView({
             onTypeFilterChange={setLandingEntryFilter}
             sortBy={landingSortMode}
             onSortByChange={setLandingSortMode}
+            viewMode={notesViewMode}
+            onViewModeChange={setNotesViewMode}
             visibleCount={visibleDocuments.length}
             totalCount={documents.length}
             totalFolderCount={folderCount}
@@ -235,6 +245,7 @@ export function LandingView({
             documents={visibleDocuments}
             onOpen={onOpenListItem}
             onRemove={onRemoveListEntry}
+            onMoveDocument={onMoveDocument}
             loading={loading}
             viewMode={notesViewMode}
             density={notesDensityMode}

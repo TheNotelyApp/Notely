@@ -15,6 +15,7 @@ import {
   markDocumentOpened,
   readDocument,
   renameDocument as renameDocumentApi,
+  moveDocument as moveDocumentApi,
   saveDocument as saveDocumentApi,
   setNotesRootSetting,
   revealWorkspaceInExplorer,
@@ -710,6 +711,76 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     return false;
   }
 
+  const handleMoveDocument = useCallback(
+    async (sourceFilePath, targetFolderPath) => {
+      if (!sourceFilePath || !targetFolderPath) return null;
+      const normalizedSource = normalizePathValue(sourceFilePath);
+      const normalizedTarget = normalizePathValue(targetFolderPath);
+      if (!normalizedSource || !normalizedTarget) return null;
+
+      try {
+        const result = await moveDocumentApi(normalizedSource, normalizedTarget);
+        if (result?.moved) {
+          const originalFolder = normalizedSource.replace(/[\\/][^\\/]+$/, "");
+          const noteTitle = result.title || "Note";
+
+          setOpenTabs((prev) =>
+            prev.map((p) => (p === normalizedSource ? result.targetFilePath : p))
+          );
+          if (activeTabPath === normalizedSource) {
+            setActiveTabPath(result.targetFilePath);
+          }
+          if (current?.filePath === normalizedSource) {
+            setCurrent((prev) =>
+              prev ? { ...prev, filePath: result.targetFilePath, title: result.title } : null
+            );
+          }
+
+          const basePath = landingFolderPath || activeProject?.rootPath;
+          setDocuments(await listDocuments(basePath));
+
+          notify(
+            `Moved "${noteTitle}" successfully.`,
+            "success",
+            {
+              label: "Undo",
+              onClick: async () => {
+                try {
+                  const undoResult = await moveDocumentApi(result.targetFilePath, originalFolder);
+                  if (undoResult?.moved) {
+                    setOpenTabs((prev) =>
+                      prev.map((p) => (p === result.targetFilePath ? undoResult.targetFilePath : p))
+                    );
+                    if (activeTabPath === result.targetFilePath) {
+                      setActiveTabPath(undoResult.targetFilePath);
+                    }
+                    if (current?.filePath === result.targetFilePath) {
+                      setCurrent((prev) =>
+                        prev ? { ...prev, filePath: undoResult.targetFilePath, title: undoResult.title } : null
+                      );
+                    }
+                    setDocuments(await listDocuments(basePath));
+                    notify(`Restored "${noteTitle}" to original folder.`, "info");
+                  }
+                } catch (undoErr) {
+                  console.error("Undo move failed:", undoErr);
+                  notify(undoErr?.message || "Failed to undo move.", "error");
+                }
+              },
+            }
+          );
+          return result;
+        }
+        return null;
+      } catch (err) {
+        console.error("Move document failed:", err);
+        notify(err?.message || "Failed to move document.", "error");
+        return null;
+      }
+    },
+    [notify, activeTabPath, current, landingFolderPath, activeProject, setOpenTabs, setActiveTabPath, setCurrent, setDocuments]
+  );
+
   async function handleCreateNote() {
     const title = newNoteTitle.trim();
     if (!title) {
@@ -1341,6 +1412,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     handleDeleteCurrentDocument,
     handleDeleteCurrentFolder,
     handleRemoveListEntry,
+    handleMoveDocument,
     handleCreateNote,
     handleCreateFolder,
     handleOpenWorkspacePicker,

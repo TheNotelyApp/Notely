@@ -17,6 +17,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     createDocumentInProject,
     createFolderInProject,
     renameDocumentFile,
+    moveDocumentFile,
     deleteDocumentFile,
     deleteFolderInProject,
     parseDocument,
@@ -168,6 +169,22 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       console.error("[documentIpc] Failed to trigger AI onNoteRename:", aiErr.message);
     }
     return renamed;
+  });
+
+  registerTrustedHandler("documents:move", (_event, payload) => {
+    const sourceFilePath = payload?.sourceFilePath || payload?.filePath;
+    const targetFolderPath = payload?.targetFolderPath;
+    const moved = moveDocumentFile(sourceFilePath, targetFolderPath);
+    if (moved?.moved) {
+      dashboardCache?.renameEntry?.(sourceFilePath, { filePath: moved.targetFilePath, title: moved.title });
+      try {
+        const { aiService } = require("../../../ai/core/AIService.js");
+        aiService.onNoteRename(sourceFilePath, moved.targetFilePath);
+      } catch (aiErr) {
+        console.error("[documentIpc] Failed to trigger AI onNoteRename on move:", aiErr.message);
+      }
+    }
+    return moved;
   });
 
   registerTrustedHandler("notes:transfer-workspace", (_event, payload) => {

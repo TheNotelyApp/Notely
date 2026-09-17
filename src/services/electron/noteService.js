@@ -58,6 +58,14 @@ export async function renameDocument(filePath, title) {
   return api.renameDocument({ filePath, title });
 }
 
+export async function moveDocument(sourceFilePath, targetFolderPath) {
+  const api = getNotesApi();
+  if (typeof api.moveDocument !== "function") {
+    throw new Error("Move note action unavailable. Please restart the app.");
+  }
+  return api.moveDocument({ sourceFilePath, targetFolderPath });
+}
+
 export async function deleteDocument(filePath) {
   const api = getNotesApi();
   if (typeof api.deleteDocument !== "function") {

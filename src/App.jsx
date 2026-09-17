@@ -129,7 +129,7 @@ function normalizeLandingListPrefs(rawValue) {
 }
 
 function normalizeNotesViewMode(rawValue) {
-  return rawValue === "table" ? "table" : "tile";
+  return ["table", "tree"].includes(rawValue) ? rawValue : "tile";
 }
 
 function normalizeEditorMode(rawValue) {
@@ -446,6 +446,7 @@ export default function App() {
     handleDeleteCurrentDocument,
     handleDeleteCurrentFolder,
     handleRemoveListEntry,
+    handleMoveDocument,
     handleCreateNote,
     handleCreateFolder,
     handleOpenWorkspacePicker,
@@ -1817,6 +1818,11 @@ export default function App() {
         return;
       }
 
+      if (action === "view-tree") {
+        setNotesViewMode("tree");
+        return;
+      }
+
       if (action === "view-density-comfortable") {
         setNotesDensityMode("comfortable");
         return;
@@ -2349,9 +2355,9 @@ export default function App() {
     { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
     {
       id: "toggle-view-mode",
-      label: notesViewMode === "tile" ? "Switch to Table View" : "Switch to Tile View",
+      label: notesViewMode === "tile" ? "Switch to Table View" : notesViewMode === "table" ? "Switch to Tree View" : "Switch to Tile View",
       group: "View",
-      aliases: "toggle list layout",
+      aliases: "toggle list layout tree",
     },
     {
       id: "set-view-tile",
@@ -2366,6 +2372,13 @@ export default function App() {
       group: "View",
       disabled: notesViewMode === "table",
       aliases: "rows list table",
+    },
+    {
+      id: "set-view-tree",
+      label: "Use Tree View",
+      group: "View",
+      disabled: notesViewMode === "tree",
+      aliases: "tree hierarchy folders folder-tree",
     },
     {
       id: "set-density-comfortable",
@@ -2791,7 +2804,7 @@ export default function App() {
     }
 
     if (resolvedCommandId === "toggle-view-mode") {
-      setNotesViewMode((value) => (value === "tile" ? "table" : "tile"));
+      setNotesViewMode((value) => (value === "tile" ? "table" : value === "table" ? "tree" : "tile"));
       return;
     }
 
@@ -2802,6 +2815,11 @@ export default function App() {
 
     if (resolvedCommandId === "set-view-table") {
       setNotesViewMode("table");
+      return;
+    }
+
+    if (resolvedCommandId === "set-view-tree") {
+      setNotesViewMode("tree");
       return;
     }
 
@@ -3187,9 +3205,11 @@ export default function App() {
             folderCount={folderCount}
             noteCount={noteCount}
             notesViewMode={notesViewMode}
+            setNotesViewMode={setNotesViewMode}
             density={notesDensityMode}
             onToggleFavorite={handleToggleFavorite}
             onRemoveListEntry={handleRemoveListEntry}
+            onMoveDocument={handleMoveDocument}
             landingTitle={landingTitle}
             breadcrumbSegments={breadcrumbSegments}
             onLandingNavigateTo={handleLandingNavigateTo}

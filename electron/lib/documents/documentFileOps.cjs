@@ -205,10 +205,62 @@ function createDocumentFileOps(deps) {
     };
   }
 
+  function moveDocumentFile(sourcePath, targetFolderPath) {
+    const resolvedSource = path.resolve(String(sourcePath || ""));
+    const resolvedTargetFolder = path.resolve(String(targetFolderPath || ""));
+    const notesRoot = getNotesRoot();
+
+    if (!filePathWithin(notesRoot, resolvedSource) || path.extname(resolvedSource).toLowerCase() !== ".md") {
+      throw new Error("Invalid document source path.");
+    }
+    if (!filePathWithin(notesRoot, resolvedTargetFolder)) {
+      throw new Error("Invalid target folder path.");
+    }
+    if (!fs.existsSync(resolvedSource)) {
+      throw new Error("Source document does not exist.");
+    }
+    if (!fs.existsSync(resolvedTargetFolder) || !fs.statSync(resolvedTargetFolder).isDirectory()) {
+      throw new Error("Target folder does not exist.");
+    }
+
+    const fileName = path.basename(resolvedSource);
+    let targetFilePath = path.join(resolvedTargetFolder, fileName);
+
+    if (resolvedSource.toLowerCase() === targetFilePath.toLowerCase()) {
+      return {
+        sourcePath: resolvedSource,
+        targetFilePath,
+        moved: false,
+      };
+    }
+
+    if (fs.existsSync(targetFilePath)) {
+      const ext = path.extname(fileName);
+      const base = path.basename(fileName, ext);
+      let counter = 2;
+      while (fs.existsSync(targetFilePath)) {
+        targetFilePath = path.join(resolvedTargetFolder, `${base}-${counter}${ext}`);
+        counter += 1;
+      }
+    }
+
+    fs.renameSync(resolvedSource, targetFilePath);
+    const metadataStore = getMetadataStore();
+    metadataStore?.renameHistoryFilePath(resolvedSource, targetFilePath);
+
+    return {
+      sourcePath: resolvedSource,
+      targetFilePath,
+      title: path.basename(targetFilePath, path.extname(targetFilePath)),
+      moved: true,
+    };
+  }
+
   return {
     createDocumentInProject,
     createFolderInProject,
     renameDocumentFile,
+    moveDocumentFile,
     deleteDocumentFile,
     deleteFolderInProject,
   };
