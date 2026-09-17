@@ -25,16 +25,22 @@ When you open a workspace, you are greeted by the landing dashboard, which provi
 - **New Note**: Create notes from **File → New Note** (`Ctrl + N`).
 - **New Folder**: Create subfolders inside the sidebar list view to group notes logically.
 - **Rename & Delete**: Available from the note context menu. Deleted files are safely moved to the "Removed" folder pool managed by Notely.
+- **Drag & Drop to Folder**: Drag any note card, table row, or tree node directly into a folder to move it immediately.
+  - **Spring-Loading**: Hovering a dragged note over a collapsed folder for 600ms automatically expands the folder.
+  - **Breadcrumb Navigation Drop**: Drag notes onto any ancestor folder in the breadcrumb path to move them up the directory tree.
+  - **Drop Between Files**: In Tree View, dropping onto or between files displays an accent insertion line and moves the note into that containing folder.
+- **Recycle Bin Panel**: Drag notes directly to the Recycle Bin panel at the bottom of the dashboard rail. A confirmation prompt confirms the action before moving the note to `.notes-app/removed/notes/`, with 1-click **Undo** toast support.
 
 ---
 
 ## 3. Density & Layout Views
 
 Customize how you browse your workspace contents:
-- **Tile View**: Card-style layout showing note content previews.
-- **Table View**: Compact, grid-based list view for scanning large note lists quickly. Double-click any note row in Table View to open it immediately.
-- **Comfortable Density**: Added margins and breathing room.
-- **Compact Density**: High-density display for reviewing many documents at once.
+- **Tile View** (`Ctrl/Cmd + 1`): Card-style layout showing note content previews and media thumbnails.
+- **Table View** (`Ctrl/Cmd + 2`): Compact, grid-based list view for scanning large note lists quickly. Double-click any note row in Table View to open it immediately.
+- **Tree View** (`Ctrl/Cmd + 3`): Hierarchical tree layout displaying nested subfolders and notes with expandable/collapsible nodes, custom icon badges, color accents, and modification dates.
+- **Comfortable Density** (`Ctrl/Cmd + 4`): Added margins and breathing room.
+- **Compact Density** (`Ctrl/Cmd + 5`): High-density display for reviewing many documents at once.
 
 ---
 

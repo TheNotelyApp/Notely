@@ -75,7 +75,7 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Zoom In / Out / Reset | `Ctrl/Cmd + =` / `-` / `0` | View |
 | Open Preview Context Menu | `Shift + F10` / `ContextMenu` | Preview |
 | Image Zoom In / Out / Reset | `+` / `-` / `1` or `0` | Media Preview |
-| Landing Tile / Table View | `Ctrl/Cmd + 1` / `2` | Landing View |
-| Landing Comfortable / Compact Density | `Ctrl/Cmd + 3` / `4` | Landing View |
+| Landing Tile / Table / Tree View | `Ctrl/Cmd + 1` / `2` / `3` | Landing View |
+| Landing Comfortable / Compact Density | `Ctrl/Cmd + 4` / `5` | Landing View |
 | Open Diagrams & Media Gallery | `Ctrl/Cmd + Alt + M` | Workspace |
 

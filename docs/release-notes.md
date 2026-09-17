@@ -1,6 +1,20 @@
 # Release Notes
 
-## 2026-08-19 (latest)
+## 2026-09-17 (latest)
+
+### Tree View & Note Drag-and-Drop Organization
+
+- **Hierarchical Tree View Mode** — Manage notes and nested subfolders from a single tree view alongside Tile and Table layouts (`Ctrl/Cmd + 3`). Supports expandable nodes, custom metadata badges, and file timestamps.
+- **Centralized Drag-and-Drop** — Drag notes directly into folders across all view modes (Grid, Table, Tree).
+- **Spring-Loaded Hover** — Dragging a note over a collapsed folder auto-expands it after 600ms.
+- **Between-File Drops** — Dragging notes between or onto files in Tree View displays an accent insertion indicator and moves the note into that containing folder.
+- **Breadcrumb Navigation Drops** — Drag notes to ancestor folder breadcrumbs to move them up directory levels.
+- **Recycle Bin Panel & Safe Deletion** — Drag notes directly to the Recycle Bin panel on the bottom left rail. Actions prompt a confirmation modal before moving notes to `.notes-app/removed/notes/`, complete with a 1-click **[Undo]** toast.
+- **Updated View Mode Iconography & Menu Integration** — Clean modern icons (`Grid2X2`, `Rows3`, `FolderTree`) with `Dashboard View` native menu items and Command Palette actions.
+
+---
+
+## 2026-08-19
 
 ### Screen Video Recording & Modal Player
 

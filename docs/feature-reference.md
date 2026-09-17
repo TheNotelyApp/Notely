@@ -129,9 +129,10 @@ Use **Workspace -> Workspace Activity** to review recent changes across the acti
 Notely includes view and appearance controls for different working styles:
 
 - **Settings -> Theme**: System, Light, or Dark
-- **View -> Tile Notes / Table Notes**: landing list layout
-- **View -> Comfortable Density / Compact Density**: landing list density
+- **View -> Tile Notes / Table Notes / Tree Notes**: landing list layout (`Ctrl/Cmd + 1` / `2` / `3`)
+- **View -> Comfortable Density / Compact Density**: landing list density (`Ctrl/Cmd + 4` / `5`)
 - **View -> Zoom In / Zoom Out / Reset Zoom**: app-scale display controls
+- **Drag & Drop Organization**: Move notes between folders, across breadcrumb segments, between files in Tree View (with drop-insertion indicator), or into the Recycle Bin panel. Includes 600ms spring-loaded folder expansion on hover and 1-click Undo toast.
 
 ### Note statistics
 
