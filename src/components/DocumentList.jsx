@@ -440,20 +440,23 @@ export function DocumentList({
         <div style={{
           display: "flex",
           alignItems: "center",
-          padding: "6px 12px",
+          padding: "8px 14px",
           borderBottom: "1px solid var(--border-soft)",
+          background: "var(--surface-muted)",
           fontSize: "var(--font-size-caption, 11px)",
           fontWeight: 700,
           textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          color: "var(--text-subtle)",
+          letterSpacing: "0.05em",
+          color: "var(--text-secondary)",
           marginBottom: "4px"
         }}>
           <span style={{ flex: 1 }}>Name</span>
           <span style={{ width: "160px" }}>Updated</span>
           <span style={{ width: "80px", textAlign: "right" }}>Actions</span>
         </div>
-        {documents.map((doc) => renderTreeNode(doc, 0))}
+        <div style={{ padding: "0 4px 6px 4px" }}>
+          {documents.map((doc) => renderTreeNode(doc, 0))}
+        </div>
         {renderModals()}
       </div>
     );

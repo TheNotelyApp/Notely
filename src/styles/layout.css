@@ -3652,6 +3652,12 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  background: var(--surface-bg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .document-tree-row {
@@ -3667,7 +3673,7 @@
 }
 
 .document-tree-row:hover {
-  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+  background: var(--surface-muted);
 }
 
 .document-tree-row.drop-line-top,
