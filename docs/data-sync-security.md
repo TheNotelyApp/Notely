@@ -1,3 +1,10 @@
+---
+title: Data & Sync Security
+description: Security, storage layout, P2P encryption, and data protection guidelines for Notely workspaces.
+keywords: data, security, sync, p2p, encryption, local storage, notes-app
+category: Sync
+---
+
 # Data & Sync
 
 This guide explains how Notely stores your data and how to keep work safe when collaborating.

@@ -1,3 +1,10 @@
+---
+title: Knowledge Graph Generation Engine
+description: Comprehensive architecture of Notely's offline 8-stage Knowledge Graph generation engine, GLiNER2 neural extraction, and SQLite GraphDB.
+keywords: knowledge graph, gliner2, graphdb, neural extraction, concept deduplication, sqlite, relations
+category: AI
+---
+
 # Knowledge Graph Generation Engine
 
 Notely features an offline, local-first, AI-powered **8-Stage Knowledge Graph Generation Engine**. It operates without any cloud dependencies, transforming raw Markdown notes, image annotations, and workspace metadata into an interconnected Property Graph using local FP16 ONNX neural models, SQLite vector storage, deterministic domain pattern mining, and hybrid GraphRAG retrieval.

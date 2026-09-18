@@ -1,3 +1,10 @@
+---
+title: Frequently Asked Questions (FAQ)
+description: Common questions about Notely workspaces, offline capability, data storage, Git integration, and sync.
+keywords: faq, questions, offline, storage, workspaces, troubleshooting
+category: Help
+---
+
 # FAQ
 
 ## What is a workspace in Notely?

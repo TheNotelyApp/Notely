@@ -2,14 +2,14 @@
   <img src="assets/icon.png" width="128" alt="Notely Logo" />
   <h1>Notely</h1>
 
-  <a href="https://github.com/WGLabz/Notely/actions">
-    <img src="https://github.com/WGLabz/Notely/actions/workflows/docs.yml/badge.svg" alt="Docs Deploy Status">
+  <a href="https://github.com/TheNotelyApp/Notely/actions">
+    <img src="https://github.com/TheNotelyApp/Notely/actions/workflows/docs.yml/badge.svg" alt="Docs Deploy Status">
   </a>
-  <a href="https://github.com/WGLabz/Notely/actions">
-    <img src="https://github.com/WGLabz/Notely/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+  <a href="https://github.com/TheNotelyApp/Notely/actions">
+    <img src="https://github.com/TheNotelyApp/Notely/actions/workflows/ci.yml/badge.svg" alt="CI Status">
   </a>
-  <a href="https://github.com/WGLabz/Notely/actions">
-    <img src="https://github.com/WGLabz/Notely/actions/workflows/cd.yml/badge.svg" alt="CD Status">
+  <a href="https://github.com/TheNotelyApp/Notely/actions">
+    <img src="https://github.com/TheNotelyApp/Notely/actions/workflows/cd.yml/badge.svg" alt="CD Status">
   </a>
   <img src="https://img.shields.io/badge/version-v0.1.45-blue" alt="Version" />
   <img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-green" alt="License" />
@@ -99,16 +99,14 @@ End-user first run:
 4. Create a note with **File -> New Note**.
 5. Open **Help -> Help Center** or **Help -> Keyboard Shortcuts** if you need guidance.
 
-## In-app Help Center
+## Help & Documentation
 
-Notely includes built-in user documentation in the app menu:
+Notely includes built-in guidance and reference dialogs in the app menu:
 
-- Open **Help -> Help Center** (or press `F1`) to view app usage guidance directly in the app.
-- Open **Help -> Keyboard Shortcuts** for shortcut references.
-- Open **Help -> About Notely** to view a dedicated About dialog with product identity and build information.
-
-The Help Center includes quick start, core features, shortcuts, and storage/versioning notes so users do not need to leave the app to find documentation.
-The Help Center now reads its content directly from the repository `docs/` folder so in-app and repository documentation stay aligned.
+- Open **Help -> Help Center** (or press `F1`) to open the comprehensive [Notely Documentation Portal](https://thenotelyapp.github.io).
+- Open **Help -> Markdown Guide** (`Ctrl/Cmd + M`) for an instant, searchable in-app syntax cheat sheet.
+- Open **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) to view the interactive hotkey reference modal.
+- Open **Help -> About Notely** to view product identity, current version, and build details.
 
 
 

@@ -1,3 +1,10 @@
+---
+title: Top Common Tasks
+description: Quick step-by-step cheatsheet for everyday actions in Notely — workspace management, editing, media, search, and export.
+keywords: tasks, how-to, cheat sheet, quick start, common actions, export, search
+category: Getting Started
+---
+
 # Top Common Tasks
 
 Use this page when you want quick, direct steps.

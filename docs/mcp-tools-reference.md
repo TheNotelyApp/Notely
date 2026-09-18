@@ -92,7 +92,7 @@ Unified visual diagram and whiteboard manager. Reads, creates, and updates Merma
 Workspace intelligence, structure, health, and diagnostics. Returns hierarchical folder trees, knowledge graph relationships, disk storage stats, link integrity audits (broken wikilinks), and recent file activity.
 
 **Parameters:**
-- `operation` (`string`, required): "summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink nodes & edges), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)
+- `operation` (`string`): "summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink nodes & edges), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)
 - `folder` (`string`): Scoped directory for tree, index, or lint operations
 - `maxDepth` (`number`): Maximum folder depth for tree hierarchy (default: 4)
 

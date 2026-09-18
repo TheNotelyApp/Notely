@@ -1,3 +1,10 @@
+---
+title: Troubleshooting Guide
+description: Quick fixes and solutions for common issues in Notely — note visibility, markdown rendering, media, git, and sync.
+keywords: troubleshooting, fix, debug, errors, problems, git issues, preview
+category: Help
+---
+
 # Notely Troubleshooting
 
 Use this page to quickly fix common issues.

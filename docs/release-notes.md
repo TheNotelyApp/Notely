@@ -1,6 +1,24 @@
+---
+title: Release Notes
+description: Chronological changelog of releases, features, bug fixes, and design updates in Notely.
+keywords: release notes, changelog, updates, fonts, tree view, drag and drop, shortcuts
+category: Help
+---
+
 # Release Notes
 
-## 2026-09-17 (latest)
+## 2026-09-18 (latest)
+
+### Selectable Developer Fonts with Persistence
+
+- **Multiple Developer Typefaces (`View → Font`)** — Choose between 5 curated IDE and developer-friendly typefaces: **Inter** (Default), **JetBrains Mono**, **Fira Code**, **Cascadia Code**, and **Source Code Pro**.
+- **Real-Time Cascading Typography** — Font changes cascade immediately across all app labels, navigation bars, buttons, dialogs, status indicators, and controls without requiring an app reload.
+- **Global Configuration Persistence** — User font preference is automatically saved to global application storage and synchronized across open windows via Electron IPC broadcast.
+- **Integrated Access Points** — Switch fonts directly from the native `View → Font` menu submenu, the Command Palette (`Ctrl/Cmd + K`), or the `Settings → General → App Font` dropdown.
+
+---
+
+## 2026-09-17
 
 ### Tree View & Note Drag-and-Drop Organization
 

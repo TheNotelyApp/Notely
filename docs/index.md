@@ -13,13 +13,13 @@ hero:
   actions:
     - theme: brand
       text: 💻 Download for Windows
-      link: https://github.com/WGLabz/notely/releases/latest
+      link: https://github.com/TheNotelyApp/Notely/releases/latest
     - theme: alt
       text: 🚀 Getting Started
       link: /getting-started/
     - theme: alt
-      text: 📚 All Documentation
-      link: /getting-started/
+      text: 📚 User Guide
+      link: /user-guide
 
 features:
   - icon: 📝
@@ -29,8 +29,8 @@ features:
     title: Git Version Control
     details: Native Git integration. Commit, browse history, compare diffs, restore notes, manage branches — all from inside the app.
   - icon: 🤖
-    title: AI Writing Assistant
-    details: AI chat, AI palette actions, semantic search, and relationship graph powered by your choice of AI provider.
+    title: AI & Knowledge Graph
+    details: Embedded Model Context Protocol (MCP) server for external AI agents, local neural Knowledge Graph, and BGE vector search.
   - icon: 🔍
     title: Powerful Search
     details: Global search across all notes with regex support, code-block filtering, and meaning-based results when AI is configured.

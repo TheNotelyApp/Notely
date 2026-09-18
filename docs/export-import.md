@@ -1,3 +1,10 @@
+---
+title: Note Packages (.note)
+description: Guide to packaging, encrypting, sharing, and importing notes and linked assets using Notely .note bundles.
+keywords: export, import, note packages, .note, encryption, bundles, asset sharing
+category: Export & Import
+---
+
 # Export / Import Note Package
 
 Notely can package one or more notes — together with all their linked assets — into a single portable `.note` file that can be shared with other Notely users and imported directly into any workspace.

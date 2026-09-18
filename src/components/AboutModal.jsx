@@ -12,7 +12,7 @@ export function AboutModal({ open, onClose, appInfo }) {
 
   const appName = String(appInfo?.appName || "Notely");
   const versionText = buildVersionText(appInfo);
-  const repositoryUrl = "https://github.com/wglabz/notely";
+  const repositoryUrl = "https://github.com/TheNotelyApp/Notely";
 
   return (
     <OverlayDialog open={open} onClose={onClose} ariaLabel="About Notely" cardClassName="about-dialog-card">
@@ -52,7 +52,7 @@ export function AboutModal({ open, onClose, appInfo }) {
                     window.open(repositoryUrl, "_blank", "noopener,noreferrer");
                   }}
                 >
-                  github.com/wglabz/notely
+                  github.com/TheNotelyApp/Notely
                   <ExternalLink size={14} aria-hidden="true" />
                 </a>
               </p>

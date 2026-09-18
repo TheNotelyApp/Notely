@@ -44,7 +44,7 @@ export default withMermaid(
       siteTitle: "Notely",
 
       socialLinks: [
-        { icon: "github", link: "https://github.com/WGLabz/notely" },
+        { icon: "github", link: "https://github.com/TheNotelyApp/Notely" },
       ],
 
       nav: [
@@ -56,7 +56,7 @@ export default withMermaid(
         { text: "AI", link: "/ai/" },
         {
           text: "Download",
-          link: "https://github.com/WGLabz/notely/releases/latest",
+          link: "https://github.com/TheNotelyApp/Notely/releases/latest",
         },
       ],
 
@@ -66,7 +66,9 @@ export default withMermaid(
           collapsed: false,
           items: [
             { text: "Overview", link: "/getting-started/" },
+            { text: "User Guide", link: "/user-guide" },
             { text: "Your First Note", link: "/getting-started/first-note" },
+            { text: "Top Common Tasks", link: "/top-tasks" },
           ],
         },
         {
@@ -127,20 +129,27 @@ export default withMermaid(
           text: "AI Features & Graph",
           collapsed: false,
           items: [
-            { text: "AI & Graph Overview", link: "/ai/" },
+            { text: "AI & MCP Overview", link: "/ai/" },
+            { text: "AI Capabilities", link: "/ai/features" },
+            { text: "Provider Setup", link: "/ai/setup" },
             { text: "Knowledge Graph Engine", link: "/ai/knowledge-graph" },
+            { text: "AI Architecture", link: "/ai/architecture" },
           ],
         },
         {
           text: "Sync",
           collapsed: true,
-          items: [{ text: "P2P Sync", link: "/sync/" }],
+          items: [
+            { text: "P2P Sync", link: "/sync/" },
+            { text: "Data & Sync Security", link: "/data-sync-security" },
+          ],
         },
         {
           text: "Reference",
           collapsed: false,
           items: [
-            { text: "Settings", link: "/settings-reference" },
+            { text: "Feature Reference", link: "/feature-reference" },
+            { text: "Settings Reference", link: "/settings-reference" },
             { text: "Keyboard Shortcuts", link: "/keyboard-shortcuts" },
             { text: "Feature Availability", link: "/feature-availability" },
           ],
@@ -160,7 +169,9 @@ export default withMermaid(
           items: [
             { text: "Developer Docs", link: "/developer/" },
             { text: "MCP Protocol Integration", link: "/developer/mcp" },
+            { text: "Enterprise MCP Tools Reference", link: "/mcp-tools-reference" },
             { text: "Application Architecture", link: "/architecture" },
+            { text: "UX Writing Guide", link: "/ux-writing-guide" },
             { text: "License", link: "/license" },
           ],
         },
@@ -187,7 +198,7 @@ export default withMermaid(
 
       editLink: {
         pattern:
-          "https://github.com/WGLabz/notely/edit/main/docs/:path",
+          "https://github.com/TheNotelyApp/Notely/edit/main/docs/:path",
         text: "Edit this page on GitHub",
       },
 

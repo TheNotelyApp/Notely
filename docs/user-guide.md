@@ -1,3 +1,10 @@
+---
+title: User Guide
+description: Everyday usage guide for Notely — organizing notes, tree view, drag-and-drop, editing, Git version control, and visual diagrams.
+keywords: user guide, getting started, tree view, drag and drop, recycle bin, git, tables, diagrams
+category: Getting Started
+---
+
 # Notely User Guide
 
 Use this guide for everyday work in Notely: creating notes, editing safely, finding information quickly, and working with visuals.
@@ -15,9 +22,21 @@ Tip: use **File -> Open Recent** when you want to jump back into a recently used
 
 ## 2. Create and Organize Notes
 
-1. Create a note from **File -> New Note** (`Ctrl/Cmd + N`).
-2. Create folders to group related notes.
-3. Use clear titles and optional tags so notes are easier to find later.
+1. **Create Notes**: Use **File -> New Note** (`Ctrl/Cmd + N`) or the quick action buttons.
+2. **Create Folders**: Group related notes into subfolders in the sidebar or tree view.
+3. **Switch View Modes**:
+   - **Tile View** (`Ctrl/Cmd + 1`): Visual cards with note snippets and asset thumbnails.
+   - **Table View** (`Ctrl/Cmd + 2`): High-density tabular list. Double-click any row to open.
+   - **Tree View** (`Ctrl/Cmd + 3`): Hierarchical tree with collapsible subfolders, custom icon badges, and file timestamps.
+4. **Drag-and-Drop Organization**:
+   - Drag note cards, table rows, or tree nodes directly onto folders to relocate them.
+   - **Spring-Loading**: Hovering over a collapsed folder for 600ms automatically opens it.
+   - **Breadcrumb Drops**: Drag notes onto ancestor segments in the breadcrumb bar to move them up directory levels.
+   - **Between-File Drops**: In Tree View, drop between files (indicated by an accent guide line) to place the note into that folder.
+5. **Trash & Safe Deletion**:
+   - Drag any note or folder to the **Recycle Bin** panel on the bottom left rail, or select Delete from the context menu.
+   - Deletions are safeguarded: an explicit confirmation modal appears, followed by a 1-click **[Undo]** toast.
+   - Click the Recycle Bin panel to view trashed items, restore notes back to their original paths, or empty the trash permanently.
 
 ## 3. Write and Edit Faster
 

@@ -19,7 +19,7 @@ Under the following conditions:
 - **Attribution**: You must give appropriate credit and indicate if changes were made.
 - **NonCommercial**: You may not use the material for commercial purposes.
 
-→ For full terms, see the [LICENSE file](https://github.com/WGLabz/notely/blob/main/LICENSE) in the repository.
+→ For full terms, see the [LICENSE file](https://github.com/TheNotelyApp/Notely/blob/main/LICENSE) in the repository.
 
 ---
 

@@ -1,59 +1,63 @@
 ---
-title: Using AI Features
-description: Learn how to invoke AI chat, use the AI rewrite palette, and explore semantic search.
-keywords: AI chat, AI palette, rewrite, summarize, translate, semantic search, diagnostic trace, references
+title: AI & MCP Capabilities
+description: Overview of Notely's Model Context Protocol (MCP) server, external AI integration, local ONNX embeddings, and Knowledge Graph capabilities.
+keywords: AI features, MCP, Model Context Protocol, Claude Desktop, Cursor, Antigravity, knowledge graph, vector embeddings, diagnostics
 category: AI
 ---
 
-# AI Features
+# AI & MCP Capabilities
 
-AI capabilities in Notely are integrated across your editor workspace, left panel dashboards, and settings.
-
----
-
-## 1. Global & Note-Scoped Chat Panel
-
-You can chat with Notely's assistant in two ways:
-- **Note-Scoped**: While editing a note, toggle the assistant from the right side edge or the toolbar to brainstorm inside the active document.
-- **Global Chat**: While on the landing page (with no note open), click the **Sparkles** icon under the **Quick Actions** toolbar on the left panel rail. This opens the AI sidebar to chat about the entire workspace.
-
-### Context Scope Options
-Inside the chat panel, you can choose what context to send with your message:
-1. **Auto**: Selects highlighted text if active, otherwise the current note.
-2. **Selection**: Restricts context to active text selection.
-3. **Block**: Restricts context to active cursor paragraph.
-4. **Note**: Sends the entire note.
-5. **Workspace**: Extends context by searching relevant chunks across the whole note library.
-
-### Sourced References
-Whenever the assistant retrieves documents to answer your question, a **Referred Notes** chip list is rendered under the assistant message bubble. Hover over these chips to see file paths and relevance match percentages.
+Notely adopts a privacy-first, local-centric AI architecture. Rather than relying on intrusive in-editor generative sidebars, conversational interaction is driven by an embedded **Model Context Protocol (MCP)** server, while local background workers handle semantic search embeddings and knowledge graph relation discovery.
 
 ---
 
-## 2. AI Palette Actions
+## 1. External AI Integration via Model Context Protocol (MCP)
 
-Refactor or rewrite text inside the editor:
-1. Highlight target text selection in the Markdown editor.
-2. Press **`Ctrl + Space`** or right-click and select **AI Actions**.
-3. Choose an action from the palette (e.g. Summarize, Change Tone, Improve Readability).
+Notely embeds a dual-transport **Model Context Protocol (MCP)** server running on port `3700` (`http://127.0.0.1:3700/mcp` and `/sse`). This allows external LLM agents and desktop AI clients (such as Google Antigravity, Claude Desktop, Cursor, and IDE extensions) to interact directly with your notes, tasks, and diagrams.
+
+### 7 Enterprise Unified Tools
+External AI assistants have access to self-contained, structured tools:
+1. **`search`**: Semantic hybrid search (FTS5 + BGE dense vector cosine similarity).
+2. **`read_note`**: Read note content, frontmatter, backlinks, and git revision history.
+3. **`edit_note`**: Create, overwrite, or surgical chunk-replace note text with atomic write safety.
+4. **`manage_tasks`**: Aggregate open/completed tasks, toggle status, and append checklist items.
+5. **`manage_diagrams`**: Read, create, and modify Mermaid, Draw.io, and Excalidraw diagrams.
+6. **`workspace_overview`**: Inspect file trees, broken link integrity, graph relations, and disk storage stats.
+7. **`git_control`**: Review stage status, commit diffs, commit history, and branches.
+
+### Standard MCP Prompts
+Exposes ready-to-run interactive workflows to MCP clients:
+- `summarize_note`: Generate executive summaries from note contents.
+- `plan_tasks`: Extract action items and checklists from freeform notes.
+- `explore_knowledge_graph`: Traverse semantic relationships around specific concepts.
+- `refactor_note`: Clean up structure, formatting, and heading hierarchy.
+- `daily_review`: Synthesize recently modified notes and pending workspace tasks.
+
+For full schema details and client configuration, see the [Enterprise MCP Tools Reference](/mcp-tools-reference) and [Developer MCP Guide](/developer/mcp).
 
 ---
 
-## 3. Persona Customization & Markdown Source of Truth
+## 2. Local-First Vector Embeddings
 
-Customize how the AI talks to you:
-- Open **AI Settings** and click **Manage Personas**.
-- **Markdown Source of Truth**: All personas (builtin and custom) are authored as Markdown files (`.md`) with YAML frontmatter. Custom personas created in the UI are persisted as formatted `.md` files to disk (`appData/personas/*.md`), while SQLite acts strictly as an index.
-- Select or edit custom personas, modify frontmatter metadata (tone, verbosity, structure), and update prompt instructions.
-- Select a preset emoji avatar (🤖, 💻, 🧠, etc.) next to the custom avatar field to represent them in the chat panel.
+Notely indexes your workspace into `{workspace}/.notes-app/ai-embeddings.db`:
+- **Local BGE Model**: Uses `BGE-small-en-v1.5` (~130MB) executed on-device via `onnxruntime-node`.
+- **Hybrid Semantic Search**: Combines full-text search (SQLite FTS5) with 384-dimensional dense vector embeddings for semantic similarity queries.
+- **Background Utility Process**: Document chunking and vector calculations run in a dedicated background worker to keep the editor UI fast and stutter-free.
 
 ---
 
-## 4. Diagnostics, Flow Telemetry & Prompt Tracker Log
+## 3. Knowledge Graph Engine
 
-If you want to inspect how the AI retrieves data, what system prompts are assembled, or what tools it invokes:
-1. Go to **AI Diagnostics** / **AI Health** page.
-2. Select a conversation session from the list.
-3. Use the dual-tab inspector pane:
-   - **Messages**: View clean chat conversation transcript (technical tool execution boxes separated for clutter-free reading).
-   - **Flow Telemetry**: View a 3-column continuous timeline stream connecting 5-stage execution breakdown (`AIFlow.js`), latency metrics, persistent session tokens (`LogDB`), expandable tool call arguments/outputs, zero-latency Context Compaction stats (`ai/compaction/`), system prompt inspector (with Copy/Expand), and full flow trace JSON export.
+Notely features an offline, 8-stage Knowledge Graph engine mapped into `{workspace}/.notes-app/ai-graph.db`:
+- **Neural Zero-Shot Extraction**: Powered by an offline `gliner2-multi-v1-onnx` neural model running locally.
+- **Concept Deduplication & Alias Fusion**: Automatically merges variations of the same concept (e.g. "SQLite DB" and "SQLite Database") using cosine vector similarity (>0.88 threshold).
+- **Interactive Visualization**: Explore entity clusters, backlinks, tags, and document references interactively from **Workspace → Workspace Graph** (`Ctrl/Cmd + Shift + G`).
+
+---
+
+## 4. MCP Tools Catalog & Diagnostics
+
+Inspect and test AI operations inside the app:
+- **MCP Tools Catalog** (`Ctrl/Cmd + Shift + M`): View all registered MCP tools, test tool execution live with custom arguments, and inspect JSON responses.
+- **MCP Diagnostics & Telemetry**: Accessible from the Diagnostics panel, this dashboard displays live connection status, active client sessions, request rates, execution latency, and error logs.
+- **AI Settings** (`Ctrl/Cmd + Shift + ,`): Configure LLM provider API keys (Gemini, Groq, OpenAI), embedding engine mode, and Knowledge Graph confidence thresholds.

@@ -1,3 +1,10 @@
+---
+title: Feature Reference
+description: Complete reference of all user-facing capabilities in Notely — workspace, editing, diagrams, media, Git, and settings.
+keywords: feature reference, workspace, editor, diagrams, media gallery, git, shortcuts, typography
+category: Reference
+---
+
 # Notely Feature Reference
 
 This page explains every major user-facing feature in Notely.
@@ -176,7 +183,7 @@ Notely reports markdown issues while you edit.
 Notely flags likely spelling mistakes in real-time as you write (excluding code blocks and raw markdown syntax). 
 - **Hunspell engine**: Powered by Hunspell under the hood for accurate, high-quality dictionary checks.
 - **Ignore / Add to dictionary**: Right-click on a flagged spelling error in the editor to immediately ignore the word, or click **Add to dictionary** to add it to your custom workspace spelling dictionary.
-- **Spelling Dictionary Manager**: Open the command palette (`Ctrl/Cmd+P`) and run **Manage Spelling Dictionary** (or click the settings menu option) to view all custom added words, search them, remove individual words, or clear the dictionary completely.
+- **Spelling Dictionary Manager**: Open the command palette (`Ctrl/Cmd+K`) and run **Manage Spelling Dictionary** (or click the settings menu option) to view all custom added words, search them, remove individual words, or clear the dictionary completely.
 
 ### Quick problem fixing
 

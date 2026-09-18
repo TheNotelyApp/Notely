@@ -1,3 +1,10 @@
+---
+title: Settings Reference
+description: Detailed reference for all configuration options, appearance settings, view modes, AI controls, and environment variables in Notely.
+keywords: settings, preferences, appearance, fonts, theme, zoom, tree view, density, typo check, screen capture, AI settings
+category: Reference
+---
+
 # Settings Reference
 
 Use this page when you want to understand what each configurable option does in Notely.
@@ -44,10 +51,11 @@ Use zoom when UI text or panels feel too small or too large on your display.
 
 ### View Mode
 
-Open **View -> Tile Notes** or **View -> Table Notes**.
+Open **View -> Tile Notes**, **View -> Table Notes**, or **View -> Tree Notes**.
 
-- **Tile Notes**: visual cards with previews and summary details
-- **Table Notes**: denser list-style view for scanning many notes quickly
+- **Tile Notes** (`Ctrl/Cmd + 1`): visual cards with previews and summary details
+- **Table Notes** (`Ctrl/Cmd + 2`): denser list-style view for scanning many notes quickly (double-click opens immediately)
+- **Tree Notes** (`Ctrl/Cmd + 3`): hierarchical expandable/collapsible tree view showing nested subfolders, note status, drag-and-drop file organization, and file timestamps
 
 ### Density
 

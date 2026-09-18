@@ -110,7 +110,7 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 
 ### E. Model Context Protocol (MCP) Subsystem (`McpServer.cjs`)
 * **Streamable HTTP & SSE Server**: Embedded dual-transport MCP server listening by default on port `3700` exposing workspace capabilities to external AI clients (Google Antigravity, Claude Desktop, Cursor, IDE agents).
-* **Enterprise Capabilities**: Registers **7 unified enterprise tools** (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`) and **5 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`). See [`docs/mcp-tools-reference.md`](file:///c:/Users/oksbw/OneDrive/Desktop/Antigravity%20Workspace/Notely/docs/mcp-tools-reference.md).
+* **Enterprise Capabilities**: Registers **7 unified enterprise tools** (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`) and **5 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`). See [Enterprise MCP Tools & Prompts Reference](/mcp-tools-reference).
 * **Permission Control**: Enforces `allowWriteTools` configuration toggle; rejects unauthorized write operations (`[W]`) automatically.
 * **Telemetry Flight Log**: Records tool execution events in SQLite database and streams updates via IPC to `AIHealthPage.jsx`.
 
@@ -161,7 +161,7 @@ flowchart TD
 
     subgraph Providers["Inference Providers"]
         direction LR
-        GEM["GeminiProvider"] & GRQ["GroqProvider"] & OAI["OpenAICompatibleProvider"] & LLP["LocalLlamaProvider (Qwen2.5)"]
+        GEM["GeminiProvider"] & GRQ["GroqProvider"] & OAI["OpenAICompatibleProvider"]
         HFEP["HuggingFaceEmbeddingProvider"] & ONNXE["ONNXEmbedder (BGE-small)"]
     end
 
@@ -180,7 +180,7 @@ flowchart TD
     Handlers --> AIService
     AIService --> Agent
 
-    LR --> GEM & GRQ & OAI & LLP
+    LR --> GEM & GRQ & OAI
     ES --> HFEP & ONNXE
 
     CE --> SR & GR

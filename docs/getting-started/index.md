@@ -20,7 +20,7 @@ Notely is a desktop Markdown notes app for Windows. Your notes live as plain `.m
 
 ## Download & Install
 
-1. Go to the [latest release on GitHub](https://github.com/WGLabz/notely/releases/latest).
+1. Go to the [latest release on GitHub](https://github.com/TheNotelyApp/Notely/releases/latest).
 2. Download the portable `.exe` file.
 3. Run it — no installer needed.
 

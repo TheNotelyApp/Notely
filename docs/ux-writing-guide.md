@@ -1,3 +1,10 @@
+---
+title: UX Writing Guide
+description: Style guidelines and consistency rules for UI copy, button labels, toasts, dialogs, and error messages in Notely.
+keywords: ux writing, copy, guidelines, style guide, buttons, labels, developer
+category: Developer
+---
+
 # UX Writing Guide
 
 Purpose: keep labels and messages consistent, clear, and action-oriented.

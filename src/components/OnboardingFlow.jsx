@@ -53,7 +53,7 @@ export function OnboardingFlow({
   const [graphModelStatus, setGraphModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
 
   const totalSteps = 5;
-  const repositoryUrl = "https://github.com/wglabz/notely";
+  const repositoryUrl = "https://github.com/TheNotelyApp/Notely";
 
   React.useEffect(() => {
     if (step !== 4) return;
@@ -230,7 +230,7 @@ export function OnboardingFlow({
                       onClick={(e) => { e.preventDefault(); openLink(repositoryUrl); }}
                       style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--focus-ring-color)", textDecoration: "none", fontWeight: "600" }}
                     >
-                      <Github size={14} /> wglabz/notely <ExternalLink size={12} />
+                      <Github size={14} /> TheNotelyApp/Notely <ExternalLink size={12} />
                     </a>
                   </div>
                 </div>
