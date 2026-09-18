@@ -112,6 +112,20 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return resolved;
   }
 
+  const SUPPORTED_FONTS = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"];
+
+  function normalizeFontPreference(value) {
+    return SUPPORTED_FONTS.includes(value) ? value : "inter";
+  }
+
+  function broadcastFontChange(fontPreference) {
+    const preference = normalizeFontPreference(fontPreference);
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win || win.isDestroyed()) continue;
+      win.webContents.send("appearance:font-changed", { fontPreference: preference });
+    }
+  }
+
   function broadcastThemeChange(themePreference) {
     const effectiveTheme = resolveEffectiveTheme(themePreference);
     for (const win of BrowserWindow.getAllWindows()) {
@@ -150,10 +164,12 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     const settings = readUserSettings();
     const themePreference = normalizeThemePreference(settings?.themePreference);
     const zoomFactor = normalizeZoomFactor(settings?.zoomFactor);
+    const fontPreference = normalizeFontPreference(settings?.fontPreference);
     return {
       themePreference,
       effectiveTheme: resolveEffectiveTheme(themePreference),
       zoomFactor,
+      fontPreference,
     };
   });
 
@@ -172,6 +188,19 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return {
       themePreference,
       effectiveTheme: resolveEffectiveTheme(themePreference),
+    };
+  });
+
+  registerTrustedHandler("settings:set-font-preference", (_event, payload) => {
+    const settings = readUserSettings();
+    const fontPreference = normalizeFontPreference(payload?.fontPreference);
+    settings.fontPreference = fontPreference;
+    writeUserSettings(settings);
+
+    broadcastFontChange(fontPreference);
+
+    return {
+      fontPreference,
     };
   });
 

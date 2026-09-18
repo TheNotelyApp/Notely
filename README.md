@@ -59,6 +59,7 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - PDF-only (one PDF per note)
   - Web format (static HTML export package)
   - Optional `.notes-app` metadata inclusion (default off)
+- Personalize UI typography across all labels and controls with 5 developer-friendly typefaces (Inter, JetBrains Mono, Fira Code, Cascadia Code, Source Code Pro) with real-time switching via **View -> Font** or Settings.
 - View note statistics (word count, line count, reading time estimate) in the status bar.
 - Copy note content as HTML or plain text directly from the editor toolbar.
 - Execute JavaScript (`js`/`javascript`), Python (`py`/`python`), Bash (`bash`/`sh`), PowerShell (`powershell`/`ps1`), and HTML live-preview code blocks locally with the interactive ▶ Run (Play) button in both Markdown Previews and the popup Code Editor modal. Outputs (stdout/stderr) are rendered in an integrated high-contrast dark terminal output pane.

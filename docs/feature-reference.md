@@ -132,6 +132,7 @@ Use **Workspace -> Workspace Activity** to review recent changes across the acti
 Notely includes view and appearance controls for different working styles:
 
 - **Settings -> Theme**: System, Light, or Dark
+- **View -> Font**: Select from 5 IDE-friendly typefaces (Inter, JetBrains Mono, Fira Code, Cascadia Code, Source Code Pro) applied across all UI labels and controls
 - **View -> Tile Notes / Table Notes / Tree Notes**: landing list layout (`Ctrl/Cmd + 1` / `2` / `3`)
 - **View -> Comfortable Density / Compact Density**: landing list density (`Ctrl/Cmd + 4` / `5`)
 - **View -> Zoom In / Zoom Out / Reset Zoom**: app-scale display controls

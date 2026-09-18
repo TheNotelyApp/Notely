@@ -71,6 +71,16 @@ export async function setThemePreference(themePreference) {
   return api.setThemePreference({ themePreference });
 }
 
+export async function setFontPreference(fontPreference) {
+  const api = getNotesApi();
+  if (typeof api.setFontPreference !== "function") {
+    return {
+      fontPreference: "inter",
+    };
+  }
+  return api.setFontPreference({ fontPreference });
+}
+
 export async function setZoomFactor(zoomFactor) {
   const api = getNotesApi();
   if (typeof api.setZoomFactor !== "function") {
@@ -86,3 +96,12 @@ export function onThemeChanged(callback) {
   }
   return api.onThemeChanged(callback);
 }
+
+export function onFontChanged(callback) {
+  const api = getNotesApi();
+  if (typeof api.onFontChanged !== "function") {
+    return () => {};
+  }
+  return api.onFontChanged(callback);
+}
+

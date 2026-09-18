@@ -550,6 +550,7 @@ function createWindowLifecycle(deps) {
       embeddedMarkdownMode: "open",
       screenCaptureMode: "auto",
       themePreference: "auto",
+      fontPreference: "inter",
       outlineEnabled: true,
       splitPreviewEnabled: false,
       focusModeEnabled: false,
@@ -760,6 +761,7 @@ function createWindowLifecycle(deps) {
       embeddedMarkdownMode: "open",
       screenCaptureMode: "auto",
       themePreference: "auto",
+      fontPreference: "inter",
       outlineEnabled: true,
       splitPreviewEnabled: false,
       focusModeEnabled: false,
@@ -792,6 +794,9 @@ function createWindowLifecycle(deps) {
       themePreference: ["auto", "light", "dark"].includes(context?.themePreference)
         ? context.themePreference
         : "auto",
+      fontPreference: ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(context?.fontPreference)
+        ? context.fontPreference
+        : "inter",
       outlineEnabled: context?.outlineEnabled !== false,
       splitPreviewEnabled: context?.splitPreviewEnabled === true,
       focusModeEnabled: context?.focusModeEnabled === true,

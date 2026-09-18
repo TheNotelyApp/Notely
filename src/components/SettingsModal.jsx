@@ -15,6 +15,8 @@ export function SettingsModal({
   // Theme & Appearance
   themePreference,
   onThemeChange,
+  fontPreference,
+  onFontChange,
   zoomFactor,
   onZoomChange,
   // Editor preferences
@@ -115,6 +117,20 @@ export function SettingsModal({
                   <option value="auto">System Default</option>
                   <option value="light">Light Mode</option>
                   <option value="dark">Dark Mode</option>
+                </AppSelect>
+              </div>
+
+              <div className="settings-field-group">
+                <label className="settings-field-label">App Font</label>
+                <AppSelect
+                  value={fontPreference || "inter"}
+                  onChange={(e) => onFontChange?.(e.target.value)}
+                >
+                  <option value="inter">Inter (Default)</option>
+                  <option value="jetbrains-mono">JetBrains Mono</option>
+                  <option value="fira-code">Fira Code</option>
+                  <option value="cascadia-code">Cascadia Code</option>
+                  <option value="source-code-pro">Source Code Pro</option>
                 </AppSelect>
               </div>
 

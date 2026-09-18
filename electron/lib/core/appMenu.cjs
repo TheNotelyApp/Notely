@@ -48,6 +48,9 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
   const themePreference = ["auto", "light", "dark"].includes(context?.themePreference)
     ? context.themePreference
     : "auto";
+  const fontPreference = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(context?.fontPreference)
+    ? context.fontPreference
+    : "inter";
   const isDevMode = Boolean(context?.isDevMode);
   const dirty = Boolean(context?.dirty);
   const canRemoveFolder = Boolean(context?.canRemoveFolder);
@@ -461,6 +464,46 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           ]
         },
         {
+          label: "Font",
+          submenu: [
+            {
+              label: "Inter (Default)",
+              type: "checkbox",
+              checked: fontPreference === "inter",
+              action: "font-inter",
+              click: () => sendMenuAction(win, "font-inter")
+            },
+            {
+              label: "JetBrains Mono",
+              type: "checkbox",
+              checked: fontPreference === "jetbrains-mono",
+              action: "font-jetbrains-mono",
+              click: () => sendMenuAction(win, "font-jetbrains-mono")
+            },
+            {
+              label: "Fira Code",
+              type: "checkbox",
+              checked: fontPreference === "fira-code",
+              action: "font-fira-code",
+              click: () => sendMenuAction(win, "font-fira-code")
+            },
+            {
+              label: "Cascadia Code",
+              type: "checkbox",
+              checked: fontPreference === "cascadia-code",
+              action: "font-cascadia-code",
+              click: () => sendMenuAction(win, "font-cascadia-code")
+            },
+            {
+              label: "Source Code Pro",
+              type: "checkbox",
+              checked: fontPreference === "source-code-pro",
+              action: "font-source-code-pro",
+              click: () => sendMenuAction(win, "font-source-code-pro")
+            }
+          ]
+        },
+        {
           label: "Enable Typo Check",
           type: "checkbox",
           checked: typoCheckEnabled,
@@ -629,6 +672,46 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
               type: "checkbox",
               checked: themePreference === "dark",
               click: () => sendMenuAction(win, "theme-dark")
+            }
+          ]
+        },
+        {
+          label: "Font",
+          submenu: [
+            {
+              label: "Inter (Default)",
+              type: "checkbox",
+              checked: fontPreference === "inter",
+              action: "font-inter",
+              click: () => sendMenuAction(win, "font-inter")
+            },
+            {
+              label: "JetBrains Mono",
+              type: "checkbox",
+              checked: fontPreference === "jetbrains-mono",
+              action: "font-jetbrains-mono",
+              click: () => sendMenuAction(win, "font-jetbrains-mono")
+            },
+            {
+              label: "Fira Code",
+              type: "checkbox",
+              checked: fontPreference === "fira-code",
+              action: "font-fira-code",
+              click: () => sendMenuAction(win, "font-fira-code")
+            },
+            {
+              label: "Cascadia Code",
+              type: "checkbox",
+              checked: fontPreference === "cascadia-code",
+              action: "font-cascadia-code",
+              click: () => sendMenuAction(win, "font-cascadia-code")
+            },
+            {
+              label: "Source Code Pro",
+              type: "checkbox",
+              checked: fontPreference === "source-code-pro",
+              action: "font-source-code-pro",
+              click: () => sendMenuAction(win, "font-source-code-pro")
             }
           ]
         },

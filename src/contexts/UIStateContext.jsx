@@ -35,6 +35,7 @@ export function UIStateProvider({ children }) {
   const [defaultNotesPath, setDefaultNotesPath] = useState("");
   const [themePreference, setThemePreferenceState] = useState("auto");
   const [effectiveTheme, setEffectiveTheme] = useState("light");
+  const [fontPreference, setFontPreferenceState] = useState("inter");
   const [zoomFactor, setZoomFactorState] = useState(1);
 
   const value = {
@@ -70,6 +71,7 @@ export function UIStateProvider({ children }) {
     defaultNotesPath, setDefaultNotesPath,
     themePreference, setThemePreferenceState,
     effectiveTheme, setEffectiveTheme,
+    fontPreference, setFontPreferenceState,
     zoomFactor, setZoomFactorState,
   };
 

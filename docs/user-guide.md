@@ -145,7 +145,15 @@ Transfer notes and their local media/diagram assets effortlessly across workspac
 3. Notely automatically copies/moves the note and its local media/diagram assets (`media/`, `.notes-app/excali-diagrams/`, `.notes-app/drawio-diagrams/`).
 4. Link paths inside the note content are recalculated relative to the destination directory, preserving all embedded images and diagrams without breaking.
 
-## 12. Get Help Quickly
+## 12. Personalize Appearance and Typography
+
+Customize app look and feel to fit your workflow:
+
+- **Theme**: Choose between System, Light, or Dark mode from **View -> Theme** or **Settings -> General**.
+- **Font**: Switch between 5 developer-friendly typefaces (Inter, JetBrains Mono, Fira Code, Cascadia Code, Source Code Pro) via **View -> Font** or **Settings -> General -> App Font**. The chosen font updates all labels, controls, and buttons in real time and is saved in global config.
+- **Zoom**: Scale the interface via **View -> Zoom In** / **Zoom Out** / **Reset Zoom** or the Settings zoom slider.
+
+## 13. Get Help Quickly
 
 - **Help -> Help Center** (`F1`) for in-app help.
 - **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) for key bindings.

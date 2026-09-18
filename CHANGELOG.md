@@ -6,6 +6,11 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ### Added
 
+- Added **Multiple Developer-Friendly Fonts Support** (`View → Font`).
+  - Choose between 5 curated IDE/developer-friendly typefaces: Inter (Default), JetBrains Mono, Fira Code, Cascadia Code, and Source Code Pro.
+  - Changes cascade in real time across all app labels, navigation items, buttons, dialogs, and controls.
+  - Accessible from the top View menu, Command Palette (`Cmd + K`), and General Settings modal.
+  - Font selection is persisted globally in user configuration storage and broadcasted to sync multiple windows.
 - Added **Diagrams & Media Gallery** (`Workspace → Diagrams & Media Gallery`, `Ctrl/Cmd + Alt + M`).
   - Dedicated full-screen catalog for actively used diagrams (Mermaid, Draw.io, Excalidraw), images, videos, audio, and PDFs across workspace notes.
   - Knowledge Graph-inspired visual layout with collapsible category filters, usage scope filtering, search, and summary badges.

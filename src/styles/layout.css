@@ -2778,7 +2778,7 @@
   background: transparent;
   color: #3f5b63;
   font-size: 12px;
-  font-family: "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: inherit;
   font-weight: 500;
   padding: 1px 8px;
   margin: 0;

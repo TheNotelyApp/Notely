@@ -26,6 +26,17 @@
   outline: none;
 }
 
+body,
+button,
+input,
+select,
+textarea,
+label,
+optgroup,
+option {
+  font-family: var(--app-font-family);
+}
+
 button {
   cursor: pointer;
 }

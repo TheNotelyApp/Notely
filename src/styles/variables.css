@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600;700&display=swap");
+
 :root {
   --app-viewport-height: 100vh;
   --titlebar-height: 32px;
@@ -117,18 +119,41 @@
   --kg-default-bg: #f3f4f6;
   --kg-default-border: #6b7280;
 
+  --font-family-inter: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-jetbrains: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-family-fira: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-family-cascadia: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --font-family-source: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --app-font-family: var(--font-family-inter);
+  --font-sans: var(--app-font-family);
+  --font-family-base: var(--app-font-family);
+
   color: var(--app-text);
   background: var(--app-bg);
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--app-font-family);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+:root[data-font="inter"] {
+  --app-font-family: var(--font-family-inter);
+}
+
+:root[data-font="jetbrains-mono"] {
+  --app-font-family: var(--font-family-jetbrains);
+}
+
+:root[data-font="fira-code"] {
+  --app-font-family: var(--font-family-fira);
+}
+
+:root[data-font="cascadia-code"] {
+  --app-font-family: var(--font-family-cascadia);
+}
+
+:root[data-font="source-code-pro"] {
+  --app-font-family: var(--font-family-source);
 }
 
 :root[data-theme="dark"] {

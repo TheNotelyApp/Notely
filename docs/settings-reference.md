@@ -6,7 +6,7 @@ Use this page when you want to understand what each configurable option does in 
 
 ### Theme
 
-Open **Settings -> Theme**.
+Open **Settings -> Theme** or **View -> Theme**.
 
 - **System**: follows the operating system theme
 - **Light**: always uses the light theme
@@ -15,6 +15,20 @@ Open **Settings -> Theme**.
 Default: **System**
 
 Use this when you want Notely to stay consistent with your desktop or when you need a fixed light or dark theme.
+
+### Font
+
+Open **View -> Font** or **Settings -> General -> App Font**.
+
+- **Inter (Default)**: clean, modern UI typeface popular in developer tools
+- **JetBrains Mono**: iconic developer coding monospace typeface from JetBrains IDEs
+- **Fira Code**: developer programming typeface with distinct coding aesthetics
+- **Cascadia Code**: Microsoft's official Windows Terminal and VS Code typeface
+- **Source Code Pro**: Adobe's classic, balanced developer monospace typeface
+
+Default: **Inter (Default)**
+
+When chosen, the font is applied in real time across all labels, buttons, navigation items, dialogs, and UI controls, and persisted in global application configuration storage.
 
 ### Zoom
 

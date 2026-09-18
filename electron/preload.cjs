@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   getOnboardingComplete: () => ipcRenderer.invoke("settings:get-onboarding-complete"),
   setOnboardingComplete: (payload) => ipcRenderer.invoke("settings:set-onboarding-complete", payload),
   setThemePreference: (payload) => ipcRenderer.invoke("settings:set-theme-preference", payload),
+  setFontPreference: (payload) => ipcRenderer.invoke("settings:set-font-preference", payload),
   setZoomFactor: (payload) => ipcRenderer.invoke("settings:set-zoom-factor", payload),
   onThemeChanged: (callback) => {
     if (typeof callback !== "function") {
@@ -26,6 +27,15 @@ contextBridge.exposeInMainWorld("notesApi", {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("appearance:theme-changed", listener);
     return () => ipcRenderer.removeListener("appearance:theme-changed", listener);
+  },
+  onFontChanged: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("appearance:font-changed", listener);
+    return () => ipcRenderer.removeListener("appearance:font-changed", listener);
   },
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   maximizeWindow: () => ipcRenderer.send("window:maximize"),

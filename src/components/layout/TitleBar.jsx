@@ -7,7 +7,7 @@ import {
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
   ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
-  Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown
+  Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -56,6 +56,8 @@ const MENU_ICON_MAP = {
   "system": SunMoon,
   "light": SunMoon,
   "dark": SunMoon,
+  "font": Type,
+  "font family": Type,
   "enable typo check": SpellCheck,
   "set icon & color": Palette,
   "editor layout": Layout,

@@ -56,8 +56,10 @@ import {
   setAutoIgnoreGitMetadata,
   getAppearanceSettings,
   setThemePreference as persistThemePreference,
+  setFontPreference as persistFontPreference,
   setZoomFactor as persistZoomFactor,
   onThemeChanged,
+  onFontChanged,
   getWorkspaceExportDefaults,
   browseWorkspaceExportDestination,
   exportWorkspaceZip,
@@ -343,6 +345,7 @@ export default function App() {
     setDefaultNotesPath,
     themePreference, setThemePreferenceState,
     effectiveTheme, setEffectiveTheme,
+    fontPreference, setFontPreferenceState,
     zoomFactor, setZoomFactorState,
   } = useUIState();
 
@@ -844,6 +847,22 @@ export default function App() {
     }
   };
 
+  const handleSetFont = async (font) => {
+    const validFont = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(font)
+      ? font
+      : "inter";
+    setFontPreferenceState(validFont);
+    try {
+      const fontResult = await persistFontPreference(validFont);
+      const appliedFont = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(fontResult?.fontPreference)
+        ? fontResult.fontPreference
+        : validFont;
+      setFontPreferenceState(appliedFont);
+    } catch {
+      notify("Failed to set font preference.", "error");
+    }
+  };
+
   const handleSetZoom = async (zoom) => {
     try {
       const result = await persistZoomFactor(zoom);
@@ -1322,15 +1341,19 @@ export default function App() {
         const nextZoom = Number.isFinite(Number(appearance?.zoomFactor))
           ? Math.max(0.75, Math.min(2, Number(appearance.zoomFactor)))
           : 1;
+        const nextFont = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(appearance?.fontPreference)
+          ? appearance.fontPreference
+          : "inter";
         setThemePreferenceState(nextPreference);
         setEffectiveTheme(nextEffective);
         setZoomFactorState(nextZoom);
+        setFontPreferenceState(nextFont);
       })
       .catch(() => {
         // Keep defaults when appearance settings are unavailable.
       });
 
-    return onThemeChanged((payload) => {
+    const unsubscribeTheme = onThemeChanged((payload) => {
       const nextPreference = ["auto", "light", "dark"].includes(payload?.themePreference)
         ? payload.themePreference
         : "auto";
@@ -1338,6 +1361,18 @@ export default function App() {
       setThemePreferenceState(nextPreference);
       setEffectiveTheme(nextEffective);
     });
+
+    const unsubscribeFont = onFontChanged((payload) => {
+      const nextFont = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(payload?.fontPreference)
+        ? payload.fontPreference
+        : "inter";
+      setFontPreferenceState(nextFont);
+    });
+
+    return () => {
+      unsubscribeTheme();
+      unsubscribeFont();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1428,7 +1463,8 @@ export default function App() {
     if (!root) return;
     root.setAttribute("data-theme", effectiveTheme === "dark" ? "dark" : "light");
     root.setAttribute("data-theme-preference", themePreference);
-  }, [effectiveTheme, themePreference]);
+    root.setAttribute("data-font", fontPreference);
+  }, [effectiveTheme, themePreference, fontPreference]);
 
   const bootProgress = useMemo(() => {
     return loading ? 25 : 100;
@@ -1483,6 +1519,7 @@ export default function App() {
       embeddedMarkdownMode,
       screenCaptureMode,
       themePreference,
+      fontPreference,
       dirty: dirty && !activeDocumentChangedOnDisk,
       terminalOpen: showTerminal,
       terminalShell: terminalShellPreference,
@@ -1503,7 +1540,7 @@ export default function App() {
       currentNoteSubfolder,
       autosaveEnabled,
     });
-  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, fontPreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
 
   useEffect(() => {
     const handleAction = (action) => {
@@ -1899,6 +1936,36 @@ export default function App() {
           })
           .catch(() => {
             notify("Unable to update theme preference.", "error");
+          });
+        return;
+      }
+
+      if (
+        action === "font-inter" ||
+        action === "font-jetbrains-mono" ||
+        action === "font-fira-code" ||
+        action === "font-cascadia-code" ||
+        action === "font-source-code-pro"
+      ) {
+        const nextFont = action.replace("font-", "");
+        setFontPreferenceState(nextFont);
+        const fontDisplayNames = {
+          "inter": "Inter (Default)",
+          "jetbrains-mono": "JetBrains Mono",
+          "fira-code": "Fira Code",
+          "cascadia-code": "Cascadia Code",
+          "source-code-pro": "Source Code Pro",
+        };
+        void persistFontPreference(nextFont)
+          .then((result) => {
+            const appliedFont = ["inter", "jetbrains-mono", "fira-code", "cascadia-code", "source-code-pro"].includes(result?.fontPreference)
+              ? result.fontPreference
+              : nextFont;
+            setFontPreferenceState(appliedFont);
+            notify(`Font set to ${fontDisplayNames[appliedFont] || appliedFont}.`, "info");
+          })
+          .catch(() => {
+            notify("Unable to update font preference.", "error");
           });
         return;
       }
@@ -2517,6 +2584,11 @@ export default function App() {
       priority: 200,
       aliases: "reset pinned commands",
     },
+    { id: "font-inter", label: "Font: Inter (Default)", group: "View", aliases: "font typeface typography inter default ide" },
+    { id: "font-jetbrains-mono", label: "Font: JetBrains Mono", group: "View", aliases: "font typeface typography jetbrains mono ide coding" },
+    { id: "font-fira-code", label: "Font: Fira Code", group: "View", aliases: "font typeface typography fira code ligatures" },
+    { id: "font-cascadia-code", label: "Font: Cascadia Code", group: "View", aliases: "font typeface typography cascadia code windows terminal vs code" },
+    { id: "font-source-code-pro", label: "Font: Source Code Pro", group: "View", aliases: "font typeface typography source code pro adobe" },
     {
       id: "reset-palette-personalization",
       label: "Reset Command Palette Personalization",
@@ -3488,6 +3560,8 @@ export default function App() {
           activeTab={settingsTab}
           themePreference={themePreference}
           onThemeChange={handleSetTheme}
+          fontPreference={fontPreference}
+          onFontChange={handleSetFont}
           zoomFactor={zoomFactor}
           onZoomChange={handleSetZoom}
           autosaveEnabled={autosaveEnabled}
