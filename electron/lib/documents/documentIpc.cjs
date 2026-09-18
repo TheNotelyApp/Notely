@@ -331,10 +331,12 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     try {
       fs.writeFileSync(tempPath, next, "utf8");
       fs.renameSync(tempPath, resolved);
-    } catch (_writeErr) {
+    } catch {
       try {
         if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-      } catch {}
+      } catch {
+        // Best-effort temp file cleanup on atomic write failure
+      }
       fs.writeFileSync(resolved, next, "utf8");
     }
 
