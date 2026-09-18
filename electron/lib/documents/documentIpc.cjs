@@ -40,44 +40,48 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
   }
 
   const lastAppHashes = new Map();
-  let watchedPath = null;
+  const watchedFiles = new Map();
 
   function stopWatching(filePath) {
     if (filePath) {
       const resolved = path.resolve(filePath);
-      if (watchedPath === resolved) {
+      if (watchedFiles.has(resolved)) {
         try {
-          fs.unwatchFile(watchedPath);
+          fs.unwatchFile(resolved);
         } catch (e) {
           console.error("[Watcher] Unwatch error:", e);
         }
-        watchedPath = null;
+        watchedFiles.delete(resolved);
       }
-    } else if (watchedPath) {
-      try {
-        fs.unwatchFile(watchedPath);
-      } catch (e) {
-        console.error("[Watcher] Unwatch error:", e);
+    } else {
+      for (const [watched] of watchedFiles.entries()) {
+        try {
+          fs.unwatchFile(watched);
+        } catch (e) {
+          console.error("[Watcher] Unwatch error:", e);
+        }
       }
-      watchedPath = null;
+      watchedFiles.clear();
     }
   }
 
   function startWatching(filePath, webContents) {
-    stopWatching();
-    watchedPath = path.resolve(filePath);
+    const resolved = path.resolve(filePath);
+    if (watchedFiles.has(resolved)) {
+      return;
+    }
 
     try {
-      fs.watchFile(watchedPath, { interval: 500 }, (curr, prev) => {
+      const listener = (curr, prev) => {
         if (curr.mtimeMs !== prev.mtimeMs) {
           try {
-            if (fs.existsSync(watchedPath)) {
-              const content = fs.readFileSync(watchedPath, "utf8");
+            if (fs.existsSync(resolved)) {
+              const content = fs.readFileSync(resolved, "utf8");
               const currentHash = hashContent(content);
-              const knownHash = lastAppHashes.get(watchedPath);
+              const knownHash = lastAppHashes.get(resolved);
               if (knownHash && currentHash !== knownHash) {
                 if (webContents && !webContents.isDestroyed()) {
-                  webContents.send("document:changed-on-disk", { filePath: watchedPath });
+                  webContents.send("document:changed-on-disk", { filePath: resolved });
                 }
               }
             }
@@ -85,7 +89,9 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
             console.error("[Watcher] Read error:", e);
           }
         }
-      });
+      };
+      fs.watchFile(resolved, { interval: 500 }, listener);
+      watchedFiles.set(resolved, { webContents, listener });
     } catch (e) {
       console.error("[Watcher] Setup error:", e);
     }
@@ -310,7 +316,7 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       throw new Error("Invalid document path.");
     }
 
-    const previous = fs.readFileSync(resolved, "utf8");
+    const previous = fs.existsSync(resolved) ? fs.readFileSync(resolved, "utf8") : "";
 
     const next = buildDocumentContent(payload);
     if (next === previous) {
@@ -320,7 +326,17 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     }
 
     lastAppHashes.set(resolved, hashContent(next));
-    fs.writeFileSync(resolved, next, "utf8");
+
+    const tempPath = `${resolved}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+    try {
+      fs.writeFileSync(tempPath, next, "utf8");
+      fs.renameSync(tempPath, resolved);
+    } catch (_writeErr) {
+      try {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      } catch {}
+      fs.writeFileSync(resolved, next, "utf8");
+    }
 
     try {
       const { aiService } = require("../../../ai/core/AIService.js");

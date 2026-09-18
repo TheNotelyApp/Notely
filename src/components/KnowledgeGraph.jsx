@@ -51,7 +51,7 @@ import '../styles/KnowledgeGraph.css';
 // Custom Node component
 const CustomNode = ({ data, selected }) => {
   const isHub = (data.degree || 0) >= 5;
-  const typeColor = data.typeColor || { border: '#6366f1', background: 'rgba(99, 102, 241, 0.1)', text: '#6366f1' };
+  const typeColor = data.typeColor || { border: 'var(--accent-solid, #2f5d62)', background: 'rgba(47, 93, 98, 0.12)', text: 'var(--accent-solid, #2f5d62)' };
   const name = data.raw?.name || data.raw?.canonical_name || 'Node';
 
   return (

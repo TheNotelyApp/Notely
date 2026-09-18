@@ -154,13 +154,15 @@ function createDocumentFileOps(deps) {
       throw new Error("A note with that file name already exists.");
     }
 
+    // Write updated content first so file is never left half-renamed or corrupt on write failure
+    fs.writeFileSync(resolved, nextContent, "utf8");
+
     if (!isSamePath) {
       fs.renameSync(resolved, nextResolved);
       const metadataStore = getMetadataStore();
       metadataStore?.renameHistoryFilePath(resolved, nextResolved);
     }
 
-    fs.writeFileSync(nextResolved, nextContent, "utf8");
     return parseDocument(nextContent, nextResolved);
   }
 

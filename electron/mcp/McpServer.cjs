@@ -278,8 +278,21 @@ class McpServer {
       this.errorCode = null;
 
       const server = http.createServer(async (req, res) => {
-        // Handle CORS
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // Handle CORS - protect against unauthorized remote web origins
+        const origin = req.headers.origin;
+        if (!origin) {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+        } else {
+          const isLocalOrigin = (
+            origin.startsWith('http://localhost') ||
+            origin.startsWith('http://127.0.0.1') ||
+            origin.startsWith('https://localhost') ||
+            origin.startsWith('https://127.0.0.1')
+          );
+          if (isLocalOrigin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+          }
+        }
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Accept, Last-Event-ID');
         res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id, Mcp-Protocol-Version');
@@ -532,7 +545,6 @@ class McpServer {
         this.httpServer = server;
         this.lastError = null;
         this.errorCode = null;
-        console.log(`[MCP Server] Listening on http://${this.host}:${this.port} (SSE at /sse, Streamable HTTP at /mcp)`);
         resolve({ port: this.port, host: this.host });
       });
     });
@@ -583,7 +595,6 @@ class McpServer {
       this.httpServer.close(() => {
         this.isRunning = false;
         this.httpServer = null;
-        console.log('[MCP Server] Stopped.');
         resolve();
       });
     });

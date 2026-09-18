@@ -615,4 +615,4 @@ export default function MCPDiagnosticsPage({ onBack }) {
   );
 }
 
-export { MCPDiagnosticsPage as AIHealthPage };
+export { MCPDiagnosticsPage, MCPDiagnosticsPage as AIHealthPage };

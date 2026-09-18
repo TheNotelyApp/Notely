@@ -1,5 +1,7 @@
 :root {
   --app-viewport-height: 100vh;
+  --titlebar-height: 32px;
+  --statusbar-height: 28px;
   --focus-ring-color: #7fa2a6;
   --focus-ring-offset: 1px;
   --motion-fast: 120ms ease;

@@ -229,7 +229,7 @@
 
   .dashboard-bar-section:not(:last-child) {
     border-right: 0;
-    border-bottom: 1px solid #d8e3df;
+    border-bottom: 1px solid var(--border-subtle);
     padding-right: 0;
     padding-bottom: 8px;
   }

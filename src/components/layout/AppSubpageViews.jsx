@@ -35,18 +35,6 @@ const MCPToolsPage = lazy(() =>
   import("../MCPToolsPage").then((m) => ({ default: m.default || m.MCPToolsPage }))
 );
 
-const fullScreenOverlayStyle = {
-  position: "fixed",
-  top: "32px",
-  right: 0,
-  bottom: "28px",
-  left: 0,
-  zIndex: 1000,
-  display: "flex",
-  flexDirection: "column",
-  background: "var(--app-bg)",
-  color: "var(--app-text)",
-};
 
 export function AppSubpageViews({
   gitVCOpen,
@@ -86,7 +74,7 @@ export function AppSubpageViews({
   return (
     <>
       {gitVCOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
             <GitVersionControlPage
               workspacePath={notesFolderPath}
@@ -102,7 +90,7 @@ export function AppSubpageViews({
       )}
 
       {graphPanelOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Knowledge Graph…</div>}>
             <KnowledgeGraph onBack={() => setGraphPanelOpen(false)} />
           </Suspense>
@@ -110,7 +98,7 @@ export function AppSubpageViews({
       )}
 
       {embeddingsPageOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Embeddings Engine…</div>}>
             <EmbeddingsPage onBack={() => setEmbeddingsPageOpen(false)} />
           </Suspense>
@@ -120,7 +108,7 @@ export function AppSubpageViews({
 
 
       {healthPageOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
             <AIHealthPage onBack={() => setHealthPageOpen(false)} />
           </Suspense>
@@ -128,7 +116,7 @@ export function AppSubpageViews({
       )}
 
       {appLogsOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading System & Application Logs…</div>}>
             <AppLogsPage onBack={() => setAppLogsOpen(false)} />
           </Suspense>
@@ -136,7 +124,7 @@ export function AppSubpageViews({
       )}
 
       {taskWorkspaceOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Task Workspace…</div>}>
             <TaskWorkspacePage
               onBack={() => setTaskWorkspaceOpen(false)}
@@ -151,7 +139,7 @@ export function AppSubpageViews({
       )}
 
       {calendarPageOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Calendar…</div>}>
             <CalendarPage
               onBack={() => setCalendarPageOpen(false)}
@@ -170,7 +158,7 @@ export function AppSubpageViews({
       )}
 
       {downloadsPageOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
             <DownloadsPage onBack={() => setDownloadsPageOpen(false)} />
           </Suspense>
@@ -178,7 +166,7 @@ export function AppSubpageViews({
       )}
 
       {workspaceIndexOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Workspace Index…</div>}>
             <WorkspaceIndexPage
               documents={documents}
@@ -193,7 +181,7 @@ export function AppSubpageViews({
       )}
 
       {diagramsMediaOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Diagrams & Media…</div>}>
             <WorkspaceDiagramsMediaPage
               documents={documents}
@@ -211,7 +199,7 @@ export function AppSubpageViews({
       )}
 
       {mcpToolsPageOpen && (
-        <div style={fullScreenOverlayStyle}>
+        <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading MCP Tools…</div>}>
             <MCPToolsPage
               onBack={() => setMcpToolsPageOpen(false)}

@@ -161,29 +161,29 @@ function createWindowLifecycle(deps) {
     <style>
       * { box-sizing: border-box; }
       :root {
-        --bg-color: #f8fafc;
-        --card-bg: rgba(255, 255, 255, 0.6);
-        --card-border: rgba(255, 255, 255, 0.8);
-        --card-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
-        --text-main: #0f172a;
-        --text-muted: #64748b;
-        --accent: #0ea5e9;
-        --accent-glow: rgba(14, 165, 233, 0.3);
-        --progress-bg: #e2e8f0;
-        --progress-fill: linear-gradient(90deg, #38bdf8, #0284c7);
+        --bg-color: #f2f4f3;
+        --card-bg: rgba(255, 255, 255, 0.7);
+        --card-border: rgba(255, 255, 255, 0.85);
+        --card-shadow: 0 24px 48px rgba(15, 35, 40, 0.12);
+        --text-main: #17343a;
+        --text-muted: #56666b;
+        --accent: #2f5d62;
+        --accent-glow: rgba(47, 93, 98, 0.25);
+        --progress-bg: #d9e3df;
+        --progress-fill: linear-gradient(90deg, #4f7f8a, #2f5d62);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-color: #0f172a;
-          --card-bg: rgba(30, 41, 59, 0.6);
+          --bg-color: #0f1413;
+          --card-bg: rgba(23, 33, 31, 0.7);
           --card-border: rgba(255, 255, 255, 0.08);
-          --card-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-          --text-main: #f8fafc;
-          --text-muted: #94a3b8;
-          --accent: #38bdf8;
-          --accent-glow: rgba(56, 189, 248, 0.2);
-          --progress-bg: #334155;
-          --progress-fill: linear-gradient(90deg, #0ea5e9, #38bdf8);
+          --card-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+          --text-main: #e1e9e6;
+          --text-muted: #8b9d99;
+          --accent: #448086;
+          --accent-glow: rgba(68, 128, 134, 0.25);
+          --progress-bg: #212c2a;
+          --progress-fill: linear-gradient(90deg, #2f5d62, #448086);
         }
       }
 

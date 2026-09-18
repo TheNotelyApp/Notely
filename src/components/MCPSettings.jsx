@@ -446,6 +446,25 @@ export function MCPSettingsContent({ notify }) {
           <span className="mcp-field-help">
             When set, clients must send <code>Authorization: Bearer &lt;token&gt;</code> header.
           </span>
+          {!tokenInput.trim() && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "8px",
+                padding: "8px 12px",
+                background: "var(--status-warning-bg, rgba(234, 179, 8, 0.1))",
+                border: "1px solid var(--status-warning-border, rgba(234, 179, 8, 0.3))",
+                borderRadius: "6px",
+                color: "var(--status-warning-text, #eab308)",
+                fontSize: "12px"
+              }}
+            >
+              <AlertCircle size={14} style={{ flexShrink: 0 }} />
+              <span>No token configured: any local process on this machine can access Notely MCP endpoints without authentication.</span>
+            </div>
+          )}
         </div>
 
         {/* Save button */}

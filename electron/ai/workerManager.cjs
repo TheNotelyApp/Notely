@@ -29,12 +29,9 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
   isWorking = false;
 
   const scriptPath = path.join(__dirname, 'workerProcess.cjs');
-  console.log('[Worker Manager] Spawning utilityProcess at:', scriptPath);
-
   childProcess = utilityProcess.fork(scriptPath);
 
   childProcess.on('spawn', () => {
-    console.log('[Worker Manager] Utility process spawned successfully.');
     childProcess.postMessage({
       type: 'start',
       payload: { workspaceRoot, appDataDir, hfToken }
@@ -82,7 +79,9 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
   });
 
   childProcess.on('exit', (code) => {
-    console.log(`[Worker Manager] Utility process exited with code: ${code}`);
+    if (code !== 0 && code !== null) {
+      console.warn(`[Worker Manager] Utility process exited abnormally with code: ${code}`);
+    }
     childProcess = null;
     isWorking = false;
   });

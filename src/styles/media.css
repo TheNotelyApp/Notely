@@ -130,20 +130,20 @@
 
 .stat-label {
   font-size: 11px;
-  color: #60767c;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
 .stats-breakdown {
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #d0dbd6;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .breakdown-title {
   font-size: 11px;
   font-weight: 700;
-  color: #45666b;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 6px;
@@ -163,8 +163,8 @@
   background: var(--surface-bg);
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid #d0dbd6;
-  color: #45666b;
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
 }
 
 .type-icon {
@@ -177,12 +177,12 @@
 }
 
 .type-count {
-  color: #1a3a3e;
+  color: var(--text-strong);
   font-weight: 700;
 }
 
 .type-size {
-  color: #8aa0a7;
+  color: var(--text-subtle);
   font-size: 10px;
 }
 
@@ -196,22 +196,22 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 6px;
-  border: 1px solid #e8b5a0;
-  background: #fff6f1;
+  border: 1px solid var(--status-warning-border);
+  background: var(--status-warning-bg);
 }
 
 .insight-card.duplicate-insight {
   border-color: var(--border-default);
-  background: #fafbfb;
+  background: var(--surface-subtle);
 }
 
 .insight-card svg {
   flex-shrink: 0;
-  color: #c44e2e;
+  color: var(--status-warning-text);
 }
 
 .duplicate-insight svg {
-  color: #60767c;
+  color: var(--text-muted);
 }
 
 .insight-content {
@@ -224,12 +224,12 @@
 
 .insight-text {
   font-size: 11px;
-  color: #45666b;
+  color: var(--text-secondary);
   flex: 1;
 }
 
 .insight-text strong {
-  color: #1a3a3e;
+  color: var(--text-strong);
 }
 
 .cleanup-button {
@@ -237,20 +237,20 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border: 1px solid #c44e2e;
+  border: 1px solid var(--status-warning-border);
   border-radius: 4px;
-  background: #fff6f1;
-  color: #8a3a1e;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all var(--motion-standard);
 }
 
 .cleanup-button:hover:not(:disabled) {
-  background: #c44e2e;
-  color: #ffffff;
+  background: var(--status-warning-border);
+  color: var(--text-strong);
 }
 
 .cleanup-button:disabled {

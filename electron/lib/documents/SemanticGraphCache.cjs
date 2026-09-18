@@ -22,11 +22,9 @@ class SemanticGraphCache {
       const data = JSON.parse(fs.readFileSync(this.cacheFile, 'utf8'));
       const age = Date.now() - (data.timestamp || 0);
       if (age > this.maxAgeMs) {
-        console.log('[SemanticGraphCache] Cache expired, invalidating');
         this.invalidate();
         return null;
       }
-      console.log(`[SemanticGraphCache] Loaded cache (${(age / 1000 / 60).toFixed(1)} min old)`);
       return data;
     } catch (err) {
       console.warn('[SemanticGraphCache] Failed to load cache:', err.message);
@@ -44,7 +42,6 @@ class SemanticGraphCache {
         ...data,
         timestamp: Date.now(),
       }, null, 2), 'utf8');
-      console.log('[SemanticGraphCache] Cache saved');
     } catch (err) {
       console.error('[SemanticGraphCache] Failed to save cache:', err.message);
     }
@@ -57,7 +54,6 @@ class SemanticGraphCache {
     try {
       if (fs.existsSync(this.cacheFile)) {
         fs.unlinkSync(this.cacheFile);
-        console.log('[SemanticGraphCache] Cache invalidated');
       }
     } catch (err) {
       console.error('[SemanticGraphCache] Failed to invalidate cache:', err.message);

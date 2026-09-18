@@ -27,9 +27,7 @@ import {
 const defaultPreferences = {
   enablePatternLearning: true,
   enableEmbeddings: true,
-  enableRelationshipDiscovery: true,
-  maxTokensPerQuery: 2048,
-  temperature: 0.7
+  enableRelationshipDiscovery: true
 };
 
 function normalizeProviderModels(models) {

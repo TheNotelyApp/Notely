@@ -1152,7 +1152,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  color: #5a6b70;
+  color: var(--text-muted);
   font-size: 13px;
 }
 

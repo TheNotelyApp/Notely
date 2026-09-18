@@ -61,12 +61,12 @@
 
 .mcp-hero-card.is-running .mcp-hero-icon {
   background: var(--status-success-text);
-  color: #ffffff;
+  color: var(--text-on-accent, #ffffff);
 }
 
 .mcp-hero-card.is-conflict .mcp-hero-icon {
   background: var(--status-danger-text);
-  color: #ffffff;
+  color: var(--text-on-accent, #ffffff);
 }
 
 .mcp-hero-title-group {
@@ -296,7 +296,7 @@
   width: 18px;
   left: 2px;
   bottom: 2px;
-  background: #ffffff;
+  background: var(--surface-bg, #ffffff);
   border-radius: 50%;
   transition: transform var(--motion-standard);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -386,7 +386,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--status-success-text, #10b981);
   position: relative;
   display: inline-block;
 }
@@ -396,7 +396,7 @@
   position: absolute;
   top: -3px; left: -3px; right: -3px; bottom: -3px;
   border-radius: 50%;
-  border: 2px solid #10b981;
+  border: 2px solid var(--status-success-text, #10b981);
   animation: mcp-pulse-anim 2s infinite ease-in-out;
   opacity: 0.75;
 }

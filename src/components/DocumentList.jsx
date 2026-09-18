@@ -65,24 +65,42 @@ export function DocumentList({
   const [folderChildren, setFolderChildren] = useState({});
   const [loadingFolders, setLoadingFolders] = useState({});
 
-  const toggleFolder = useCallback(async (folderPath) => {
+  const refreshFolder = useCallback(async (folderPath) => {
+    if (!folderPath) return;
+    setLoadingFolders((l) => ({ ...l, [folderPath]: true }));
+    try {
+      const children = await listDocuments(folderPath);
+      setFolderChildren((fc) => ({
+        ...fc,
+        [folderPath]: Array.isArray(children) ? children : []
+      }));
+    } catch (err) {
+      console.error("Failed to load subfolder documents:", err);
+    } finally {
+      setLoadingFolders((l) => ({ ...l, [folderPath]: false }));
+    }
+  }, []);
+
+  const toggleFolder = useCallback((folderPath) => {
     setExpandedFolders((prev) => {
       const isCurrentlyExpanded = Boolean(prev[folderPath]);
       const nextExpanded = !isCurrentlyExpanded;
 
-      if (nextExpanded && !folderChildren[folderPath]) {
-        setLoadingFolders((l) => ({ ...l, [folderPath]: true }));
-        listDocuments(folderPath)
-          .then((children) => {
-            setFolderChildren((fc) => ({ ...fc, [folderPath]: Array.isArray(children) ? children : [] }));
-          })
-          .catch((err) => console.error("Failed to load subfolder documents:", err))
-          .finally(() => setLoadingFolders((l) => ({ ...l, [folderPath]: false })));
+      if (nextExpanded && !(folderPath in folderChildren)) {
+        refreshFolder(folderPath);
       }
 
       return { ...prev, [folderPath]: nextExpanded };
     });
-  }, [folderChildren]);
+  }, [folderChildren, refreshFolder]);
+
+  useEffect(() => {
+    Object.keys(expandedFolders).forEach((folderPath) => {
+      if (expandedFolders[folderPath] && !(folderPath in folderChildren) && !loadingFolders[folderPath]) {
+        refreshFolder(folderPath);
+      }
+    });
+  }, [expandedFolders, folderChildren, loadingFolders, refreshFolder]);
 
   const {
     draggedPath,
@@ -91,13 +109,22 @@ export function DocumentList({
     bindDraggableNote,
     bindFolderDrop,
   } = useNoteDragDrop({
-    onMove: (sourcePath, targetFolder) => {
-      onMoveDocument?.(sourcePath, targetFolder);
-      setFolderChildren((fc) => {
-        const next = { ...fc };
-        delete next[targetFolder];
-        return next;
-      });
+    onMove: async (sourcePath, targetFolder) => {
+      setExpandedFolders((prev) => ({ ...prev, [targetFolder]: true }));
+      setLoadingFolders((l) => ({ ...l, [targetFolder]: true }));
+
+      try {
+        await onMoveDocument?.(sourcePath, targetFolder);
+      } catch (err) {
+        console.error("Failed to move document:", err);
+      }
+
+      await refreshFolder(targetFolder);
+
+      const sourceFolder = sourcePath ? sourcePath.replace(/[\\/][^\\/]+$/, "") : null;
+      if (sourceFolder && sourceFolder !== targetFolder) {
+        await refreshFolder(sourceFolder);
+      }
     },
   });
   const normalizedDensity = normalizeDocumentDensity(density);
@@ -302,6 +329,7 @@ export function DocumentList({
     const isFolder = entry.entryType === "folder";
     const isExpanded = Boolean(expandedFolders[entry.filePath]);
     const isLoading = Boolean(loadingFolders[entry.filePath]);
+    const hasLoaded = entry.filePath in folderChildren;
     const children = folderChildren[entry.filePath] || [];
     const isTarget = dragTargetFolder === entry.filePath && isFolder;
     const isDraggingThis = draggedPath === entry.filePath;
@@ -385,7 +413,7 @@ export function DocumentList({
             style={{ display: "flex", flexDirection: "column" }}
             {...bindFolderDrop(entry, { onExpand: toggleFolder, isExpanded: true })}
           >
-            {isLoading ? (
+            {isLoading || !hasLoaded ? (
               <div style={{ paddingLeft: `${36 + depth * 20}px`, fontSize: "11px", opacity: 0.5, padding: "4px 0" }}>
                 Loading folder…
               </div>

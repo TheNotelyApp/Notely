@@ -10,15 +10,6 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("app-menu:action", listener);
     return () => ipcRenderer.removeListener("app-menu:action", listener);
   },
-  onAppMenuAction: (callback) => {
-    if (typeof callback !== "function") {
-      return () => {};
-    }
-
-    const listener = (_event, action) => callback(action);
-    ipcRenderer.on("app-menu:action", listener);
-    return () => ipcRenderer.removeListener("app-menu:action", listener);
-  },
   notifyBootReady: () => ipcRenderer.send("app:boot-ready"),
   notifyBootProgress: (payload) => ipcRenderer.send("app:boot-progress", payload),
   updateMenuContext: (payload) => ipcRenderer.send("app-menu:update-context", payload),
@@ -239,7 +230,6 @@ contextBridge.exposeInMainWorld("notesApi", {
   drawioDelete: (payload) => ipcRenderer.invoke("drawio:delete", payload),
   drawioExists: (payload) => ipcRenderer.invoke("drawio:exists", payload),
   openInEditor: (filePath) => ipcRenderer.invoke("documents:open-in-editor", filePath),
-  openFileInEditor: (filePath) => ipcRenderer.invoke("documents:open-in-editor", filePath),
   openWebView: (payload) => ipcRenderer.invoke("documents:open-web-view", payload),
   downloadPdf: (payload) => ipcRenderer.invoke("documents:download-pdf", payload),
   getWorkspaceExportDefaults: () => ipcRenderer.invoke("workspace-export:get-defaults"),
@@ -361,8 +351,6 @@ contextBridge.exposeInMainWorld("notesApi", {
   restartApp: () => ipcRenderer.invoke("app:restart"),
   exportNotePackage: (payload) => ipcRenderer.invoke("note-package:export", payload),
   importNotePackage: (payload) => ipcRenderer.invoke("note-package:import", payload),
-  browseExportDestination: (payload) => ipcRenderer.invoke("note-package:browse-export-destination", payload),
-  browseImportFile: () => ipcRenderer.invoke("note-package:browse-import-file"),
   selectExportPackageFolder: (payload) => ipcRenderer.invoke("note-package:browse-export-destination", payload),
   selectImportPackageFile: () => ipcRenderer.invoke("note-package:browse-import-file"),
   getNotePackageDefaults: () => ipcRenderer.invoke("note-package:get-defaults"),

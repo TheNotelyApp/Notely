@@ -712,9 +712,9 @@
 }
 
 .ahp-root .btn-primary {
-  border: 1px solid var(--accent-solid, #6366f1) !important;
-  background: var(--accent-solid, #6366f1);
-  color: #ffffff;
+  border: 1px solid var(--accent-solid) !important;
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
 }
 
 /* ─── ATV: AI Trace Viewer ────────────────────────────────────────────────── */
@@ -755,9 +755,9 @@
 }
 
 .atv-stat-chip.atv-stat-accent {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.25);
-  color: var(--accent-default, #6366f1);
+  background: color-mix(in srgb, var(--accent-solid) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent-solid) 25%, transparent);
+  color: var(--accent-solid);
 }
 
 .atv-stat-chip.atv-stat-error {
@@ -795,8 +795,8 @@
   background: var(--surface-subtle);
 }
 .atv-trace-row.selected {
-  background: rgba(99, 102, 241, 0.07);
-  border-left: 3px solid var(--accent-default, #6366f1);
+  background: color-mix(in srgb, var(--accent-solid) 8%, transparent);
+  border-left: 3px solid var(--accent-solid);
   padding-left: 13px;
 }
 
@@ -1219,8 +1219,8 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: var(--radius-pill);
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--accent-default, #6366f1);
+  background: color-mix(in srgb, var(--accent-solid) 12%, transparent);
+  color: var(--accent-solid);
   white-space: nowrap;
   flex-shrink: 0;
 }

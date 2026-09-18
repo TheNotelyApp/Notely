@@ -21,6 +21,7 @@ import {
   aiSetApiKey,
   aiTestConnection,
   aiGetModelStatus,
+  aiGetGraphModelStatus,
   aiDownloadModel,
   onModelDownloadProgress
 } from "../services/electronService";
@@ -63,7 +64,6 @@ export function OnboardingFlow({
         if (res.success && res.data) {
           setModelStatus(res.data);
         }
-        const { aiGetGraphModelStatus } = await import('../services/electronService');
         const gRes = await aiGetGraphModelStatus();
         if (gRes.success && gRes.data) {
           setGraphModelStatus(gRes.data);

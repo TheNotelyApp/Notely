@@ -56,8 +56,8 @@ export function SettingsModal({
   const tabs = [
     { id: "general", label: "General", icon: Sliders },
     { id: "editor", label: "Editor", icon: Type },
-    { id: "ai", label: "AI Configuration", icon: Cpu },
-    { id: "p2p", label: "P2P Sync Status", icon: ShieldAlert },
+    { id: "ai", label: "AI & Intelligence", icon: Cpu },
+    { id: "p2p", label: "P2P Sync", icon: ShieldAlert },
     { id: "mcp", label: "MCP Server", icon: Server },
   ];
 
@@ -208,8 +208,8 @@ export function SettingsModal({
 
           {activeTab === "ai" && (
             <div className="settings-tab-pane ai-tab-pane">
-              <h3>AI Copilot Configuration</h3>
-              <p className="settings-pane-intro">Tune neural features, manage active models, and connect cloud service providers.</p>
+              <h3>AI &amp; Intelligence</h3>
+              <p className="settings-pane-intro">Configure local embedding models, semantic search, and AI provider integrations.</p>
               <AISettingsContent onClose={onClose} />
             </div>
           )}

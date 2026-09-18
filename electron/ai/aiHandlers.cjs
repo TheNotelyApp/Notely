@@ -16,9 +16,7 @@ try {
   const rootAiProtocolPath = path.join(__dirname, '..', '..', 'ai', 'utils', 'ipcProtocol.js');
   const srcProtocolPath = path.join(__dirname, '..', '..', 'src', 'ai', 'utils', 'ipcProtocol.js');
   const ipcProtocolPath = fs.existsSync(rootAiProtocolPath) ? rootAiProtocolPath : srcProtocolPath;
-  console.log('[AI] Attempting to load ipcProtocol from:', ipcProtocolPath);
   ({ IPC_EVENTS, AIQueryRequest, AIQueryResponse } = require(ipcProtocolPath));
-  console.log('[AI] Successfully loaded ipcProtocol');
 } catch (err) {
   console.error('[AI] Failed to load ipcProtocol:', err.message);
   console.error('[AI] Stack:', err.stack);
@@ -159,9 +157,7 @@ function initializeAIHandlers(electronApp, agent) {
       }
     }
   }
-
   if (handlersRegistered) {
-    console.log('[AI IPC] Handlers already initialized; updated agent reference');
     return;
   }
 
@@ -181,10 +177,6 @@ function initializeAIHandlers(electronApp, agent) {
 
   // AI Initialization
   registerHandler(IPC_EVENTS.AI_INIT, handleInitialize);
-
-
-  // AI Query — removed (chat moved to MCP layer)
-
 
   // Status
   registerHandler(IPC_EVENTS.AI_STATUS, handleStatus);
@@ -238,17 +230,10 @@ function initializeAIHandlers(electronApp, agent) {
   registerHandler(IPC_EVENTS.AI_DISABLE, handleDisableAI);
   registerHandler(IPC_EVENTS.AI_HEALTH_GET, handleGetAIHealth);
 
-  // Phase 5 — Conversations removed (chat moved to MCP layer)
-
-  // Phase 5 — Conversations & Personas removed (chat moved to MCP layer)
-
-  // Candidate Knowledge — removed (chat-only)
-
   // Shutdown
   registerHandler(IPC_EVENTS.AI_SHUTDOWN, handleShutdown);
 
   handlersRegistered = true;
-  console.log('[AI IPC] Handlers initialized');
 }
 
 /**
@@ -1123,8 +1108,6 @@ async function handleTestConnection(event, payload) {
     if (!apiKey) {
       throw new Error(`No API key configured for ${providerName}`);
     }
-
-    console.log(`[AI IPC] Testing connection for ${providerName}. Key length: ${apiKey.length}, Prefix: ${apiKey.slice(0, 7)}`);
 
     // HuggingFace is an embedding-only provider tested separately.
     if (providerName === 'huggingface') {
