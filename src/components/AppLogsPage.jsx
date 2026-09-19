@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, Trash2, Download, Terminal, Filter } from 'lucide-react';
 import { aiGetLogs, aiClearLogs } from '../services/electronService';
+import useConfirm from '../hooks/useConfirm';
 
 import '../styles/KnowledgeGraph.css';
 
 export default function AppLogsPage({ onBack }) {
+  const { confirm } = useConfirm();
   const [logs, setLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [subsystemFilter, setSubsystemFilter] = useState('all');
@@ -47,7 +49,13 @@ export default function AppLogsPage({ onBack }) {
   }, [logs, levelFilter, searchQuery]);
 
   const handleClear = async () => {
-    if (!window.confirm('Are you sure you want to clear system logs?')) return;
+    const ok = await confirm({
+      title: "Clear System Logs",
+      message: "Are you sure you want to clear system logs?",
+      confirmLabel: "Clear Logs",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const sub = subsystemFilter === 'all' ? null : subsystemFilter;
       await aiClearLogs(sub);
@@ -77,7 +85,7 @@ export default function AppLogsPage({ onBack }) {
       <div className="detail-topbar">
         <nav className="detail-breadcrumb" aria-label="System Logs location">
           <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Notes</button>
+            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
             <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
           </span>
           <span className="detail-breadcrumb-current">System & Application Logs</span>

@@ -267,6 +267,7 @@ function KanbanBoard({ tasks, selectedId, groupBy = "status", onSelect, onStatus
 }
 
 function TaskDetail({ task, comments, commentsLoading, persons, onUpdate, onDelete, onAddComment, onOpenNote, onDirtyChange }) {
+  const { confirm } = useConfirm();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(task.title || "");
   const [descDraft, setDescDraft] = useState(task.description || "");
@@ -377,7 +378,15 @@ function TaskDetail({ task, comments, commentsLoading, persons, onUpdate, onDele
           <AppButton
             variant="small"
             danger
-            onClick={() => { if (window.confirm("Delete this task?")) onDelete(task.id); }}
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete Task",
+                message: "Are you sure you want to delete this task?",
+                confirmLabel: "Delete",
+                variant: "danger",
+              });
+              if (ok) onDelete(task.id);
+            }}
             title="Delete task"
             className="task-header-delete-btn"
           >

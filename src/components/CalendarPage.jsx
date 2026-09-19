@@ -254,7 +254,7 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
             <button className="cal-nav-today" type="button" onClick={() => setDate(new Date())}>Today</button>
           </div>
 
-          <div className="task-stats-pill">
+          <div className="topbar-stat-pill">
             <CalendarIcon size={12} />
             <span>{visibleEvents.length} events</span>
           </div>

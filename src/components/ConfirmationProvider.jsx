@@ -79,7 +79,7 @@ export function ConfirmationProvider({ children }) {
           </div>
           <div className="confirmation-dialog__actions">
             <AppButton
-              variant="secondary"
+              variant="small"
               onClick={handleCancel}
             >
               {/back/i.test(confirmState.cancelLabel) ? <ArrowLeft size={16} /> : <X size={16} />}

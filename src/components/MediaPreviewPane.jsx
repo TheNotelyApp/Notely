@@ -31,6 +31,7 @@ import {
   revealMediaInExplorer,
   runExport,
 } from "../services/electronService";
+import useConfirm from "../hooks/useConfirm";
 import "../styles/mediaPreview.css";
 
 export function MediaPreviewPane({
@@ -41,6 +42,7 @@ export function MediaPreviewPane({
   onClose,
   onMediaChanged,
 }) {
+  const { confirm } = useConfirm();
   const [error, setError] = useState(null);
   const [displayedImage, setDisplayedImage] = useState(null);
   const [imageInfo, setImageInfo] = useState(null);
@@ -296,7 +298,12 @@ export function MediaPreviewPane({
   const handleRestoreOriginal = async () => {
     if (!basePath || !mediaPath || restoringOriginal || !originalStatus?.hasOriginal) return;
 
-    const approved = window.confirm("Restore the original image from backup? This will overwrite current edits.");
+    const approved = await confirm({
+      title: "Restore Original Image",
+      message: "Restore the original image from backup? This will overwrite current edits.",
+      confirmLabel: "Restore Original",
+      variant: "warning",
+    });
     if (!approved) return;
 
     try {

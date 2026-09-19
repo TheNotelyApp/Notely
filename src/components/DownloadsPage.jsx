@@ -197,7 +197,7 @@ export function DownloadsPage({ onBack }) {
         </nav>
 
         <div className="detail-topbar-actions">
-          <div className="task-stats-pill" title="Exported items">
+          <div className="topbar-stat-pill" data-tooltip="Exported items">
             <Download size={12} />
             <span>{filteredHistory.length} items</span>
           </div>

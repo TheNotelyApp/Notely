@@ -29,17 +29,14 @@ describe("Design System - AppButton variant validity", () => {
     const offenders = [];
     for (const filePath of files) {
       const source = fs.readFileSync(filePath, "utf8");
-      const lines = source.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line.includes("AppButton")) continue;
-        const variantPattern = /\bvariant=["']([^"']+)["']/g;
-        let match;
-        while ((match = variantPattern.exec(line)) !== null) {
-          if (!VALID_VARIANTS.has(match[1])) {
-            const rel = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
-            offenders.push(`${rel}:${i + 1} variant="${match[1]}"`);
-          }
+      const buttonRegex = /<AppButton\b([\s\S]*?)>/g;
+      let btnMatch;
+      while ((btnMatch = buttonRegex.exec(source)) !== null) {
+        const props = btnMatch[1];
+        const variantMatch = props.match(/\bvariant=["']([^"']+)["']/);
+        if (variantMatch && !VALID_VARIANTS.has(variantMatch[1])) {
+          const rel = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+          offenders.push(`${rel} variant="${variantMatch[1]}"`);
         }
       }
     }
@@ -161,3 +158,43 @@ describe("Design System - Dialog button ordering", () => {
     expect(cancelPos, "Cancel button must appear before primary action button").toBeLessThan(confirmPos);
   });
 });
+
+// ─── Suite 7: mediaPreview.css uses design tokens ────────────────────────────
+describe("Design System - mediaPreview uses design tokens", () => {
+  it("mediaPreview.css contains no raw hex colors other than media video black", () => {
+    const css = readSource("src/styles/mediaPreview.css");
+    const matches = [...css.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0]);
+    const invalidHex = matches.filter((hex) => hex.toLowerCase() !== "#000");
+    expect(invalidHex, `Found unexpected raw hex colors in mediaPreview.css: ${invalidHex.join(", ")}`).toEqual([]);
+  });
+
+  it("mediaPreview.css references primary design system tokens", () => {
+    const css = readSource("src/styles/mediaPreview.css");
+    expect(css).toMatch(/var\(--surface-bg\)/);
+    expect(css).toMatch(/var\(--border-default\)/);
+    expect(css).toMatch(/var\(--text-muted\)/);
+    expect(css).toMatch(/var\(--text-strong\)/);
+  });
+});
+
+// ─── Suite 8: Migrated UI components use ConfirmationProvider, not window.confirm ──
+describe("Design System - No native window.confirm in core screens", () => {
+  const MIGRATED_FILES = [
+    "src/components/TrashDialog.jsx",
+    "src/components/MediaPreviewPane.jsx",
+    "src/components/AppLogsPage.jsx",
+    "src/components/TaskWorkspacePage.jsx",
+  ];
+
+  it("migrated components do not invoke native window.confirm", () => {
+    const offenders = [];
+    for (const relPath of MIGRATED_FILES) {
+      const source = readSource(relPath);
+      if (source.includes("window.confirm(")) {
+        offenders.push(relPath);
+      }
+    }
+    expect(offenders, `Files still using window.confirm: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+

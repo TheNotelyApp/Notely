@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Trash2, RotateCcw, Folder, File, AlertCircle, X } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
+import AppButton from "./AppButton";
+import AppIconButton from "./AppIconButton";
+import useConfirm from "../hooks/useConfirm";
 import { formatDate } from "../utils/dateUtils";
 
 export function TrashDialog({ isOpen, onClose, onRestored }) {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -49,9 +53,13 @@ export function TrashDialog({ isOpen, onClose, onRestored }) {
 
   const handleEmptyTrash = async () => {
     if (!window.notesApi?.trashEmpty) return;
-    if (!window.confirm("Are you sure you want to permanently empty the trash? This cannot be undone.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Empty Trash",
+      message: "Are you sure you want to permanently empty the trash? This cannot be undone.",
+      confirmLabel: "Empty Trash",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       await window.notesApi.trashEmpty();
       setItems([]);
@@ -69,19 +77,24 @@ export function TrashDialog({ isOpen, onClose, onRestored }) {
           <h2 style={{ margin: 0 }}>Trash Bin</h2>
         </div>
         {items.length > 0 && (
-          <button className="small-button danger-button" onClick={handleEmptyTrash} style={{ marginLeft: "auto", marginRight: "16px" }}>
+          <AppButton
+            variant="small"
+            danger
+            onClick={handleEmptyTrash}
+            style={{ marginLeft: "auto", marginRight: "16px" }}
+          >
             Empty Trash
-          </button>
+          </AppButton>
         )}
-        <button
-          className="icon-button"
+        <AppIconButton
+          size="sm"
           onClick={onClose}
-          type="button"
+          title="Close (Esc)"
           aria-label="Close trash dialog"
           style={{ marginLeft: items.length > 0 ? "0" : "auto" }}
         >
           <X size={16} />
-        </button>
+        </AppIconButton>
       </div>
 
       <div className="overlay-dialog-body" style={{ minHeight: "300px", maxHeight: "450px", overflowY: "auto", padding: "16px" }}>
