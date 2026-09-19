@@ -343,7 +343,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       let doc = null;
       try {
         doc = await readDocument(filePath);
-      } catch (readErr) {
+      } catch {
         doc = null;
       }
       if (!doc) {

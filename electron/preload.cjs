@@ -258,6 +258,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   getImageUsage: (payload) => ipcRenderer.invoke("images:usage", payload),
   readImage: (payload) => ipcRenderer.invoke("images:read", payload),
   openMediaInDefaultApp: (payload) => ipcRenderer.invoke("images:open-default-app", payload),
+  revealMediaInExplorer: (payload) => ipcRenderer.invoke("images:reveal-in-explorer", payload),
   getImageAnnotation: (payload) => ipcRenderer.invoke("images:get-annotation", payload),
   setImageAnnotation: (payload) => ipcRenderer.invoke("images:set-annotation", payload),
   getImageOriginalStatus: (payload) => ipcRenderer.invoke("images:get-original-status", payload),

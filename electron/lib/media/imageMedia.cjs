@@ -410,6 +410,15 @@ function resolveImageAssetPath(basePath, assetPath) {
   const rawAsset = (assetPath || "").trim();
   if (!rawAsset) return null;
 
+  let baseDir = path.resolve(basePath);
+  try {
+    if (fs.existsSync(baseDir) && !fs.statSync(baseDir).isDirectory()) {
+      baseDir = path.dirname(baseDir);
+    }
+  } catch {
+    baseDir = path.dirname(baseDir);
+  }
+
   let resolvedAssetPath = "";
   if (/^https?:/i.test(rawAsset)) {
     try {
@@ -453,7 +462,6 @@ function resolveImageAssetPath(basePath, assetPath) {
         break;
       }
     }
-    const baseDir = path.dirname(path.resolve(basePath));
     const isWorkspaceImageLink = /^[/\\]+(images|media)[/\\]/i.test(decodedAsset);
     const normalizedAsset = decodedAsset
       .replace(/^\.\//, "")
@@ -461,11 +469,15 @@ function resolveImageAssetPath(basePath, assetPath) {
     const legacyDiagramMatch = normalizedAsset.match(/^(?:\.notes-app[\\/])?excali-diagrams[\\/]([^\\/]+)[\\/]([^\\/]+)[\\/]diagram\.png$/i);
     const sluglessDiagramMatch = normalizedAsset.match(/^(?:\.notes-app[\\/])?excali-diagrams[\\/]([^\\/]+)[\\/]diagram\.png$/i);
 
-    // For asset paths like "./images/foo.jpg", try the markdown file's own
-    // sibling folder first (most common case for per-note images/), then fall
-    // back to the workspace-level getNotesRoot()/images. For any other relative
-    // path, resolve from the markdown file directory.
+    // Collect candidate paths
     const candidates = [];
+    if (path.isAbsolute(decodedAsset)) {
+      candidates.push(path.resolve(decodedAsset));
+    }
+    if (path.isAbsolute(rawAsset)) {
+      candidates.push(path.resolve(rawAsset));
+    }
+
     if (isWorkspaceImageLink) {
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
     } else if (/^(images|media)[\\/]/i.test(normalizedAsset)) {
@@ -473,15 +485,16 @@ function resolveImageAssetPath(basePath, assetPath) {
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
     } else {
       candidates.push(path.resolve(baseDir, normalizedAsset));
+      candidates.push(path.resolve(baseDir, "images", normalizedAsset));
+      candidates.push(path.resolve(baseDir, "media", normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), "images", normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), "media", normalizedAsset));
       if (sluglessDiagramMatch && !/^\.notes-app[\\/]/i.test(normalizedAsset)) {
         const [, diagramId] = sluglessDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
         candidates.push(path.resolve(getNotesRoot(), `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
       }
-      // Backward compatibility for legacy Excalidraw paths:
-      // excali-diagrams/<doc-slug>/<diagram-id>/diagram.png
-      // Current storage is: .notes-app/excali-diagrams/<diagram-id>/diagram.png
       if (legacyDiagramMatch) {
         const [, , diagramId] = legacyDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
@@ -499,7 +512,12 @@ function resolveImageAssetPath(basePath, assetPath) {
     }) || candidates[0];
   }
 
-  if (!filePathWithin(getNotesRoot(), resolvedAssetPath)) {
+  const notesRoot = getNotesRoot();
+  const activeProj = typeof getActiveProject === "function" ? getActiveProject() : null;
+  const allowedRoots = [notesRoot, baseDir, path.resolve(basePath), activeProj?.rootPath].filter(Boolean);
+
+  const isAllowed = allowedRoots.some((root) => filePathWithin(root, resolvedAssetPath));
+  if (!isAllowed) {
     return null;
   }
 
@@ -1157,6 +1175,24 @@ registerTrustedHandler("images:open-default-app", async (_event, payload) => {
   if (openResult) {
     throw new Error(openResult);
   }
+  return true;
+});
+
+registerTrustedHandler("images:reveal-in-explorer", async (_event, payload) => {
+  const { basePath, assetPath } = payload || {};
+  if (!basePath || typeof basePath !== "string") {
+    throw new Error("Invalid base path.");
+  }
+  if (!assetPath || typeof assetPath !== "string") {
+    throw new Error("Invalid asset path.");
+  }
+
+  const resolvedAssetPath = resolveImageAssetPath(basePath, assetPath);
+  if (!resolvedAssetPath || !fs.existsSync(resolvedAssetPath)) {
+    throw new Error("Media file not found.");
+  }
+
+  shell.showItemInFolder(resolvedAssetPath);
   return true;
 });
 

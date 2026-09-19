@@ -64,6 +64,17 @@ export async function openMediaInDefaultApp(basePath, assetPath) {
   return api.openMediaInDefaultApp({ basePath, assetPath });
 }
 
+export async function revealMediaInExplorer(basePath, assetPath) {
+  const api = getNotesApi();
+  if (typeof api.revealMediaInExplorer === "function") {
+    return api.revealMediaInExplorer({ basePath, assetPath });
+  }
+  if (typeof api.revealWorkspaceInExplorer === "function") {
+    return api.revealWorkspaceInExplorer({ folderPath: assetPath });
+  }
+  throw new Error("Reveal in Explorer unavailable. Please restart the app.");
+}
+
 export async function getImageAnnotation(basePath, assetPath) {
   const api = getNotesApi();
   if (typeof api.getImageAnnotation !== "function") return null;
