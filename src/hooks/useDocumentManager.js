@@ -340,8 +340,25 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       setCurrent(cached.doc);
       setSavedHash(cached.savedHash);
     } else {
-      const doc = await readDocument(filePath);
-      await markDocumentOpened(filePath);
+      let doc = null;
+      try {
+        doc = await readDocument(filePath);
+      } catch (readErr) {
+        doc = null;
+      }
+      if (!doc) {
+        setOpenTabs((prev) => prev.filter((p) => p !== filePath));
+        const filename = filePath.split(/[/\\\\]/).pop() || filePath;
+        const msg = `Unable to open "${filename}". File does not exist or is invalid.`;
+        setError(msg);
+        notify(msg, "error");
+        return;
+      }
+      try {
+        await markDocumentOpened(filePath);
+      } catch {
+        // non-fatal
+      }
       const hash = JSON.stringify({
         header: doc.header || "",
         rawNotes: doc.rawNotes || "",

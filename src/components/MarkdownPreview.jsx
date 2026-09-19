@@ -449,6 +449,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   onNotify,
   onContentChange,
   onMediaClick,
+  onOpenDocument,
   showOriginalImages = false,
   inlineLinkedMarkdown = false,
   onSearchRequest,
@@ -617,8 +618,6 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
   }, [content, basePath, showOriginalImages]);
 
   useEffect(() => {
-    if (!onMediaClick && !inlineLinkedMarkdown) return;
-
     const previewElement = previewRef.current;
     if (!previewElement) return;
 
@@ -669,6 +668,22 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
+      if (rawHref.startsWith("#")) {
+        const targetId = rawHref.slice(1);
+        try {
+          const targetEl = previewRef.current?.querySelector(`[id="${CSS.escape(targetId)}"]`)
+            || previewRef.current?.querySelector(`[id="${targetId}"]`)
+            || previewRef.current?.querySelector(`a[name="${targetId}"]`);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: "smooth" });
+            return;
+          }
+        } catch {
+          // fallback
+        }
+        return;
+      }
+
       if (inlineLinkedMarkdown) {
         const fakeEvent = {
           preventDefault: () => {},
@@ -678,9 +693,51 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         if (openedInline) return;
       }
 
-      if (rawHref.startsWith("http://") || rawHref.startsWith("https://")) {
+      if (/^(https?:|mailto:)/i.test(rawHref)) {
         window.notesApi?.openExternal?.(rawHref);
         return;
+      }
+
+      const resolvedMd = resolveMarkdownLinkPath(basePath, rawHref);
+      if (resolvedMd) {
+        if (typeof onOpenDocument === "function") {
+          try {
+            await onOpenDocument(resolvedMd);
+            return;
+          } catch (err) {
+            onNotify?.(err?.message || "Failed to open document.", "error");
+            return;
+          }
+        }
+      }
+
+      const resolvedLocal = resolveAnyLocalLinkPath(basePath, rawHref);
+      if (resolvedLocal) {
+        const ext = resolvedLocal.split(".").pop()?.toLowerCase();
+        if (ext === "md" && typeof onOpenDocument === "function") {
+          try {
+            await onOpenDocument(resolvedLocal);
+            return;
+          } catch (err) {
+            onNotify?.(err?.message || "Failed to open document.", "error");
+            return;
+          }
+        }
+
+        const mediaType = getMediaTypeFromExtension(ext);
+        if (mediaType && typeof onMediaClick === "function") {
+          onMediaClick({ path: resolvedLocal, type: mediaType });
+          return;
+        }
+
+        if (typeof openMediaInDefaultApp === "function") {
+          try {
+            await openMediaInDefaultApp(basePath, resolvedLocal);
+            return;
+          } catch {
+            // fallback to openFolder
+          }
+        }
       }
 
       try {
@@ -892,8 +949,21 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
 
     const handleDownloadFileFromPreview = (href) => {
       if (!href) return;
+      const resolvedMd = resolveMarkdownLinkPath(basePath, href);
+      if (resolvedMd && typeof onOpenDocument === "function") {
+        onOpenDocument(resolvedMd).catch((err) => {
+          onNotify?.(err?.message || "Failed to open document.", "error");
+        });
+        return;
+      }
       const resolvedPath = resolveAnyLocalLinkPath(basePath, href) || String(href || "").trim().replace(/^file:\/\/\/?/i, "").split(/[?#]/)[0];
       const ext = resolvedPath.split(".").pop()?.toLowerCase();
+      if (ext === "md" && typeof onOpenDocument === "function") {
+        onOpenDocument(resolvedPath).catch((err) => {
+          onNotify?.(err?.message || "Failed to open document.", "error");
+        });
+        return;
+      }
       const mediaType = getMediaTypeFromExtension(ext) || "document";
 
       if (typeof onMediaClick === "function") {
@@ -1280,7 +1350,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       previewElement.removeEventListener("click", handleMediaClick);
       previewElement.removeEventListener("dblclick", handleMediaDblClick);
     };
-  }, [basePath, inlineLinkedMarkdown, onMediaClick, onNotify, content, onContentChange, confirm]);
+  }, [basePath, inlineLinkedMarkdown, onMediaClick, onOpenDocument, onNotify, content, onContentChange, confirm]);
 
 
 

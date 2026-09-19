@@ -43,6 +43,7 @@ export function EditorPane({
   scrollSyncEnabled: propScrollSyncEnabled,
   onScrollSyncEnabledChange,
   onOpenTaskDetails,
+  onOpenDocument,
 }) {
   const previewRef = useRef(null);
   const splitPaneRef = useRef(null);
@@ -480,6 +481,7 @@ export function EditorPane({
             inlineLinkedMarkdown={inlineLinkedMarkdown}
             onForceSaveDocument={onForceSaveDocument}
             onOpenTaskDetails={onOpenTaskDetails}
+            onOpenDocument={onOpenDocument}
             onSearchRequest={(query) => {
               window.dispatchEvent(new CustomEvent("open-global-search-query", { detail: { query } }));
             }}
@@ -569,6 +571,7 @@ export function EditorPane({
               inlineLinkedMarkdown={inlineLinkedMarkdown}
               onForceSaveDocument={onForceSaveDocument}
               onOpenTaskDetails={onOpenTaskDetails}
+              onOpenDocument={onOpenDocument}
               onSearchRequest={(query) => {
                 window.dispatchEvent(new CustomEvent("open-global-search-query", { detail: { query } }));
               }}

@@ -207,7 +207,18 @@ export function normalizeMarkdownLinks(content) {
     .replace(/\]\\\(/gi, '](')
     .replace(/(file:[^)]+)\\\)/gi, '$1)');
 
-  // 2. Process explicit markdown links: [alt](url) or [alt](<url>)
+  // 2. Process wikilinks: [[target]] or [[target|label]] (skipping quoted mermaid syntax)
+  text = text.replace(/\[\[([^[\]|]+)(?:\|([^[\]]+))?\]\]/g, (match, target, label) => {
+    const rawTarget = (target || "").trim();
+    if (!rawTarget || rawTarget.startsWith('"') || rawTarget.endsWith('"')) {
+      return match;
+    }
+    const rawLabel = (label || "").trim() || rawTarget;
+    const targetWithExt = /\.[^./\\]+$/.test(rawTarget) ? rawTarget : `${rawTarget}.md`;
+    return `[${rawLabel}](${encodeURI(targetWithExt)})`;
+  });
+
+  // 3. Process explicit markdown links: [alt](url) or [alt](<url>)
   let normalized = text.replace(/\[([^\]]+)\]\((<[^>]+>|[^)]+)\)/g, (_match, linkText, rawUrl) => {
     const trimmed = (rawUrl || "").trim();
     const isAngleWrapped = trimmed.startsWith("<") && trimmed.endsWith(">");

@@ -1479,6 +1479,7 @@ export function DocumentDetail({
                 scrollSyncEnabled={scrollSyncEnabled}
                 onScrollSyncEnabledChange={onScrollSyncEnabledChange}
                 onOpenTaskDetails={(taskInfo) => setSelectedTaskForModal({ ...taskInfo, noteContent: content })}
+                onOpenDocument={onOpenDocument}
               />
             </>
           )}

@@ -343,6 +343,80 @@ describe("MarkdownPreview image behaviors", () => {
     view.unmount();
   });
 
+  it("opens referenced markdown note via onOpenDocument when clicking markdown link in preview", async () => {
+    const onOpenDocument = vi.fn().mockResolvedValue(undefined);
+
+    const view = renderPreview({
+      content: "Check [Other Note](./other-note.md)",
+      basePath: "C:/notes/doc.md",
+      onOpenDocument,
+      onNotify: vi.fn(),
+      onContentChange: vi.fn(),
+    });
+
+    const link = view.host.querySelector("a[href='./other-note.md']");
+    expect(link).toBeTruthy();
+
+    await act(async () => {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await waitFor(0);
+      await waitFor(0);
+    });
+
+    expect(onOpenDocument).toHaveBeenCalledWith("C:\\notes\\other-note.md");
+    view.unmount();
+  });
+
+  it("renders wikilink [[note]] and navigates via onOpenDocument when clicked", async () => {
+    const onOpenDocument = vi.fn().mockResolvedValue(undefined);
+
+    const view = renderPreview({
+      content: "See [[other-note]] for details.",
+      basePath: "C:/notes/doc.md",
+      onOpenDocument,
+      onNotify: vi.fn(),
+      onContentChange: vi.fn(),
+    });
+
+    const link = view.host.querySelector("a[href='other-note.md']");
+    expect(link).toBeTruthy();
+    expect(link.textContent).toBe("other-note");
+
+    await act(async () => {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await waitFor(0);
+      await waitFor(0);
+    });
+
+    expect(onOpenDocument).toHaveBeenCalledWith("C:\\notes\\other-note.md");
+    view.unmount();
+  });
+
+  it("opens external url via window.notesApi.openExternal when clicked", async () => {
+    window.notesApi = {
+      ...(window.notesApi || {}),
+      openExternal: vi.fn(),
+    };
+
+    const view = renderPreview({
+      content: "Visit [Notely Docs](https://example.com/docs)",
+      basePath: "C:/notes/doc.md",
+      onNotify: vi.fn(),
+      onContentChange: vi.fn(),
+    });
+
+    const link = view.host.querySelector("a[href='https://example.com/docs']");
+    expect(link).toBeTruthy();
+
+    await act(async () => {
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await waitFor(0);
+    });
+
+    expect(window.notesApi.openExternal).toHaveBeenCalledWith("https://example.com/docs");
+    view.unmount();
+  });
+
   it("converts image to Excalidraw diagram and keeps modal open upon save until closed", async () => {
     window.notesApi = {
       writeDiagramSource: vi.fn().mockImplementation(async () => ({ success: true })),

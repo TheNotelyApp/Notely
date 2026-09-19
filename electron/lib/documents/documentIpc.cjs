@@ -247,7 +247,8 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
     const resolved = path.resolve(filePath);
-    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    const isAllowed = (filePathWithin(projectRoot, resolved) || (notesRoot && filePathWithin(notesRoot, resolved)));
+    if (!isAllowed || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
     if (!fs.existsSync(resolved)) {
@@ -263,7 +264,8 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
     const resolved = path.resolve(String(filePath || ""));
-    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    const isAllowed = (filePathWithin(projectRoot, resolved) || (notesRoot && filePathWithin(notesRoot, resolved)));
+    if (!isAllowed || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
     if (!fs.existsSync(resolved)) {
@@ -283,7 +285,8 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
     const resolved = path.resolve(filePath);
-    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    const isAllowed = (filePathWithin(projectRoot, resolved) || (notesRoot && filePathWithin(notesRoot, resolved)));
+    if (!isAllowed || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
     startWatching(resolved, event.sender);
@@ -300,7 +303,8 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
     const resolved = path.resolve(String(filePath || ""));
-    if (!filePathWithin(projectRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
+    const isAllowed = (filePathWithin(projectRoot, resolved) || (notesRoot && filePathWithin(notesRoot, resolved)));
+    if (!isAllowed || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
     }
     if (!fs.existsSync(resolved)) {
