@@ -208,7 +208,7 @@ export function PresentationViewer({ dataUrl }) {
           data-tooltip={isFullscreen ? "Exit fullscreen" : "Fullscreen presentation"}
           aria-label="Toggle fullscreen"
         >
-          {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
         </AppIconButton>
       </div>
 
