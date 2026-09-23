@@ -61,6 +61,7 @@ describe("DocumentList table/tile parity", () => {
       filePath: "C:/notes/Work/sprint.md",
       updatedAt: "2026-07-01T11:00:00.000Z",
       metadata: { time: "10:00", location: "Room A" },
+      snippet: "Sprint planning and task breakdown",
       previewImages: [],
     },
   ];
@@ -79,13 +80,15 @@ describe("DocumentList table/tile parity", () => {
     const tableActionLabels = collectActionLabels(view.host);
 
     expect(view.host.textContent).toContain("Contains notes and subfolders");
-    expect(view.host.textContent).toContain("10:00 - Room A");
+    expect(view.host.textContent).not.toContain("10:00 - Room A");
+    expect(view.host.textContent).toContain("Sprint planning and task breakdown");
 
     view.rerender({ ...baseProps, viewMode: "tile" });
     const tileActionLabels = collectActionLabels(view.host);
 
     expect(view.host.textContent).toContain("Contains notes and subfolders");
-    expect(view.host.textContent).toContain("10:00 - Room A");
+    expect(view.host.textContent).not.toContain("10:00 - Room A");
+    expect(view.host.textContent).toContain("Sprint planning and task breakdown");
     expect(tileActionLabels).toEqual(tableActionLabels);
 
     view.unmount();

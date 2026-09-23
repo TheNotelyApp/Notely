@@ -13,9 +13,7 @@ export function WorkspaceExportDialog({
   onExport,
 }) {
   if (!isOpen) return null;
-  const supportsSectionModes = values.mode === "pdf" || values.mode === "web";
   const exportFormatLabelId = "workspace-export-mode-label";
-  const sectionExportLabelId = "workspace-export-content-mode-label";
 
   return (
     <OverlayDialog open={isOpen} onClose={onClose} ariaLabel="Export workspace as zip" cardClassName="workspace-export-dialog-card">
@@ -50,24 +48,6 @@ export function WorkspaceExportDialog({
           <option value="web">Web format (static HTML package)</option>
         </AppSelect>
       </div>
-
-      {supportsSectionModes ? (
-        <div className="overlay-dialog-field">
-          <span id={sectionExportLabelId}>Section export</span>
-          <AppSelect
-            id="workspace-export-content-mode"
-            aria-labelledby={sectionExportLabelId}
-            value={values.contentMode || "combined"}
-            onChange={(event) => onChange({ contentMode: event.target.value })}
-            disabled={loading}
-          >
-            <option value="combined">Combined file (Raw + Cleansed together)</option>
-            <option value="separate">Separate files (Raw and Cleansed split)</option>
-            <option value="raw">Raw Notes only</option>
-            <option value="cleansed">Cleansed only</option>
-          </AppSelect>
-        </div>
-      ) : null}
 
       <label className="overlay-dialog-checkbox" htmlFor="workspace-export-include-metadata">
         <input

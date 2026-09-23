@@ -73,6 +73,7 @@ import {
   onExportRecordAdded,
   listProjects,
   transferDocumentWorkspace,
+  batchSetMetadataInFiles,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
 import { useP2PSync } from "./hooks/useP2PSync";
@@ -170,10 +171,6 @@ function normalizeWorkspaceExportMode(rawValue) {
   return ["raw", "pdf", "web"].includes(rawValue) ? rawValue : "raw";
 }
 
-function normalizeWorkspaceExportContentMode(rawValue) {
-  return ["combined", "separate", "raw", "cleansed"].includes(rawValue) ? rawValue : "combined";
-}
-
 function getWorkspaceExportType(rawMode) {
   const mode = normalizeWorkspaceExportMode(rawMode);
   if (mode === "pdf") return "pdf";
@@ -197,7 +194,7 @@ function normalizeWorkspaceExportOptions(rawValue) {
     fileName: typeof source.fileName === "string" && source.fileName.trim() ? source.fileName : "workspace_docs_dd_mm_yyyy.zip",
     includeMetadata: source.includeMetadata === true,
     mode: normalizeWorkspaceExportMode(source.mode),
-    contentMode: normalizeWorkspaceExportContentMode(source.contentMode),
+    contentMode: "combined",
   };
 }
 
@@ -417,8 +414,8 @@ export default function App() {
     setHistory,
     loading,
     saving,
-    activeTab,
-    setActiveTab,
+    writeMetadataToFile,
+    setWriteMetadataToFile,
     error,
     setError,
     activeProject,
@@ -546,7 +543,7 @@ export default function App() {
 
   useEffect(() => {
     setActiveDocumentChangedOnDisk(false);
-  }, [current?.filePath, current?.rawNotes, current?.cleansed]);
+  }, [current?.filePath, current?.rawNotes]);
 
   useEffect(() => {
     if (typeof window.notesApi?.onDocumentChangedOnDisk !== "function") return undefined;
@@ -720,10 +717,12 @@ export default function App() {
     if (window.notesApi?.getWorkspaceInfo) {
       try {
         const info = await window.notesApi.getWorkspaceInfo();
-        if (info) setWorkspaceInfoState(info);
+        if (info) setWorkspaceInfoState({ ...info, writeMetadataToFile });
       } catch {
         /* ignore */
       }
+    } else {
+      setWorkspaceInfoState((prev) => ({ ...prev, writeMetadataToFile }));
     }
     setWorkspaceModalMode("info");
     setWorkspaceModalOpen(true);
@@ -750,6 +749,16 @@ export default function App() {
       if (res?.success) {
         notify("Workspace information updated.", "success");
         setWorkspaceInfoState(res.info);
+      }
+      if (typeof payload?.writeMetadataToFile === "boolean" && payload.writeMetadataToFile !== writeMetadataToFile) {
+        setWriteMetadataToFile(payload.writeMetadataToFile);
+        try {
+          await batchSetMetadataInFiles({ enabled: payload.writeMetadataToFile, workspacePath: notesFolderPath });
+          notify(payload.writeMetadataToFile ? "Note metadata written to workspace files." : "Note metadata removed from workspace files.", "success");
+          await handleReloadWorkspace();
+        } catch (err) {
+          notify("Failed to update workspace file metadata: " + err.message, "error");
+        }
       }
     }
   };
@@ -1515,6 +1524,7 @@ export default function App() {
       viewMode: notesViewMode,
       densityMode: notesDensityMode,
       typoCheckEnabled,
+      writeMetadataToFile,
       previewImageMode,
       embeddedMarkdownMode,
       screenCaptureMode,
@@ -1540,10 +1550,10 @@ export default function App() {
       currentNoteSubfolder,
       autosaveEnabled,
     });
-  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, notesViewMode, notesDensityMode, typoCheckEnabled, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, fontPreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
+  }, [current, downloadsPageOpen, calendarPageOpen, taskWorkspaceOpen, appLogsOpen, healthPageOpen, gitVCOpen, embeddingsPageOpen, graphPanelOpen, notesViewMode, notesDensityMode, typoCheckEnabled, writeMetadataToFile, previewImageMode, embeddedMarkdownMode, screenCaptureMode, themePreference, fontPreference, dirty, activeDocumentChangedOnDisk, activeProject, notesFolderPath, landingFolderPath, showTerminal, terminalShellPreference, outlineEnabled, mode, focusModeEnabled, scrollSyncEnabled, tableEditorEnabled, recentWorkspacePaths, availableWorkspaces, autosaveEnabled]);
 
   useEffect(() => {
-    const handleAction = (action) => {
+    const handleAction = async (action) => {
       if (action === "close-current-tab") {
         if (activeTabPath) {
           handleCloseTab(activeTabPath);
@@ -2209,6 +2219,32 @@ export default function App() {
         return;
       }
 
+      if (
+        action === "toggle-write-metadata-to-file" ||
+        action === "set-write-metadata-to-file-enabled" ||
+        action === "set-write-metadata-to-file-disabled"
+      ) {
+        const nextVal = action === "set-write-metadata-to-file-enabled"
+          ? true
+          : action === "set-write-metadata-to-file-disabled"
+            ? false
+            : !writeMetadataToFile;
+
+        if (nextVal === writeMetadataToFile) {
+          return;
+        }
+
+        setWriteMetadataToFile(nextVal);
+        try {
+          await batchSetMetadataInFiles({ enabled: nextVal, workspacePath: notesFolderPath });
+          notify(nextVal ? "Note metadata written to workspace files." : "Note metadata removed from workspace files.", "success");
+          await handleReloadWorkspace();
+        } catch (err) {
+          notify("Failed to update workspace file metadata: " + err.message, "error");
+        }
+        return;
+      }
+
       if (action === "ai-clear-cache") {
         handleAIClearCache();
         return;
@@ -2229,7 +2265,7 @@ export default function App() {
       window.removeEventListener("app:menu-action", handleCustomMenuAction);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, dirty, activeProject, activeTab, landingFolderPath, zoomFactor]);
+  }, [current, dirty, activeProject, writeMetadataToFile, landingFolderPath, zoomFactor]);
 
   async function handleOpenWorkspaceExport() {
     setWorkspaceExportOpen(true);
@@ -2325,19 +2361,19 @@ export default function App() {
     };
     fetchStats();
     return () => { active = false; };
-  }, [current?.filePath, current?.rawNotes, current?.cleansed]);
+  }, [current?.filePath, current?.rawNotes]);
 
   const folderCount = documents.filter((entry) => entry.entryType === "folder").length;
   const noteCount = documents.length - folderCount;
 
   const documentStats = useMemo(() => {
     if (!current) return null;
-    const text = activeTab === "raw" ? (current.rawNotes || "") : (current.cleansed || "");
+    const text = current.rawNotes || current.content || "";
     const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
     const lineCount = text.split(/\n/).length;
     const readMinutes = Math.max(1, Math.ceil(wordCount / 200));
     return { wordCount, lineCount, readMinutes };
-  }, [current, activeTab]);
+  }, [current]);
   const visibleDocuments = applyDocumentListQuery(documents, {
     query: landingListQuery,
     typeFilter: landingEntryFilter,
@@ -3342,8 +3378,6 @@ export default function App() {
             history={history}
             workspacePath={notesFolderPath}
             branch={gitWorkspaceMeta.branch}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
             mode={mode}
             setMode={setMode}
             onChange={setCurrent}

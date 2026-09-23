@@ -62,7 +62,6 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("raw");
   const [error, setError] = useState("");
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProjectState] = useState(null);
@@ -97,6 +96,12 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     workspaceScope: workspaceStorageScope,
     key: "notes:active-tab-path",
     defaultValue: null,
+  });
+
+  const [writeMetadataToFile, setWriteMetadataToFile] = useWorkspaceScopedStorage({
+    workspaceScope: workspaceStorageScope,
+    key: "notes:write-metadata-to-file",
+    defaultValue: true,
   });
 
   const [tabStates, setTabStates] = useState({});
@@ -372,10 +377,6 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       setCurrent(doc);
       setSavedHash(hash);
     }
-
-    if (!options.preserveActiveTab) {
-      setActiveTab("raw");
-    }
     setHistory([]);
   }
 
@@ -384,38 +385,45 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     const reason = options?.reason || "manual-save";
     const silent = Boolean(options?.silent);
     const overrideContent = options?.content;
-    const targetField = options?.field || (current.hasCleansed && !current.hasRawNotes ? "cleansed" : "rawNotes");
     setSaving(true);
     setError("");
 
-    const rawNotesToSave = (overrideContent !== undefined && targetField === "rawNotes")
-      ? overrideContent
-      : (current.rawNotes || "");
-    const cleansedToSave = (overrideContent !== undefined && targetField === "cleansed")
-      ? overrideContent
-      : (current.cleansed || "");
+    let rawNotesToSave = overrideContent !== undefined ? overrideContent : (current.rawNotes || "");
+    let cleansedToSave = current.cleansed || "";
+    if (cleansedToSave.trim()) {
+      rawNotesToSave = rawNotesToSave.trim()
+        ? rawNotesToSave.trim() + "\n\n" + cleansedToSave.trim()
+        : cleansedToSave.trim();
+      cleansedToSave = "";
+    }
 
     try {
       const saved = await saveDocumentApi({
         filePath: current.filePath,
-        header: current.header || "",
+        header: writeMetadataToFile ? (current.header || "") : "",
         rawNotes: rawNotesToSave,
         cleansed: cleansedToSave,
         reason,
       });
-      
+
+      const effectiveSaved = {
+        ...saved,
+        header: current.header || saved.header || "",
+        cleansed: "",
+      };
+
       const newHash = JSON.stringify({
-        header: saved.header || "",
-        rawNotes: saved.rawNotes || "",
-        cleansed: saved.cleansed || "",
+        header: effectiveSaved.header || "",
+        rawNotes: effectiveSaved.rawNotes || "",
+        cleansed: effectiveSaved.cleansed || "",
       });
 
       setTabStates((prev) => ({
         ...prev,
-        [saved.filePath]: { doc: saved, savedHash: newHash },
+        [saved.filePath]: { doc: effectiveSaved, savedHash: newHash },
       }));
 
-      setCurrent(saved);
+      setCurrent(effectiveSaved);
       setSavedHash(newHash);
       setHistory([]);
       await loadDocumentsData();
@@ -833,7 +841,6 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
       setActiveTabPath(newPath);
       setCurrent(created);
       setSavedHash(hash);
-      setActiveTab("raw");
       setHistory([]);
       setNoteDialogOpen(false);
       notify("Note created.", "success");
@@ -1391,8 +1398,8 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     setHistory,
     loading,
     saving,
-    activeTab,
-    setActiveTab,
+    writeMetadataToFile,
+    setWriteMetadataToFile,
     error,
     setError,
     projects,

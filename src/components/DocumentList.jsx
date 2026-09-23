@@ -9,6 +9,7 @@ import { getContrastColor } from "../utils/colorUtils";
 import { IconColorPickerModal } from "./IconColorPickerModal";
 import * as LucideIcons from "lucide-react";
 import { useNoteDragDrop } from "../utils/noteDragDrop";
+import { extractNoteSnippet } from "../utils/markdownUtils";
 
 function EntryIcon({ entryType, icon }) {
   const className = `document-kind-icon ${entryType} ${icon ? 'custom-avatar' : ''}`;
@@ -536,8 +537,7 @@ export function DocumentList({
                 <td>
                   {doc.entryType === "folder"
                     ? "Contains notes and subfolders"
-                    : ([doc.metadata?.time, doc.metadata?.location].filter(Boolean).join(" - ") ||
-                      "No meeting metadata")}
+                    : (doc.snippet || extractNoteSnippet(doc.rawNotes || doc.content || "") || "-")}
                 </td>
                 <td>{formatDate(doc.updatedAt)}</td>
                 <td>
@@ -614,12 +614,15 @@ export function DocumentList({
                 useButtonElements={false}
               />
             </span>
-            <span className="document-meta">
-              {doc.entryType === "folder"
-                ? "Contains notes and subfolders"
-                : ([doc.metadata?.time, doc.metadata?.location].filter(Boolean).join(" - ") ||
-                  "No meeting metadata")}
-            </span>
+            {doc.entryType === "folder" ? (
+              <span className="document-meta">
+                Contains notes and subfolders
+              </span>
+            ) : (
+              <span className="document-meta" title={doc.snippet || extractNoteSnippet(doc.rawNotes || doc.content || "")}>
+                {doc.snippet || extractNoteSnippet(doc.rawNotes || doc.content || "") || "No additional text"}
+              </span>
+            )}
             <span className="document-updated">
               <CalendarIcon />
               <span>{formatDate(doc.updatedAt)}</span>

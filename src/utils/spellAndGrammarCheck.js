@@ -24,7 +24,7 @@ const CUSTOM_WORDS = [
   "dcs", "scada", "ot", "it", "idmz", "mqtt", "iec", "isa",
   "json", "xml", "csv", "api", "rest", "html", "css", "javascript", "node",
   "sap", "kpi", "kpis", "esf", "bicarb", "hcl", "cogen",
-  "date", "metadata", "cleansed", "rawnotes", "synthesis",
+  "date", "metadata", "synthesis",
 ];
 
 const spell = nspell(aff, dic);

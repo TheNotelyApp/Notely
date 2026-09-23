@@ -10,7 +10,7 @@ function getDocumentTaskSource(document) {
     return document.searchText;
   }
 
-  return [document.header, document.rawNotes, document.cleansed, document.content]
+  return [document.header, document.rawNotes, document.content]
     .filter((value) => typeof value === "string" && value.trim())
     .join("\n");
 }

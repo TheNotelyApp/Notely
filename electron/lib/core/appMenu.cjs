@@ -44,6 +44,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
   const previewImageMode = context?.previewImageMode === "original" ? "original" : "thumbnail";
   const embeddedMarkdownMode = context?.embeddedMarkdownMode === "inline" ? "inline" : "open";
   const typoCheckEnabled = context?.typoCheckEnabled !== false;
+  const writeMetadataToFile = context?.writeMetadataToFile !== false;
   const screenCaptureMode = context?.screenCaptureMode === "review" ? "review" : "auto";
   const themePreference = ["auto", "light", "dark"].includes(context?.themePreference)
     ? context.themePreference
@@ -826,6 +827,25 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           click: () => sendMenuAction(win, "open-workspace-info")
         },
         {
+          label: "Write Note Metadata to File",
+          submenu: [
+            {
+              label: "Enabled",
+              type: "checkbox",
+              checked: writeMetadataToFile,
+              action: "set-write-metadata-to-file-enabled",
+              click: () => sendMenuAction(win, "set-write-metadata-to-file-enabled")
+            },
+            {
+              label: "Disabled",
+              type: "checkbox",
+              checked: !writeMetadataToFile,
+              action: "set-write-metadata-to-file-disabled",
+              click: () => sendMenuAction(win, "set-write-metadata-to-file-disabled")
+            }
+          ]
+        },
+        {
           label: "Workspace Index",
           accelerator: "CmdOrCtrl+Alt+I",
           click: () => sendMenuAction(win, "open-workspace-index")
@@ -853,19 +873,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           accelerator: "CmdOrCtrl+Alt+R",
           click: () => sendMenuAction(win, "reload-workspace")
         },
-        ...(screen === "document"
-          ? [
-              { type: "separator" },
-              {
-                label: "Copy Note to Workspace...",
-                click: () => sendMenuAction(win, "copy-note-to-workspace")
-              },
-              {
-                label: "Move Note to Workspace...",
-                click: () => sendMenuAction(win, "move-note-to-workspace")
-              }
-            ]
-          : []),
         { type: "separator" },
         {
           label: "Open Workspace in VS Code",

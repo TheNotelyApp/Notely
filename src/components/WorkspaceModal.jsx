@@ -35,6 +35,7 @@ export function WorkspaceModal({
   const [icon, setIcon] = useState("📝");
   const [createWelcomeNote, setCreateWelcomeNote] = useState(true);
   const [initGit, setInitGit] = useState(true);
+  const [writeMetadataToFile, setWriteMetadataToFile] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [parentWarning, setParentWarning] = useState("");
@@ -78,6 +79,7 @@ export function WorkspaceModal({
         setIcon(initialInfo.icon || "📝");
         setCreateWelcomeNote(initialInfo.createWelcomeNote !== false);
         setInitGit(initialInfo.initGit !== false);
+        setWriteMetadataToFile(initialInfo.writeMetadataToFile !== false);
       } else {
         // "info" mode
         setName(initialInfo.name || "");
@@ -86,6 +88,7 @@ export function WorkspaceModal({
         setProjectType(initialInfo.projectType || "General");
         setPrimaryGoal(initialInfo.primaryGoal || "");
         setIcon(initialInfo.icon || "📝");
+        setWriteMetadataToFile(initialInfo.writeMetadataToFile !== false);
       }
     }
     wasOpenRef.current = isOpen;
@@ -186,6 +189,7 @@ export function WorkspaceModal({
           projectType,
           primaryGoal: primaryGoal.trim(),
           icon,
+          writeMetadataToFile,
         });
       }
       onClose?.();
@@ -368,6 +372,24 @@ export function WorkspaceModal({
                 <span>Initialize Git Repository</span>
               </div>
               <div className={`toggle-switch-track ${initGit ? "active" : ""}`}>
+                <div className="toggle-switch-thumb" />
+              </div>
+            </button>
+          </div>
+        )}
+
+        {!isCreate && (
+          <div className="workspace-modal-toggles-row">
+            <button
+              type="button"
+              className={`workspace-toggle-card ${writeMetadataToFile ? "active" : ""}`}
+              onClick={() => setWriteMetadataToFile(!writeMetadataToFile)}
+            >
+              <div className="toggle-card-left">
+                <FileText size={14} className="toggle-card-icon" />
+                <span>Write Note Metadata to File</span>
+              </div>
+              <div className={`toggle-switch-track ${writeMetadataToFile ? "active" : ""}`}>
                 <div className="toggle-switch-thumb" />
               </div>
             </button>

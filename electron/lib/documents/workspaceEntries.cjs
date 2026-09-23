@@ -83,6 +83,32 @@ function createWorkspaceEntries(deps) {
     return images.slice(0, limit);
   }
 
+  function extractNoteSnippet(text, maxLength = 140) {
+    if (!text || typeof text !== "string") return "";
+    const cleanLines = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => {
+        if (!line) return false;
+        if (line.startsWith("![")) return false;
+        if (line.startsWith("```")) return false;
+        return true;
+      });
+
+    if (!cleanLines.length) return "";
+    const raw = cleanLines
+      .slice(0, 3)
+      .join(" ")
+      .replace(/^#+\s*/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[*_`~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (raw.length <= maxLength) return raw;
+    return raw.slice(0, maxLength).trim() + "…";
+  }
+
   function buildFileEntry(entryPath) {
     const stat = fs.statSync(entryPath);
     const content = fs.readFileSync(entryPath, "utf8");
@@ -93,6 +119,7 @@ function createWorkspaceEntries(deps) {
       fileName: parsed.fileName,
       title: parsed.title,
       metadata: parsed.metadata,
+      snippet: extractNoteSnippet(parsed.rawNotes),
       searchText: [parsed.header, parsed.rawNotes, parsed.cleansed].filter(Boolean).join("\n"),
       updatedAt: stat.mtime.toISOString(),
       previewImages: extractPreviewImagesFromMarkdown(content, entryPath),

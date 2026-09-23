@@ -149,3 +149,11 @@ export async function openWebView(filePath, content) {
 
   return api.openWebView({ filePath, content });
 }
+
+export async function batchSetMetadataInFiles({ enabled, workspacePath }) {
+  const api = getNotesApi();
+  if (typeof api.batchSetMetadataInFiles !== "function") {
+    return { success: false, unsupported: true };
+  }
+  return api.batchSetMetadataInFiles({ enabled, workspacePath });
+}

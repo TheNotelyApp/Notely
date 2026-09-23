@@ -48,7 +48,7 @@ afterEach(() => {
 });
 
 describe("WorkspaceExportDialog", () => {
-  it("closes export format and section export dropdowns after selection", () => {
+  it("closes export format dropdown after selection", () => {
     const view = renderDialog();
 
     const formatTrigger = view.host.querySelector("#workspace-export-mode");
@@ -68,27 +68,6 @@ describe("WorkspaceExportDialog", () => {
     act(() => {
       webOption.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
       webOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(view.host.querySelector(".app-select-panel")).toBeFalsy();
-
-    const sectionTrigger = view.host.querySelector("#workspace-export-content-mode");
-    expect(sectionTrigger).toBeTruthy();
-
-    act(() => {
-      sectionTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(view.host.querySelector(".app-select-panel")).toBeTruthy();
-
-    const separateOption = Array.from(view.host.querySelectorAll(".app-select-option")).find((node) =>
-      node.textContent?.includes("Separate files"),
-    );
-    expect(separateOption).toBeTruthy();
-
-    act(() => {
-      separateOption.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-      separateOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(view.host.querySelector(".app-select-panel")).toBeFalsy();

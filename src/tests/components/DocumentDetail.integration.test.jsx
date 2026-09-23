@@ -208,28 +208,28 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
-  it("closes Export PDF content dropdown after selecting an option", () => {
+  it("closes Export PDF quality dropdown after selecting an option", () => {
     const view = renderDetail({
       ...baseProps,
       menuAction: { action: "export-pdf", nonce: Date.now() },
     });
 
-    const contentSelectTrigger = view.host.querySelector("#pdf-export-content-mode");
-    expect(contentSelectTrigger).toBeTruthy();
+    const qualitySelectTrigger = view.host.querySelector("#pdf-export-quality");
+    expect(qualitySelectTrigger).toBeTruthy();
 
     act(() => {
-      contentSelectTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      qualitySelectTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(view.host.querySelector(".app-select-panel")).toBeTruthy();
 
-    const rawNotesOption = Array.from(view.host.querySelectorAll(".app-select-option")).find((button) =>
-      button.textContent?.includes("Raw Notes")
+    const qualityOption = Array.from(view.host.querySelectorAll(".app-select-option")).find((button) =>
+      button.textContent?.includes("Balanced size")
     );
-    expect(rawNotesOption).toBeTruthy();
+    expect(qualityOption).toBeTruthy();
 
     act(() => {
-      rawNotesOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      qualityOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(view.host.querySelector(".app-select-panel")).toBeFalsy();

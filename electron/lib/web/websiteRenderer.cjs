@@ -375,19 +375,10 @@ function renderRootWebsitePage() {
     `;
   }
 
-function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
+function renderMarkdownWebsitePage(relMdPath, rawContent, _options = {}) {
   const markdown = buildWebsiteMarkdownRenderer();
   const normalizedContent = normalizeExcalidrawMetadataSuffix(rawContent || "");
   const parsed = parseDocument(normalizedContent, relMdPath);
-  const hasTabbedSections = parsed.hasRawNotes || parsed.hasCleansed;
-  const requestedSection = options.section === "raw" ? "raw" : "cleansed";
-
-  let activeSection = requestedSection;
-  if (activeSection === "cleansed" && !parsed.hasCleansed && parsed.hasRawNotes) {
-    activeSection = "raw";
-  } else if (activeSection === "raw" && !parsed.hasRawNotes && parsed.hasCleansed) {
-    activeSection = "cleansed";
-  }
 
   function processCallouts(html) {
     if (!html || typeof html !== "string" || !html.includes("<blockquote")) return html;
@@ -450,38 +441,7 @@ function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
     });
   }
 
-  let bodyHtml = `<div class="doc-hero"><h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1><p class="doc-breadcrumb">${escapeHtml(relMdPath)}</p></div><div class="doc-body prose">${processCallouts(markdown.render(normalizedContent, { relMdPath }))}</div>`;
-  if (hasTabbedSections) {
-    const headerHtml = buildMetadataHtml(parsed);
-    const rawHtml = parsed.rawNotes
-      ? processCallouts(markdown.render(parsed.rawNotes, { relMdPath }))
-      : `<p class="tab-empty">No raw notes captured yet.</p>`;
-    const cleansedHtml = parsed.cleansed
-      ? processCallouts(markdown.render(parsed.cleansed, { relMdPath }))
-      : `<p class="tab-empty">No cleansed notes captured yet.</p>`;
-
-    bodyHtml = `
-      <div class="doc-hero">
-        <h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1>
-        <p class="doc-breadcrumb"><span>&#8962; Home</span> <span>/</span> <span>${escapeHtml(relMdPath)}</span></p>
-      </div>
-      <div class="doc-body">
-        ${headerHtml}
-        <section data-tabs>
-          <div class="section-tabs" role="tablist" aria-label="Note sections">
-            <button class="tab-btn${activeSection === "cleansed" ? " active" : ""}" type="button" role="tab" data-tab-target="cleansed">Cleansed</button>
-            <button class="tab-btn${activeSection === "raw" ? " active" : ""}" type="button" role="tab" data-tab-target="raw">Raw Notes</button>
-          </div>
-          <section class="tab-panel prose${activeSection === "cleansed" ? " active" : ""}" data-tab-panel="cleansed">
-            ${cleansedHtml}
-          </section>
-          <section class="tab-panel prose${activeSection === "raw" ? " active" : ""}" data-tab-panel="raw">
-            ${rawHtml}
-          </section>
-        </section>
-      </div>
-    `;
-  }
+  let bodyHtml = `<div class="doc-hero"><h1>${escapeHtml(parsed.title || path.basename(relMdPath, ".md"))}</h1><p class="doc-breadcrumb"><span>&#8962; Home</span> <span>/</span> <span>${escapeHtml(relMdPath)}</span></p></div><div class="doc-body prose">${buildMetadataHtml(parsed)}${processCallouts(markdown.render(parsed.rawNotes ? [parsed.rawNotes, parsed.cleansed].filter(Boolean).join("\n\n") : normalizedContent, { relMdPath }))}</div>`;
 
   return buildWebsiteHtml({
     title: path.basename(relMdPath, ".md"),
@@ -491,22 +451,16 @@ function renderMarkdownWebsitePage(relMdPath, rawContent, options = {}) {
   });
 }
 
-function renderPdfNotePage(relMdPath, markdownContent, options = {}) {
+function renderPdfNotePage(relMdPath, markdownContent, _options = {}) {
   const markdown = buildWebsiteMarkdownRenderer();
   const normalizedContent = normalizeExcalidrawMetadataSuffix(markdownContent || "");
   const parsed = parseDocument(normalizedContent, relMdPath);
-  const hasStructuredSections = parsed.hasRawNotes || parsed.hasCleansed;
-  const section = options.section === "raw" ? "raw" : "cleansed";
-
-  let contentToRender = normalizedContent;
-  if (hasStructuredSections) {
-    contentToRender = section === "raw" ? parsed.rawNotes : parsed.cleansed;
-  }
+  const contentToRender = parsed.rawNotes
+    ? [parsed.rawNotes, parsed.cleansed].filter(Boolean).join("\n\n")
+    : normalizedContent;
 
   const title = path.basename(relMdPath, ".md") || "Note";
-  const emptyMessage = section === "raw"
-    ? "No raw notes captured yet."
-    : "No cleansed notes captured yet.";
+  const emptyMessage = "No notes captured yet.";
 
   return `<!doctype html>
 <html lang="en">

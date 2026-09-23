@@ -64,12 +64,10 @@ export function normalizePaletteIntent(options = {}) {
   };
 }
 
-export function resolveAITarget(editorContext, requestedTarget, current, activeTab) {
+export function resolveAITarget(editorContext, requestedTarget, current) {
   const selectionText = String(editorContext?.selectedText || "");
   const blockText = String(editorContext?.currentBlock?.text || "");
-  const documentText = activeTab === "raw"
-    ? current?.rawNotes || ""
-    : current?.cleansed || "";
+  const documentText = current?.rawNotes || current?.content || "";
 
   if (requestedTarget === "workspace") {
     return {

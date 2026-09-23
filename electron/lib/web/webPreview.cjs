@@ -229,13 +229,8 @@ function createWebPreview(deps) {
       const header = typeof content.header === "string" ? content.header.trim() : "";
       const rawNotes = typeof content.rawNotes === "string" ? content.rawNotes.trim() : "";
       const cleansed = typeof content.cleansed === "string" ? content.cleansed.trim() : "";
-      const overrideContent = [
-        header,
-        "# RawNotes",
-        rawNotes,
-        "# Cleansed",
-        cleansed
-      ].join("\n\n").trim();
+      const body = [rawNotes, cleansed].filter(Boolean).join("\n\n");
+      const overrideContent = [header, body].filter(Boolean).join("\n\n").trim();
 
       webPreviewContentOverrides.set(resolved, overrideContent);
     }
@@ -246,7 +241,7 @@ function createWebPreview(deps) {
     const baseUrl = await ensureWebPreviewServer();
     return {
       resolved,
-      previewUrl: `${baseUrl}/view/${encodePathForUrl(normalizeToPosix(path.relative(webPreviewScopeRoot, resolved)))}?section=cleansed`
+      previewUrl: `${baseUrl}/view/${encodePathForUrl(normalizeToPosix(path.relative(webPreviewScopeRoot, resolved)))}`
     };
   }
 

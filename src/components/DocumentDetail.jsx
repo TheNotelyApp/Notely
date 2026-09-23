@@ -3,9 +3,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  FileText,
-  FilePenLine,
   FileDown,
+  FilePenLine,
   PenLine,
   SplitSquareHorizontal,
   Eye,
@@ -305,8 +304,6 @@ export function DocumentDetail({
   _history,
   workspacePath,
   branch,
-  activeTab,
-  setActiveTab,
   mode,
   setMode,
   onChange,
@@ -364,18 +361,17 @@ export function DocumentDetail({
 }) {
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
-  const content = activeTab === "raw" ? (document?.rawNotes || "") : (document?.cleansed || "");
+  const content = document?.rawNotes || "";
   const fullWorkingCopyContent = useMemo(() => {
     const parts = [];
     if (document?.header?.trim()) parts.push(document.header.trim());
-    if (document?.rawNotes?.trim()) parts.push("# RawNotes\n" + document.rawNotes.trim());
-    if (document?.cleansed?.trim()) parts.push("# Cleansed\n" + document.cleansed.trim());
+    if (document?.rawNotes?.trim()) parts.push(document.rawNotes.trim());
     return parts.length > 0 ? parts.join("\n\n") : (content || "");
-  }, [document?.header, document?.rawNotes, document?.cleansed, content]);
+  }, [document?.header, document?.rawNotes, content]);
   const taskPopoverTimerRef = useRef(null);
   const historyStateRef = useRef({
-    raw: { undo: [], redo: [] },
-    cleansed: { undo: [], redo: [] },
+    undo: [],
+    redo: [],
   });
   const applyingHistoryRef = useRef(false);
   const [showHistoryPopover, setShowHistoryPopover] = useState(false);
@@ -392,7 +388,6 @@ export function DocumentDetail({
 
   const [pdfExporting, setPdfExporting] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
-  const [pdfExportMode, setPdfExportMode] = useState("formal");
   const [pdfQualityPreset, setPdfQualityPreset] = useState("full");
 
   const [, setLastAutoSaveAt] = useState(0);
@@ -591,7 +586,7 @@ export function DocumentDetail({
 
   useEffect(() => {
     setChangedOnDisk(false);
-  }, [document.filePath, document.rawNotes, document.cleansed]);
+  }, [document.filePath, document.rawNotes]);
 
   useEffect(() => {
     if (typeof window.notesApi?.onDocumentChangedOnDisk !== "function") return undefined;
@@ -645,7 +640,7 @@ export function DocumentDetail({
     () => collectMatches(content, findQuery, findCaseSensitive, findUseRegex),
     [content, findQuery, findCaseSensitive, findUseRegex],
   );
-  const mediaContent = `${document.rawNotes || ""}\n\n${document.cleansed || ""}`.trim();
+  const mediaContent = (document.rawNotes || "").trim();
   const selectedFindMatchIndex = getSelectedMatchIndex(
     findMatches,
     textareaRef.current?.selectionStart,
@@ -658,10 +653,7 @@ export function DocumentDetail({
     ? `${activeFindMatchIndex + 1}/${findMatches.length}`
     : "0/0";
 
-
-
-  const activeEditorField = activeTab === "raw" ? "rawNotes" : "cleansed";
-  const activeHistoryKey = activeTab === "raw" ? "raw" : "cleansed";
+  const activeEditorField = "rawNotes";
   const isOutlineEnabled = outlineEnabled !== false;
   const isFocusMode = focusModeEnabled === true;
   const setEditorMode = (nextMode, options = {}) => {
@@ -712,8 +704,8 @@ export function DocumentDetail({
 
   useEffect(() => {
     historyStateRef.current = {
-      raw: { undo: [], redo: [] },
-      cleansed: { undo: [], redo: [] },
+      undo: [],
+      redo: [],
     };
   }, [document.filePath]);
 
@@ -722,7 +714,6 @@ export function DocumentDetail({
     if (!editor) return null;
     return {
       filePath: document.filePath,
-      tab: activeTab,
       selectionStart: Number(editor.selectionStart) || 0,
       selectionEnd: Number(editor.selectionEnd) || 0,
       scrollTop: Number(editor.scrollTop) || 0,
@@ -768,8 +759,7 @@ export function DocumentDetail({
       }
     } finally {
       const shouldRestore = snapshot
-        && snapshot.filePath === document.filePath
-        && snapshot.tab === activeTab;
+        && snapshot.filePath === document.filePath;
       if (shouldRestore) {
         restoreEditorSnapshot(snapshot);
       }
@@ -786,7 +776,7 @@ export function DocumentDetail({
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes, document.cleansed, activeTab]);
+  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes]);
 
   useEffect(() => {
     const total = findMatches.length;
@@ -801,7 +791,7 @@ export function DocumentDetail({
     if (value === content) return;
 
     if (!applyingHistoryRef.current) {
-      const currentHistory = historyStateRef.current[activeHistoryKey];
+      const currentHistory = historyStateRef.current;
       currentHistory.undo.push(content);
       if (currentHistory.undo.length > MAX_EDITOR_HISTORY) {
         currentHistory.undo.shift();
@@ -815,8 +805,8 @@ export function DocumentDetail({
     });
   };
 
-  const canUndo = !showMediaManager && historyStateRef.current[activeHistoryKey].undo.length > 0;
-  const canRedo = !showMediaManager && historyStateRef.current[activeHistoryKey].redo.length > 0;
+  const canUndo = !showMediaManager && historyStateRef.current.undo.length > 0;
+  const canRedo = !showMediaManager && historyStateRef.current.redo.length > 0;
 
   const toggleOutlineEnabled = () => {
     if (isFocusMode) {
@@ -1075,7 +1065,7 @@ export function DocumentDetail({
 
   const handleUndo = () => {
     if (showMediaManager) return false;
-    const currentHistory = historyStateRef.current[activeHistoryKey];
+    const currentHistory = historyStateRef.current;
     if (!currentHistory.undo.length) return false;
 
     const previousValue = currentHistory.undo.pop();
@@ -1092,7 +1082,7 @@ export function DocumentDetail({
 
   const handleRedo = () => {
     if (showMediaManager) return false;
-    const currentHistory = historyStateRef.current[activeHistoryKey];
+    const currentHistory = historyStateRef.current;
     if (!currentHistory.redo.length) return false;
 
     const nextValue = currentHistory.redo.pop();
@@ -1125,7 +1115,6 @@ export function DocumentDetail({
     },
     toggleFocusMode,
     openPdfOptions: () => {
-      setPdfExportMode("formal");
       setPdfQualityPreset("full");
       setPdfOptionsOpen(true);
     },
@@ -1138,9 +1127,6 @@ export function DocumentDetail({
   });
 
   const handleConfirmPdfExport = async () => {
-    const includeRawNotes = pdfExportMode === "raw" || pdfExportMode === "both";
-    const includeCleansed = pdfExportMode === "formal" || pdfExportMode === "both";
-
     setPdfExporting(true);
 
     try {
@@ -1148,9 +1134,9 @@ export function DocumentDetail({
         filePath: document.filePath,
         title: document.title,
         rawNotes: document.rawNotes,
-        cleansed: document.cleansed,
-        includeRawNotes,
-        includeCleansed,
+        cleansed: "",
+        includeRawNotes: true,
+        includeCleansed: false,
         pdfQualityPreset,
       });
       if (!result?.canceled) {
@@ -1374,31 +1360,6 @@ export function DocumentDetail({
                     </div>
                   </div>
                   <div className="button-group-separator" />
-                  <div className="button-group">
-                    <button
-                      className={activeTab === "raw" ? "active" : ""}
-                      onClick={() => {
-                        setShowMediaManager(false);
-                        setActiveTab("raw");
-                      }}
-                      data-tooltip="Quick notes"
-                    >
-                      <FilePenLine size={16} />
-                      <span>Quick Notes</span>
-                    </button>
-                    <button
-                      className={activeTab === "cleansed" ? "active" : ""}
-                      onClick={() => {
-                        setShowMediaManager(false);
-                        setActiveTab("cleansed");
-                      }}
-                      data-tooltip="Formal notes"
-                    >
-                      <FileText size={16} />
-                      <span>Formal Notes</span>
-                    </button>
-                  </div>
-                  <div className="button-group-separator" />
                   <button
                     className={showMediaManager ? "active" : ""}
                     type="button"
@@ -1573,16 +1534,6 @@ export function DocumentDetail({
                 <X size={16} />
               </AppIconButton>
             </div>
-            <DialogSelectField
-              id="pdf-export-content-mode"
-              label="Content"
-              value={pdfExportMode}
-              onChange={(event) => setPdfExportMode(event.target.value)}
-            >
-                <option value="formal">Formal Notes</option>
-                <option value="raw">Raw Notes</option>
-                <option value="both">Both Raw and Formal</option>
-            </DialogSelectField>
             <DialogSelectField
               id="pdf-export-quality"
               label="Quality"

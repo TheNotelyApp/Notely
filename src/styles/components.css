@@ -797,6 +797,13 @@
   color: var(--text-secondary);
   font-size: var(--doc-meta-font-size, var(--font-size-label));
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .document-updated {

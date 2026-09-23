@@ -9,29 +9,77 @@ import { readImage } from "../services/electronService";
  * Mirrors parseVersionDocumentContent in DocumentDetail.
  */
 function parseNoteContent(value, fallback = {}) {
-  const lines = String(value || "").split(/\r?\n/);
-  const rawIndex = lines.findIndex((l) => l.trim().toLowerCase() === "# rawnotes");
-  const cleansedIndex = lines.findIndex((l) => l.trim().toLowerCase() === "# cleansed");
+  let normalized = String(value || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  let yamlLines = [];
+  let kvLines = [];
+  let contentStartIndex = 0;
 
-  if (rawIndex === -1 && cleansedIndex === -1) {
-    return {
-      header: fallback.header || "",
-      rawNotes: fallback.rawNotes || "",
-      cleansed: String(value || "").trim(),
-    };
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+
+  if (i < lines.length && /^\s*---\s*$/.test(lines[i])) {
+    yamlLines.push(lines[i]);
+    i++;
+    while (i < lines.length) {
+      yamlLines.push(lines[i]);
+      if (/^\s*(---\s*|\.\.\.\s*)$/.test(lines[i])) {
+        i++;
+        break;
+      }
+      i++;
+    }
   }
 
-  const firstIdx = Math.min(
-    rawIndex === -1 ? Infinity : rawIndex,
-    cleansedIndex === -1 ? Infinity : cleansedIndex
-  );
-  const header = lines.slice(0, firstIdx).join("\n").trim();
-  const rawEnd = cleansedIndex > rawIndex && rawIndex !== -1 ? cleansedIndex : lines.length;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (!trimmed) {
+      let nextIsKv = false;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (!lines[j].trim()) continue;
+        if (/^\s*[a-zA-Z0-9_\-\s]+:\s*.*$/.test(lines[j]) && !lines[j].trim().startsWith("#")) {
+          nextIsKv = true;
+        }
+        break;
+      }
+      if (!nextIsKv) {
+        contentStartIndex = i + 1;
+        break;
+      }
+      i++;
+      continue;
+    }
+
+    if (trimmed.startsWith("#")) {
+      contentStartIndex = i;
+      break;
+    }
+
+    if (/^\s*[a-zA-Z0-9_\-\s]+:\s*.*$/.test(line) || /^\s*-\s+.*$/.test(line) || /^\s{2,}.*$/.test(line)) {
+      kvLines.push(line);
+      i++;
+      contentStartIndex = i;
+    } else {
+      contentStartIndex = i;
+      break;
+    }
+  }
+
+  const yamlPart = yamlLines.join("\n").trim();
+  const kvPart = kvLines.join("\n").trim();
+  let header = "";
+  if (yamlPart && kvPart) header = yamlPart + "\n" + kvPart;
+  else if (yamlPart) header = yamlPart;
+  else if (kvPart) header = kvPart;
+  else if (fallback.header) header = fallback.header;
+
+  const rawNotes = lines.slice(contentStartIndex).join("\n").trim();
 
   return {
     header,
-    rawNotes: rawIndex === -1 ? (fallback.rawNotes || "") : lines.slice(rawIndex + 1, rawEnd).join("\n").trim(),
-    cleansed: cleansedIndex === -1 ? (fallback.cleansed || "") : lines.slice(cleansedIndex + 1).join("\n").trim(),
+    rawNotes,
+    cleansed: "",
   };
 }
 
@@ -253,7 +301,6 @@ export function GitDiffViewer({
   basePath = null,
 }) {
   const [showOnlyChanges, setShowOnlyChanges] = useState(false);
-  const [activeSection, setActiveSection] = useState("quick");
   const [isCodeView, setIsCodeView] = useState(false);
   const containerRef = useRef(null);
 
@@ -314,7 +361,7 @@ export function GitDiffViewer({
       cancelled = true;
       observer.disconnect();
     };
-  }, [basePath, isCodeView, activeSection, latestContent, previousContent]);
+  }, [basePath, isCodeView, latestContent, previousContent]);
 
   if (loading) {
     return (
@@ -346,25 +393,7 @@ export function GitDiffViewer({
     <div className="git-diff-viewer" ref={containerRef}>
       <div className="git-diff-header">
 
-        <div className="git-diff-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", borderBottom: "1px solid var(--border-default)", paddingBottom: "var(--space-2, 0.5rem)", marginBottom: "var(--space-4, 1rem)" }}>
-          <div className="p2p-tab-bar" role="tablist" aria-label="Diff section" style={{ borderBottom: "none", background: "none", padding: 0 }}>
-            {[
-              { key: "quick", label: "Quick Notes" },
-              { key: "formal", label: "Formal Notes" },
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                className={`p2p-tab-btn${activeSection === key ? " active" : ""}`}
-                onClick={() => setActiveSection(key)}
-                aria-pressed={activeSection === key}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
+        <div className="git-diff-controls" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", width: "100%", borderBottom: "1px solid var(--border-default)", paddingBottom: "var(--space-2, 0.5rem)", marginBottom: "var(--space-4, 1rem)" }}>
           <div style={{ display: "flex", gap: "var(--space-2, 0.5rem)" }}>
             <AppButton
               variant="small"
@@ -390,25 +419,13 @@ export function GitDiffViewer({
       </div>
 
       <div className="git-diff-body">
-        {activeSection === "quick" && (
-          <DiffSection
-            title="Quick Notes"
-            latestText={latest.rawNotes}
-            previousText={previous.rawNotes}
-            showOnlyChanges={showOnlyChanges}
-            isCodeView={isCodeView}
-          />
-        )}
-
-        {activeSection === "formal" && (
-          <DiffSection
-            title="Formal Notes"
-            latestText={latest.cleansed}
-            previousText={previous.cleansed}
-            showOnlyChanges={showOnlyChanges}
-            isCodeView={isCodeView}
-          />
-        )}
+        <DiffSection
+          title="Content"
+          latestText={latest.rawNotes}
+          previousText={previous.rawNotes}
+          showOnlyChanges={showOnlyChanges}
+          isCodeView={isCodeView}
+        />
       </div>
     </div>
   );

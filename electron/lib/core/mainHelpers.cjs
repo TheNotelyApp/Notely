@@ -242,20 +242,99 @@ function createMainHelpers(deps) {
   }
 
   function parseDocument(content, filePath) {
-    const normalized = content.replace(/\r\n/g, "\n");
-    const rawMatch = normalized.match(/^#\s*(RawNotes|Notes|Quick Notes)\s*$/im);
-    const cleansedMatch = normalized.match(/^#\s*(Cleansed|Formal Notes|Professional Version)\s*$/im);
-    const firstSectionIndex = Math.min(
-      ...[rawMatch?.index, cleansedMatch?.index].filter((value) => Number.isInteger(value))
-    );
-    const header = Number.isFinite(firstSectionIndex)
-      ? normalized.slice(0, firstSectionIndex).trim()
-      : normalized.trim();
+    let normalized = (content || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+    const lines = normalized.split("\n");
+    let yamlLines = [];
+    let kvLines = [];
+    let contentStartIndex = 0;
 
-    const rawStart = rawMatch ? rawMatch.index + rawMatch[0].length : -1;
-    const cleansedStart = cleansedMatch ? cleansedMatch.index + cleansedMatch[0].length : -1;
-    const rawEnd = cleansedMatch ? cleansedMatch.index : normalized.length;
-    const cleansedEnd = normalized.length;
+    let i = 0;
+    while (i < lines.length && !lines[i].trim()) i++;
+
+    if (i < lines.length && /^\s*---\s*$/.test(lines[i])) {
+      yamlLines.push(lines[i]);
+      i++;
+      while (i < lines.length) {
+        yamlLines.push(lines[i]);
+        if (/^\s*(---\s*|\.\.\.\s*)$/.test(lines[i])) {
+          i++;
+          break;
+        }
+        i++;
+      }
+    }
+
+    while (i < lines.length) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (!trimmed) {
+        let nextIsKv = false;
+        for (let j = i + 1; j < lines.length; j++) {
+          if (!lines[j].trim()) continue;
+          if (/^\s*[a-zA-Z0-9_\-\s]+:\s*.*$/.test(lines[j]) && !lines[j].trim().startsWith("#")) {
+            nextIsKv = true;
+          }
+          break;
+        }
+        if (!nextIsKv) {
+          contentStartIndex = i + 1;
+          break;
+        }
+        i++;
+        continue;
+      }
+
+      if (trimmed.startsWith("#")) {
+        contentStartIndex = i;
+        break;
+      }
+
+      if (/^\s*[a-zA-Z0-9_\-\s]+:\s*.*$/.test(line) || /^\s*-\s+.*$/.test(line) || /^\s{2,}.*$/.test(line)) {
+        kvLines.push(line);
+        i++;
+        contentStartIndex = i;
+      } else {
+        contentStartIndex = i;
+        break;
+      }
+    }
+
+    const yamlPart = yamlLines.join("\n").trim();
+    const kvPart = kvLines.join("\n").trim();
+    let header = "";
+    if (yamlPart && kvPart) header = yamlPart + "\n" + kvPart;
+    else if (yamlPart) header = yamlPart;
+    else if (kvPart) header = kvPart;
+
+    const rawNotes = lines.slice(contentStartIndex).join("\n").trim();
+
+    if (!header && filePath) {
+      try {
+        const workspaceDir = path.dirname(filePath);
+        let curr = workspaceDir;
+        let sidecarPath = null;
+        for (let depth = 0; depth < 5; depth++) {
+          const candidate = path.join(curr, ".notes-app", "note-metadata.json");
+          if (fs.existsSync(candidate)) {
+            sidecarPath = candidate;
+            break;
+          }
+          const parent = path.dirname(curr);
+          if (parent === curr) break;
+          curr = parent;
+        }
+        if (sidecarPath) {
+          const wsRoot = path.dirname(path.dirname(sidecarPath));
+          const relKey = path.relative(wsRoot, filePath).replace(/\\/g, "/");
+          const sidecarData = JSON.parse(fs.readFileSync(sidecarPath, "utf8"));
+          if (sidecarData[relKey]?.header) {
+            header = sidecarData[relKey].header;
+          }
+        }
+      } catch {
+        // Best effort sidecar lookup
+      }
+    }
 
     const metadata = {};
     header.split("\n").forEach((line) => {
@@ -269,20 +348,22 @@ function createMainHelpers(deps) {
       title: path.basename(filePath, ".md"),
       metadata,
       header,
-      rawNotes: rawStart >= 0 ? normalized.slice(rawStart, rawEnd).trim() : "",
-      cleansed: cleansedStart >= 0 ? normalized.slice(cleansedStart, cleansedEnd).trim() : "",
-      hasRawNotes: rawStart >= 0,
-      hasCleansed: cleansedStart >= 0,
+      rawNotes,
+      cleansed: "",
+      hasRawNotes: Boolean(rawNotes),
+      hasCleansed: false,
       hash: hashContent(content)
     };
   }
 
   function buildDocumentContent(document) {
     const header = (document.header || "").trim();
+    const rawNotes = (document.rawNotes || "").trim();
+    const cleansed = (document.cleansed || "").trim();
     const parts = [];
     if (header) parts.push(header);
-    parts.push("# RawNotes\n" + (document.rawNotes || "").trim());
-    parts.push("# Cleansed\n" + (document.cleansed || "").trim());
+    if (rawNotes) parts.push(rawNotes);
+    if (cleansed) parts.push(cleansed);
     return parts.join("\n\n") + "\n";
   }
 

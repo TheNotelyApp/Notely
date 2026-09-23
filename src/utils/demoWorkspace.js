@@ -68,8 +68,10 @@ async function bootWorkspace(selectedPath) {
 \`\`\`
 
 Explore the folders to learn more about Markdown custom formatting, assets, AI search, and P2P sync!
+
+Notely App Overview. Welcome to the Notely local-first desktop application.
 `,
-      cleansed: "Notely App Overview. Welcome to the Notely local-first desktop application."
+      cleansed: ""
     });
 
     // Create folders
@@ -121,8 +123,10 @@ Beyond standard headers, **bold**, *italics*, and ~~strikethrough~~, Notely impl
 - [x] Read this Markdown formatting note
 - [ ] Create a custom Mermaid diagram of your own
 - [ ] Open the Workspace Graph to see note links
+
+Markdown & Core Rendering Features guide. Understand the parsing pipeline.
 `,
-      cleansed: "Markdown & Core Rendering Features guide. Understand the parsing pipeline."
+      cleansed: ""
     });
 
     // 3. Guides Folder - Note 2
@@ -164,8 +168,10 @@ stateDiagram-v2
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 \`\`\`
+
+Managing Media and Assets. Ingestion and Annotation workflow details.
 `,
-      cleansed: "Managing Media and Assets. Ingestion and Annotation workflow details."
+      cleansed: ""
     });
 
     // 4. Advanced Folder - Note 1
@@ -198,8 +204,10 @@ flowchart TD
 - **Semantic Search**: Search for concepts like "getting started tips" and retrieve files matching that concept, even if the exact words don't match.
 - **Smart Note Graph**: Documents are clustered by mathematical distance, highlighting related docs and hidden connections.
 - **AI Assist Palette**: Ask AI to draft notes, polish selected text, or summarize details.
+
+AI Integration and Semantic Search. Knowledge clustering mechanics.
 `,
-      cleansed: "AI Integration and Semantic Search. Knowledge clustering mechanics."
+      cleansed: ""
     });
 
     // 5. Advanced Folder - Note 2
@@ -237,8 +245,10 @@ sequenceDiagram
 
 ### Conflict Management
 If the same document is edited on both devices while disconnected, Notely detects the fork, halts automatic overwriting, and prompts you to resolve the conflict in the **Conflict Center**. You can review the diff side-by-side and choose local, remote, or merged text.
+
+Decentralized Peer-to-Peer Sync. Secure key handshakes and propagation.
 `,
-      cleansed: "Decentralized Peer-to-Peer Sync. Secure key handshakes and propagation."
+      cleansed: ""
     });
 
   } catch (err) {

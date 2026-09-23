@@ -219,6 +219,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   markDocumentOpened: (filePath) => ipcRenderer.invoke("documents:mark-opened", filePath),
   readMarkdownSource: (filePath) => ipcRenderer.invoke("documents:read-markdown-source", filePath),
   saveDocument: (payload) => ipcRenderer.invoke("documents:save", payload),
+  batchSetMetadataInFiles: (payload) => ipcRenderer.invoke("documents:batch-set-metadata-in-files", payload),
   startWatching: (filePath) => ipcRenderer.invoke("documents:start-watching", filePath),
   stopWatching: (filePath) => ipcRenderer.invoke("documents:stop-watching", filePath),
   onDocumentChangedOnDisk: (callback) => {

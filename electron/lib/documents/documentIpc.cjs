@@ -367,7 +367,118 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
 
     const parsed = parseDocument(next, resolved);
     dashboardCache?.recordSave?.(parsed);
+
+    if (payload.header) {
+      try {
+        const sidecar = readMetadataSidecar(notesRoot);
+        const relKey = path.relative(notesRoot, resolved).replace(/\\/g, "/");
+        const parsedMeta = {};
+        payload.header.split("\n").forEach((line) => {
+          const match = line.match(/^([^:]+):\s*(.*)$/);
+          if (match) parsedMeta[match[1].trim().toLowerCase()] = match[2].trim();
+        });
+        sidecar[relKey] = { header: payload.header, metadata: parsedMeta };
+        writeMetadataSidecar(notesRoot, sidecar);
+      } catch (err) {
+        console.warn("[documentIpc] Failed to save metadata to sidecar:", err);
+      }
+    }
+
     return parsed;
+  });
+
+  function getMetadataSidecarPath(workspaceRoot) {
+    return path.join(workspaceRoot, ".notes-app", "note-metadata.json");
+  }
+
+  function readMetadataSidecar(workspaceRoot) {
+    try {
+      const p = getMetadataSidecarPath(workspaceRoot);
+      if (fs.existsSync(p)) {
+        return JSON.parse(fs.readFileSync(p, "utf8"));
+      }
+    } catch {
+      return {};
+    }
+    return {};
+  }
+
+  function writeMetadataSidecar(workspaceRoot, data) {
+    try {
+      const p = getMetadataSidecarPath(workspaceRoot);
+      const dir = path.dirname(p);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(p, JSON.stringify(data, null, 2), "utf8");
+    } catch (e) {
+      console.error("[documentIpc] Failed to write metadata sidecar:", e);
+    }
+  }
+
+  registerTrustedHandler("documents:batch-set-metadata-in-files", (_event, payload) => {
+    const enabled = Boolean(payload?.enabled);
+    const workspacePath = payload?.workspacePath ? path.resolve(payload.workspacePath) : getNotesRoot();
+    if (!fs.existsSync(workspacePath)) {
+      throw new Error("Workspace does not exist.");
+    }
+
+    const sidecar = readMetadataSidecar(workspacePath);
+    const walkExclude = new Set([".git", "node_modules", ".notes-app"]);
+
+    function getAllMdFiles(dir) {
+      const results = [];
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          if (!walkExclude.has(entry.name)) {
+            results.push(...getAllMdFiles(path.join(dir, entry.name)));
+          }
+        } else if (entry.isFile() && path.extname(entry.name).toLowerCase() === ".md") {
+          results.push(path.join(dir, entry.name));
+        }
+      }
+      return results;
+    }
+
+    const files = getAllMdFiles(workspacePath);
+    let changedCount = 0;
+
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(file, "utf8");
+        const relKey = path.relative(workspacePath, file).replace(/\\/g, "/");
+        const parsed = parseDocument(content, file);
+
+        if (!enabled) {
+          if (parsed.header) {
+            sidecar[relKey] = { header: parsed.header, metadata: parsed.metadata };
+            const nextContent = parsed.rawNotes + (parsed.cleansed ? "\n\n" + parsed.cleansed : "");
+            if (nextContent !== content) {
+              fs.writeFileSync(file, nextContent, "utf8");
+              lastAppHashes.set(file, hashContent(nextContent));
+              changedCount++;
+            }
+          }
+        } else {
+          const stored = sidecar[relKey];
+          const headerToWrite = stored?.header || parsed.header;
+          if (headerToWrite) {
+            const normalized = content.replace(/\r\n/g, "\n");
+            if (!normalized.startsWith(headerToWrite)) {
+              const body = parsed.rawNotes + (parsed.cleansed ? "\n\n" + parsed.cleansed : "");
+              const nextContent = headerToWrite + "\n\n" + body;
+              fs.writeFileSync(file, nextContent, "utf8");
+              lastAppHashes.set(file, hashContent(nextContent));
+              changedCount++;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[documentIpc] batchSetMetadata error on ${file}:`, err);
+      }
+    }
+
+    writeMetadataSidecar(workspacePath, sidecar);
+    return { success: true, count: changedCount };
   });
 
   registerTrustedHandler("documents:open-in-editor", async (_event, filePath) => {

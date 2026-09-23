@@ -102,8 +102,7 @@ function SectionDiff({ localText, remoteText }) {
 
 const SECTIONS = [
   { key: "header", label: "Header" },
-  { key: "rawNotes", label: "Raw Notes" },
-  { key: "cleansed", label: "Cleansed" },
+  { key: "rawNotes", label: "Content" },
 ];
 
 export function ConflictResolutionPanel({
@@ -117,11 +116,11 @@ export function ConflictResolutionPanel({
   const [collapsedSections, setCollapsedSections] = useState({
     header: false,
     rawNotes: false,
-    cleansed: false,
   });
   const [mergedHeader, setMergedHeader] = useState(localFile?.header || "");
-  const [mergedRaw, setMergedRaw] = useState(localFile?.rawNotes || "");
-  const [mergedCleansed, setMergedCleansed] = useState(localFile?.cleansed || "");
+  const [mergedRaw, setMergedRaw] = useState(
+    [localFile?.rawNotes, localFile?.cleansed].filter(Boolean).join("\n\n") || localFile?.content || ""
+  );
   const [busyAction, setBusyAction] = useState("");
 
   async function runAction(key, fn) {
@@ -136,18 +135,15 @@ export function ConflictResolutionPanel({
   function getMergedContent() {
     const header = mergedHeader.trim();
     const raw = mergedRaw.trim();
-    const cleansed = mergedCleansed.trim();
     const parts = [];
     if (header) parts.push(header);
-    parts.push("# RawNotes\n\n" + raw);
-    parts.push("# Cleansed\n\n" + cleansed);
+    if (raw) parts.push(raw);
     return parts.join("\n\n") + "\n";
   }
 
   const sectionEditors = {
     header: { value: mergedHeader, onChange: setMergedHeader },
     rawNotes: { value: mergedRaw, onChange: setMergedRaw },
-    cleansed: { value: mergedCleansed, onChange: setMergedCleansed },
   };
 
   const localSection = localFile?.[activeSection] || "";
@@ -166,7 +162,6 @@ export function ConflictResolutionPanel({
     setCollapsedSections({
       header: false,
       rawNotes: false,
-      cleansed: false,
     });
   }
 
