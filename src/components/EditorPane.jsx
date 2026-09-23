@@ -17,6 +17,7 @@ export function EditorPane({
   mode,
   textareaRef,
   basePath,
+  workspacePath = "",
   showToolbar = true,
   onNotify,
   onUndo,
@@ -436,6 +437,7 @@ export function EditorPane({
     onChange,
     textareaRef,
     basePath,
+    workspacePath,
     onNotify,
     validationIssues,
     validationStatus,
@@ -474,6 +476,7 @@ export function EditorPane({
           <MarkdownPreview
             content={previewContent}
             basePath={basePath}
+            workspacePath={workspacePath}
             onNotify={onNotify}
             onContentChange={onChange}
             onMediaClick={setSelectedMediaPreview}
@@ -563,6 +566,7 @@ export function EditorPane({
             <MarkdownPreview
               content={previewContent}
               basePath={basePath}
+              workspacePath={workspacePath}
               externalRef={previewRef}
               onNotify={onNotify}
               onContentChange={onChange}

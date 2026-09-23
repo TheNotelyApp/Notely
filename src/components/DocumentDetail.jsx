@@ -1312,6 +1312,7 @@ export function DocumentDetail({
                       onChange={() => {}}
                       mode="preview"
                       basePath={document.filePath}
+                      workspacePath={workspacePath}
                       typoCheckEnabled={false}
                       showToolbar={false}
                       onNotify={onNotify}
@@ -1413,6 +1414,7 @@ export function DocumentDetail({
                 mode={mode}
                 textareaRef={textareaRef}
                 basePath={document.filePath}
+                workspacePath={workspacePath}
                 typoCheckEnabled={typoCheckEnabled}
                 screenCaptureMode={screenCaptureMode}
                 showToolbar={!showMediaManager}

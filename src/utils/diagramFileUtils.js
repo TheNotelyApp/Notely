@@ -4,6 +4,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { toRelativeDocPath } from './markdownUtils';
 
 /**
  * Generate a unique diagram ID
@@ -55,10 +56,14 @@ export function getDiagramImagePath(_docSlug, diagramId) {
  * Get markdown image reference for a diagram
  * @param {string} docSlug - Document slug
  * @param {string} diagramId - Diagram identifier
+ * @param {string} [relativeToDocPath] - Path of markdown file to resolve relative path against
  * @returns {string} Markdown image reference
  */
-export function getDiagramMarkdownReference(docSlug, diagramId) {
-  const imagePath = getDiagramImagePath(docSlug, diagramId);
+export function getDiagramMarkdownReference(docSlug, diagramId, relativeToDocPath = null, workspacePath = "") {
+  let imagePath = getDiagramImagePath(docSlug, diagramId);
+  if (relativeToDocPath) {
+    imagePath = toRelativeDocPath(relativeToDocPath, imagePath, workspacePath);
+  }
   return `![Excalidraw Diagram](${imagePath})`;
 }
 
@@ -74,7 +79,8 @@ export function parseDiagramReference(markdownRef) {
   // - excali-diagrams/diagramId/diagram.png (legacy)
   // - excali-diagrams/docSlug/diagramId/diagram.png (legacy slugged)
   // - media/diagrams/diagramId.png (legacy flat)
-  const match = markdownRef.match(/!\[.*?\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|media\/(?:excalidraw|diagrams)\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*(?:\{[^}]*\})?/);
+  // Supports optional relative path prefixes (../ or ./)
+  const match = markdownRef.match(/!\[.*?\]\(((?:\.\.\/|\.\/)*(?:\.notes-app\/)?excali-diagrams\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|(?:\.\.\/|\.\/)*media\/(?:excalidraw|diagrams)\/(?:(?:([^/]+)\/)?([^/]+))\/diagram\.png|(?:\.\.\/|\.\/)*media\/diagrams\/([^/.]+)\.png)\)\s*(?:\{[^}]*\})?/);
   
   if (match) {
     return {
@@ -128,11 +134,14 @@ export async function generateDiagramPNG(_diagramData) {
  * Create diagram reference markdown with metadata
  * @param {string} docSlug - Document slug
  * @param {string} diagramId - Diagram ID
- * @param {object} diagramData - Excalidraw diagram data
+ * @param {string} [relativeToDocPath] - Path of markdown file to resolve relative path against
  * @returns {string} Markdown with embedded data
  */
-export function createDiagramMarkdown(docSlug, diagramId) {
-  const imagePath = getDiagramImagePath(docSlug, diagramId);
+export function createDiagramMarkdown(docSlug, diagramId, relativeToDocPath = null, workspacePath = "") {
+  let imagePath = getDiagramImagePath(docSlug, diagramId);
+  if (relativeToDocPath) {
+    imagePath = toRelativeDocPath(relativeToDocPath, imagePath, workspacePath);
+  }
   
   // Create markdown that references the image
   // Include a hidden data attribute for the diagram ID
@@ -148,7 +157,8 @@ export function extractDiagramReferences(markdown) {
   const diagramRefs = [];
   
   // Match both current (media/excalidraw) and legacy diagram reference paths.
-  const pattern = /!\[Excalidraw Diagram\]\(((?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/(?:excalidraw|diagrams)\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|media\/diagrams\/([^/.]+)\.png)\)\s*\{data-diagram-id=["“]([^"”]+)["”]/g;
+  // Supports optional relative path prefixes (../ or ./)
+  const pattern = /!\[Excalidraw Diagram\]\(((?:\.\.\/|\.\/)*(?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|(?:\.\.\/|\.\/)*media\/(?:excalidraw|diagrams)\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|(?:\.\.\/|\.\/)*media\/diagrams\/([^/.]+)\.png)\)\s*\{data-diagram-id=["“]([^"”]+)["”]/g;
   
   let match;
   while ((match = pattern.exec(markdown)) !== null) {

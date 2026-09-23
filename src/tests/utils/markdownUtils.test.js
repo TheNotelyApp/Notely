@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLineStartOffset, resolveTargetLine } from "../../utils/markdownUtils";
+import { getLineStartOffset, resolveTargetLine, toRelativeDocPath } from "../../utils/markdownUtils";
 
 describe("getLineStartOffset", () => {
   it("computes exact character offset for LF line endings", () => {
@@ -36,3 +36,40 @@ describe("resolveTargetLine", () => {
   });
 });
 
+describe("toRelativeDocPath", () => {
+  it("calculates relative path from a nested note to media/excalidraw folder", () => {
+    const notePath = "C:/workspace/docs/sub/note.md";
+    const rel = toRelativeDocPath(notePath, "C:/workspace/media/excalidraw/12345678/diagram.png");
+    expect(rel).toBe("../../media/excalidraw/12345678/diagram.png");
+  });
+
+  it("handles root note relative path to media/excalidraw folder", () => {
+    const notePath = "C:/workspace/note.md";
+    const rel = toRelativeDocPath(notePath, "C:/workspace/media/excalidraw/12345678/diagram.png");
+    expect(rel).toBe("media/excalidraw/12345678/diagram.png");
+  });
+
+  it("correctly resolves a workspace-relative media path from a root note without extra parent levels", () => {
+    const notePath = "C:/Users/oksbw/Documents/Notely Notes/MyRootNote.md";
+    const workspacePath = "C:/Users/oksbw/Documents/Notely Notes";
+    const mediaPath = "media/excalidraw/e900911f/diagram.png";
+    const rel = toRelativeDocPath(notePath, mediaPath, workspacePath);
+    expect(rel).toBe("media/excalidraw/e900911f/diagram.png");
+  });
+
+  it("correctly resolves a workspace-relative media path from a 1-level nested note", () => {
+    const notePath = "C:/Users/oksbw/Documents/Notely Notes/Guides/MyGuide.md";
+    const workspacePath = "C:/Users/oksbw/Documents/Notely Notes";
+    const mediaPath = "media/excalidraw/e900911f/diagram.png";
+    const rel = toRelativeDocPath(notePath, mediaPath, workspacePath);
+    expect(rel).toBe("../media/excalidraw/e900911f/diagram.png");
+  });
+
+  it("correctly resolves a workspace-relative media path from a 2-level nested note", () => {
+    const notePath = "C:/Users/oksbw/Documents/Notely Notes/Guides/Advanced/MyGuide.md";
+    const workspacePath = "C:/Users/oksbw/Documents/Notely Notes";
+    const mediaPath = "media/excalidraw/e900911f/diagram.png";
+    const rel = toRelativeDocPath(notePath, mediaPath, workspacePath);
+    expect(rel).toBe("../../media/excalidraw/e900911f/diagram.png");
+  });
+});

@@ -25,7 +25,7 @@ import {
 import { ScreenRecordingBar } from "./ScreenRecordingBar";
 import { ScreenSourcePickerModal } from "./ScreenSourcePickerModal";
 import AppSelect from "./AppSelect";
-import { applySnippet, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown } from "../utils/markdownUtils";
+import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath } from "../utils/markdownUtils";
 import { insertMediaFromFile } from "../services/imageService";
 import { captureCurrentDisplay, getDesktopSources, listDocuments, listImages, saveImage, saveVideo } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
@@ -36,51 +36,12 @@ import { ImageCropModal } from "./ImageCropModal";
 import CodeBlockModal from "./CodeBlockModal";
 import AppIconButton from "./AppIconButton";
 
-function canonicalPathKey(pathValue) {
-  const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
-  if (!normalized) return "";
-  const trimmed = normalized.replace(/\/+$/, "");
-  return trimmed.toLowerCase();
-}
-
 function stripUrlSuffix(pathValue) {
   return String(pathValue || "").split(/[?#]/)[0];
 }
 
 function hasMarkdownExtension(pathValue) {
   return /\.md$/i.test(stripUrlSuffix(pathValue));
-}
-
-function toRelativeDocPath(fromFilePath, toFilePath) {
-  if (!fromFilePath || !toFilePath) return "";
-  const fromNormalized = String(fromFilePath).replace(/\\/g, "/");
-  const toNormalized = String(toFilePath).replace(/\\/g, "/");
-
-  if (canonicalPathKey(fromNormalized) === canonicalPathKey(toNormalized)) {
-    return "";
-  }
-
-  const fromDrive = fromNormalized.match(/^([A-Za-z]:)\//)?.[1]?.toLowerCase() || "";
-  const toDrive = toNormalized.match(/^([A-Za-z]:)\//)?.[1]?.toLowerCase() || "";
-  // Cross-drive links cannot be represented as sane relative paths on Windows.
-  if (fromDrive && toDrive && fromDrive !== toDrive) {
-    return toNormalized;
-  }
-
-  const fromParts = fromNormalized.split(/[\\/]+/);
-  const toParts = toNormalized.split(/[\\/]+/);
-
-  fromParts.pop();
-  while (fromParts.length && toParts.length && fromParts[0].toLowerCase() === toParts[0].toLowerCase()) {
-    fromParts.shift();
-    toParts.shift();
-  }
-
-  const up = Array.from({ length: fromParts.length }, () => "..");
-  const relative = [...up, ...toParts].join("/");
-  if (!relative) return "./";
-  if (relative.startsWith(".")) return relative;
-  return `./${relative}`;
 }
 
 function isValidHttpUrl(value) {
@@ -158,6 +119,7 @@ export function MarkdownToolbar({
   onChange,
   textareaRef,
   basePath,
+  workspacePath = "",
   onNotify,
   validationIssues = [],
   validationStatus = "idle",
@@ -724,7 +686,7 @@ export function MarkdownToolbar({
   const insertExcalidrawDiagram = () => {
     const docSlug = deriveDocSlug();
     const diagramId = generateDiagramId();
-    const rawMarkdown = createDiagramMarkdown(docSlug, diagramId);
+    const rawMarkdown = createDiagramMarkdown(docSlug, diagramId, basePath, workspacePath);
     const normalizedMarkdown = rawMarkdown.replace(/\(([^)]+)\)/, (_match, pathValue) => {
       return `(${normalizeImagePathForMarkdown(pathValue)})`;
     });
@@ -740,7 +702,8 @@ export function MarkdownToolbar({
 
   const insertDrawioDiagram = () => {
     const diagramId = generateDiagramId();
-    const rawMarkdown = `![Draw.io Diagram](media/draw.io/${diagramId}.png){data-diagram-id="${diagramId}"}`;
+    const rawPath = basePath ? toRelativeDocPath(basePath, `media/draw.io/${diagramId}.png`, workspacePath) : `media/draw.io/${diagramId}.png`;
+    const rawMarkdown = `![Draw.io Diagram](${rawPath}){data-diagram-id="${diagramId}"}`;
     const normalizedMarkdown = rawMarkdown.replace(/\(([^)]+)\)/, (_match, pathValue) => {
       return `(${normalizeImagePathForMarkdown(pathValue)})`;
     });

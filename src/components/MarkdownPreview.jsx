@@ -445,6 +445,7 @@ function clearInlineLinkedPreview(linkElement) {
 export const MarkdownPreview = memo(function MarkdownPreviewContent({
   content,
   basePath,
+  workspacePath = "",
   externalRef,
   onNotify,
   onContentChange,
@@ -1660,7 +1661,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
-      const baseMarkdown = createDiagramMarkdown("document", diagramEditState.diagramId);
+      const baseMarkdown = createDiagramMarkdown("document", diagramEditState.diagramId, basePath, workspacePath);
       const normalizedOriginAsset = normalizeImagePathForMarkdown(sourceAssetPath);
       const metadataSuffix = ` data-origin-asset="${sanitizeAttributeValue(normalizedOriginAsset)}" data-origin-alt="${sanitizeAttributeValue(sourceAltText)}"}`;
       const diagramMarkdown = baseMarkdown.includes("}")

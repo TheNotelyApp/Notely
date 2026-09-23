@@ -121,6 +121,74 @@ export function applySnippet(
   });
 }
 
+export function canonicalPathKey(pathValue) {
+  const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
+  if (!normalized) return "";
+  const trimmed = normalized.replace(/\/+$/, "");
+  return trimmed.toLowerCase();
+}
+
+function isAbsoluteFilePath(pathValue) {
+  const norm = String(pathValue || "").replace(/\\/g, "/").trim();
+  return /^[A-Za-z]:\//.test(norm) || norm.startsWith("/");
+}
+
+export function toRelativeDocPath(fromFilePath, toFilePath, workspacePath = "") {
+  if (!fromFilePath || !toFilePath) return toFilePath || "";
+  let fromNormalized = String(fromFilePath).replace(/\\/g, "/").trim();
+  let toNormalized = String(toFilePath).replace(/\\/g, "/").trim();
+  const wsNormalized = String(workspacePath || "").replace(/\\/g, "/").trim().replace(/\/+$/, "");
+
+  // If toFilePath is a workspace-relative path (e.g. media/... or images/...)
+  if (!isAbsoluteFilePath(toNormalized)) {
+    if (wsNormalized && isAbsoluteFilePath(wsNormalized)) {
+      toNormalized = `${wsNormalized}/${toNormalized.replace(/^\.\//, "")}`;
+    } else if (isAbsoluteFilePath(fromNormalized)) {
+      // If no workspacePath passed, check if fromFilePath contains workspace root or use directory
+      const fromDir = fromNormalized.split("/").slice(0, -1).join("/");
+      toNormalized = `${fromDir}/${toNormalized.replace(/^\.\//, "")}`;
+    } else {
+      // Both fromFilePath and toFilePath are relative paths
+      const fromParts = fromNormalized.split("/").filter(Boolean);
+      fromParts.pop(); // remove note filename
+      const up = Array.from({ length: fromParts.length }, () => "..");
+      const cleanTo = toNormalized.replace(/^\.\//, "");
+      if (up.length === 0) {
+        return cleanTo.startsWith(".") ? cleanTo : cleanTo;
+      }
+      return `${up.join("/")}/${cleanTo}`;
+    }
+  }
+
+  if (canonicalPathKey(fromNormalized) === canonicalPathKey(toNormalized)) {
+    return "";
+  }
+
+  const fromDrive = fromNormalized.match(/^([A-Za-z]:)\//)?.[1]?.toLowerCase() || "";
+  const toDrive = toNormalized.match(/^([A-Za-z]:)\//)?.[1]?.toLowerCase() || "";
+  if (fromDrive && toDrive && fromDrive !== toDrive) {
+    return toNormalized;
+  }
+
+  const fromParts = fromNormalized.split(/[\\/]+/).filter(Boolean);
+  const toParts = toNormalized.split(/[\\/]+/).filter(Boolean);
+
+  fromParts.pop();
+  while (fromParts.length && toParts.length && fromParts[0].toLowerCase() === toParts[0].toLowerCase()) {
+    fromParts.shift();
+    toParts.shift();
+  }
+
+  const up = Array.from({ length: fromParts.length }, () => "..");
+  const relative = [...up, ...toParts].join("/");
+  if (!relative) return "./";
+  if (relative.startsWith(".")) return relative;
+  if (/^(?:media|images|\.notes-app)\//i.test(relative)) {
+    return relative;
+  }
+  return `./${relative}`;
+}
+
 export function normalizeImagePathForMarkdown(pathValue) {
   if (!pathValue) return pathValue;
   const trimmed = pathValue.trim();
