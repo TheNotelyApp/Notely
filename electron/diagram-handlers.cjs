@@ -547,6 +547,155 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       };
     }
   });
+
+  // ── Wireframe handlers ────────────────────────────────────────────────────
+
+  function getWireframeSourceFile(diagramId, documentPath) {
+    const root = resolveWorkspaceRoot(documentPath);
+    const mediaFile = path.join(root, 'media', 'wireframe', `${diagramId}.wireframe.json`);
+    return mediaFile;
+  }
+
+  function getWireframeImageFile(diagramId, documentPath) {
+    const root = resolveWorkspaceRoot(documentPath);
+    return path.join(root, 'media', 'wireframe', `${diagramId}.png`);
+  }
+
+  /**
+   * Read wireframe source file
+   */
+  ipcMain.handle('wireframe:read-source', async (event, { diagramId, documentPath }) => {
+    try {
+      const sourceFile = getWireframeSourceFile(diagramId, documentPath);
+      const data = await fs.readFile(sourceFile, 'utf-8');
+      return { success: true, data };
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return { success: false, notFound: true };
+      }
+      console.error('Failed to read wireframe source:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * Write wireframe source file
+   */
+  ipcMain.handle('wireframe:write-source', async (event, { diagramId, data, documentPath }) => {
+    try {
+      const root = resolveWorkspaceRoot(documentPath);
+      const wireframeDir = path.join(root, 'media', 'wireframe');
+      const sourceFile = path.join(wireframeDir, `${diagramId}.wireframe.json`);
+      const existed = fsSync.existsSync(sourceFile);
+      const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
+      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
+
+      await mkdirRecursive(wireframeDir);
+      await fs.writeFile(sourceFile, data, 'utf-8');
+      emitDiagramSync(sourceFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Failed to write wireframe source:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * Write wireframe image file
+   */
+  ipcMain.handle('wireframe:write-image', async (event, { diagramId, imageData, documentPath }) => {
+    try {
+      const root = resolveWorkspaceRoot(documentPath);
+      const wireframeDir = path.join(root, 'media', 'wireframe');
+      const imageFile = path.join(wireframeDir, `${diagramId}.png`);
+      const existed = fsSync.existsSync(imageFile);
+      const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
+      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
+
+      await mkdirRecursive(wireframeDir);
+
+      let buffer;
+      if (typeof imageData === 'string') {
+        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        buffer = imageData;
+      }
+
+      await fs.writeFile(imageFile, buffer);
+      emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Failed to write wireframe image:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * Read wireframe image file as base64
+   */
+  ipcMain.handle('wireframe:read-image', async (event, { diagramId, documentPath }) => {
+    try {
+      const imageFile = getWireframeImageFile(diagramId, documentPath);
+      const imageData = await fs.readFile(imageFile);
+      const base64 = imageData.toString('base64');
+      return { success: true, data: `data:image/png;base64,${base64}` };
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return { success: false, notFound: true };
+      }
+      console.error('Failed to read wireframe image:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * Delete wireframe files
+   */
+  ipcMain.handle('wireframe:delete', async (event, { diagramId, documentPath }) => {
+    try {
+      const root = resolveWorkspaceRoot(documentPath);
+      const filesToDelete = [
+        path.join(root, 'media', 'wireframe', `${diagramId}.wireframe.json`),
+        path.join(root, 'media', 'wireframe', `${diagramId}.png`),
+      ];
+
+      for (const file of filesToDelete) {
+        if (fsSync.existsSync(file)) {
+          const hash = (typeof hashContent === 'function')
+            ? hashContent(fsSync.readFileSync(file).toString('base64'))
+            : null;
+          await fs.unlink(file);
+          emitDiagramSync(file, { op: 'delete', baseHash: hash });
+        }
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Failed to delete wireframe diagram:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * Check if wireframe diagram exists
+   */
+  ipcMain.handle('wireframe:exists', async (event, { diagramId, documentPath }) => {
+    try {
+      const sourceFile = getWireframeSourceFile(diagramId, documentPath);
+      try {
+        await fs.access(sourceFile);
+        return { exists: true };
+      } catch {
+        return { exists: false };
+      }
+    } catch (err) {
+      console.error('Failed to check wireframe existence:', err);
+      return { exists: false, error: err.message };
+    }
+  });
 }
 
 /**

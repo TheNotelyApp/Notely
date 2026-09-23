@@ -370,6 +370,7 @@ export function parseDiagramBlocks(content) {
   const mermaidRegex = /```mermaid\s*([\s\S]*?)```/gi;
   const excalidrawRegex = /!\[Excalidraw Diagram\]\(((?:\.\.\/|\.\/)*(?:\.notes-app\/)?excali-diagrams\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|(?:\.\.\/|\.\/)*media\/(?:excalidraw|diagrams)\/(?:(?:[^/]+\/)?([^/]+))\/diagram\.png|(?:\.\.\/|\.\/)*media\/diagrams\/([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
   const drawioRegex = /!\[(?:Drawio|Draw\.io|draw\.io) Diagram\]\(((?:\.\.\/|\.\/)*(?:\.notes-app\/drawio-diagrams\/|media\/draw\.io\/|media\/drawio\/)([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
+  const wireframeRegex = /!\[(?:Wireframe|wireframe) Diagram\]\(((?:\.\.\/|\.\/)*(?:\.notes-app\/wireframes\/|media\/wireframes\/)([^/.]+)\.png)\)\s*(\{[^}]*\})?/gi;
   const positions = [];
   let match;
 
@@ -426,6 +427,20 @@ export function parseDiagramBlocks(content) {
     });
   }
 
+  // Find all wireframe image references
+  while ((match = wireframeRegex.exec(content || ""))) {
+    const attributeBlock = match[3] || "";
+    const explicitDiagramId = readAttribute(attributeBlock, "data-diagram-id");
+    positions.push({
+      index: match.index,
+      endIndex: wireframeRegex.lastIndex,
+      type: "wireframe",
+      imagePath: match[1],
+      diagramId: explicitDiagramId || match[2],
+      fullMatch: match[0],
+    });
+  }
+
   // Sort by position
   positions.sort((a, b) => a.index - b.index);
 
@@ -453,6 +468,13 @@ export function parseDiagramBlocks(content) {
     } else if (pos.type === "drawio") {
       chunks.push({
         type: "drawio",
+        imagePath: pos.imagePath,
+        diagramId: pos.diagramId,
+        startLine: currentLine,
+      });
+    } else if (pos.type === "wireframe") {
+      chunks.push({
+        type: "wireframe",
         imagePath: pos.imagePath,
         diagramId: pos.diagramId,
         startLine: currentLine,

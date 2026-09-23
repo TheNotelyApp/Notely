@@ -101,7 +101,7 @@ export function parseDiagramReference(markdownRef) {
 export function isDiagramReference(imagePath) {
   return (
     Boolean(imagePath) &&
-    (imagePath.includes('excali-diagrams') || imagePath.includes('excalidraw') || imagePath.includes('media/diagrams') || imagePath.includes('media/draw.io') || imagePath.includes('drawio-diagrams')) &&
+    (imagePath.includes('excali-diagrams') || imagePath.includes('excalidraw') || imagePath.includes('media/diagrams') || imagePath.includes('media/draw.io') || imagePath.includes('drawio-diagrams') || imagePath.includes('media/wireframes') || imagePath.includes('wireframes')) &&
     (imagePath.includes('diagram.png') || imagePath.endsWith('.png'))
   );
 }

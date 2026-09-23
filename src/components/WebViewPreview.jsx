@@ -6,6 +6,8 @@ import {
 } from "../utils/renderUtils";
 import { MermaidBlock } from "./MermaidBlock";
 import { ExcalidrawBlock } from "./ExcalidrawBlock";
+import { DrawioBlock } from "./DrawioBlock";
+import { WireframeBlock } from "./WireframeBlock";
 
 export function WebViewPreview({ content, basePath }) {
   const parts = useMemo(() => parseDiagramBlocks(content), [content]);
@@ -55,9 +57,23 @@ export function WebViewPreview({ content, basePath }) {
             <ExcalidrawBlock
               imagePath={part.imagePath}
               diagramId={part.diagramId}
-              docSlug={basePath?.split(/[/\\]/).pop()?.replace(".md", "") || "document"}
-              documentPath={basePath?.split(/[/\\]/).slice(0, -1).join("/")}
+              docSlug={basePath ? basePath.split(/[/\\]/).pop()?.replace(".md", "") || "document" : "document"}
+              documentPath={basePath ? basePath.split(/[/\\]/).slice(0, -1).join("/") : ""}
               index={index}
+              key={`${part.type}-${index}`}
+            />
+          ) : part.type === "drawio" ? (
+            <DrawioBlock
+              imagePath={part.imagePath}
+              diagramId={part.diagramId}
+              documentPath={basePath}
+              key={`${part.type}-${index}`}
+            />
+          ) : part.type === "wireframe" ? (
+            <WireframeBlock
+              imagePath={part.imagePath}
+              diagramId={part.diagramId}
+              documentPath={basePath}
               key={`${part.type}-${index}`}
             />
           ) : (

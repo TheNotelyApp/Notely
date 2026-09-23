@@ -1,0 +1,267 @@
+/* ══════════════════════════════════════════════════════════════════
+   WireframeEditor — GrapesJS theme overrides
+   Inherits .excalidraw-modal-overlay / .excalidraw-modal-container
+   from ExcalidrawEditor.css
+   ══════════════════════════════════════════════════════════════════ */
+
+.wireframe-modal-container {
+  background: var(--surface-bg);
+}
+
+.wireframe-editor-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.wireframe-sidebar {
+  width: 260px;
+  background: var(--surface-bg);
+  border-right: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* ── GrapesJS canvas area ─────────────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-editor {
+  flex: 1;
+  border: none;
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+
+.wireframe-editor-wrapper .gjs-cv-canvas {
+  background: #f4f4f4;
+  width: 100%;
+  height: 100%;
+}
+
+:root[data-theme="dark"] .wireframe-editor-wrapper .gjs-cv-canvas {
+  background: #1e2228;
+}
+
+/* ── GrapesJS toolbar / panels ────────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-pn-panels {
+  background: var(--surface-bg);
+  border-right: 1px solid var(--border-soft);
+}
+
+.wireframe-editor-wrapper .gjs-pn-panel {
+  background: transparent;
+}
+
+.wireframe-editor-wrapper .gjs-pn-btn {
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.wireframe-editor-wrapper .gjs-pn-btn:hover,
+.wireframe-editor-wrapper .gjs-pn-btn.gjs-pn-active {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+/* ── Blocks panel ─────────────────────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-blocks-c {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+  overflow-y: auto;
+  background: var(--surface-bg);
+}
+
+.wireframe-editor-wrapper .gjs-block {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 6px);
+  color: var(--text-strong);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 8px 6px 6px;
+  text-align: center;
+  cursor: grab;
+  transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.wireframe-editor-wrapper .gjs-block:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-default);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.wireframe-editor-wrapper .gjs-block__media {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* ── Style manager ────────────────────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-sm-sector {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 6px 8px;
+}
+
+.wireframe-editor-wrapper .gjs-sm-sector-title {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 0 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.wireframe-editor-wrapper .gjs-field {
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--app-text);
+}
+
+.wireframe-editor-wrapper .gjs-field input,
+.wireframe-editor-wrapper .gjs-field select {
+  background: transparent;
+  color: var(--app-text);
+  border: none;
+  font-size: 11px;
+}
+
+/* ── Selected component highlight ─────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-selected {
+  outline: 2px solid var(--accent-solid) !important;
+  outline-offset: 1px !important;
+}
+
+/* ── Toolbar (floating component toolbar) ─────────────────────────── */
+.wireframe-editor-wrapper .gjs-toolbar {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: var(--shadow-sm);
+}
+
+.wireframe-editor-wrapper .gjs-toolbar-item {
+  color: var(--text-muted);
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.wireframe-editor-wrapper .gjs-toolbar-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+/* ── Trait manager ────────────────────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-trt-trait {
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wireframe-editor-wrapper .gjs-trt-trait label {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+/* ── Layer manager ────────────────────────────────────────────────── */
+.wireframe-editor-wrapper .gjs-layer {
+  color: var(--text-strong);
+  font-size: 11px;
+  background: transparent;
+}
+
+.wireframe-editor-wrapper .gjs-layer:hover {
+  background: var(--surface-hover);
+}
+
+/* ── Right panel (style/traits/layers) ───────────────────────────── */
+.wireframe-right-panel {
+  width: 220px;
+  min-width: 220px;
+  border-left: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-bg);
+  overflow: hidden;
+}
+
+.wireframe-right-panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-bg) 94%, var(--surface-elevated));
+}
+
+.wireframe-right-panel-tab {
+  flex: 1;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color var(--motion-fast), border-bottom var(--motion-fast);
+  border-bottom: 2px solid transparent;
+}
+
+.wireframe-right-panel-tab.active {
+  color: var(--accent-solid);
+  border-bottom-color: var(--accent-solid);
+}
+
+.wireframe-right-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── Wireframe-specific component styles (inside iframe) ──────────── */
+.wireframe-placeholder {
+  background: #e8e8e8;
+  border: 2px dashed #b0b0b0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+/* ── Loading state ────────────────────────────────────────────────── */
+.wireframe-editor-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  z-index: 5;
+  gap: 10px;
+}

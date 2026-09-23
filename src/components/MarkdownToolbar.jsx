@@ -19,6 +19,7 @@ import {
   Workflow,
   PenTool,
   Grid,
+  LayoutTemplate,
   Info,
   Video,
 } from "lucide-react";
@@ -715,6 +716,23 @@ export function MarkdownToolbar({
       return;
     }
     onNotify?.("Draw.io reference inserted.", "success");
+  };
+
+  const insertWireframeDiagram = () => {
+    const diagramId = generateDiagramId();
+    const rawPath = basePath ? toRelativeDocPath(basePath, `media/wireframes/${diagramId}.png`, workspacePath) : `media/wireframes/${diagramId}.png`;
+    const rawMarkdown = `![Wireframe Diagram](${rawPath}){data-diagram-id="${diagramId}"}`;
+    const normalizedMarkdown = rawMarkdown.replace(/\(([^)]+)\)/, (_match, pathValue) => {
+      return `(${normalizeImagePathForMarkdown(pathValue)})`;
+    });
+
+    insertTextAtCursor(value, onChange, `\n\n${normalizedMarkdown}\n`, textareaRef);
+    setShowMermaidBuilder(false);
+    if (!basePath) {
+      onNotify?.("Wireframe reference inserted. Save this note to resolve diagram files.", "info");
+      return;
+    }
+    onNotify?.("Wireframe reference inserted.", "success");
   };
 
   const createScreenshotFileName = () => {
@@ -1590,7 +1608,7 @@ export function MarkdownToolbar({
 
           {diagramMode === "picker" ? (
             <>
-              <div className="mermaid-type-switch" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+              <div className="mermaid-type-switch" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
                 <button onClick={() => setDiagramMode("mermaid")} style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
                   <Workflow size={14} />
                   Mermaid
@@ -1603,6 +1621,10 @@ export function MarkdownToolbar({
                   <Grid size={14} />
                   Draw.io
                 </button>
+                <button onClick={insertWireframeDiagram} style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
+                  <LayoutTemplate size={14} />
+                  Wireframe
+                </button>
               </div>
               <div className="diagram-doc-section" style={{ marginTop: "12px", borderTop: "1px solid var(--border-soft)", paddingTop: "12px", fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: "1.4" }}>
                 <div style={{ fontWeight: "600", marginBottom: "6px", color: "var(--text-strong)" }}>Tool Selection Guide:</div>
@@ -1610,6 +1632,7 @@ export function MarkdownToolbar({
                   <li><strong>Mermaid</strong>: Quick code-based diagrams (flows, sequences, trees). Saved as inline text.</li>
                   <li><strong>Excalidraw</strong>: Hand-drawn style wireframes, sketches, and collaborative brainstorm boards.</li>
                   <li><strong>Draw.io</strong>: Structured professional schemas, network charts, and architecture models.</li>
+                  <li><strong>Wireframe</strong>: Responsive UI mockups, screen layouts, and web components (GrapesJS).</li>
                 </ul>
               </div>
             </>
