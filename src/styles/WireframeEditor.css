@@ -4,24 +4,24 @@
 
 /* --- Modal Container Tokens & Sizing (Unified with Notely Theme) --- */
 .wireframe-modal-container {
-  --wf-bg:          var(--app-bg);
-  --wf-surface:     var(--surface-bg);
-  --wf-surface2:    var(--surface-elevated);
-  --wf-surface3:    var(--surface-muted);
-  --wf-border:      var(--border-subtle);
-  --wf-border2:     var(--border-default);
-  --wf-text:        var(--text-strong);
-  --wf-text-muted:  var(--text-muted);
-  --wf-text-dim:    var(--text-subtle);
-  --wf-accent:      var(--accent-solid);
+  --wf-bg: var(--app-bg);
+  --wf-surface: var(--surface-bg);
+  --wf-surface2: var(--surface-elevated);
+  --wf-surface3: var(--surface-muted);
+  --wf-border: var(--border-subtle);
+  --wf-border2: var(--border-default);
+  --wf-text: var(--text-strong);
+  --wf-text-muted: var(--text-muted);
+  --wf-text-dim: var(--text-subtle);
+  --wf-accent: var(--accent-solid);
   --wf-accent-hover: var(--accent-strong);
   --wf-accent-glow: color-mix(in srgb, var(--accent-solid) 20%, transparent);
-  --wf-green:       var(--status-success-text);
-  --wf-radius:      var(--radius-lg, 8px);
-  --wf-radius-sm:   var(--radius-sm, 4px);
-  --wf-radius-lg:   var(--radius-lg, 8px);
-  --wf-canvas-bg:   var(--surface-muted);
-  --wf-canvas-dot:  color-mix(in srgb, var(--text-strong) 8%, transparent);
+  --wf-green: var(--status-success-text);
+  --wf-radius: var(--radius-lg, 8px);
+  --wf-radius-sm: var(--radius-sm, 4px);
+  --wf-radius-lg: var(--radius-lg, 8px);
+  --wf-canvas-bg: var(--surface-muted);
+  --wf-canvas-dot: color-mix(in srgb, var(--text-strong) 8%, transparent);
 
   background: var(--surface-bg) !important;
   color: var(--text-strong) !important;
@@ -221,7 +221,7 @@
 
 /* --- Left Sidebar: Stencil Library (Sleek, Uncrowded) --- */
 .wireframe-stencil-sidebar {
-  width: 236px;
+  width: 260px;
   background: var(--surface-bg);
   border-right: 1px solid var(--border-soft);
   display: flex;
@@ -266,7 +266,9 @@
   background: var(--surface-elevated);
   color: var(--text-strong);
   outline: none;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
 }
 
 .wireframe-search-input::placeholder {
@@ -333,7 +335,7 @@
   padding: 8px 10px 14px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
+  gap: 8px;
   align-content: start;
   scrollbar-width: thin;
   scrollbar-color: var(--border-soft) transparent;
@@ -354,15 +356,16 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 5px;
-  padding: 8px 4px;
+  gap: 6px;
+  padding: 10px 8px;
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm, 4px);
   cursor: grab;
   transition: all 0.12s ease;
   user-select: none;
-  min-height: 56px;
+  min-height: 68px;
+  height: auto;
   box-sizing: border-box;
 }
 
@@ -390,16 +393,15 @@
 }
 
 .wireframe-stencil-tile-name {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--text-strong);
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
+  line-height: 1.25;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
   max-width: 100%;
 }
 
@@ -794,7 +796,8 @@
 }
 
 @keyframes wf-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
