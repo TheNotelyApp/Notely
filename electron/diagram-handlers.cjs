@@ -34,13 +34,23 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     }
     if (documentPath) {
       let curr = path.resolve(documentPath);
-      while (curr && curr !== path.dirname(curr)) {
-        if (fsSync.existsSync(path.join(curr, '.notes-app'))) {
-          return curr;
+      try {
+        if (fsSync.existsSync(curr) && fsSync.statSync(curr).isFile()) {
+          curr = path.dirname(curr);
+        } else if (curr.endsWith('.md') || curr.endsWith('.markdown')) {
+          curr = path.dirname(curr);
         }
-        curr = path.dirname(curr);
+      } catch {
+        // fallback if unreadable
       }
-      return path.resolve(documentPath);
+      let check = curr;
+      while (check && check !== path.dirname(check)) {
+        if (fsSync.existsSync(path.join(check, '.notes-app'))) {
+          return check;
+        }
+        check = path.dirname(check);
+      }
+      return curr;
     }
     return "";
   }
@@ -552,13 +562,20 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
 
   function getWireframeSourceFile(diagramId, documentPath) {
     const root = resolveWorkspaceRoot(documentPath);
-    const mediaFile = path.join(root, 'media', 'wireframe', `${diagramId}.wireframe.json`);
-    return mediaFile;
+    const pluralFile = path.join(root, 'media', 'wireframes', `${diagramId}.wireframe.json`);
+    if (fsSync.existsSync(pluralFile)) return pluralFile;
+    const singularFile = path.join(root, 'media', 'wireframe', `${diagramId}.wireframe.json`);
+    if (fsSync.existsSync(singularFile)) return singularFile;
+    return pluralFile;
   }
 
   function getWireframeImageFile(diagramId, documentPath) {
     const root = resolveWorkspaceRoot(documentPath);
-    return path.join(root, 'media', 'wireframe', `${diagramId}.png`);
+    const pluralFile = path.join(root, 'media', 'wireframes', `${diagramId}.png`);
+    if (fsSync.existsSync(pluralFile)) return pluralFile;
+    const singularFile = path.join(root, 'media', 'wireframe', `${diagramId}.png`);
+    if (fsSync.existsSync(singularFile)) return singularFile;
+    return pluralFile;
   }
 
   /**
@@ -584,7 +601,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   ipcMain.handle('wireframe:write-source', async (event, { diagramId, data, documentPath }) => {
     try {
       const root = resolveWorkspaceRoot(documentPath);
-      const wireframeDir = path.join(root, 'media', 'wireframe');
+      const wireframeDir = path.join(root, 'media', 'wireframes');
       const sourceFile = path.join(wireframeDir, `${diagramId}.wireframe.json`);
       const existed = fsSync.existsSync(sourceFile);
       const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
@@ -607,7 +624,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   ipcMain.handle('wireframe:write-image', async (event, { diagramId, imageData, documentPath }) => {
     try {
       const root = resolveWorkspaceRoot(documentPath);
-      const wireframeDir = path.join(root, 'media', 'wireframe');
+      const wireframeDir = path.join(root, 'media', 'wireframes');
       const imageFile = path.join(wireframeDir, `${diagramId}.png`);
       const existed = fsSync.existsSync(imageFile);
       const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
@@ -658,6 +675,8 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     try {
       const root = resolveWorkspaceRoot(documentPath);
       const filesToDelete = [
+        path.join(root, 'media', 'wireframes', `${diagramId}.wireframe.json`),
+        path.join(root, 'media', 'wireframes', `${diagramId}.png`),
         path.join(root, 'media', 'wireframe', `${diagramId}.wireframe.json`),
         path.join(root, 'media', 'wireframe', `${diagramId}.png`),
       ];

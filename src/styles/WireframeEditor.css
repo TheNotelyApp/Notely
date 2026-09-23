@@ -1,116 +1,102 @@
-﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Wireframe Studio â€” Figma-Quality Dark Design System
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ==========================================================================
+   Wireframe Studio — Visual UI Builder (Notely Theme Integrated & Sleek)
+   ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-/* â”€â”€ Root Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Modal Container Tokens & Sizing (Unified with Notely Theme) --- */
 .wireframe-modal-container {
-  --wf-bg:          #1e1e2e;
-  --wf-surface:     #252535;
-  --wf-surface2:    #2d2d42;
-  --wf-surface3:    #323248;
-  --wf-border:      rgba(255,255,255,0.07);
-  --wf-border2:     rgba(255,255,255,0.12);
-  --wf-text:        #e2e4f0;
-  --wf-text-muted:  #8b8eab;
-  --wf-text-dim:    #5c5f7a;
-  --wf-accent:      #7c6af7;
-  --wf-accent-glow: rgba(124,106,247,0.3);
-  --wf-green:       #4ade80;
-  --wf-radius:      10px;
-  --wf-radius-sm:   6px;
-  --wf-radius-lg:   14px;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --wf-bg:          var(--app-bg);
+  --wf-surface:     var(--surface-bg);
+  --wf-surface2:    var(--surface-elevated);
+  --wf-surface3:    var(--surface-muted);
+  --wf-border:      var(--border-subtle);
+  --wf-border2:     var(--border-default);
+  --wf-text:        var(--text-strong);
+  --wf-text-muted:  var(--text-muted);
+  --wf-text-dim:    var(--text-subtle);
+  --wf-accent:      var(--accent-solid);
+  --wf-accent-hover: var(--accent-strong);
+  --wf-accent-glow: color-mix(in srgb, var(--accent-solid) 20%, transparent);
+  --wf-green:       var(--status-success-text);
+  --wf-radius:      var(--radius-lg, 8px);
+  --wf-radius-sm:   var(--radius-sm, 4px);
+  --wf-radius-lg:   var(--radius-lg, 8px);
+  --wf-canvas-bg:   var(--surface-muted);
+  --wf-canvas-dot:  color-mix(in srgb, var(--text-strong) 8%, transparent);
 
-  background: var(--wf-bg) !important;
-  width: 96vw !important;
-  max-width: 1600px !important;
-  height: 93vh !important;
+  background: var(--surface-bg) !important;
+  color: var(--text-strong) !important;
+  font-family: var(--app-font-family, inherit);
+  border: 1px solid var(--border-soft) !important;
+  border-radius: var(--radius-md, 6px) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  width: calc(100vw - 12px) !important;
+  height: calc(100vh - 60px - 12px) !important;
+  max-width: none !important;
+  max-height: none !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid var(--wf-border2);
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.04),
-    0 32px 80px rgba(0,0,0,0.6),
-    0 8px 24px rgba(0,0,0,0.4);
 }
 
-/* â”€â”€ Top Bar / Studio Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Top Bar / Studio Header (40px compact standard) --- */
 .wireframe-studio-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  height: 48px;
-  background: var(--wf-surface);
-  border-bottom: 1px solid var(--wf-border);
+  gap: 10px;
+  padding: 0 12px;
+  height: 40px;
+  min-height: 40px;
+  background: color-mix(in srgb, var(--surface-bg) 95%, var(--surface-elevated));
+  border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
 
-/* thin rainbow accent line at the very top */
-.wireframe-studio-header::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #7c6af7, #a78bfa, #60a5fa, #34d399, #fbbf24);
-  border-radius: 16px 16px 0 0;
-}
-
 .wireframe-studio-title-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .wireframe-studio-logo {
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, #7c6af7 0%, #60a5fa 100%);
-  border-radius: 7px;
+  width: 20px;
+  height: 20px;
+  background: var(--accent-solid);
+  border-radius: var(--radius-sm, 4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(124,106,247,0.35);
   flex-shrink: 0;
 }
 
 .wireframe-studio-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--wf-text);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
   margin: 0;
   letter-spacing: -0.01em;
-}
-
-.wireframe-studio-subtitle {
-  font-size: 10px;
-  color: var(--wf-text-dim);
-  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .wireframe-header-divider {
   width: 1px;
-  height: 20px;
-  background: var(--wf-border2);
+  height: 18px;
+  background: var(--border-soft);
   flex-shrink: 0;
 }
 
-/* â”€â”€ Viewport Device Switcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Viewport Device Switcher (Sleek Segmented Control) --- */
 .wireframe-viewport-controls {
   display: flex;
   align-items: center;
-  background: var(--wf-bg);
-  padding: 3px;
-  border-radius: var(--wf-radius-sm);
-  border: 1px solid var(--wf-border2);
+  height: var(--btn-height-sm, 28px);
+  box-sizing: border-box;
+  background: var(--surface-elevated);
+  padding: 2px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-default);
   gap: 1px;
   flex-shrink: 0;
 }
@@ -118,41 +104,45 @@
 .wireframe-vp-btn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 8px;
   border: none;
   background: transparent;
-  color: var(--wf-text-muted);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 500;
-  font-family: inherit;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.12s ease;
   white-space: nowrap;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 .wireframe-vp-btn:hover {
-  color: var(--wf-text);
-  background: var(--wf-surface2);
+  color: var(--text-strong);
+  background: var(--surface-subtle);
 }
 
 .wireframe-vp-btn.active {
-  background: var(--wf-accent);
-  color: #fff;
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
   font-weight: 600;
-  box-shadow: 0 2px 8px var(--wf-accent-glow);
 }
 
-/* â”€â”€ Canvas Toolbar (Undo/Redo/Grid/etc) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Canvas Tools (Undo, Redo, Bounds, Clear) --- */
 .wireframe-canvas-tools {
   display: flex;
   align-items: center;
+  height: var(--btn-height-sm, 28px);
+  box-sizing: border-box;
+  background: var(--surface-elevated);
+  padding: 2px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-default);
   gap: 1px;
-  background: var(--wf-bg);
-  padding: 3px;
-  border-radius: var(--wf-radius-sm);
-  border: 1px solid var(--wf-border2);
   flex-shrink: 0;
 }
 
@@ -160,41 +150,41 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 100%;
   border: none;
   background: transparent;
-  color: var(--wf-text-muted);
-  border-radius: 4px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 4px);
   cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
 }
 
 .wireframe-tool-icon-btn:hover {
-  background: var(--wf-surface2);
-  color: var(--wf-text);
+  background: var(--surface-subtle);
+  color: var(--text-strong);
 }
 
 .wireframe-tool-icon-btn.active {
-  background: color-mix(in srgb, var(--wf-accent) 20%, transparent);
-  color: var(--wf-accent);
+  background: color-mix(in srgb, var(--accent-solid) 14%, var(--surface-bg));
+  color: var(--accent-solid);
 }
 
 .wireframe-tool-icon-btn.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .wireframe-tool-sep {
   width: 1px;
   height: 14px;
-  background: var(--wf-border2);
-  margin: 0 2px;
+  background: var(--border-soft);
+  margin: 0 1px;
   flex-shrink: 0;
 }
 
-/* â”€â”€ Action Buttons Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Action Buttons Row --- */
 .wireframe-action-buttons {
   display: flex;
   align-items: center;
@@ -203,53 +193,24 @@
   flex-shrink: 0;
 }
 
-.wf-btn {
+.wireframe-action-buttons button,
+.wireframe-action-buttons .primary-button,
+.wireframe-action-buttons .small-button {
+  height: var(--btn-height-sm, 28px);
+  min-height: var(--btn-height-sm, 28px);
+  max-height: var(--btn-height-sm, 28px);
+  padding: 0 10px;
+  font-size: 11px;
+  border-radius: var(--radius-sm, 4px);
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--wf-radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid transparent;
-  white-space: nowrap;
-  flex-shrink: 0;
+  justify-content: center;
+  gap: 5px;
   line-height: 1;
 }
 
-.wf-btn-ghost {
-  background: transparent;
-  color: var(--wf-text-muted);
-  border-color: var(--wf-border2);
-}
-
-.wf-btn-ghost:hover {
-  background: var(--wf-surface2);
-  color: var(--wf-text);
-}
-
-.wf-btn-primary {
-  background: var(--wf-accent);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--wf-accent-glow);
-}
-
-.wf-btn-primary:hover:not(:disabled) {
-  background: #6d5ce7;
-  box-shadow: 0 4px 14px var(--wf-accent-glow);
-  transform: translateY(-1px);
-}
-
-.wf-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-/* â”€â”€ Studio Body Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Studio Body Layout --- */
 .wireframe-studio-body {
   display: flex;
   flex: 1;
@@ -258,11 +219,11 @@
   position: relative;
 }
 
-/* â”€â”€ Left Sidebar: Stencil Library â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Left Sidebar: Stencil Library (Sleek, Uncrowded) --- */
 .wireframe-stencil-sidebar {
-  width: 252px;
-  background: var(--wf-surface);
-  border-right: 1px solid var(--wf-border);
+  width: 236px;
+  background: var(--surface-bg);
+  border-right: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -270,223 +231,188 @@
 }
 
 .wireframe-sidebar-header {
-  padding: 10px 12px 6px;
+  padding: 8px 10px 8px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  z-index: 20;
 }
 
-.wireframe-sidebar-label {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--wf-text-dim);
-  margin-bottom: 7px;
-  padding-left: 2px;
-}
-
-/* Search */
+/* Search Input */
 .wireframe-sidebar-search {
   position: relative;
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
 }
 
 .wireframe-search-icon {
   position: absolute;
-  left: 9px;
-  color: var(--wf-text-dim);
+  left: 8px;
+  color: var(--text-subtle);
   pointer-events: none;
   z-index: 1;
 }
 
 .wireframe-search-input {
   width: 100%;
-  padding: 6px 28px 6px 28px;
-  border: 1px solid var(--wf-border2);
-  border-radius: var(--wf-radius-sm);
+  height: 26px;
+  padding: 0 24px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
   font-size: 11px;
-  font-family: inherit;
-  background: var(--wf-bg);
-  color: var(--wf-text);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
-.wireframe-search-input::placeholder { color: var(--wf-text-dim); }
+.wireframe-search-input::placeholder {
+  color: var(--text-subtle);
+  font-size: 11px;
+}
 
 .wireframe-search-input:focus {
-  border-color: var(--wf-accent);
-  box-shadow: 0 0 0 2px var(--wf-accent-glow);
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 1px var(--focus-ring-color);
 }
 
 .wireframe-search-clear {
   position: absolute;
-  right: 8px;
+  right: 6px;
   background: transparent;
   border: none;
-  font-size: 12px;
-  color: var(--wf-text-muted);
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
-  line-height: 1;
-  transition: color 0.1s;
-}
-
-.wireframe-search-clear:hover { color: var(--wf-text); }
-
-/* Category chips */
-.wireframe-category-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 0 12px 10px;
-  border-bottom: 1px solid var(--wf-border);
-}
-
-.wireframe-category-chip {
-  padding: 3px 9px;
-  border: 1px solid var(--wf-border2);
-  background: transparent;
-  color: var(--wf-text-muted);
-  border-radius: 999px;
   font-size: 10px;
-  font-weight: 500;
-  font-family: inherit;
-  white-space: nowrap;
+  color: var(--text-subtle);
   cursor: pointer;
-  transition: all 0.14s ease;
+  padding: 2px;
+  line-height: 1;
 }
 
-.wireframe-category-chip:hover {
-  background: var(--wf-surface2);
-  color: var(--wf-text);
+.wireframe-search-clear:hover {
+  color: var(--text-strong);
 }
 
-.wireframe-category-chip.active {
-  background: var(--wf-accent);
-  color: #fff;
-  border-color: transparent;
-  font-weight: 600;
-  box-shadow: 0 1px 6px var(--wf-accent-glow);
+/* Category Filter Dropdown */
+.wireframe-category-select-wrapper {
+  width: 100%;
 }
 
-/* Stencil list */
+.wireframe-category-select.app-select-root {
+  width: 100%;
+}
+
+.wireframe-category-select .app-select-trigger {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-strong);
+}
+
+.wireframe-category-select .app-select-trigger:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.wireframe-category-select .app-select-panel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  z-index: 25;
+}
+
+/* Stencil Grid (Clean 2-Column Visual Tiles) */
 .wireframe-stencil-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 10px 16px;
+  padding: 8px 10px 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-soft) transparent;
+}
+
+.wireframe-stencil-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wireframe-stencil-grid::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.wireframe-stencil-tile {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--wf-border2) transparent;
-}
-
-.wireframe-stencil-grid::-webkit-scrollbar { width: 4px; }
-.wireframe-stencil-grid::-webkit-scrollbar-track { background: transparent; }
-.wireframe-stencil-grid::-webkit-scrollbar-thumb {
-  background: var(--wf-border2);
-  border-radius: 4px;
-}
-
-/* Section headers */
-.wireframe-stencil-section {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--wf-text-dim);
-  padding: 10px 4px 4px;
-}
-
-.wireframe-stencil-card {
-  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--wf-radius-sm);
-  cursor: pointer;
+  justify-content: center;
+  text-align: center;
+  gap: 5px;
+  padding: 8px 4px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  cursor: grab;
+  transition: all 0.12s ease;
   user-select: none;
-  transition: all 0.14s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  min-height: 56px;
+  box-sizing: border-box;
 }
 
-.wireframe-stencil-card:hover {
-  background: var(--wf-surface2);
-  border-color: var(--wf-border2);
+.wireframe-stencil-tile:active {
+  cursor: grabbing;
 }
 
-.wireframe-stencil-card:hover .wireframe-stencil-add {
-  opacity: 1;
-  transform: scale(1);
+.wireframe-stencil-tile:hover {
+  background: color-mix(in srgb, var(--accent-solid) 8%, var(--surface-bg));
+  border-color: var(--accent-solid);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
-.wireframe-stencil-card:active { transform: scale(0.98); }
-
-.wireframe-stencil-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--wf-radius-sm);
-  background: var(--wf-surface3);
+.wireframe-stencil-tile-icon {
+  color: var(--accent-solid);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-  border: 1px solid var(--wf-border);
+  transition: transform 0.12s ease;
 }
 
-.wireframe-stencil-info {
-  flex: 1;
-  min-width: 0;
+.wireframe-stencil-tile:hover .wireframe-stencil-tile-icon {
+  transform: scale(1.1);
 }
 
-.wireframe-stencil-name {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--wf-text);
-  margin-bottom: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wireframe-stencil-desc {
+.wireframe-stencil-tile-name {
   font-size: 10px;
-  color: var(--wf-text-dim);
-  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-strong);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.wireframe-stencil-add {
-  width: 18px;
-  height: 18px;
-  background: var(--wf-accent);
-  color: #fff;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  opacity: 0;
-  transform: scale(0.6);
-  transition: all 0.15s ease;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .wireframe-empty-stencils {
-  padding: 32px 16px;
+  grid-column: span 2;
+  padding: 32px 10px;
   text-align: center;
-  color: var(--wf-text-dim);
+  color: var(--text-subtle);
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-/* â”€â”€ Center Canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Center Canvas --- */
 .wireframe-canvas-container {
   flex: 1;
   display: flex;
@@ -494,49 +420,29 @@
   overflow: hidden;
   min-width: 0;
   position: relative;
-  background-color: #131320;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-color: var(--wf-canvas-bg);
+  background-image: radial-gradient(var(--wf-canvas-dot) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
 }
 
-.wireframe-canvas-statusbar {
+.wireframe-canvas-top-tag {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 14px;
-  background: var(--wf-surface);
-  border-top: 1px solid var(--wf-border);
-  flex-shrink: 0;
-  font-size: 10px;
-  color: var(--wf-text-dim);
+  justify-content: center;
+  padding: 6px 0 0;
+  pointer-events: none;
+  z-index: 5;
 }
 
-.wireframe-canvas-statusbar-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--wf-green);
-  box-shadow: 0 0 4px var(--wf-green);
-  flex-shrink: 0;
-}
-
-.wireframe-canvas-tip {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.wireframe-canvas-tip kbd {
-  background: var(--wf-surface2);
-  border: 1px solid var(--wf-border2);
-  border-radius: 3px;
-  padding: 1px 4px;
-  font-size: 9px;
-  font-family: inherit;
-  color: var(--wf-text-muted);
+.wireframe-artboard-pill {
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: var(--shadow-sm);
 }
 
 .wireframe-gjs-host {
@@ -544,42 +450,17 @@
   min-height: 0;
   overflow: hidden;
   position: relative;
-}
-
-/* empty state overlay */
-.wireframe-canvas-empty-hint {
-  position: absolute;
-  inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  pointer-events: none;
-  user-select: none;
 }
 
-.wf-empty-icon {
-  font-size: 40px;
-  opacity: 0.15;
-}
-
-.wf-empty-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.1);
-  letter-spacing: 0.02em;
-}
-
-.wf-empty-sub {
-  font-size: 11px;
-  color: rgba(255,255,255,0.06);
-}
-
-/* GrapesJS canvas overrides */
+/* GrapesJS canvas frame */
 .wireframe-gjs-host .gjs-editor {
   background: transparent !important;
   border: none !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .wireframe-gjs-host .gjs-cv-canvas {
@@ -588,11 +469,106 @@
   height: 100% !important;
 }
 
-/* â”€â”€ Right Inspector Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.wireframe-gjs-host .gjs-frame-wrapper {
+  margin: 8px auto;
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg, 8px);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* Status bar (24px compact) */
+.wireframe-canvas-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 24px;
+  min-height: 24px;
+  background: var(--surface-bg);
+  border-top: 1px solid var(--border-soft);
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-subtle);
+  box-sizing: border-box;
+}
+
+.wireframe-canvas-statusbar-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--status-success-text);
+  border-radius: 999px;
+}
+
+/* Zoom controls */
+.wireframe-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  padding: 1px;
+}
+
+.wireframe-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+}
+
+.wireframe-zoom-btn:hover {
+  background: var(--surface-subtle);
+  color: var(--text-strong);
+}
+
+.wireframe-zoom-label {
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.wireframe-zoom-label:hover {
+  color: var(--text-strong);
+}
+
+.wireframe-canvas-tip {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+}
+
+.wf-tip-dot {
+  opacity: 0.4;
+}
+
+.wireframe-canvas-tip kbd {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0 3px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* --- Right Inspector Panel (236px compact) --- */
 .wireframe-inspector-panel {
-  width: 248px;
-  background: var(--wf-surface);
-  border-left: 1px solid var(--wf-border);
+  width: 236px;
+  background: var(--surface-bg);
+  border-left: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -601,11 +577,13 @@
 
 .wireframe-inspector-tabs {
   display: flex;
-  border-bottom: 1px solid var(--wf-border);
-  background: var(--wf-bg);
-  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  padding: 3px 6px 0;
   gap: 2px;
   flex-shrink: 0;
+  height: 32px;
+  box-sizing: border-box;
 }
 
 .wireframe-inspector-tab {
@@ -613,45 +591,48 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 7px 4px;
+  gap: 4px;
+  padding: 4px 4px 6px;
   border: none;
   background: transparent;
-  color: var(--wf-text-dim);
+  color: var(--text-subtle);
   font-size: 11px;
-  font-weight: 600;
-  font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: all 0.15s ease;
-  border-radius: 4px 4px 0 0;
+  transition: all 0.12s ease;
+  border-radius: var(--radius-sm, 4px) var(--radius-sm, 4px) 0 0;
   margin-bottom: -1px;
+  line-height: 1;
 }
 
 .wireframe-inspector-tab:hover {
-  color: var(--wf-text-muted);
-  background: var(--wf-surface2);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
 }
 
 .wireframe-inspector-tab.active {
-  color: var(--wf-accent);
-  border-bottom-color: var(--wf-accent);
-  background: var(--wf-surface);
+  color: var(--accent-solid);
+  border-bottom-color: var(--accent-solid);
+  background: var(--surface-bg);
+  font-weight: 600;
 }
 
 .wireframe-inspector-content {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px;
   scrollbar-width: thin;
-  scrollbar-color: var(--wf-border2) transparent;
+  scrollbar-color: var(--border-soft) transparent;
 }
 
-.wireframe-inspector-content::-webkit-scrollbar { width: 4px; }
-.wireframe-inspector-content::-webkit-scrollbar-track { background: transparent; }
+.wireframe-inspector-content::-webkit-scrollbar {
+  width: 4px;
+}
+
 .wireframe-inspector-content::-webkit-scrollbar-thumb {
-  background: var(--wf-border2);
-  border-radius: 4px;
+  background: var(--border-soft);
+  border-radius: var(--radius-sm, 4px);
 }
 
 .wireframe-inspector-empty {
@@ -659,48 +640,76 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 40px 16px;
-  color: var(--wf-text-dim);
+  gap: 6px;
+  padding: 36px 12px;
+  color: var(--text-subtle);
   font-size: 11px;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
-.wireframe-inspector-empty-icon { font-size: 26px; opacity: 0.4; }
+.wireframe-empty-icon-svg {
+  opacity: 0.4;
+  color: var(--text-subtle);
+}
 
-/* GrapesJS Style Manager inside inspector */
+/* --- GrapesJS Studio Component Theming --- */
+.wireframe-modal-container .gjs-one-bg {
+  background-color: var(--surface-bg) !important;
+}
+
+.wireframe-modal-container .gjs-two-color {
+  color: var(--text-strong) !important;
+}
+
+.wireframe-modal-container .gjs-three-bg {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-strong) !important;
+}
+
+.wireframe-modal-container .gjs-four-color,
+.wireframe-modal-container .gjs-four-color-h:hover {
+  color: var(--accent-solid) !important;
+}
+
+/* Style Manager */
 .wireframe-sm-container .gjs-sm-sector,
 .wireframe-inspector-panel .gjs-sm-sector {
-  border-bottom: 1px solid var(--wf-border);
-  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 4px 0;
 }
 
 .wireframe-sm-container .gjs-sm-sector-title,
 .wireframe-inspector-panel .gjs-sm-sector-title {
-  color: var(--wf-text-muted) !important;
+  color: var(--text-muted) !important;
   background: transparent !important;
-  font-size: 10px !important;
+  font-size: 9.5px !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 5px 0 !important;
+  padding: 4px 0 !important;
   border: none !important;
   cursor: pointer;
 }
 
 .wireframe-sm-container .gjs-sm-sector-title:hover,
 .wireframe-inspector-panel .gjs-sm-sector-title:hover {
-  color: var(--wf-text) !important;
+  color: var(--text-strong) !important;
 }
 
 .wireframe-inspector-panel .gjs-field,
 .wireframe-sm-container .gjs-field {
-  background: var(--wf-bg) !important;
-  border: 1px solid var(--wf-border2) !important;
-  border-radius: var(--wf-radius-sm) !important;
-  color: var(--wf-text) !important;
+  background: var(--surface-elevated) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  color: var(--text-strong) !important;
   font-size: 11px !important;
+}
+
+.wireframe-inspector-panel .gjs-field:focus-within,
+.wireframe-sm-container .gjs-field:focus-within {
+  border-color: var(--focus-ring-color) !important;
+  outline: 1px solid var(--focus-ring-color) !important;
 }
 
 .wireframe-inspector-panel .gjs-field input,
@@ -708,81 +717,87 @@
 .wireframe-sm-container .gjs-field input,
 .wireframe-sm-container .gjs-field select {
   background: transparent !important;
-  color: var(--wf-text) !important;
+  color: var(--text-strong) !important;
   border: none !important;
   font-size: 11px !important;
-  font-family: inherit !important;
 }
 
 .wireframe-inspector-panel .gjs-sm-label,
 .wireframe-sm-container .gjs-sm-label {
-  color: var(--wf-text-muted) !important;
+  color: var(--text-muted) !important;
   font-size: 10px !important;
 }
 
 /* Layers */
 .wireframe-inspector-panel .gjs-layer,
 .wireframe-layers-container .gjs-layer {
-  color: var(--wf-text) !important;
+  color: var(--text-strong) !important;
   background: transparent !important;
-  border-bottom: 1px solid var(--wf-border) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
   font-size: 11px !important;
 }
 
 .wireframe-inspector-panel .gjs-layer:hover,
 .wireframe-layers-container .gjs-layer:hover {
-  background: var(--wf-surface2) !important;
+  background: var(--surface-elevated) !important;
 }
 
 .wireframe-inspector-panel .gjs-layer.gjs-selected,
 .wireframe-layers-container .gjs-layer.gjs-selected {
-  background: color-mix(in srgb, var(--wf-accent) 15%, transparent) !important;
-  color: var(--wf-accent) !important;
+  background: color-mix(in srgb, var(--accent-solid) 14%, var(--surface-bg)) !important;
+  color: var(--accent-solid) !important;
 }
 
-/* â”€â”€ Loading overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Loading overlay */
 .wireframe-editor-loading {
   position: absolute;
   inset: 0;
-  background: rgba(19, 19, 32, 0.9);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--surface-bg) 88%, transparent);
+  backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 12px;
   z-index: 50;
   font-size: 12px;
   font-weight: 500;
-  color: var(--wf-text-muted);
+  color: var(--text-muted);
   letter-spacing: 0.02em;
 }
 
 .wireframe-spinner {
-  width: 30px;
-  height: 30px;
-  border: 2.5px solid var(--wf-border2);
-  border-top-color: var(--wf-accent);
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent-solid);
+  border-radius: 999px;
   animation: wf-spin 0.75s linear infinite;
 }
 
-@keyframes wf-spin { to { transform: rotate(360deg); } }
+@keyframes wf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
-/* Unsaved dot */
+/* Unsaved changes indicator dot */
 .wf-unsaved-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   background: #f59e0b;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(245,158,11,0.6);
+  border-radius: 999px;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
   flex-shrink: 0;
   animation: wf-pulse 2s ease-in-out infinite;
 }
 
 @keyframes wf-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
-

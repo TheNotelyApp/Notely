@@ -21,96 +21,111 @@ import {
   Sliders,
   Sparkles,
   MousePointer,
-  Plus,
+  ZoomIn,
+  ZoomOut,
+  BarChart3,
+  FormInput,
+  Shield,
+  Zap,
+  CreditCard,
+  User,
+  AlignLeft,
+  Columns,
+  MessageSquare,
 } from "lucide-react";
+import AppButton from "./AppButton";
+import AppSelect from "./AppSelect";
 import OverlayDialog from "./OverlayDialog";
 import useConfirm from "../hooks/useConfirm";
 import { writeWireframeSource, writeWireframeImage } from "../services/wireframeService";
 import { runExport } from "../services/electronService";
+import "grapesjs/dist/css/grapes.min.css";
 import "../styles/ExcalidrawEditor.css";
 import "../styles/WireframeEditor.css";
 
-
-// â”€â”€ Figma-inspired Component Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Stencil Categories ---
 
 const CATEGORIES = [
-  { id: "all", label: "All Stencils" },
-  { id: "frames", label: "Artboards & Frames", icon: Layout },
-  { id: "headers", label: "Headers & Nav", icon: Box },
-  { id: "hero", label: "Hero Sections", icon: Sparkles },
-  { id: "content", label: "Content & Grids", icon: Grid3X3 },
-  { id: "components", label: "UI Components", icon: Square },
-  { id: "forms", label: "Forms & Inputs", icon: Sliders },
-  { id: "tables", label: "Data & Tables", icon: Layers },
-  { id: "feedback", label: "Modals & Feedback", icon: MousePointer },
+  { id: "all", label: "All" },
+  { id: "frames", label: "Frames" },
+  { id: "headers", label: "Nav" },
+  { id: "hero", label: "Hero" },
+  { id: "content", label: "Content" },
+  { id: "metrics", label: "Stats" },
+  { id: "components", label: "UI" },
+  { id: "forms", label: "Forms" },
+  { id: "tables", label: "Tables" },
+  { id: "feedback", label: "Modals" },
 ];
 
-const FIGMA_STENCILS = [
-  // â”€â”€ Artboards & Frames â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Curated Modern Lo-Fi / Mid-Fi Stencil Library ---
+
+const WIREFRAME_STENCILS = [
+  // --- Artboards & Frames ---
   {
     id: "wf-desktop-canvas",
-    label: "Desktop Canvas",
+    label: "Desktop Canvas (1200px)",
     category: "frames",
-    desc: "1200px responsive frame with padding",
-    icon: "ðŸ–¥ï¸",
-    content: `<div style="max-width:1140px;margin:24px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,0.06);min-height:600px;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
-      <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;border-bottom:1px dashed #cbd5e1;padding-bottom:10px;">Desktop Screen Artboard</div>
+    desc: "Clean desktop artboard frame with header boundary",
+    icon: Monitor,
+    content: `<div style="max-width:1160px;margin:24px auto;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:32px;box-shadow:0 8px 24px rgba(0,0,0,0.06);min-height:640px;box-sizing:border-box;">
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:24px;border-bottom:1px dashed #e2e8f0;padding-bottom:10px;">Desktop Artboard Boundary (1200px)</div>
     </div>`,
   },
   {
     id: "wf-mobile-device",
     label: "Mobile iPhone Frame",
     category: "frames",
-    desc: "375x812px mobile frame with notch",
-    icon: "ðŸ“±",
-    content: `<div style="width:375px;min-height:720px;background:#ffffff;border:3px solid #1e293b;border-radius:36px;padding:24px 18px;margin:24px auto;box-shadow:0 20px 50px rgba(0,0,0,0.15);position:relative;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
-      <div style="width:130px;height:22px;background:#0f172a;border-radius:0 0 14px 14px;margin:-24px auto 20px;display:flex;align-items:center;justify-content:center;">
-        <span style="width:40px;height:4px;background:#334155;border-radius:999px;"></span>
+    desc: "375x720px mobile viewport with speaker notch",
+    icon: Smartphone,
+    content: `<div style="width:375px;min-height:720px;background:#ffffff;border:3px solid #1e293b;border-radius:8px;padding:24px 18px;margin:24px auto;box-shadow:0 12px 32px rgba(0,0,0,0.12);position:relative;box-sizing:border-box;">
+      <div style="width:130px;height:20px;background:#0f172a;border-radius:0 0 8px 8px;margin:-24px auto 20px;display:flex;align-items:center;justify-content:center;">
+        <span style="width:36px;height:4px;background:#334155;border-radius:999px;"></span>
       </div>
-      <div style="font-size:11px;font-weight:700;color:#94a3b8;text-align:center;margin-bottom:16px;letter-spacing:0.05em;text-transform:uppercase;">Mobile Viewport</div>
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;text-align:center;margin-bottom:16px;letter-spacing:0.05em;text-transform:uppercase;">Mobile Viewport (375px)</div>
     </div>`,
   },
   {
     id: "wf-app-shell",
     label: "SaaS Dashboard Shell",
     category: "frames",
-    desc: "Left sidebar + topbar + main content",
-    icon: "ðŸ”²",
-    content: `<div style="display:flex;width:100%;min-height:500px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#ffffff;font-family:system-ui,sans-serif;box-sizing:border-box;">
-      <div style="width:230px;background:#f8fafc;border-right:1px solid #e2e8f0;padding:20px 16px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+    desc: "Sidebar navigation + topbar + main canvas container",
+    icon: Columns,
+    content: `<div style="display:flex;width:100%;min-height:540px;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;background:#ffffff;box-sizing:border-box;">
+      <div style="width:220px;background:#f8fafc;border-right:1px solid #e2e8f0;padding:20px 16px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:#0f172a;margin-bottom:20px;">
-          <span style="width:20px;height:20px;background:#2563eb;border-radius:6px;display:inline-block;"></span> Notely App
+          <span style="width:18px;height:18px;background:#2563eb;border-radius:4px;display:inline-block;"></span> Notely App
         </div>
-        <div style="background:#e0e7ff;color:#3730a3;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;">ðŸ“Š Dashboard</div>
-        <div style="color:#64748b;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;">ðŸ“ Projects</div>
-        <div style="color:#64748b;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;">ðŸ‘¥ Team</div>
-        <div style="color:#64748b;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;margin-top:auto;">âš™ï¸ Settings</div>
+        <div style="background:#e0e7ff;color:#3730a3;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:600;">Dashboard</div>
+        <div style="color:#64748b;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;">Projects</div>
+        <div style="color:#64748b;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;">Team</div>
+        <div style="color:#64748b;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;margin-top:auto;">Settings</div>
       </div>
       <div style="flex:1;display:flex;flex-direction:column;background:#ffffff;">
-        <div style="height:56px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
+        <div style="height:54px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;padding:0 24px;">
           <span style="font-size:14px;font-weight:700;color:#0f172a;">Overview</span>
-          <div style="width:32px;height:32px;background:#f1f5f9;border-radius:999px;border:1px solid #e2e8f0;"></div>
+          <div style="width:30px;height:30px;background:#f1f5f9;border-radius:999px;border:1px solid #e2e8f0;"></div>
         </div>
         <div style="padding:24px;flex:1;background:#fafafa;">
-          <div style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;color:#94a3b8;font-size:13px;">Drop dashboard widgets and cards here</div>
+          <div style="border:2px dashed #cbd5e1;border-radius:8px;padding:36px;text-align:center;color:#94a3b8;font-size:13px;">Drop dashboard widgets and cards here</div>
         </div>
       </div>
     </div>`,
   },
 
-  // â”€â”€ Headers & Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Headers & Navigation ---
   {
     id: "wf-nav-modern",
     label: "Modern SaaS Navbar",
     category: "headers",
     desc: "Logo, pill links, search & CTA buttons",
-    icon: "ðŸ§­",
-    content: `<header style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;margin:12px 0;font-family:system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.03);box-sizing:border-box;">
+    icon: Box,
+    content: `<header style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;margin:12px 0;box-shadow:0 2px 6px rgba(0,0,0,0.03);box-sizing:border-box;">
       <div style="display:flex;align-items:center;gap:28px;">
-        <div style="font-weight:800;font-size:16px;color:#0f172a;display:flex;align-items:center;gap:8px;">
-          <span style="width:20px;height:20px;background:#2563eb;border-radius:6px;display:inline-block;"></span> Brand
+        <div style="font-weight:800;font-size:15px;color:#0f172a;display:flex;align-items:center;gap:8px;">
+          <span style="width:18px;height:18px;background:#2563eb;border-radius:4px;display:inline-block;"></span> Brand
         </div>
-        <nav style="display:flex;gap:20px;font-size:13px;font-weight:500;color:#64748b;">
+        <nav style="display:flex;gap:18px;font-size:13px;font-weight:500;color:#64748b;">
           <span style="color:#0f172a;font-weight:600;cursor:pointer;">Product</span>
           <span style="cursor:pointer;">Features</span>
           <span style="cursor:pointer;">Pricing</span>
@@ -118,30 +133,30 @@ const FIGMA_STENCILS = [
         </nav>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <button style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:8px;background:#ffffff;font-size:12px;font-weight:600;color:#334155;cursor:pointer;">Sign in</button>
-        <button style="padding:8px 18px;border:none;border-radius:8px;background:#2563eb;color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(37,99,235,0.3);">Get Started</button>
+        <button style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;font-size:12px;font-weight:600;color:#334155;cursor:pointer;">Sign in</button>
+        <button style="padding:8px 18px;border:none;border-radius:6px;background:#2563eb;color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;">Get Started</button>
       </div>
     </header>`,
   },
   {
     id: "wf-segmented-tabs",
-    label: "Figma Segmented Control",
+    label: "Segmented Control Tabs",
     category: "headers",
-    desc: "iOS/Figma style pill segmented tabs",
-    icon: "ðŸ—‚ï¸",
-    content: `<div style="display:inline-flex;background:#f1f5f9;padding:4px;border-radius:10px;border:1px solid #e2e8f0;gap:2px;font-family:system-ui,sans-serif;margin:8px 0;">
-      <button style="padding:6px 18px;border:none;background:#ffffff;color:#0f172a;font-size:12px;font-weight:600;border-radius:7px;box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;">Design</button>
-      <button style="padding:6px 18px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:500;border-radius:7px;cursor:pointer;">Prototype</button>
-      <button style="padding:6px 18px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:500;border-radius:7px;cursor:pointer;">Inspect</button>
+    desc: "Pill segmented navigation bar",
+    icon: Layout,
+    content: `<div style="display:inline-flex;background:#f1f5f9;padding:4px;border-radius:8px;border:1px solid #e2e8f0;gap:2px;margin:8px 0;">
+      <button style="padding:6px 18px;border:none;background:#ffffff;color:#0f172a;font-size:12px;font-weight:600;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;">Design</button>
+      <button style="padding:6px 18px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;">Prototype</button>
+      <button style="padding:6px 18px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;">Inspect</button>
     </div>`,
   },
   {
     id: "wf-page-header",
     label: "Page Header with Actions",
     category: "headers",
-    desc: "Title, breadcrumb, badge & action buttons",
-    icon: "ðŸ”",
-    content: `<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid #e2e8f0;margin-bottom:20px;font-family:system-ui,sans-serif;box-sizing:border-box;">
+    desc: "Title, breadcrumb, live badge and button controls",
+    icon: AlignLeft,
+    content: `<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid #e2e8f0;margin-bottom:20px;box-sizing:border-box;">
       <div>
         <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;display:flex;gap:6px;">
           <span>Workspace</span><span>/</span><span style="color:#0f172a;">Settings</span>
@@ -152,30 +167,30 @@ const FIGMA_STENCILS = [
         </div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button style="padding:8px 16px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Export</button>
-        <button style="padding:8px 16px;border:none;background:#2563eb;color:#ffffff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Save Changes</button>
+        <button style="padding:8px 16px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Export</button>
+        <button style="padding:8px 16px;border:none;background:#2563eb;color:#ffffff;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Save Changes</button>
       </div>
     </div>`,
   },
 
-  // â”€â”€ Hero Sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Hero & Banner ---
   {
     id: "wf-hero-centered",
     label: "Hero Centered Section",
     category: "hero",
-    desc: "Headline, badge, CTA buttons & mockup frame",
-    icon: "ðŸŒŸ",
-    content: `<section style="text-align:center;padding:56px 24px;background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);border:1px solid #e2e8f0;border-radius:16px;margin:20px 0;font-family:system-ui,sans-serif;box-sizing:border-box;">
+    desc: "Headline, badge, CTA buttons & screen mockup",
+    icon: Sparkles,
+    content: `<section style="text-align:center;padding:52px 24px;background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);border:1px solid #e2e8f0;border-radius:8px;margin:20px 0;box-sizing:border-box;">
       <div style="display:inline-flex;align-items:center;gap:6px;background:#dbeafe;color:#1d4ed8;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;margin-bottom:16px;">
-        <span>âœ¨</span> Just Released v2.0
+        <span>Release</span> v2.0 Live Now
       </div>
-      <h1 style="font-size:36px;font-weight:900;color:#0f172a;margin:0 0 14px;letter-spacing:-0.03em;line-height:1.2;">Design systems that scale with ease</h1>
-      <p style="font-size:15px;color:#64748b;max-width:560px;margin:0 auto 28px;line-height:1.6;">Create beautiful wireframes, mockups, and interface flows directly inside your documentation.</p>
-      <div style="display:flex;justify-content:center;gap:12px;margin-bottom:40px;">
-        <button style="padding:12px 28px;background:#2563eb;color:#ffffff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,0.35);">Start for Free</button>
-        <button style="padding:12px 24px;background:#ffffff;color:#334155;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Live Preview</button>
+      <h1 style="font-size:34px;font-weight:900;color:#0f172a;margin:0 0 12px;letter-spacing:-0.03em;line-height:1.2;">Design systems that scale with ease</h1>
+      <p style="font-size:14px;color:#64748b;max-width:540px;margin:0 auto 24px;line-height:1.6;">Create beautiful wireframes, mockups, and interface flows directly inside your documentation.</p>
+      <div style="display:flex;justify-content:center;gap:12px;margin-bottom:36px;">
+        <button style="padding:10px 24px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Start for Free</button>
+        <button style="padding:10px 20px;background:#ffffff;color:#334155;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Live Preview</button>
       </div>
-      <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;height:240px;max-width:800px;margin:0 auto;box-shadow:0 20px 40px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;font-weight:600;">
+      <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;height:220px;max-width:760px;margin:0 auto;box-shadow:0 12px 28px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;font-weight:600;">
         [ App Preview Screen Mockup ]
       </div>
     </section>`,
@@ -185,40 +200,65 @@ const FIGMA_STENCILS = [
     label: "Call to Action Banner",
     category: "hero",
     desc: "Dark accent conversion box with buttons",
-    icon: "ðŸ“£",
-    content: `<div style="background:#0f172a;border-radius:16px;padding:40px 36px;display:flex;align-items:center;justify-content:space-between;color:#ffffff;margin:24px 0;font-family:system-ui,sans-serif;box-sizing:border-box;">
+    icon: Zap,
+    content: `<div style="background:#0f172a;border-radius:8px;padding:36px 32px;display:flex;align-items:center;justify-content:space-between;color:#ffffff;margin:20px 0;box-sizing:border-box;">
       <div>
-        <h2 style="font-size:24px;font-weight:800;margin:0 0 6px;letter-spacing:-0.02em;">Ready to upgrade your workflow?</h2>
-        <p style="font-size:13px;color:#94a3b8;margin:0;max-width:480px;">Collaborate in real time with high-velocity interface components.</p>
+        <h2 style="font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.02em;">Ready to upgrade your workflow?</h2>
+        <p style="font-size:13px;color:#94a3b8;margin:0;max-width:460px;">Collaborate in real time with high-velocity interface components.</p>
       </div>
-      <div style="display:flex;gap:12px;">
-        <button style="padding:10px 22px;background:#2563eb;color:#ffffff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Get Started</button>
+      <div style="display:flex;gap:10px;">
+        <button style="padding:10px 20px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Get Started</button>
       </div>
     </div>`,
   },
 
-  // â”€â”€ Content & Grids â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Content & Grids ---
   {
     id: "wf-feature-grid-3",
     label: "3-Column Feature Cards",
     category: "content",
-    desc: "Feature icons with title and descriptions",
-    icon: "ðŸ—ƒï¸",
-    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:20px;margin:20px 0;font-family:system-ui,sans-serif;box-sizing:border-box;">
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-        <div style="width:40px;height:40px;background:#eff6ff;color:#2563eb;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;">âš¡</div>
-        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 8px;">Lightning Fast</h3>
+    desc: "Feature cards with icons, titles & descriptions",
+    icon: Grid3X3,
+    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin:20px 0;box-sizing:border-box;">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <div style="width:36px;height:36px;background:#eff6ff;color:#2563eb;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px;">⚡</div>
+        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;">Lightning Fast</h3>
         <p style="font-size:12px;color:#64748b;line-height:1.5;margin:0;">Instant drag-and-drop elements designed for rapid wireframing.</p>
       </div>
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-        <div style="width:40px;height:40px;background:#fdf2f8;color:#db2777;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;">ðŸŽ¨</div>
-        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 8px;">Figma Precision</h3>
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <div style="width:36px;height:36px;background:#fdf2f8;color:#db2777;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px;">🎨</div>
+        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;">Figma Precision</h3>
         <p style="font-size:12px;color:#64748b;line-height:1.5;margin:0;">Pixel-calibrated spacing, modern typography, and clean tokens.</p>
       </div>
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-        <div style="width:40px;height:40px;background:#f0fdf4;color:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;">ðŸ”’</div>
-        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 8px;">Offline Native</h3>
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <div style="width:36px;height:36px;background:#f0fdf4;color:#16a34a;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px;">🔒</div>
+        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;">Offline Native</h3>
         <p style="font-size:12px;color:#64748b;line-height:1.5;margin:0;">100% saved locally alongside notes with instant export capabilities.</p>
+      </div>
+    </div>`,
+  },
+  {
+    id: "wf-bento-grid",
+    label: "Bento Grid Layout",
+    category: "content",
+    desc: "Asymmetric 4-tile modern showcase layout",
+    icon: Layout,
+    content: `<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin:20px 0;box-sizing:border-box;">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <span style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;">Core Feature</span>
+        <h3 style="font-size:18px;font-weight:800;color:#0f172a;margin:6px 0 10px;">Interactive Canvas Controls</h3>
+        <p style="font-size:12px;color:#64748b;line-height:1.5;margin:0 0 16px;">Manipulate layout, typography, borders, and fills directly in the property inspector.</p>
+        <div style="height:120px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;">Feature Visual Placeholder</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;flex:1;">
+          <h4 style="font-size:14px;font-weight:700;color:#0f172a;margin:0 0 6px;">Instant PNG Export</h4>
+          <p style="font-size:11px;color:#64748b;margin:0;">Generate high-res graphics embedded in notes automatically.</p>
+        </div>
+        <div style="background:#0f172a;color:#ffffff;border-radius:8px;padding:20px;flex:1;">
+          <h4 style="font-size:14px;font-weight:700;margin:0 0 6px;">Local-First Security</h4>
+          <p style="font-size:11px;color:#94a3b8;margin:0;">No third-party cloud required. Everything lives on your disk.</p>
+        </div>
       </div>
     </div>`,
   },
@@ -226,230 +266,259 @@ const FIGMA_STENCILS = [
     id: "wf-pricing-card-group",
     label: "Pricing Tier Cards",
     category: "content",
-    desc: "Basic vs Pro pricing comparison tier",
-    icon: "ðŸ·ï¸",
-    content: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:680px;margin:24px auto;font-family:system-ui,sans-serif;box-sizing:border-box;">
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-        <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;">Starter</div>
-        <div style="font-size:32px;font-weight:900;color:#0f172a;margin:10px 0 16px;">$0<span style="font-size:14px;color:#94a3b8;font-weight:400;">/mo</span></div>
-        <ul style="padding-left:0;list-style:none;font-size:12px;color:#475569;display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
-          <li>âœ“ Up to 10 wireframes</li>
-          <li>âœ“ Standard export (PNG)</li>
-          <li>âœ“ Core component library</li>
+    desc: "Starter vs Professional pricing comparison",
+    icon: CreditCard,
+    content: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:640px;margin:24px auto;box-sizing:border-box;">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:28px;box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Starter</div>
+        <div style="font-size:28px;font-weight:900;color:#0f172a;margin:8px 0 14px;">$0<span style="font-size:13px;color:#94a3b8;font-weight:400;">/mo</span></div>
+        <ul style="padding-left:0;list-style:none;font-size:12px;color:#475569;display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+          <li>✓ Up to 10 wireframes</li>
+          <li>✓ Standard export (PNG)</li>
+          <li>✓ Core stencil library</li>
         </ul>
-        <button style="width:100%;padding:10px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Get Started</button>
+        <button style="width:100%;padding:8px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Get Started</button>
       </div>
-      <div style="background:#ffffff;border:2px solid #2563eb;border-radius:16px;padding:32px;box-shadow:0 8px 24px rgba(37,99,235,0.12);position:relative;">
-        <span style="position:absolute;top:-12px;right:24px;background:#2563eb;color:#ffffff;padding:2px 10px;border-radius:999px;font-size:10px;font-weight:800;text-transform:uppercase;">Popular</span>
-        <div style="font-size:12px;font-weight:700;color:#2563eb;text-transform:uppercase;">Professional</div>
-        <div style="font-size:32px;font-weight:900;color:#0f172a;margin:10px 0 16px;">$19<span style="font-size:14px;color:#94a3b8;font-weight:400;">/mo</span></div>
-        <ul style="padding-left:0;list-style:none;font-size:12px;color:#475569;display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
-          <li>âœ“ Unlimited wireframes</li>
-          <li>âœ“ Vector & SVG export</li>
-          <li>âœ“ Full UI stencil packs</li>
+      <div style="background:#ffffff;border:2px solid #2563eb;border-radius:8px;padding:28px;box-shadow:0 6px 18px rgba(37,99,235,0.08);position:relative;">
+        <span style="position:absolute;top:-10px;right:20px;background:#2563eb;color:#ffffff;padding:2px 8px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;">Popular</span>
+        <div style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;">Professional</div>
+        <div style="font-size:28px;font-weight:900;color:#0f172a;margin:8px 0 14px;">$19<span style="font-size:13px;color:#94a3b8;font-weight:400;">/mo</span></div>
+        <ul style="padding-left:0;list-style:none;font-size:12px;color:#475569;display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+          <li>✓ Unlimited wireframes</li>
+          <li>✓ Vector & SVG export</li>
+          <li>✓ Full stencil packs</li>
         </ul>
-        <button style="width:100%;padding:10px;border:none;background:#2563eb;color:#ffffff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Upgrade to Pro</button>
-      </div>
-    </div>`,
-  },
-  {
-    id: "wf-kpi-row",
-    label: "Metric KPI Stats Row",
-    category: "content",
-    desc: "3 metric numbers with trends",
-    icon: "ðŸ“ˆ",
-    content: `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:16px 0;font-family:system-ui,sans-serif;box-sizing:border-box;">
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;">
-        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Active Users</div>
-        <div style="font-size:24px;font-weight:800;color:#0f172a;margin:6px 0 2px;">24,520</div>
-        <div style="font-size:11px;color:#16a34a;font-weight:600;">â†‘ 14.8% <span style="color:#94a3b8;font-weight:400;">this week</span></div>
-      </div>
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;">
-        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Conversion Rate</div>
-        <div style="font-size:24px;font-weight:800;color:#0f172a;margin:6px 0 2px;">3.84%</div>
-        <div style="font-size:11px;color:#16a34a;font-weight:600;">â†‘ 2.1% <span style="color:#94a3b8;font-weight:400;">average</span></div>
-      </div>
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;">
-        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Total Notes</div>
-        <div style="font-size:24px;font-weight:800;color:#0f172a;margin:6px 0 2px;">1,420</div>
-        <div style="font-size:11px;color:#2563eb;font-weight:600;">â— Syncing <span style="color:#94a3b8;font-weight:400;">live</span></div>
+        <button style="width:100%;padding:8px;border:none;background:#2563eb;color:#ffffff;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Upgrade Now</button>
       </div>
     </div>`,
   },
 
-  // â”€â”€ UI Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Metrics & Stats ---
   {
-    id: "wf-card-media",
-    label: "Article / Media Card",
+    id: "wf-kpi-stats-row",
+    label: "KPI Metric Stats Row",
+    category: "metrics",
+    desc: "3 metric KPI cards with delta percentages",
+    icon: BarChart3,
+    content: `<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin:16px 0;box-sizing:border-box;">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;">Monthly Revenue</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font-size:24px;font-weight:800;color:#0f172a;">$48,250</span>
+          <span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">+12.4%</span>
+        </div>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;">Active Projects</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font-size:24px;font-weight:800;color:#0f172a;">1,420</span>
+          <span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">+8.1%</span>
+        </div>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;">Avg. Response Time</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font-size:24px;font-weight:800;color:#0f172a;">184ms</span>
+          <span style="background:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">-2.3%</span>
+        </div>
+      </div>
+    </div>`,
+  },
+
+  // --- UI Components ---
+  {
+    id: "wf-button-suite",
+    label: "Button Styles Suite",
     category: "components",
-    desc: "Post card with tag, author, title & image",
-    icon: "ðŸƒ",
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;width:300px;box-shadow:0 4px 12px rgba(0,0,0,0.04);font-family:system-ui,sans-serif;margin:12px 0;">
-      <div style="background:#cbd5e1;height:140px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;font-weight:600;">[ Cover Photo ]</div>
-      <div style="padding:18px;">
-        <span style="font-size:10px;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:0.04em;">Engineering</span>
-        <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:6px 0 8px;line-height:1.3;">Designing resilient distributed architectures</h3>
-        <p style="font-size:12px;color:#64748b;line-height:1.5;margin:0 0 16px;">Key architectural patterns for high-throughput node applications.</p>
-        <div style="display:flex;align-items:center;gap:10px;border-top:1px solid #f1f5f9;padding-top:12px;">
-          <div style="width:24px;height:24px;background:#e2e8f0;border-radius:999px;"></div>
-          <span style="font-size:11px;color:#475569;font-weight:500;">David Kim Â· 5m read</span>
-        </div>
-      </div>
+    desc: "Primary, secondary, outline, ghost and danger buttons",
+    icon: Square,
+    content: `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 0;margin:12px 0;">
+      <button style="padding:8px 16px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Primary Action</button>
+      <button style="padding:8px 16px;background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Secondary</button>
+      <button style="padding:8px 16px;background:transparent;color:#334155;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Outline</button>
+      <button style="padding:8px 16px;background:transparent;color:#64748b;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Ghost</button>
+      <button style="padding:8px 16px;background:#ef4444;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Destructive</button>
     </div>`,
   },
   {
-    id: "wf-user-profile-widget",
-    label: "User Profile Card",
+    id: "wf-avatar-stack",
+    label: "Avatar Stack & Badge",
     category: "components",
-    desc: "Avatar, follower count, and follow button",
-    icon: "ðŸ‘¤",
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;width:280px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);font-family:system-ui,sans-serif;margin:12px 0;">
-      <div style="width:56px;height:56px;background:#e0e7ff;color:#3730a3;border-radius:999px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;">OK</div>
-      <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 2px;">Sarah Jenkins</h3>
-      <p style="font-size:11px;color:#64748b;margin:0 0 14px;">Senior Product Designer</p>
-      <div style="display:flex;justify-content:space-around;border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;padding:10px 0;margin-bottom:16px;">
-        <div><div style="font-size:14px;font-weight:700;color:#0f172a;">128</div><div style="font-size:10px;color:#94a3b8;">Projects</div></div>
-        <div><div style="font-size:14px;font-weight:700;color:#0f172a;">4.9k</div><div style="font-size:10px;color:#94a3b8;">Followers</div></div>
+    desc: "Collaborator face avatars with count chip",
+    icon: User,
+    content: `<div style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+      <div style="display:flex;margin-left:8px;">
+        <span style="width:28px;height:28px;border-radius:999px;background:#2563eb;border:2px solid #ffffff;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-left:-8px;">JD</span>
+        <span style="width:28px;height:28px;border-radius:999px;background:#10b981;border:2px solid #ffffff;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-left:-8px;">AL</span>
+        <span style="width:28px;height:28px;border-radius:999px;background:#f59e0b;border:2px solid #ffffff;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-left:-8px;">RK</span>
       </div>
-      <button style="width:100%;padding:8px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Follow</button>
+      <span style="font-size:11px;font-weight:600;color:#64748b;">+8 contributors active</span>
+    </div>`,
+  },
+  {
+    id: "wf-alert-banner",
+    label: "Alert Notification Banner",
+    category: "components",
+    desc: "Info notification banner with icon and dismiss link",
+    icon: Shield,
+    content: `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;margin:12px 0;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-weight:700;">Notice:</span> Your workspace was upgraded to the latest version.
+      </div>
+      <span style="font-weight:600;cursor:pointer;text-decoration:underline;">View Changelog</span>
     </div>`,
   },
 
-  // â”€â”€ Forms & Inputs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Forms & Inputs ---
   {
-    id: "wf-modern-login-form",
-    label: "Modern Auth Form",
+    id: "wf-auth-card",
+    label: "Auth Sign-in Card",
     category: "forms",
-    desc: "Clean login form with social sign-in",
-    icon: "ðŸ”’",
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:32px;width:340px;box-shadow:0 10px 25px rgba(0,0,0,0.05);font-family:system-ui,sans-serif;margin:16px auto;box-sizing:border-box;">
-      <h2 style="font-size:20px;font-weight:800;color:#0f172a;margin:0 0 4px;">Welcome back</h2>
-      <p style="font-size:12px;color:#64748b;margin:0 0 20px;">Enter your details to access your account</p>
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div>
-          <label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:4px;">Email</label>
-          <input type="email" placeholder="name@domain.com" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;box-sizing:border-box;background:#f8fafc;" />
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <label style="font-size:11px;font-weight:600;color:#334155;">Password</label>
-            <span style="font-size:11px;color:#2563eb;cursor:pointer;font-weight:500;">Forgot?</span>
-          </div>
-          <input type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;box-sizing:border-box;background:#f8fafc;" />
-        </div>
-        <button style="width:100%;padding:10px;background:#2563eb;color:#ffffff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;">Sign In</button>
+    desc: "Centered sign-in card with email, password & button",
+    icon: FormInput,
+    content: `<div style="max-width:380px;margin:24px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:32px;box-shadow:0 8px 24px rgba(0,0,0,0.05);box-sizing:border-box;">
+      <h2 style="font-size:20px;font-weight:800;color:#0f172a;margin:0 0 6px;text-align:center;">Welcome back</h2>
+      <p style="font-size:12px;color:#64748b;margin:0 0 24px;text-align:center;">Enter your credentials to access your notes</p>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:6px;">Email address</label>
+        <input type="text" placeholder="name@company.com" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;box-sizing:border-box;outline:none;" />
       </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:6px;">Password</label>
+        <input type="password" placeholder="••••••••" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;box-sizing:border-box;outline:none;" />
+      </div>
+      <button style="width:100%;padding:10px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Sign in</button>
     </div>`,
   },
   {
-    id: "wf-filter-panel",
-    label: "Filter & Search Bar",
+    id: "wf-search-filter-bar",
+    label: "Search & Filter Bar",
     category: "forms",
-    desc: "Search bar, select dropdowns & view toggle",
-    icon: "ðŸ”",
-    content: `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;margin:12px 0;font-family:system-ui,sans-serif;box-sizing:border-box;">
-      <input type="text" placeholder="Filter records..." style="flex:1;max-width:300px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;" />
-      <div style="display:flex;gap:8px;">
-        <select style="padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;background:#ffffff;color:#334155;">
-          <option>Status: All</option><option>Active</option><option>Archived</option>
-        </select>
-        <button style="padding:8px 14px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">+ Add Item</button>
+    desc: "Search bar with category dropdown and action button",
+    icon: Search,
+    content: `<div style="display:flex;align-items:center;gap:10px;padding:6px;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;margin:12px 0;box-sizing:border-box;">
+      <div style="flex:1;display:flex;align-items:center;gap:8px;padding-left:8px;">
+        <span style="color:#94a3b8;font-size:13px;">🔍</span>
+        <input type="text" placeholder="Search resources, documents and tags..." style="width:100%;border:none;outline:none;font-size:12px;color:#0f172a;" />
       </div>
+      <select style="border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;font-size:11px;color:#475569;background:#f8fafc;outline:none;">
+        <option>All Types</option>
+        <option>Notes</option>
+        <option>Diagrams</option>
+      </select>
+      <button style="padding:6px 14px;background:#0f172a;color:#ffffff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">Filter</button>
     </div>`,
   },
 
-  // â”€â”€ Data & Tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Data & Tables ---
   {
-    id: "wf-rich-table",
-    label: "Figma Interactive Table",
+    id: "wf-data-table",
+    label: "Modern Data Table",
     category: "tables",
-    desc: "Zebra table with avatars, badges & checkboxes",
-    icon: "ðŸ“Š",
-    content: `<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;font-family:system-ui,sans-serif;margin:16px 0;">
+    desc: "Structured data table with status pills and actions",
+    icon: Layers,
+    content: `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left;">
         <thead>
-          <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:700;">
-            <th style="padding:12px 16px;width:30px;"><input type="checkbox" /></th>
-            <th style="padding:12px 16px;">User</th>
-            <th style="padding:12px 16px;">Role</th>
-            <th style="padding:12px 16px;">Status</th>
-            <th style="padding:12px 16px;text-align:right;">Action</th>
+          <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+            <th style="padding:10px 16px;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;">Name</th>
+            <th style="padding:10px 16px;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;">Status</th>
+            <th style="padding:10px 16px;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;">Role</th>
+            <th style="padding:10px 16px;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:12px 16px;"><input type="checkbox" /></td>
-            <td style="padding:12px 16px;display:flex;align-items:center;gap:10px;">
-              <div style="width:28px;height:28px;background:#e0e7ff;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#3730a3;font-size:11px;">EM</div>
-              <div><div style="font-weight:700;color:#0f172a;">Elena Morales</div><div style="font-size:11px;color:#94a3b8;">elena@company.com</div></div>
-            </td>
-            <td style="padding:12px 16px;color:#475569;">Admin</td>
-            <td style="padding:12px 16px;"><span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">Active</span></td>
-            <td style="padding:12px 16px;text-align:right;color:#2563eb;font-weight:600;cursor:pointer;">Edit</td>
+            <td style="padding:12px 16px;font-weight:600;color:#0f172a;">Bikash Panda</td>
+            <td style="padding:12px 16px;"><span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;">Active</span></td>
+            <td style="padding:12px 16px;color:#64748b;">Admin</td>
+            <td style="padding:12px 16px;text-align:right;color:#64748b;cursor:pointer;">•••</td>
           </tr>
-          <tr style="background:#fafafa;border-bottom:1px solid #f1f5f9;">
-            <td style="padding:12px 16px;"><input type="checkbox" /></td>
-            <td style="padding:12px 16px;display:flex;align-items:center;gap:10px;">
-              <div style="width:28px;height:28px;background:#fef3c7;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#b45309;font-size:11px;">TH</div>
-              <div><div style="font-weight:700;color:#0f172a;">Thomas Hayes</div><div style="font-size:11px;color:#94a3b8;">thomas@company.com</div></div>
-            </td>
-            <td style="padding:12px 16px;color:#475569;">Editor</td>
-            <td style="padding:12px 16px;"><span style="background:#fef9c3;color:#a16207;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">Pending</span></td>
-            <td style="padding:12px 16px;text-align:right;color:#2563eb;font-weight:600;cursor:pointer;">Edit</td>
+          <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:12px 16px;font-weight:600;color:#0f172a;">Sarah Connor</td>
+            <td style="padding:12px 16px;"><span style="background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;">Pending</span></td>
+            <td style="padding:12px 16px;color:#64748b;">Editor</td>
+            <td style="padding:12px 16px;text-align:right;color:#64748b;cursor:pointer;">•••</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;font-weight:600;color:#0f172a;">Alex Murphy</td>
+            <td style="padding:12px 16px;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;">Inactive</span></td>
+            <td style="padding:12px 16px;color:#64748b;">Viewer</td>
+            <td style="padding:12px 16px;text-align:right;color:#64748b;cursor:pointer;">•••</td>
           </tr>
         </tbody>
       </table>
     </div>`,
   },
 
-  // â”€â”€ Modals & Feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- Modals & Feedback ---
   {
-    id: "wf-modal-figma",
-    label: "Figma Clean Dialog",
+    id: "wf-modal-dialog",
+    label: "Confirmation Modal Dialog",
     category: "feedback",
-    desc: "Centered popup with cancel/confirm buttons",
-    icon: "ðŸªŸ",
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;max-width:400px;margin:24px auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.18);font-family:system-ui,sans-serif;box-sizing:border-box;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <h3 style="font-size:16px;font-weight:800;color:#0f172a;margin:0;">Publish Project Changes</h3>
-        <span style="color:#94a3b8;cursor:pointer;font-size:16px;">âœ•</span>
-      </div>
-      <p style="font-size:13px;color:#64748b;line-height:1.5;margin:0 0 24px;">Your changes will immediately become visible to all team members collaborating in this workspace.</p>
-      <div style="display:flex;justify-content:flex-end;gap:10px;">
-        <button style="padding:8px 16px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
-        <button style="padding:8px 18px;border:none;background:#2563eb;color:#ffffff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Publish Now</button>
+    desc: "Dialog card with title, body text and cancel/confirm buttons",
+    icon: MousePointer,
+    content: `<div style="max-width:440px;margin:24px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,0.1);box-sizing:border-box;">
+      <h3 style="font-size:16px;font-weight:800;color:#0f172a;margin:0 0 8px;">Delete Project</h3>
+      <p style="font-size:12px;color:#64748b;line-height:1.5;margin:0 0 20px;">Are you sure you want to delete this project? This action cannot be undone.</p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button style="padding:8px 16px;background:#ffffff;border:1px solid #cbd5e1;color:#334155;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
+        <button style="padding:8px 16px;background:#ef4444;border:none;color:#ffffff;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Delete</button>
       </div>
     </div>`,
   },
   {
-    id: "wf-toast-notification",
-    label: "Toast Notification",
+    id: "wf-empty-state-card",
+    label: "Empty State Placeholder",
     category: "feedback",
-    desc: "Floating success/info message pill",
-    icon: "ðŸ””",
-    content: `<div style="display:inline-flex;align-items:center;gap:12px;background:#0f172a;color:#ffffff;padding:12px 18px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.2);font-family:system-ui,sans-serif;font-size:12px;margin:12px 0;">
-      <span style="color:#22c55e;font-size:15px;">âœ“</span>
-      <span style="font-weight:500;">Document exported successfully to PNG.</span>
-      <span style="color:#94a3b8;cursor:pointer;margin-left:8px;">âœ•</span>
+    desc: "Icon, empty message and primary action button",
+    icon: MessageSquare,
+    content: `<div style="text-align:center;padding:48px 24px;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:8px;margin:20px 0;box-sizing:border-box;">
+      <div style="font-size:32px;margin-bottom:12px;">📁</div>
+      <h3 style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 6px;">No documents yet</h3>
+      <p style="font-size:12px;color:#64748b;max-width:320px;margin:0 auto 16px;">Create your first document or import notes from Markdown to get started.</p>
+      <button style="padding:8px 18px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Create Document</button>
     </div>`,
   },
 ];
 
-// â”€â”€ Export SVG rasterizer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Export to PNG helper ---
 
-async function exportWireframeToPng(editor) {
+function exportWireframeToPng(editor) {
   return new Promise((resolve) => {
+    if (!editor) {
+      resolve(createFallbackPng(editor));
+      return;
+    }
+
     try {
-      if (!editor) {
-        resolve(createFallbackPng(editor));
-        return;
-      }
-
-      const html = editor.getHtml?.() || "";
-      const css = editor.getCss?.() || "";
-
       const width = 1200;
       const height = 800;
+
+      const frameDoc = editor.Canvas?.getDocument?.();
+      const frameBody = frameDoc?.body;
+      let bodyXml = "";
+      let cssText = editor.getCss?.() || "";
+
+      if (frameDoc && frameBody) {
+        // Collect canvas iframe styles
+        const styleTags = frameDoc.querySelectorAll("style");
+        styleTags.forEach((s) => {
+          cssText += "\n" + (s.textContent || "");
+        });
+
+        // Clone and sanitize selection markers
+        const clone = frameBody.cloneNode(true);
+        clone.querySelectorAll(".gjs-selected, .gjs-hovered").forEach((el) => {
+          el.classList.remove("gjs-selected", "gjs-hovered");
+        });
+
+        const serializer = new XMLSerializer();
+        bodyXml = serializer.serializeToString(clone);
+      } else {
+        const rawHtml = editor.getHtml?.() || "";
+        bodyXml = `<div xmlns="http://www.w3.org/1999/xhtml">${rawHtml}</div>`;
+      }
 
       const svgDoc = `
         <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
@@ -457,22 +526,24 @@ async function exportWireframeToPng(editor) {
             <div xmlns="http://www.w3.org/1999/xhtml" style="background:#ffffff;width:${width}px;height:${height}px;box-sizing:border-box;overflow:hidden;font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
               <style>
                 *, *::before, *::after { box-sizing: border-box; }
-                body { margin: 0; padding: 0; background: #ffffff; }
-                ${css}
+                body { margin: 0; padding: 24px; background: #ffffff; color: #0f172a; }
+                ${cssText}
               </style>
-              <div style="padding:28px;">
-                ${html}
-              </div>
+              ${bodyXml}
             </div>
           </foreignObject>
         </svg>
-      `;
+      `.trim();
 
-      const blob = new Blob([svgDoc], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
       const img = new Image();
+      const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgDoc)}`;
+
+      const fallbackTimer = setTimeout(() => {
+        resolve(createFallbackPng(editor));
+      }, 2000);
 
       img.onload = () => {
+        clearTimeout(fallbackTimer);
         try {
           const canvas = document.createElement("canvas");
           canvas.width = width;
@@ -481,20 +552,18 @@ async function exportWireframeToPng(editor) {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0);
-          URL.revokeObjectURL(url);
           resolve(canvas.toDataURL("image/png"));
         } catch {
-          URL.revokeObjectURL(url);
           resolve(createFallbackPng(editor));
         }
       };
 
       img.onerror = () => {
-        URL.revokeObjectURL(url);
+        clearTimeout(fallbackTimer);
         resolve(createFallbackPng(editor));
       };
 
-      img.src = url;
+      img.src = dataUri;
     } catch {
       resolve(createFallbackPng(editor));
     }
@@ -507,24 +576,44 @@ function createFallbackPng(editor) {
   canvas.height = 800;
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#ffffff";
+  // Canvas background
+  ctx.fillStyle = "#f8fafc";
   ctx.fillRect(0, 0, 1200, 800);
-  ctx.strokeStyle = "#e2e8f0";
+
+  // Border frame
+  ctx.strokeStyle = "#cbd5e1";
   ctx.lineWidth = 2;
-  ctx.strokeRect(16, 16, 1168, 768);
+  ctx.strokeRect(20, 20, 1160, 760);
+
+  // Header mockup
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(20, 20, 1160, 60);
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(44, 40, 20, 20);
+
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Wireframe Mockup", 74, 55);
+
+  // Content area
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(60, 120, 1080, 600);
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.strokeRect(60, 120, 1080, 600);
 
   ctx.fillStyle = "#64748b";
-  ctx.font = "bold 18px system-ui, sans-serif";
+  ctx.font = "14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
   ctx.textAlign = "center";
 
   const html = editor?.getHtml?.() || "";
   const hasContent = html.replace(/<[^>]+>/g, "").trim().length > 10;
-  ctx.fillText(hasContent ? "Wireframe Mockup" : "Empty Wireframe", 600, 400);
+  ctx.fillText(hasContent ? "Wireframe UI Design" : "Wireframe Artboard", 600, 420);
 
   return canvas.toDataURL("image/png");
 }
 
-// â”€â”€ WireframeEditor Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- WireframeEditor Component ---
 
 export function WireframeEditor({
   initialData,
@@ -550,9 +639,10 @@ export function WireframeEditor({
   const [activeDevice, setActiveDevice] = useState("Desktop");
   const [gridVisible, setGridVisible] = useState(true);
   const [activeRightTab, setActiveRightTab] = useState("styles");
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   const filteredStencils = useMemo(() => {
-    return FIGMA_STENCILS.filter((item) => {
+    return WIREFRAME_STENCILS.filter((item) => {
       const matchCat = activeCategory === "all" || item.category === activeCategory;
       const matchSearch =
         !searchQuery ||
@@ -605,7 +695,7 @@ export function WireframeEditor({
             appendTo: ".wireframe-sm-container",
             sectors: [
               {
-                name: "Layout & Auto-Layout",
+                name: "Layout & Flexbox",
                 open: true,
                 properties: [
                   "display",
@@ -650,37 +740,42 @@ export function WireframeEditor({
           traitManager: {
             appendTo: ".wireframe-traits-container",
           },
+          cssIcons: "",
           canvas: {
-            styles: [
-              `
+            styles: [],
+            scripts: [],
+            frameStyle: `
               *, *::before, *::after { box-sizing: border-box; }
+              html {
+                height: 100%;
+                background: #f1f5f9;
+              }
               body {
                 margin: 0;
-                padding: 40px;
-                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                padding: 40px 24px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                 background: #f8fafc;
-                min-height: 100vh;
+                min-height: 100%;
+                color: #0f172a;
               }
               .gjs-selected {
-                outline: 2px solid #7c6af7 !important;
+                outline: 2px solid var(--accent-solid, #2f5d62) !important;
                 outline-offset: 2px !important;
-                box-shadow: 0 0 0 4px rgba(124,106,247,0.18) !important;
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-solid, #2f5d62) 20%, transparent) !important;
               }
               .gjs-hovered {
-                outline: 1px dashed #a78bfa !important;
+                outline: 1px dashed var(--accent-solid, #2f5d62) !important;
                 outline-offset: 1px !important;
               }
             `,
-            ],
           },
-
         });
 
         editorRef.current = editor;
 
         // Register components into BlockManager
         const bm = editor.BlockManager;
-        FIGMA_STENCILS.forEach((stencil) => {
+        WIREFRAME_STENCILS.forEach((stencil) => {
           bm.add(stencil.id, {
             label: stencil.label,
             category: stencil.category,
@@ -761,6 +856,18 @@ export function WireframeEditor({
     editorRef.current?.setDevice(device);
   };
 
+  // Zoom controls
+  const handleZoom = (delta) => {
+    const nextZoom = Math.min(Math.max(zoomLevel + delta, 40), 200);
+    setZoomLevel(nextZoom);
+    editorRef.current?.Canvas?.setZoom(nextZoom);
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(100);
+    editorRef.current?.Canvas?.setZoom(100);
+  };
+
   // Canvas Actions
   const handleUndo = () => editorRef.current?.UndoManager?.undo();
   const handleRedo = () => editorRef.current?.UndoManager?.redo();
@@ -787,6 +894,17 @@ export function WireframeEditor({
       editor.addComponents(stencil.content);
     }
     setHasUnsavedChanges(true);
+  };
+
+  // Drag-and-drop handler for stencils
+  const handleStencilDragStart = (e, stencil) => {
+    try {
+      e.dataTransfer.setData("text/html", stencil.content);
+      e.dataTransfer.setData("text/plain", stencil.content);
+      e.dataTransfer.effectAllowed = "copy";
+    } catch {
+      // fallback
+    }
   };
 
   // Save handler
@@ -864,15 +982,14 @@ export function WireframeEditor({
       size=""
       initialFocusRef={saveButtonRef}
     >
-      {/* â”€â”€ Dark Figma-style Top Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Dark Studio Top Toolbar */}
       <div className="wireframe-studio-header">
         {/* Brand */}
         <div className="wireframe-studio-title-group">
-          <div className="wireframe-studio-logo">âœ¦</div>
-          <div>
-            <h2 className="wireframe-studio-title">Wireframe Studio</h2>
-            <div className="wireframe-studio-subtitle">Visual UI Builder</div>
+          <div className="wireframe-studio-logo">
+            <Layout size={14} color="var(--text-on-accent, #ffffff)" />
           </div>
+          <span className="wireframe-studio-title">Wireframe Studio</span>
         </div>
 
         <div className="wireframe-header-divider" />
@@ -883,27 +1000,30 @@ export function WireframeEditor({
             type="button"
             className={`wireframe-vp-btn ${activeDevice === "Desktop" ? "active" : ""}`}
             onClick={() => handleSetDevice("Desktop")}
-            title="Desktop canvas"
+            data-tooltip="Desktop viewport (Full)"
+            aria-label="Desktop viewport"
           >
-            <Monitor size={13} />
+            <Monitor size={14} />
             <span>Desktop</span>
           </button>
           <button
             type="button"
             className={`wireframe-vp-btn ${activeDevice === "Tablet" ? "active" : ""}`}
             onClick={() => handleSetDevice("Tablet")}
-            title="Tablet (768px)"
+            data-tooltip="Tablet viewport (768px)"
+            aria-label="Tablet viewport"
           >
-            <Tablet size={13} />
+            <Tablet size={14} />
             <span>Tablet</span>
           </button>
           <button
             type="button"
             className={`wireframe-vp-btn ${activeDevice === "Mobile" ? "active" : ""}`}
             onClick={() => handleSetDevice("Mobile")}
-            title="Mobile (375px)"
+            data-tooltip="Mobile viewport (375px)"
+            aria-label="Mobile viewport"
           >
-            <Smartphone size={13} />
+            <Smartphone size={14} />
             <span>Mobile</span>
           </button>
         </div>
@@ -916,7 +1036,8 @@ export function WireframeEditor({
             type="button"
             className="wireframe-tool-icon-btn"
             onClick={handleUndo}
-            title="Undo (Ctrl+Z)"
+            data-tooltip="Undo (Ctrl+Z)"
+            aria-label="Undo"
           >
             <Undo2 size={14} />
           </button>
@@ -924,7 +1045,8 @@ export function WireframeEditor({
             type="button"
             className="wireframe-tool-icon-btn"
             onClick={handleRedo}
-            title="Redo (Ctrl+Y)"
+            data-tooltip="Redo (Ctrl+Y)"
+            aria-label="Redo"
           >
             <Redo2 size={14} />
           </button>
@@ -933,7 +1055,8 @@ export function WireframeEditor({
             type="button"
             className={`wireframe-tool-icon-btn ${gridVisible ? "active" : ""}`}
             onClick={handleToggleBorders}
-            title="Toggle Layout Bounds"
+            data-tooltip="Toggle Layout Bounds"
+            aria-label="Toggle layout bounds"
           >
             {gridVisible ? <Eye size={14} /> : <EyeOff size={14} />}
           </button>
@@ -941,7 +1064,8 @@ export function WireframeEditor({
             type="button"
             className="wireframe-tool-icon-btn danger"
             onClick={handleClear}
-            title="Clear Canvas"
+            data-tooltip="Clear Canvas"
+            aria-label="Clear canvas"
           >
             <Trash2 size={14} />
           </button>
@@ -950,54 +1074,56 @@ export function WireframeEditor({
         {/* Action buttons */}
         <div className="wireframe-action-buttons">
           {hasUnsavedChanges && <span className="wf-unsaved-dot" title="Unsaved changes" />}
-          <button
-            type="button"
-            className="wf-btn wf-btn-ghost"
+          <AppButton
+            variant="small"
             onClick={handleDownload}
             disabled={isSaving || isExporting || isLoading}
+            title="Export wireframe as PNG"
           >
-            <Download size={13} />
-            {isExporting ? "Exportingâ€¦" : "Export PNG"}
-          </button>
-          <button
+            <Download size={14} aria-hidden="true" />
+            <span>{isExporting ? "Exporting..." : "Export PNG"}</span>
+          </AppButton>
+          <AppButton
             ref={saveButtonRef}
-            type="button"
-            className="wf-btn wf-btn-primary"
+            variant="primary"
             onClick={handleSave}
             disabled={isSaving || isExporting || isLoading}
+            title="Save wireframe (Ctrl+S)"
           >
-            <Save size={13} />
-            {isSaving ? "Savingâ€¦" : "Save"}
-          </button>
-          <button
-            type="button"
-            className="wf-btn wf-btn-ghost"
+            <Save size={14} aria-hidden="true" />
+            <span>{isSaving ? "Saving..." : "Save"}</span>
+          </AppButton>
+          <AppButton
+            variant="small"
+            iconOnly
             onClick={handleClose}
             disabled={isSaving || isExporting}
+            title="Close"
+            aria-label="Close"
           >
-            <X size={13} />
-          </button>
+            <X size={14} aria-hidden="true" />
+          </AppButton>
         </div>
       </div>
 
-      {/* â”€â”€ Studio Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Studio Body */}
       <div className="wireframe-studio-body">
         {isLoading && (
           <div className="wireframe-editor-loading">
             <div className="wireframe-spinner" />
-            <span>Loading Wireframe Studioâ€¦</span>
+            <span>Loading Wireframe Studio...</span>
           </div>
         )}
 
-        {/* â”€â”€ Left Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Left Sidebar: Stencil Library */}
         <aside className="wireframe-stencil-sidebar">
           <div className="wireframe-sidebar-header">
-            <div className="wireframe-sidebar-label">Components</div>
+            <div className="wireframe-sidebar-label">Components Library</div>
             <div className="wireframe-sidebar-search">
-              <Search size={13} className="wireframe-search-icon" />
+              <Search size={14} className="wireframe-search-icon" />
               <input
                 type="text"
-                placeholder="Search componentsâ€¦"
+                placeholder="Search components..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="wireframe-search-input"
@@ -1007,24 +1133,27 @@ export function WireframeEditor({
                   type="button"
                   className="wireframe-search-clear"
                   onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
                 >
-                  âœ•
+                  ✕
                 </button>
               )}
             </div>
-          </div>
-
-          <div className="wireframe-category-chips">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                className={`wireframe-category-chip ${activeCategory === cat.id ? "active" : ""}`}
-                onClick={() => setActiveCategory(cat.id)}
+            <div className="wireframe-category-select-wrapper">
+              <AppSelect
+                id="wireframe-category-select"
+                className="wireframe-category-select"
+                value={activeCategory}
+                onChange={(e) => setActiveCategory(e.target.value)}
+                aria-label="Filter components by category"
               >
-                {cat.label}
-              </button>
-            ))}
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </AppSelect>
+            </div>
           </div>
 
           <div className="wireframe-stencil-grid">
@@ -1034,29 +1163,37 @@ export function WireframeEditor({
                 <strong>{searchQuery}</strong>
               </div>
             ) : (
-              filteredStencils.map((stencil) => (
-                <div
-                  key={stencil.id}
-                  className="wireframe-stencil-card"
-                  onClick={() => handleInsertStencil(stencil)}
-                  title={stencil.desc}
-                >
-                  <div className="wireframe-stencil-icon">{stencil.icon}</div>
-                  <div className="wireframe-stencil-info">
-                    <div className="wireframe-stencil-name">{stencil.label}</div>
-                    <div className="wireframe-stencil-desc">{stencil.desc}</div>
+              filteredStencils.map((stencil) => {
+                const StencilIcon = stencil.icon || Layout;
+                return (
+                  <div
+                    key={stencil.id}
+                    className="wireframe-stencil-tile"
+                    draggable
+                    onDragStart={(e) => handleStencilDragStart(e, stencil)}
+                    onClick={() => handleInsertStencil(stencil)}
+                    title={`${stencil.label}\n${stencil.desc}\n• Click or drag to canvas`}
+                  >
+                    <div className="wireframe-stencil-tile-icon">
+                      <StencilIcon size={16} />
+                    </div>
+                    <span className="wireframe-stencil-tile-name">{stencil.label}</span>
                   </div>
-                  <div className="wireframe-stencil-add">
-                    <Plus size={11} />
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </aside>
 
-        {/* â”€â”€ Center Canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Center Canvas */}
         <main className="wireframe-canvas-container">
+          <div className="wireframe-canvas-top-tag">
+            <span className="wireframe-artboard-pill">
+              {activeDevice === "Desktop" && "Desktop Screen · 1200px"}
+              {activeDevice === "Tablet" && "Tablet Viewport · 768px"}
+              {activeDevice === "Mobile" && "Mobile Device · 375px"}
+            </span>
+          </div>
           <div className="wireframe-gjs-host">
             <div
               ref={editorContainerRef}
@@ -1064,17 +1201,51 @@ export function WireframeEditor({
               aria-label="Wireframe canvas"
             />
           </div>
-          {/* Status bar */}
+          {/* Status bar with Zoom */}
           <div className="wireframe-canvas-statusbar">
             <span className="wireframe-canvas-statusbar-dot" />
-            <span>Canvas ready Â· {activeDevice}</span>
+            <span>Ready · {activeDevice}</span>
+
+            {/* Zoom Controls */}
+            <div className="wireframe-zoom-controls">
+              <button
+                type="button"
+                className="wireframe-zoom-btn"
+                onClick={() => handleZoom(-10)}
+                data-tooltip="Zoom Out"
+                aria-label="Zoom out"
+              >
+                <ZoomOut size={12} />
+              </button>
+              <button
+                type="button"
+                className="wireframe-zoom-label"
+                onClick={handleZoomReset}
+                data-tooltip="Reset Zoom (100%)"
+                aria-label="Reset zoom"
+              >
+                {zoomLevel}%
+              </button>
+              <button
+                type="button"
+                className="wireframe-zoom-btn"
+                onClick={() => handleZoom(10)}
+                data-tooltip="Zoom In"
+                aria-label="Zoom in"
+              >
+                <ZoomIn size={12} />
+              </button>
+            </div>
+
             <div className="wireframe-canvas-tip">
-              <kbd>Click</kbd> stencil to insert &nbsp;Â·&nbsp; <kbd>Ctrl+S</kbd> to save
+              <span>Drag or click stencil to add</span>
+              <span className="wf-tip-dot">·</span>
+              <kbd>Ctrl+S</kbd> to save
             </div>
           </div>
         </main>
 
-        {/* â”€â”€ Right Inspector Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Right Inspector Panel */}
         <aside className="wireframe-inspector-panel">
           <div className="wireframe-inspector-tabs">
             <button
@@ -1082,7 +1253,7 @@ export function WireframeEditor({
               className={`wireframe-inspector-tab ${activeRightTab === "styles" ? "active" : ""}`}
               onClick={() => setActiveRightTab("styles")}
             >
-              <Palette size={13} />
+              <Palette size={14} />
               <span>Design</span>
             </button>
             <button
@@ -1090,7 +1261,7 @@ export function WireframeEditor({
               className={`wireframe-inspector-tab ${activeRightTab === "traits" ? "active" : ""}`}
               onClick={() => setActiveRightTab("traits")}
             >
-              <Sliders size={13} />
+              <Sliders size={14} />
               <span>Props</span>
             </button>
             <button
@@ -1098,7 +1269,7 @@ export function WireframeEditor({
               className={`wireframe-inspector-tab ${activeRightTab === "layers" ? "active" : ""}`}
               onClick={() => setActiveRightTab("layers")}
             >
-              <Layers size={13} />
+              <Layers size={14} />
               <span>Layers</span>
             </button>
           </div>
@@ -1114,8 +1285,8 @@ export function WireframeEditor({
             >
               {activeRightTab === "traits" && (
                 <div className="wireframe-inspector-empty">
-                  <div className="wireframe-inspector-empty-icon">ðŸŽ›ï¸</div>
-                  Select an element to edit its properties
+                  <Sliders size={20} className="wireframe-empty-icon-svg" />
+                  <span>Select an element to edit component attributes</span>
                 </div>
               )}
             </div>

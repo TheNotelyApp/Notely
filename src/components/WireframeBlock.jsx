@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Download, Pencil } from "lucide-react";
-import { readWireframeImage, readWireframeSource, writeWireframeSource } from "../services/wireframeService";
+import {
+  readWireframeImage,
+  readWireframeSource,
+  writeWireframeImage,
+  writeWireframeSource,
+} from "../services/wireframeService";
 import { runExport } from "../services/electronService";
 import WireframeEditor from "./WireframeEditor";
 import "../styles/ExcalidrawBlock.css"; // Reuse block styles
@@ -29,8 +34,10 @@ export function WireframeBlock({ imagePath, diagramId, documentPath, onUpdate, o
         if (!cancelled) {
           if (imageDataUrl) {
             setThumbnail(imageDataUrl);
-          } else if (imagePath) {
+          } else if (imagePath && (imagePath.startsWith("data:") || imagePath.startsWith("blob:"))) {
             setThumbnail(imagePath);
+          } else {
+            setThumbnail(null);
           }
           setError("");
         }
@@ -83,6 +90,11 @@ export function WireframeBlock({ imagePath, diagramId, documentPath, onUpdate, o
       }
 
       if (previewImageData) {
+        try {
+          await writeWireframeImage(diagramId, previewImageData, documentPath);
+        } catch (imgErr) {
+          console.warn("Failed to write wireframe preview image:", imgErr);
+        }
         setThumbnail(previewImageData);
       }
       
@@ -177,6 +189,7 @@ export function WireframeBlock({ imagePath, diagramId, documentPath, onUpdate, o
           documentPath={documentPath}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
+          onNotify={onNotify}
         />
       )}
     </div>
