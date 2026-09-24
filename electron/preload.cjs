@@ -409,6 +409,28 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("exports:record-added", listener);
     return () => ipcRenderer.removeListener("exports:record-added", listener);
   },
+
+  // ── Diagrams (Excalidraw, Draw.io, Wireframe) ────────────────────────────
+  readDiagramSource: (p) => ipcRenderer.invoke("diagram:read-source", p),
+  writeDiagramSource: (p) => ipcRenderer.invoke("diagram:write-source", p),
+  writeDiagramImage: (p) => ipcRenderer.invoke("diagram:write-image", p),
+  readDiagramImage: (p) => ipcRenderer.invoke("diagram:read-image", p),
+  deleteDiagram: (p) => ipcRenderer.invoke("diagram:delete", p),
+  diagramExists: (p) => ipcRenderer.invoke("diagram:exists", p),
+
+  drawioReadSource: (p) => ipcRenderer.invoke("drawio:read-source", p),
+  drawioWriteSource: (p) => ipcRenderer.invoke("drawio:write-source", p),
+  drawioWriteImage: (p) => ipcRenderer.invoke("drawio:write-image", p),
+  drawioReadImage: (p) => ipcRenderer.invoke("drawio:read-image", p),
+  drawioDelete: (p) => ipcRenderer.invoke("drawio:delete", p),
+  drawioExists: (p) => ipcRenderer.invoke("drawio:exists", p),
+
+  wireframeReadSource: (p) => ipcRenderer.invoke("wireframe:read-source", p),
+  wireframeWriteSource: (p) => ipcRenderer.invoke("wireframe:write-source", p),
+  wireframeWriteImage: (p) => ipcRenderer.invoke("wireframe:write-image", p),
+  wireframeReadImage: (p) => ipcRenderer.invoke("wireframe:read-image", p),
+  wireframeDelete: (p) => ipcRenderer.invoke("wireframe:delete", p),
+  wireframeExists: (p) => ipcRenderer.invoke("wireframe:exists", p),
 });
 
 

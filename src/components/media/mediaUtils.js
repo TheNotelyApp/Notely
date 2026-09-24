@@ -5,9 +5,9 @@
 export function dataUrlToUint8Array(dataUrl) {
   if (!dataUrl || typeof dataUrl !== "string") return null;
   const commaIndex = dataUrl.indexOf(",");
-  if (commaIndex === -1) return null;
+  const base64Str = commaIndex !== -1 ? dataUrl.slice(commaIndex + 1) : dataUrl;
   try {
-    const binary = atob(dataUrl.slice(commaIndex + 1));
+    const binary = atob(base64Str);
     const len = binary.length;
     const bytes = new Uint8Array(len);
     for (let i = 0; i < len; i += 1) {

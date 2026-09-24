@@ -227,6 +227,15 @@ function buildWebsiteMarkdownRenderer() {
     let annotation = null;
     if (srcIndex >= 0) {
       const src = String(tokens[idx].attrs[srcIndex][1] || "").trim();
+      const isVideo = /\.(webm|mp4|ogg|mov|mkv|avi|m4v)(\?|#|$)/i.test(src);
+      if (isVideo) {
+        const [pathPart, queryPart = ""] = src.split("?");
+        const rewritten = !/^(https?:|data:|blob:)/i.test(src) ? rewriteAssetPath(pathPart, env) : src;
+        const finalSrc = queryPart && !/^(https?:|data:|blob:)/i.test(src) ? `${rewritten}?${queryPart}` : rewritten;
+        const altText = tokens[idx].content || tokens[idx].attrGet("alt") || "Video Recording";
+        return `<figure class="notely-website-video" style="margin:12px 0;"><video controls preload="metadata" style="max-width:100%;max-height:400px;border-radius:8px;display:block;" src="${finalSrc}"></video><figcaption style="font-size:12px;color:#64748b;margin-top:4px;">${escapeCodeHtml(altText)}</figcaption></figure>`;
+      }
+
       if (src && !/^(https?:|data:|blob:)/i.test(src)) {
         const [pathPart, queryPart = ""] = src.split("?");
         annotation = getImageAnnotationForMarkdownAsset(path.resolve(getNotesRoot(), env?.relMdPath || "__notely__.md"), pathPart);

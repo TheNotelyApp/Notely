@@ -13,7 +13,7 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
   const [diagramData, setDiagramData] = useState(null);
 
   useEffect(() => {
-    if (!diagramId || !documentPath) return;
+    if (!diagramId) return;
 
     let cancelled = false;
     const loadDiagram = async () => {
