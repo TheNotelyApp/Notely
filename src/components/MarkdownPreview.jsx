@@ -20,6 +20,7 @@ import useConfirm from "../hooks/useConfirm";
 import { MermaidBlock } from "./MermaidBlock";
 import { ExcalidrawBlock } from "./ExcalidrawBlock";
 import { DrawioBlock } from "./DrawioBlock";
+import { WireframeBlock } from "./WireframeBlock";
 import { PreviewModalsContainer } from "./preview/PreviewModalsContainer";
 import { VideoPlayerModal } from "./VideoPlayerModal";
 
@@ -2166,12 +2167,14 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       {parts.map((part, index) => {
         const blockKey =
           part.type === "mermaid"
-            ? `mermaid-${part.startLine}-${part.value.slice(0, 35)}`
+            ? `mermaid-${part.startLine}-${(part.value || "").slice(0, 35)}`
             : part.type === "excalidraw"
             ? part.diagramId ? `excalidraw-${part.diagramId}` : `excalidraw-${part.startLine}-${part.imagePath}`
             : part.type === "drawio"
             ? part.diagramId ? `drawio-${part.diagramId}` : `drawio-${part.startLine}-${part.imagePath}`
-            : `md-${part.startLine}-${part.value.slice(0, 30)}`;
+            : part.type === "wireframe"
+            ? part.diagramId ? `wireframe-${part.diagramId}` : `wireframe-${part.startLine}-${part.imagePath}`
+            : `md-${part.startLine}-${(part.value || "").slice(0, 30)}`;
 
         return part.type === "mermaid" ? (
           <MermaidBlock
@@ -2231,6 +2234,27 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
             </div>
           ) : (
             <DrawioBlock
+              imagePath={part.imagePath}
+              diagramId={part.diagramId}
+              documentPath={basePath}
+              onNotify={onNotify}
+              key={blockKey}
+              onForceSaveNote={onForceSaveDocument}
+            />
+          )
+        ) : part.type === "wireframe" ? (
+          readOnly ? (
+            <div key={blockKey} className="wireframe-block">
+              {part.imagePath ? (
+                <img src={part.imagePath} alt="Wireframe diagram" style={{ maxWidth: "100%", display: "block" }} />
+              ) : (
+                <div style={{ padding: "12px", color: "var(--text-muted)", fontSize: "12px", fontStyle: "italic" }}>
+                  Wireframe diagram
+                </div>
+              )}
+            </div>
+          ) : (
+            <WireframeBlock
               imagePath={part.imagePath}
               diagramId={part.diagramId}
               documentPath={basePath}

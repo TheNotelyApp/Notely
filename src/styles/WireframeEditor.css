@@ -1,0 +1,806 @@
+/* ==========================================================================
+   Wireframe Studio — Visual UI Builder (Notely Theme Integrated & Sleek)
+   ========================================================================== */
+
+/* --- Modal Container Tokens & Sizing (Unified with Notely Theme) --- */
+.wireframe-modal-container {
+  --wf-bg: var(--app-bg);
+  --wf-surface: var(--surface-bg);
+  --wf-surface2: var(--surface-elevated);
+  --wf-surface3: var(--surface-muted);
+  --wf-border: var(--border-subtle);
+  --wf-border2: var(--border-default);
+  --wf-text: var(--text-strong);
+  --wf-text-muted: var(--text-muted);
+  --wf-text-dim: var(--text-subtle);
+  --wf-accent: var(--accent-solid);
+  --wf-accent-hover: var(--accent-strong);
+  --wf-accent-glow: color-mix(in srgb, var(--accent-solid) 20%, transparent);
+  --wf-green: var(--status-success-text);
+  --wf-radius: var(--radius-lg, 8px);
+  --wf-radius-sm: var(--radius-sm, 4px);
+  --wf-radius-lg: var(--radius-lg, 8px);
+  --wf-canvas-bg: var(--surface-muted);
+  --wf-canvas-dot: color-mix(in srgb, var(--text-strong) 8%, transparent);
+
+  background: var(--surface-bg) !important;
+  color: var(--text-strong) !important;
+  font-family: var(--app-font-family, inherit);
+  border: 1px solid var(--border-soft) !important;
+  border-radius: var(--radius-md, 6px) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  width: calc(100vw - 12px) !important;
+  height: calc(100vh - 60px - 12px) !important;
+  max-width: none !important;
+  max-height: none !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- Top Bar / Studio Header (40px compact standard) --- */
+.wireframe-studio-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  height: 40px;
+  min-height: 40px;
+  background: color-mix(in srgb, var(--surface-bg) 95%, var(--surface-elevated));
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.wireframe-studio-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wireframe-studio-logo {
+  width: 20px;
+  height: 20px;
+  background: var(--accent-solid);
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wireframe-studio-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 0;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.wireframe-header-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-soft);
+  flex-shrink: 0;
+}
+
+/* --- Viewport Device Switcher (Sleek Segmented Control) --- */
+.wireframe-viewport-controls {
+  display: flex;
+  align-items: center;
+  height: var(--btn-height-sm, 28px);
+  box-sizing: border-box;
+  background: var(--surface-elevated);
+  padding: 2px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-default);
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.wireframe-vp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.wireframe-vp-btn:hover {
+  color: var(--text-strong);
+  background: var(--surface-subtle);
+}
+
+.wireframe-vp-btn.active {
+  background: var(--accent-solid);
+  color: var(--text-on-accent, #ffffff);
+  font-weight: 600;
+}
+
+/* --- Canvas Tools (Undo, Redo, Bounds, Clear) --- */
+.wireframe-canvas-tools {
+  display: flex;
+  align-items: center;
+  height: var(--btn-height-sm, 28px);
+  box-sizing: border-box;
+  background: var(--surface-elevated);
+  padding: 2px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-default);
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.wireframe-tool-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+
+.wireframe-tool-icon-btn:hover {
+  background: var(--surface-subtle);
+  color: var(--text-strong);
+}
+
+.wireframe-tool-icon-btn.active {
+  background: color-mix(in srgb, var(--accent-solid) 14%, var(--surface-bg));
+  color: var(--accent-solid);
+}
+
+.wireframe-tool-icon-btn.danger:hover {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+
+.wireframe-tool-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-soft);
+  margin: 0 1px;
+  flex-shrink: 0;
+}
+
+/* --- Action Buttons Row --- */
+.wireframe-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.wireframe-action-buttons button,
+.wireframe-action-buttons .primary-button,
+.wireframe-action-buttons .small-button {
+  height: var(--btn-height-sm, 28px);
+  min-height: var(--btn-height-sm, 28px);
+  max-height: var(--btn-height-sm, 28px);
+  padding: 0 10px;
+  font-size: 11px;
+  border-radius: var(--radius-sm, 4px);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+}
+
+/* --- Studio Body Layout --- */
+.wireframe-studio-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* --- Left Sidebar: Stencil Library (Sleek, Uncrowded) --- */
+.wireframe-stencil-sidebar {
+  width: 260px;
+  background: var(--surface-bg);
+  border-right: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.wireframe-sidebar-header {
+  padding: 8px 10px 8px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  z-index: 20;
+}
+
+/* Search Input */
+.wireframe-sidebar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.wireframe-search-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--text-subtle);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wireframe-search-input {
+  width: 100%;
+  height: 26px;
+  padding: 0 24px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 11px;
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+  outline: none;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+
+.wireframe-search-input::placeholder {
+  color: var(--text-subtle);
+  font-size: 11px;
+}
+
+.wireframe-search-input:focus {
+  border-color: var(--focus-ring-color);
+  box-shadow: 0 0 0 1px var(--focus-ring-color);
+}
+
+.wireframe-search-clear {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  font-size: 10px;
+  color: var(--text-subtle);
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+}
+
+.wireframe-search-clear:hover {
+  color: var(--text-strong);
+}
+
+/* Category Filter Dropdown */
+.wireframe-category-select-wrapper {
+  width: 100%;
+}
+
+.wireframe-category-select.app-select-root {
+  width: 100%;
+}
+
+.wireframe-category-select .app-select-trigger {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-strong);
+}
+
+.wireframe-category-select .app-select-trigger:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.wireframe-category-select .app-select-panel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  z-index: 25;
+}
+
+/* Stencil Grid (Clean 2-Column Visual Tiles) */
+.wireframe-stencil-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-soft) transparent;
+}
+
+.wireframe-stencil-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wireframe-stencil-grid::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.wireframe-stencil-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 10px 8px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 4px);
+  cursor: grab;
+  transition: all 0.12s ease;
+  user-select: none;
+  min-height: 68px;
+  height: auto;
+  box-sizing: border-box;
+}
+
+.wireframe-stencil-tile:active {
+  cursor: grabbing;
+}
+
+.wireframe-stencil-tile:hover {
+  background: color-mix(in srgb, var(--accent-solid) 8%, var(--surface-bg));
+  border-color: var(--accent-solid);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.wireframe-stencil-tile-icon {
+  color: var(--accent-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+
+.wireframe-stencil-tile:hover .wireframe-stencil-tile-icon {
+  transform: scale(1.1);
+}
+
+.wireframe-stencil-tile-name {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-strong);
+  line-height: 1.25;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.wireframe-empty-stencils {
+  grid-column: span 2;
+  padding: 32px 10px;
+  text-align: center;
+  color: var(--text-subtle);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* --- Center Canvas --- */
+.wireframe-canvas-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+  background-color: var(--wf-canvas-bg);
+  background-image: radial-gradient(var(--wf-canvas-dot) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+.wireframe-canvas-top-tag {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.wireframe-artboard-pill {
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: var(--shadow-sm);
+}
+
+.wireframe-gjs-host {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* GrapesJS canvas frame */
+.wireframe-gjs-host .gjs-editor {
+  background: transparent !important;
+  border: none !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.wireframe-gjs-host .gjs-cv-canvas {
+  background: transparent !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.wireframe-gjs-host .gjs-frame-wrapper {
+  margin: 8px auto;
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg, 8px);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* Status bar (24px compact) */
+.wireframe-canvas-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 24px;
+  min-height: 24px;
+  background: var(--surface-bg);
+  border-top: 1px solid var(--border-soft);
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-subtle);
+  box-sizing: border-box;
+}
+
+.wireframe-canvas-statusbar-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--status-success-text);
+  border-radius: 999px;
+}
+
+/* Zoom controls */
+.wireframe-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  padding: 1px;
+}
+
+.wireframe-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+}
+
+.wireframe-zoom-btn:hover {
+  background: var(--surface-subtle);
+  color: var(--text-strong);
+}
+
+.wireframe-zoom-label {
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.wireframe-zoom-label:hover {
+  color: var(--text-strong);
+}
+
+.wireframe-canvas-tip {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+}
+
+.wf-tip-dot {
+  opacity: 0.4;
+}
+
+.wireframe-canvas-tip kbd {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0 3px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* --- Right Inspector Panel (236px compact) --- */
+.wireframe-inspector-panel {
+  width: 236px;
+  background: var(--surface-bg);
+  border-left: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.wireframe-inspector-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  padding: 3px 6px 0;
+  gap: 2px;
+  flex-shrink: 0;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.wireframe-inspector-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.12s ease;
+  border-radius: var(--radius-sm, 4px) var(--radius-sm, 4px) 0 0;
+  margin-bottom: -1px;
+  line-height: 1;
+}
+
+.wireframe-inspector-tab:hover {
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+}
+
+.wireframe-inspector-tab.active {
+  color: var(--accent-solid);
+  border-bottom-color: var(--accent-solid);
+  background: var(--surface-bg);
+  font-weight: 600;
+}
+
+.wireframe-inspector-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-soft) transparent;
+}
+
+.wireframe-inspector-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wireframe-inspector-content::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.wireframe-inspector-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 36px 12px;
+  color: var(--text-subtle);
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.wireframe-empty-icon-svg {
+  opacity: 0.4;
+  color: var(--text-subtle);
+}
+
+/* --- GrapesJS Studio Component Theming --- */
+.wireframe-modal-container .gjs-one-bg {
+  background-color: var(--surface-bg) !important;
+}
+
+.wireframe-modal-container .gjs-two-color {
+  color: var(--text-strong) !important;
+}
+
+.wireframe-modal-container .gjs-three-bg {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-strong) !important;
+}
+
+.wireframe-modal-container .gjs-four-color,
+.wireframe-modal-container .gjs-four-color-h:hover {
+  color: var(--accent-solid) !important;
+}
+
+/* Style Manager */
+.wireframe-sm-container .gjs-sm-sector,
+.wireframe-inspector-panel .gjs-sm-sector {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 4px 0;
+}
+
+.wireframe-sm-container .gjs-sm-sector-title,
+.wireframe-inspector-panel .gjs-sm-sector-title {
+  color: var(--text-muted) !important;
+  background: transparent !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 0 !important;
+  border: none !important;
+  cursor: pointer;
+}
+
+.wireframe-sm-container .gjs-sm-sector-title:hover,
+.wireframe-inspector-panel .gjs-sm-sector-title:hover {
+  color: var(--text-strong) !important;
+}
+
+.wireframe-inspector-panel .gjs-field,
+.wireframe-sm-container .gjs-field {
+  background: var(--surface-elevated) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  color: var(--text-strong) !important;
+  font-size: 11px !important;
+}
+
+.wireframe-inspector-panel .gjs-field:focus-within,
+.wireframe-sm-container .gjs-field:focus-within {
+  border-color: var(--focus-ring-color) !important;
+  outline: 1px solid var(--focus-ring-color) !important;
+}
+
+.wireframe-inspector-panel .gjs-field input,
+.wireframe-inspector-panel .gjs-field select,
+.wireframe-sm-container .gjs-field input,
+.wireframe-sm-container .gjs-field select {
+  background: transparent !important;
+  color: var(--text-strong) !important;
+  border: none !important;
+  font-size: 11px !important;
+}
+
+.wireframe-inspector-panel .gjs-sm-label,
+.wireframe-sm-container .gjs-sm-label {
+  color: var(--text-muted) !important;
+  font-size: 10px !important;
+}
+
+/* Layers */
+.wireframe-inspector-panel .gjs-layer,
+.wireframe-layers-container .gjs-layer {
+  color: var(--text-strong) !important;
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  font-size: 11px !important;
+}
+
+.wireframe-inspector-panel .gjs-layer:hover,
+.wireframe-layers-container .gjs-layer:hover {
+  background: var(--surface-elevated) !important;
+}
+
+.wireframe-inspector-panel .gjs-layer.gjs-selected,
+.wireframe-layers-container .gjs-layer.gjs-selected {
+  background: color-mix(in srgb, var(--accent-solid) 14%, var(--surface-bg)) !important;
+  color: var(--accent-solid) !important;
+}
+
+/* Loading overlay */
+.wireframe-editor-loading {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--surface-bg) 88%, transparent);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 50;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.wireframe-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent-solid);
+  border-radius: 999px;
+  animation: wf-spin 0.75s linear infinite;
+}
+
+@keyframes wf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Unsaved changes indicator dot */
+.wf-unsaved-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #f59e0b;
+  border-radius: 999px;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  flex-shrink: 0;
+  animation: wf-pulse 2s ease-in-out infinite;
+}
+
+@keyframes wf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}

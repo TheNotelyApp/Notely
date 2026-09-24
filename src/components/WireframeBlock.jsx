@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { Download, Pencil } from "lucide-react";
-import { readDiagramImage, readDiagramSource, writeDiagramSource } from "../services/diagramService";
+import {
+  readWireframeImage,
+  readWireframeSource,
+  writeWireframeImage,
+  writeWireframeSource,
+} from "../services/wireframeService";
 import { runExport } from "../services/electronService";
-import ExcalidrawComponent from "./ExcalidrawEditor";
-import "../styles/ExcalidrawBlock.css";
+import WireframeEditor from "./WireframeEditor";
+import "../styles/ExcalidrawBlock.css"; // Reuse block styles
 
-export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAssetPath, originAltText, onUpdate, onNotify, onForceSaveNote }) {
+export function WireframeBlock({ imagePath, diagramId, documentPath, onUpdate, onNotify, onForceSaveNote }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [thumbnail, setThumbnail] = useState(null);
   const [error, setError] = useState("");
@@ -16,29 +21,30 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
     if (!diagramId) return;
 
     let cancelled = false;
-    const loadDiagram = async () => {
+    const loadWireframe = async () => {
       try {
         setLoading(true);
 
-        const source = await readDiagramSource(documentPath, diagramId);
+        const source = await readWireframeSource(diagramId, documentPath);
         if (!cancelled && source) {
           setDiagramData(source);
         }
 
-        const imageDataUrl = await readDiagramImage(documentPath, diagramId);
+        const imageDataUrl = await readWireframeImage(diagramId, documentPath);
         if (!cancelled) {
           if (imageDataUrl) {
             setThumbnail(imageDataUrl);
-          } else if (imagePath) {
-            // fallback for legacy references
+          } else if (imagePath && (imagePath.startsWith("data:") || imagePath.startsWith("blob:"))) {
             setThumbnail(imagePath);
+          } else {
+            setThumbnail(null);
           }
           setError("");
         }
       } catch (err) {
         if (!cancelled) {
-          console.error("Failed to load diagram:", err);
-          setError("Failed to load diagram");
+          console.error("Failed to load Wireframe:", err);
+          setError("Failed to load wireframe");
         }
       } finally {
         if (!cancelled) {
@@ -47,7 +53,7 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
       }
     };
 
-    void loadDiagram();
+    void loadWireframe();
     return () => {
       cancelled = true;
     };
@@ -56,21 +62,21 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
   const handleDownload = async () => {
     if (!thumbnail) return;
     try {
-      const filename = `${diagramId || "excalidraw-diagram"}.png`;
+      const filename = `${diagramId || "wireframe-diagram"}.png`;
       const result = await runExport("diagram_image", {
         dataUrl: thumbnail,
         filename,
-        customExportType: "diagram_excalidraw",
+        customExportType: "diagram_wireframe",
         category: "diagram",
       });
       if (result?.success) {
-        onNotify?.(`Diagram exported to ${result.filename}`, "success");
+        onNotify?.(`Wireframe exported to ${result.filename}`, "success");
       } else {
-        onNotify?.(result?.error || "Failed to export diagram.", "error");
+        onNotify?.(result?.error || "Failed to export wireframe.", "error");
       }
     } catch (err) {
-      console.error("Failed to download diagram:", err);
-      onNotify?.("Failed to export diagram.", "error");
+      console.error("Failed to download wireframe:", err);
+      onNotify?.("Failed to export wireframe.", "error");
     }
   };
 
@@ -78,13 +84,17 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
     try {
       setLoading(true);
       
-      // Save source file
-      const sourceSaved = await writeDiagramSource(documentPath, diagramId, newDiagramData);
+      const sourceSaved = await writeWireframeSource(diagramId, newDiagramData, documentPath);
       if (!sourceSaved) {
-        throw new Error("Failed to persist diagram source");
+        throw new Error("Failed to persist wireframe source");
       }
 
       if (previewImageData) {
+        try {
+          await writeWireframeImage(diagramId, previewImageData, documentPath);
+        } catch (imgErr) {
+          console.warn("Failed to write wireframe preview image:", imgErr);
+        }
         setThumbnail(previewImageData);
       }
       
@@ -96,12 +106,12 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
       });
       
       setError("");
-      onNotify?.("Diagram saved successfully.", "success");
+      onNotify?.("Wireframe saved successfully.", "success");
       onForceSaveNote?.();
     } catch (err) {
-      console.error("Failed to save diagram:", err);
-      setError("Failed to save diagram");
-      onNotify?.("Failed to save diagram.", "error");
+      console.error("Failed to save wireframe:", err);
+      setError("Failed to save wireframe");
+      onNotify?.("Failed to save wireframe.", "error");
     } finally {
       setLoading(false);
     }
@@ -109,11 +119,9 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
 
   return (
     <div
-      className="excalidraw-block"
+      className="excalidraw-block wireframe-block"
       data-diagram-id={diagramId || ""}
       data-diagram-image-path={imagePath || ""}
-      data-origin-asset-path={originAssetPath || ""}
-      data-origin-alt-text={originAltText || ""}
     >
       <div
         className="excalidraw-preview-container"
@@ -136,8 +144,8 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
                   e.stopPropagation();
                   setIsModalOpen(true);
                 }}
-                data-tooltip="Edit diagram"
-                aria-label="Edit diagram"
+                data-tooltip="Edit wireframe"
+                aria-label="Edit wireframe"
               >
                 <Pencil size={12} style={{ marginRight: "4px" }} />
                 <span>Edit</span>
@@ -150,8 +158,8 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
                   e.stopPropagation();
                   void handleDownload();
                 }}
-                data-tooltip="Download diagram as PNG"
-                aria-label="Download diagram image"
+                data-tooltip="Download wireframe as PNG"
+                aria-label="Download wireframe image"
               >
                 <Download size={12} style={{ marginRight: "4px" }} />
                 <span>Download</span>
@@ -159,7 +167,7 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
             </div>
             <img 
               src={thumbnail} 
-              alt="Diagram preview" 
+              alt="Wireframe preview" 
               className="diagram-image"
               onError={() => setThumbnail(null)}
             />
@@ -167,7 +175,7 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
         ) : !loading ? (
           <div className="excalidraw-empty-state">
             <div className="empty-icon">📐</div>
-            <span>Click to create a diagram</span>
+            <span>Click to create a Wireframe</span>
           </div>
         ) : null}
       </div>
@@ -175,14 +183,17 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
       {error && <div className="excalidraw-error">{error}</div>}
 
       {isModalOpen && (
-        <ExcalidrawComponent
+        <WireframeEditor
           initialData={diagramData}
           diagramId={diagramId}
           documentPath={documentPath}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
+          onNotify={onNotify}
         />
       )}
     </div>
   );
 }
+
+export default WireframeBlock;

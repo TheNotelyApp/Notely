@@ -226,6 +226,14 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
     let annotation = null;
     if (srcIndex >= 0) {
       const rawSrc = String(tokens[idx].attrs[srcIndex][1] || "").trim();
+      const isVideo = /\.(webm|mp4|ogg|mov|mkv|avi|m4v)(\?|#|$)/i.test(rawSrc);
+      if (isVideo) {
+        const altText = tokens[idx].content || tokens[idx].attrGet("alt") || "Video Recording";
+        const fileName = rawSrc.split(/[?#]/)[0].split(/[/\\]/).pop() || "recording";
+        const ext = fileName.split(".").pop()?.toUpperCase() || "VIDEO";
+        return `<div class="notely-pdf-video-card" style="display:inline-flex;align-items:center;gap:12px;padding:10px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;margin:8px 0;page-break-inside:avoid;"><span style="font-size:22px;line-height:1;">🎬</span><div style="display:flex;flex-direction:column;"><strong style="font-size:13px;color:#0f172a;">${escapeCodeHtml(altText)}</strong><span style="font-size:11px;color:#64748b;">${escapeCodeHtml(fileName)} (${escapeCodeHtml(ext)})</span></div></div>`;
+      }
+
       if (rawSrc && !/^(https?:|data:|blob:)/i.test(rawSrc)) {
         const pathPart = rawSrc.split(/[?#]/)[0];
         annotation = getImageAnnotationForMarkdownAsset(path.join(sourceDir || getNotesRoot(), "__notely_export__.md"), pathPart);

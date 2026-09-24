@@ -4,6 +4,7 @@ import App from "./App.jsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.jsx";
 import { ConfirmationProvider } from "./components/ConfirmationProvider.jsx";
 import { UIStateProvider } from "./contexts/UIStateContext.jsx";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./styles.css";
 
 import { RecordingOverlayApp } from "./components/RecordingOverlayApp.jsx";

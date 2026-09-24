@@ -7,7 +7,7 @@ const GraphDB = require('../../ai/graph/GraphDB');
 const GraphService = require('../../ai/graph/GraphService');
 const GraphQueue = require('../../ai/queue/GraphQueue');
 const GraphWorker = require('../../ai/queue/GraphWorker');
-const { GraphRetriever } = require('../../ai/context/GraphRetriever');
+
 
 describe('Full Knowledge Graph Pipeline E2E Test', () => {
   let tmpDir;
@@ -77,11 +77,10 @@ Referencing external documentation at [Electron Docs](https://electronjs.org).
     const evidenceList = graphDb.db.prepare('SELECT * FROM evidence WHERE source_id = ?').all(notePath);
     assert.ok(evidenceList.length > 0);
 
-    // 6. Verify recursive CTE traversal using GraphRetriever
-    const retriever = new GraphRetriever(graphDb);
-    const relations = retriever.traverse(notePath, 2);
-    assert.ok(relations.length >= 2);
-    const targetPaths = relations.map(r => r.to_path);
-    assert.ok(targetPaths.includes('Notely App') || targetPaths.includes('#ai'));
+    // 6. Verify relations stored in GraphDB
+    const { relationships } = graphDb.getAll();
+    assert.ok(relationships.length >= 2);
   });
 });
+
+

@@ -10,17 +10,14 @@ Internal AI models and background workers are retained strictly for deterministi
 
 | Domain Directory | Entry Point Facade | Architectural Responsibilities |
 |---|---|---|
-| **`ai/embeddings/`** | `index.js` | `EmbeddingDB`, `EmbeddingService`, ONNX BGE-small-en-v1.5 transformer embedder |
+| **`ai/embeddings/`** | `index.js` | `EmbeddingDB`, `EmbeddingService`, ONNX BGE-small transformer embedder, HuggingFace embeddings |
 | **`ai/graph/`** | `index.js` | `GraphDB`, `GraphService`, `GraphBuilder`, GLiNER2-Relex neural entity/relation extraction |
 | **`ai/queue/`** | `index.js` | Background utility process workers (`IndexWorker`, `GraphWorker`) for non-blocking note indexing |
-| **`ai/tools/`** | `index.js` | `ToolRegistry`, `SemanticTools`, `DocumentReader`, internal note querying primitives |
-| **`ai/context/`** | `index.js` | `ContextManager`, `SemanticRetriever`, `GraphRetriever`, `HybridRetriever` |
-| **`ai/memory/`** | `index.js` | `MemoryDB`, `InteractionLog`, `MemoryOptimizer`, `PatternAnalyzer` |
 | **`ai/telemetry/`**| `index.js` | `TelemetryDB`, `AIEventBus`, structured logging of MCP tool calls and durations |
 | **`ai/logs/`**     | `index.js` | `LogDB` persistent log storage for indexing operations |
-| **`ai/providers/`**| `index.js` | `LLMRegistry`, `HuggingFaceEmbeddingProvider`, `GeminiProvider`, `GroqProvider`, `OpenAICompatibleProvider` |
-| **`ai/diagnostics/`**| `index.js`| `AIHealth` metrics aggregator for MCP `/health` and status screens |
-| **`ai/formatter/`**| `index.js` | Markdown response formatting and task summary formatters |
+| **`ai/core/`**     | `AIConfig.js` | `AIConfig`, `logger`, `AIService` note indexing hooks |
+| **`ai/utils/`**    | `index.js` | `SearchQueryUtils`, `ipcProtocol`, `HttpClient`, `aiUtils` |
+
 
 ---
 
