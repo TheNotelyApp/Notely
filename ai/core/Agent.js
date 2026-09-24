@@ -2,28 +2,16 @@
  * Agent - Main orchestrator for AI agent functionality
  */
 
-const { DocumentReader: DocumentService } = require('../tools');
 const { EmbeddingService } = require('../embeddings');
-const { ContextManager } = require('../context');
-const { InteractionLog: MemoryManager } = require('../memory');
 const { GraphDB, GraphService, GraphBuilder } = require('../graph');
 const { LogDB } = require('../logs');
+const { LLMRegistry } = require('../providers');
 
 class Agent {
-  constructor(databaseManager, llmRegistry) {
-    this.db = databaseManager;
-    this.llmRegistry = llmRegistry;
+  constructor(llmRegistry = null) {
+    this.llmRegistry = llmRegistry || new LLMRegistry();
     this.logDb = null;
-
-    // Initialize services — EmbeddingService receives null here; the actual
-    // embeddingProvider is injected after construction via setEmbeddingProvider()
-    // (called from initializeAISystem once the HF token is resolved).
-    this.documentService = new DocumentService(this.db, '');
-    this.embeddingService = new EmbeddingService(this.db, null);
-    this.relationshipService = null;
-    this.contextManager = new ContextManager(this.db, this.documentService);
-    this.memoryManager = new MemoryManager(this.db);
-
+    this.embeddingService = new EmbeddingService(null, null);
     this.graphDb = null;
     this.graphService = null;
     this.graphBuilder = null;
@@ -48,18 +36,17 @@ class Agent {
   /**
    * Initialize agent for workspace
    */
-  async initialize(workspaceRoot, llmProvider) {
+  async initialize(workspaceRoot, llmProvider = null) {
     try {
       console.log('[Agent] Initializing...');
 
-      // Activate LLM provider
-      if (llmProvider) {
+      if (llmProvider && this.llmRegistry) {
         await this.llmRegistry.activateProvider(llmProvider.name, llmProvider.config);
       }
 
       // Store workspace root
       this.workspaceRoot = workspaceRoot;
-      this.documentService.workspaceRoot = workspaceRoot;
+
 
       // Initialize LogDB for prompt and AI logging
       this.logDb = new LogDB(workspaceRoot);
@@ -76,56 +63,15 @@ class Agent {
       this.graphService = new GraphService(this, this.graphDb);
       this.graphBuilder = new GraphBuilder(this, this.graphDb, this.graphService);
 
-      // Initialize database
-      if (!this.db.isInitialized) {
-        this.db.initialize();
-      }
-
-      // Initialize context for workspace
-      const contextResult = await this.contextManager.initializeWorkspace(workspaceRoot);
-
       this.isInitialized = true;
 
       console.log('[Agent] Initialized successfully');
       return {
-        success: true,
-        ...contextResult
+        success: true
       };
     } catch (error) {
       console.error('[Agent] Initialization failed:', error.message);
       throw error;
-    }
-  }
-
-
-  // query() and stream() removed — chat moved to MCP layer
-
-
-  /**
-   * Generate embeddings for workspace
-   */
-  async generateEmbeddings(_forceRefresh = false) {
-    try {
-      const docs = this.documentService.getAllDocuments();
-      console.log(`[Agent] Generating embeddings for ${docs.length} documents...`);
-
-      const results = await this.embeddingService.generateBatchEmbeddings(docs);
-
-      const successful = results.filter(r => r.success).length;
-      console.log(`[Agent] Successfully generated ${successful}/${docs.length} embeddings`);
-
-      return {
-        success: true,
-        embeddingsGenerated: successful,
-        total: docs.length,
-        results
-      };
-    } catch (error) {
-      console.error('[Agent] Embedding generation failed:', error.message);
-      return {
-        success: false,
-        error: error.message
-      };
     }
   }
 
@@ -140,29 +86,7 @@ class Agent {
   }
 
   /**
-   * Learn from interactions
-   */
-  detectPatterns() {
-    try {
-      const patterns = this.memoryManager.detectPatterns(this.workspaceRoot);
-      console.log(`[Agent] Detected ${patterns.length} patterns`);
-
-      return {
-        success: true,
-        patternsDetected: patterns.length,
-        patterns
-      };
-    } catch (error) {
-      console.error('[Agent] Pattern detection failed:', error.message);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Log LLM prompt execution to LogDB (PromptTracker)
+   * Log prompt execution to LogDB
    */
   logPrompt(query, systemPrompt, metadata = {}) {
     if (this.logDb && this.logDb.isInitialized) {
@@ -182,11 +106,8 @@ class Agent {
     return {
       initialized: this.isInitialized,
       workspaceRoot: this.workspaceRoot,
-      llmProvider: this.llmRegistry.activeProvider?.name || null,
       embeddingProvider: this.embeddingService.embeddingProvider?.name || null,
       embeddingsAvailable: this.embeddingService.isAvailable(),
-      documentCount: this.documentService.getAllDocuments().length,
-      sessionInfo: this.memoryManager.getSessionSummary(),
       timestamp: new Date().toISOString()
     };
   }
@@ -195,12 +116,7 @@ class Agent {
    * Reset agent
    */
   reset() {
-    this.memoryManager.clearSession();
-    this.contextManager.clearCache();
     this.embeddingService.clearCache();
-    if (this.relationshipService?.clearCache) {
-      this.relationshipService.clearCache();
-    }
     console.log('[Agent] Reset successfully');
   }
 
@@ -220,9 +136,7 @@ class Agent {
       }
       if (this.graphDb) {
         this.graphDb.close();
-      }
-      if (this.db && this.db.isInitialized) {
-        this.db.close();
+        this.graphDb = null;
       }
       this.isInitialized = false;
       console.log('[Agent] Shutdown complete');

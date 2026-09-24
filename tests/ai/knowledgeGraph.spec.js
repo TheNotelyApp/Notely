@@ -89,20 +89,20 @@ describe('Knowledge Graph Architecture Tests', () => {
     assert.strictEqual(resolved.canonical_name, 'JavaScript');
   });
 
-  it('should perform recursive CTE neighbor traversal over Property Graph', async () => {
+  it('should store note entities and relationships in GraphDB', async () => {
     const service = new GraphService({ appDataDir: tmpDir }, graphDb);
     const notePath = path.join(tmpDir, 'main.md');
     const noteContent = `# Main Note\nConnecting to [[System Architecture]] and tagged #core.`;
 
     await service.processNote(notePath, noteContent);
 
-    const { GraphRetriever } = require('../../ai/context/GraphRetriever');
-    const retriever = new GraphRetriever(graphDb);
-    const rows = retriever.traverse(notePath, 2);
-    assert.ok(rows.length >= 2);
+    const rootEntity = graphDb.getEntityByPath(notePath);
+    assert.ok(rootEntity);
+    const { relationships } = graphDb.getAll();
+    assert.ok(relationships.length >= 2);
   });
 
-  it('should support GraphRAG multi-hop query tool with sentence evidence', async () => {
+  it('should support multi-hop graph exploration with sentence evidence', async () => {
     const service = new GraphService({ appDataDir: tmpDir }, graphDb);
     const notePath = path.join(tmpDir, 'graphrag-note.md');
     fs.writeFileSync(notePath, '# AI Note\nDiscussion with Bikash Panda regarding GraphRAG.');
@@ -129,14 +129,18 @@ describe('Knowledge Graph Architecture Tests', () => {
       evidence_id: evId
     });
 
-    const queryTools = require('../../ai/tools/QueryTools');
-    const result = await queryTools.runTool({ graphDb }, 'explore_graph', { identifier: 'Bikash Panda' });
+    const { relationships } = graphDb.getAll();
+    const rels = relationships.filter(r => r.target_id === personId);
+    assert.strictEqual(rels.length, 1);
+    assert.strictEqual(rels[0].type, 'has_person');
+    assert.strictEqual(rels[0].evidence_id, evId);
 
-    assert.ok(result.includes('Bikash Panda'), 'Should include searched entity name');
-    assert.ok(result.includes('has_person'), 'Should include relationship type');
-    assert.ok(result.includes('Evidence:'), 'Should include evidence tag');
-    assert.ok(result.includes('Discussion with Bikash Panda regarding GraphRAG.'), 'Should include exact evidence sentence');
+    const ev = evStore.getEvidence(evId);
+    assert.ok(ev);
+    assert.strictEqual(ev.raw_sentence, 'Discussion with Bikash Panda regarding GraphRAG.');
   });
+
+
 
   it('should execute orphan cleanup in GraphMaintenance', () => {
     graphDb.upsertEntity({ id: 'ent-orphan', name: 'Orphan Entity', type: 'Concept' });

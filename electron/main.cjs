@@ -152,7 +152,6 @@ async function initializeAIForWorkspace() {
   try {
     const { aiService } = require("../ai/core/AIService.js");
     const AIConfig = require("../ai/core/AIConfig");
-    const { PROVIDER_REGISTRY } = require("../ai/providers");
     const config = new AIConfig();
 
     const prefs = config.loadPreferences();
@@ -162,39 +161,12 @@ async function initializeAIForWorkspace() {
       return;
     }
 
-    const activeProviderName = prefs.aiProvider || 'gemini';
-
-    let llmProvider = null;
-    const activeApiKey = config.getAPIKey(activeProviderName);
-
-    if (activeApiKey || activeProviderName === 'local') {
-      const savedModel = config.getProviderModel(activeProviderName);
-      const entry = PROVIDER_REGISTRY[activeProviderName];
-      llmProvider = {
-        name: activeProviderName,
-        config: { apiKey: activeApiKey, model: savedModel || entry?.defaultModel },
-      };
-    } else {
-      for (const entry of Object.values(PROVIDER_REGISTRY)) {
-        if (!entry.available) continue;
-        const apiKey = config.getAPIKey(entry.id);
-        if (apiKey) {
-          const savedModel = config.getProviderModel(entry.id);
-          llmProvider = {
-            name: entry.id,
-            config: { apiKey, model: savedModel || entry.defaultModel },
-          };
-          break;
-        }
-      }
-    }
-
-    // Resolve HuggingFace embedding token (independent of text provider).
+    // Resolve HuggingFace embedding token
     const hfToken = config.getAPIKey("huggingface");
     const embeddingConfig = hfToken ? { token: hfToken } : null;
 
     const resolvedAppDataDir = path.join(app.getPath('appData'), 'Notely');
-    const result = await aiService.initialize(resolvedAppDataDir, notesRoot, llmProvider, embeddingConfig);
+    const result = await aiService.initialize(resolvedAppDataDir, notesRoot, null, embeddingConfig);
     aiAgent = result.agent;
 
     const activeEmb = aiAgent?.embeddingService?.isAvailable()
@@ -202,9 +174,9 @@ async function initializeAIForWorkspace() {
       : 'unavailable';
     console.log(
       "[AI] System initialized",
-      llmProvider ? `text: ${llmProvider.name}` : "(no text provider)",
       `| embeddings: ${activeEmb}`
     );
+
   } catch (error) {
     aiAgent = null;
     console.error("[AI] Initialization failed:", error?.message || error);

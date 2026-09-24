@@ -3,8 +3,7 @@
  * Bootstrap file to initialize all AI components
  */
 
-const { DatabaseManager } = require('./database');
-const { LLMRegistry, HuggingFaceEmbeddingProvider } = require('./providers');
+const { HuggingFaceEmbeddingProvider } = require('./embeddings');
 const Agent = require('./core/Agent');
 const AIConfig = require('./core/AIConfig');
 const { createLogger } = require('./core/logger');
@@ -18,10 +17,10 @@ let aiConfig = null;
  * Initialize AI agent system
  * @param {string} appDataDir
  * @param {string} workspaceRoot
- * @param {object|null} llmProvider   - { name, config } for text generation
+ * @param {object|null} llmProvider
  * @param {object|null} embeddingConfig - { token, model? } for HuggingFace embeddings
  */
-async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embeddingConfig = null) {
+async function initializeAISystem(appDataDir, workspaceRoot, llmProvider = null, embeddingConfig = null) {
   try {
     console.log('[AI System] Initializing for workspace:', workspaceRoot);
 
@@ -53,12 +52,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
     }
 
     aiConfig = new AIConfig();
-
-    const databaseManager = new DatabaseManager(appDataDir);
-    databaseManager.initialize();
-
-    const llmRegistry = new LLMRegistry();
-    aiAgent = new Agent(databaseManager, llmRegistry);
+    aiAgent = new Agent();
 
     // Initialize embedding provider independently of the text provider.
     const prefs = aiConfig.loadPreferences();
@@ -103,8 +97,6 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
 
     const result = await aiAgent.initialize(workspaceRoot, llmProvider);
 
-    // Local ONNX LLM provider (SmolLM2) is executed strictly inside background utilityProcess to prevent UI freezes
-
     // Boot local BGE embeddings SQLite database & offload worker queue to background process
     try {
       const workerManager = require('../electron/ai/workerManager.cjs');
@@ -125,7 +117,7 @@ async function initializeAISystem(appDataDir, workspaceRoot, llmProvider, embedd
       console.warn('[AI System] Background Index Worker failed to boot:', embBootErr.message);
     }
 
-    // Context and Retrievers initialization (pure capability retrieval)
+    // Graph initialization
     try {
       if (aiAgent.embeddingDb && aiAgent.embeddingService) {
         const { GraphDB } = require('./graph');
@@ -180,13 +172,16 @@ function shutdownAISystem() {
   console.log('[AI System] Shutdown complete');
 }
 
+const { LLMRegistry } = require('./providers');
+
 module.exports = {
   initializeAISystem,
   getAIAgent,
   getAIConfig,
   shutdownAISystem,
   AIAgent: Agent,
-  DatabaseManager,
   LLMRegistry,
   AIConfig
 };
+
+

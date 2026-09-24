@@ -7,8 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const { createLogger } = require('../../core/logger');
 const GLiNER2RelexAdapter = require('./adapters/GLiNER2RelexAdapter');
+const LLMGraphAdapter = require('./adapters/LLMGraphAdapter');
 const ExtractionValidator = require('./validators/ExtractionValidator');
 const { ExtractionResult } = require('./schemas/ExtractionResult');
+
 
 const log = createLogger('SemanticExtractionEngine');
 
@@ -73,8 +75,15 @@ class SemanticExtractionEngine {
           path: this.config.path || 'models/gliner2-relex',
           appDataDir: this.appDataDir
         });
+      } else if (provider === 'llm' || provider === 'gemini' || provider === 'groq' || provider === 'openai' || provider === 'cloud') {
+        this.adapter = new LLMGraphAdapter({
+          providerInstance: this.config.providerInstance,
+          getProvider: this.config.getProvider,
+          modelId: this.config.modelId || modelName,
+          appDataDir: this.appDataDir
+        });
       } else {
-        throw new Error(`Unknown semantic extraction provider: "${provider}". Supported: "onnx" (GLiNER2-Relex). Check ai-models.json.`);
+        throw new Error(`Unknown semantic extraction provider: "${provider}". Supported: "onnx" (GLiNER2-Relex), "llm" (Gemini/Groq/OpenAI).`);
       }
     }
     return this.adapter;

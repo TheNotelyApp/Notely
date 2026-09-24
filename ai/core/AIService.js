@@ -67,37 +67,10 @@ class AIService {
 
     // If we have paths, trigger full initialization
     if (this.appDataDir && this.workspaceRoot) {
-      const { PROVIDER_REGISTRY } = require('../providers/ProviderRegistry');
-      const activeProviderName = prefs.aiProvider || 'gemini';
-      
-      let llmProvider = null;
-      const activeApiKey = this.config.getAPIKey(activeProviderName);
-
-      if (activeApiKey) {
-        const savedModel = this.config.getProviderModel(activeProviderName);
-        const entry = PROVIDER_REGISTRY[activeProviderName];
-        llmProvider = {
-          name: activeProviderName,
-          config: { apiKey: activeApiKey, model: savedModel || entry?.defaultModel },
-        };
-      } else {
-        for (const entry of Object.values(PROVIDER_REGISTRY)) {
-          if (!entry.available) continue;
-          const apiKey = this.config.getAPIKey(entry.id);
-          if (apiKey) {
-            const savedModel = this.config.getProviderModel(entry.id);
-            llmProvider = {
-              name: entry.id,
-              config: { apiKey, model: savedModel || entry.defaultModel },
-            };
-            break;
-          }
-        }
-      }
       const hfToken = this.config.getAPIKey('huggingface');
       const embeddingConfig = hfToken ? { token: hfToken } : null;
 
-      await this.initialize(this.appDataDir, this.workspaceRoot, llmProvider, embeddingConfig);
+      await this.initialize(this.appDataDir, this.workspaceRoot, null, embeddingConfig);
     }
   }
 

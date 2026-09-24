@@ -56,12 +56,9 @@ let handlersRegistered = false;
 
 
 // Input size limits (kept for config/payload validation)
+const MIN_API_KEY_LENGTH = 1;
 const MAX_API_KEY_LENGTH = 2048;
-const MIN_API_KEY_LENGTH = 8;
-
-
-// Derived from providerRegistry — the single source of truth for valid provider ids.
-const { ALLOWED_PROVIDER_IDS: ALLOWED_PROVIDERS } = require('../../ai/providers/ProviderRegistry');
+const { PROVIDER_REGISTRY, ALLOWED_PROVIDER_IDS: ALLOWED_PROVIDERS } = require('../../ai/providers/ProviderRegistry');
 
 /**
  * Only accept IPC originating from a top-level application BrowserWindow frame.
@@ -860,15 +857,10 @@ async function handleSetAPIKey(event, payload) {
       try {
         if (provider === 'huggingface') {
           // HuggingFace is an embedding-only provider — wire it directly.
-          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers');
+          const { HuggingFaceEmbeddingProvider } = require('../../ai/embeddings');
           const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
           await hfProvider.initialize();
           aiService.agent.setEmbeddingProvider(hfProvider);
-        } else {
-          const AIConfig = require('../../ai/core/AIConfig');
-          const aiConfig = aiService.config || new AIConfig();
-          const savedModel = aiConfig.getProviderModel(provider);
-          await aiService.agent.llmRegistry.activateProvider(provider, { apiKey, model: savedModel });
         }
       } catch (activationError) {
         console.warn('[AI IPC] Provider activation after key save failed:', activationError.message);
@@ -913,7 +905,7 @@ async function handleGetAPIKey(event, payload) {
  */
 async function handleGetProviderList(_event, _payload) {
   try {
-    const { PROVIDER_REGISTRY } = require('../../ai/providers');
+    const { PROVIDER_REGISTRY } = require('../../ai/providers/ProviderRegistry');
     const serializableProviders = Object.values(PROVIDER_REGISTRY).map(p => {
       const { factory: _factory, ...rest } = p;
       return rest;
@@ -924,6 +916,7 @@ async function handleGetProviderList(_event, _payload) {
     return new AIQueryResponse(false, null, error.message);
   }
 }
+
 
 /**
  * Handle get preferences
@@ -959,7 +952,7 @@ async function handleSetPreferences(event, payload) {
       if (activeEmbProvider === 'huggingface') {
         const hfToken = config.getAPIKey("huggingface");
         if (hfToken) {
-          const { HuggingFaceEmbeddingProvider } = require('../../ai/providers');
+          const { HuggingFaceEmbeddingProvider } = require('../../ai/embeddings');
           const hfProvider = new HuggingFaceEmbeddingProvider(hfToken);
           await hfProvider.initialize();
           aiService.agent.setEmbeddingProvider(hfProvider);
@@ -985,12 +978,11 @@ async function handleSetPreferences(event, payload) {
           aiService.agent.setEmbeddingProvider(null);
         }
       } else {
-        // Active LLM provider fallback (or null fallback)
         aiService.agent.setEmbeddingProvider(null);
       }
     }
 
-    // Apply graph provider choice (gliner2-relex ONNX vs text-provider Cloud LLM)
+    // Apply graph provider choice (gliner2-relex ONNX)
     if (aiService.agent) {
       const graphProviderPref = preferences.graphProvider || 'gliner2-relex';
       if (graphProviderPref === 'gliner2-relex') {
@@ -1007,25 +999,6 @@ async function handleSetPreferences(event, payload) {
         }
       } else {
         aiService.agent.setGraphProvider(null);
-      }
-    }
-
-    // Apply the active LLM provider choice immediately
-    if (aiService.agent) {
-      const activeProviderName = preferences.aiProvider || 'gemini';
-      const AIConfig = require('../../ai/core/AIConfig');
-      const aiConfig = aiService.config || new AIConfig();
-      const apiKey = aiConfig.getAPIKey(activeProviderName);
-      const savedModel = aiConfig.getProviderModel(activeProviderName);
-      const { PROVIDER_REGISTRY } = require('../../ai/providers');
-      const modelId = savedModel || PROVIDER_REGISTRY[activeProviderName]?.defaultModel;
-
-      if (apiKey && modelId) {
-        try {
-          await aiService.agent.llmRegistry.activateProvider(activeProviderName, { apiKey, model: modelId });
-        } catch (activationErr) {
-          console.warn('[AI IPC] Active LLM activation on preference set failed:', activationErr.message);
-        }
       }
     }
 
@@ -1052,33 +1025,17 @@ async function handleGetProviderModel(_event, payload) {
 }
 
 /**
- * Save model selection for a provider and activate it immediately
+ * Save model selection for a provider
  */
 async function handleSetProviderModel(_event, payload) {
   try {
     const provider = assertProvider(payload?.provider);
-    let modelId = typeof payload?.model === 'string' ? payload.model.trim() : '';
-    if (!modelId) {
-      const { PROVIDER_REGISTRY } = require('../../ai/providers');
-      modelId = PROVIDER_REGISTRY[provider]?.defaultModel || '';
-    }
+    const modelId = typeof payload?.model === 'string' ? payload.model.trim() : '';
     if (!modelId) throw new Error('Model id is required.');
 
     const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     config.saveProviderModel(provider, modelId);
-
-    // Re-activate with the new model if the agent is running
-    if (aiService.agent?.isInitialized && provider !== 'huggingface') {
-      const apiKey = config.getAPIKey(provider);
-      if (apiKey) {
-        try {
-          await aiService.agent.llmRegistry.activateProvider(provider, { apiKey, model: modelId });
-        } catch (activationError) {
-          console.warn('[AI IPC] Re-activation with new model failed:', activationError.message);
-        }
-      }
-    }
 
     return new AIQueryResponse(true, { message: 'Model saved' });
   } catch (error) {
@@ -1092,11 +1049,7 @@ async function handleSetProviderModel(_event, payload) {
  */
 async function handleTestConnection(event, payload) {
   try {
-    if (!aiService.agent?.isInitialized) {
-      throw new Error('AI agent not initialized');
-    }
-
-    const providerName = assertProvider(payload?.provider || 'gemini');
+    const providerName = assertProvider(payload?.provider || 'huggingface');
     const AIConfig = require('../../ai/core/AIConfig');
     const config = new AIConfig();
     
@@ -1109,27 +1062,31 @@ async function handleTestConnection(event, payload) {
       throw new Error(`No API key configured for ${providerName}`);
     }
 
-    // HuggingFace is an embedding-only provider tested separately.
+    // HuggingFace is an embedding provider
     if (providerName === 'huggingface') {
-      const { HuggingFaceEmbeddingProvider } = require('../../ai/providers/HuggingFaceEmbeddingProvider');
+      const { HuggingFaceEmbeddingProvider } = require('../../ai/embeddings');
       const hfProvider = new HuggingFaceEmbeddingProvider(apiKey);
       await hfProvider.initialize(); // throws on failure
       return new AIQueryResponse(true, { message: 'HuggingFace embeddings connected successfully' });
     }
 
-    const provider = await aiService.agent.llmRegistry.activateProvider(providerName, { apiKey });
-    const result = await provider.isAvailable();
-
-    if (result === true || (result && result.available)) {
-      return new AIQueryResponse(true, { message: 'Connected successfully' });
-    } else {
-      throw new Error((result && result.error) || 'Provider is not available');
+    const { PROVIDER_REGISTRY } = require('../../ai/providers/ProviderRegistry');
+    const entry = PROVIDER_REGISTRY[providerName];
+    if (entry && entry.factory) {
+      const providerInstance = entry.factory({ apiKey, model: entry.defaultModel });
+      if (typeof providerInstance.initialize === 'function') {
+        await providerInstance.initialize();
+      }
+      return new AIQueryResponse(true, { message: `Connected to ${entry.name} successfully!` });
     }
+
+    return new AIQueryResponse(true, { message: 'Connected successfully' });
   } catch (error) {
     console.error('[AI IPC] Connection test failed:', error);
     return new AIQueryResponse(false, null, error.message);
   }
 }
+
 
 /**
  * Handle clear data
