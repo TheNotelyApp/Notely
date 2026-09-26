@@ -113,7 +113,8 @@ const MENU_ICON_MAP = {
 
   "tasks": CheckSquare,
   "calendar": Calendar,
-  "assets library": ImageIcon,
+  "media gallery": ImageIcon,
+  "diagrams & media gallery": ImageIcon,
   "downloads & export history": Download,
   "downloads export history": Download,
   "workspace": FolderOpen,

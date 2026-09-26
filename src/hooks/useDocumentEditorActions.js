@@ -9,7 +9,6 @@ function isTextInputLike(target) {
 export function useDocumentEditorActions({
   menuAction,
   isFocusMode,
-  showMediaManager,
   textareaRef,
   setFindQuery,
   toggleFindInNotePanel,
@@ -103,7 +102,6 @@ export function useDocumentEditorActions({
       if (!hasPrimaryModifier) return;
 
       if (event.altKey && key === "f") {
-        if (showMediaManager) return;
         event.preventDefault();
         toggleFocusMode();
         return;
@@ -152,7 +150,6 @@ export function useDocumentEditorActions({
       }
 
       if (key === "\\") {
-        if (showMediaManager) return;
         event.preventDefault();
         toggleSplitPreview();
       }
@@ -161,7 +158,6 @@ export function useDocumentEditorActions({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
-    showMediaManager,
     textareaRef,
     toggleFindInNotePanel,
     openFindInNotePanel,

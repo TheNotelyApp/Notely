@@ -1,6 +1,4 @@
 import { Suspense, lazy } from "react";
-import { X } from "lucide-react";
-import { OverlayDialog } from "../OverlayDialog";
 import { TrashDialog } from "../TrashDialog";
 import UpdateModal from "../UpdateModal";
 import GlobalTooltip from "../GlobalTooltip";
@@ -23,9 +21,6 @@ const HelpConfirmationModal = lazy(() =>
 const ExportImportModal = lazy(() =>
   import("../ExportImportModal").then((m) => ({ default: m.default || m.ExportImportModal }))
 );
-const MediaTab = lazy(() =>
-  import("../MediaTab").then((m) => ({ default: m.default || m.MediaTab }))
-);
 import { TransferNoteWorkspaceModal } from "./TransferNoteWorkspaceModal";
 
 export function AppModalsContainer({
@@ -45,14 +40,6 @@ export function AppModalsContainer({
   feedbackOpen,
   setFeedbackOpen,
   themePreference,
-  landingAssetsOpen,
-  setLandingAssetsOpen,
-  landingFolderPath,
-  current,
-  activeProject,
-  notesFolderPath,
-  notify,
-  handleOpenReferencedDocumentFromUI,
   showUpdateModal,
   setShowUpdateModal,
   updateStatus,
@@ -65,6 +52,7 @@ export function AppModalsContainer({
   transferModalState,
   setTransferModalState,
   onTransferSuccess,
+  notify,
 }) {
   return (
     <>
@@ -125,40 +113,6 @@ export function AppModalsContainer({
             themePreference={themePreference}
           />
         </Suspense>
-      ) : null}
-
-      {landingAssetsOpen ? (
-        <OverlayDialog
-          open={landingAssetsOpen}
-          onClose={() => setLandingAssetsOpen(false)}
-          ariaLabel="Assets"
-          cardClassName="assets-dialog-card"
-        >
-          <div className="overlay-dialog-header assets-dialog-header">
-            <div className="assets-dialog-title-group">
-              <h2>Assets Library</h2>
-              <p>Browse assets in this workspace folder.</p>
-            </div>
-            <button
-              className="icon-button assets-close-button"
-              onClick={() => setLandingAssetsOpen(false)}
-              type="button"
-              aria-label="Close assets dialog"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="assets-dialog-body">
-            <Suspense fallback={<div className="lazy-loading">Loading media…</div>}>
-              <MediaTab
-                content=""
-                basePath={`${(landingFolderPath || (current?.filePath ? current.filePath.split(/[\\/]/).slice(0, -1).join("/") : "") || activeProject?.rootPath || notesFolderPath || "").replace(/[\\/]+$/, "")}/_assets.md`}
-                onNotify={notify}
-                onOpenDocument={handleOpenReferencedDocumentFromUI}
-              />
-            </Suspense>
-          </div>
-        </OverlayDialog>
       ) : null}
 
       {showUpdateModal ? (

@@ -647,7 +647,7 @@ export default function WorkspaceDiagramsMediaPage({
     <div className="workspace-diagrams-media-page">
       {/* Top Breadcrumb Bar */}
       <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Workspace Diagrams & Media navigation">
+        <nav className="detail-breadcrumb" aria-label="Media Gallery navigation">
           <span className="detail-breadcrumb-part">
             <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
               Workspace
@@ -656,7 +656,7 @@ export default function WorkspaceDiagramsMediaPage({
               /
             </span>
           </span>
-          <span className="detail-breadcrumb-current">Diagrams, Media & PDFs</span>
+          <span className="detail-breadcrumb-current">Media Gallery</span>
         </nav>
       </div>
 
@@ -677,7 +677,7 @@ export default function WorkspaceDiagramsMediaPage({
             <input
               type="text"
               className="wdm-search-input"
-              placeholder="Search diagrams, media, PDFs, or note references…"
+              placeholder="Search media, diagrams, PDFs, or note references…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

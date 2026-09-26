@@ -4,7 +4,6 @@ const UIStateContext = createContext(null);
 
 export function UIStateProvider({ children }) {
   // Dialog / Modal Visibility States
-  const [landingAssetsOpen, setLandingAssetsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
@@ -40,7 +39,6 @@ export function UIStateProvider({ children }) {
 
   const value = {
     // Dialogs
-    landingAssetsOpen, setLandingAssetsOpen,
     commandPaletteOpen, setCommandPaletteOpen,
     globalSearchOpen, setGlobalSearchOpen,
     globalSearchQuery, setGlobalSearchQuery,

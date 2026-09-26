@@ -7,7 +7,6 @@ import {
   PenLine,
   SplitSquareHorizontal,
   Eye,
-  Images,
   X,
   ListTree,
   Clipboard,
@@ -18,8 +17,6 @@ import AppButton from "./AppButton";
 import AppIconButton from "./AppIconButton";
 import AppInput from "./AppInput";
 import { EditorPane } from "./EditorPane";
-import { MediaTab } from "./MediaTab";
-import OverlayDialog from "./OverlayDialog";
 import { ExportPdfModal } from "./ExportPdfModal";
 
 import { downloadPdf, syncTasksFromNote, gitGetLog, gitGetFileAtCommit, gitRestoreFileAtCommit } from "../services/electronService";
@@ -632,14 +629,12 @@ export function DocumentDetail({
   const [findMatchIndex, setFindMatchIndex] = useState(-1);
   const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
   const [showMetadataPanel, setShowMetadataPanel] = useState(false);
-  const [showMediaManager, setShowMediaManager] = useState(false);
   const [isTaskSummaryOpen, setIsTaskSummaryOpen] = useState(false);
   const findRegexValid = !findUseRegex || isValidFindRegex(findQuery);
   const findMatches = useMemo(
     () => collectMatches(content, findQuery, findCaseSensitive, findUseRegex),
     [content, findQuery, findCaseSensitive, findUseRegex],
   );
-  const mediaContent = (document.rawNotes || "").trim();
   const selectedFindMatchIndex = getSelectedMatchIndex(
     findMatches,
     textareaRef.current?.selectionStart,
@@ -656,13 +651,7 @@ export function DocumentDetail({
   const isOutlineEnabled = outlineEnabled !== false;
   const isFocusMode = focusModeEnabled === true;
   const setEditorMode = (nextMode, options = {}) => {
-    const { announce = true, force = false } = options;
-    if (!force && showMediaManager) {
-      if (announce) {
-        onNotify?.("Close Assets view to switch editor mode.", "info");
-      }
-      return false;
-    }
+    const { announce = true } = options;
 
     setMode(nextMode);
     if (announce) {
@@ -673,7 +662,6 @@ export function DocumentDetail({
   };
 
   const outlineHeadings = useMemo(() => {
-    if (showMediaManager) return [];
     const lines = String(content || "").split(/\r?\n/);
     const headings = [];
     lines.forEach((lineText, index) => {
@@ -686,7 +674,7 @@ export function DocumentDetail({
       });
     });
     return headings;
-  }, [content, showMediaManager]);
+  }, [content]);
 
   const taskItems = useMemo(() => extractTasksFromText(content), [content]);
 
@@ -766,7 +754,7 @@ export function DocumentDetail({
   };
 
   useEffect(() => {
-    if (!autosaveEnabled || !dirty || saving || showMediaManager) return undefined;
+    if (!autosaveEnabled || !dirty || saving) return undefined;
 
     const timer = window.setTimeout(async () => {
       await savePreservingEditorViewport({ reason: "autosave", silent: true });
@@ -775,7 +763,7 @@ export function DocumentDetail({
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autosaveEnabled, dirty, saving, showMediaManager, onSave, document.filePath, document.header, document.rawNotes]);
+  }, [autosaveEnabled, dirty, saving, onSave, document.filePath, document.header, document.rawNotes]);
 
   useEffect(() => {
     const total = findMatches.length;
@@ -804,8 +792,8 @@ export function DocumentDetail({
     });
   };
 
-  const canUndo = !showMediaManager && historyStateRef.current.undo.length > 0;
-  const canRedo = !showMediaManager && historyStateRef.current.redo.length > 0;
+  const canUndo = historyStateRef.current.undo.length > 0;
+  const canRedo = historyStateRef.current.redo.length > 0;
 
   const toggleOutlineEnabled = () => {
     if (isFocusMode) {
@@ -1063,7 +1051,6 @@ export function DocumentDetail({
 
 
   const handleUndo = () => {
-    if (showMediaManager) return false;
     const currentHistory = historyStateRef.current;
     if (!currentHistory.undo.length) return false;
 
@@ -1080,7 +1067,6 @@ export function DocumentDetail({
   };
 
   const handleRedo = () => {
-    if (showMediaManager) return false;
     const currentHistory = historyStateRef.current;
     if (!currentHistory.redo.length) return false;
 
@@ -1099,7 +1085,6 @@ export function DocumentDetail({
   useDocumentEditorActions({
     menuAction,
     isFocusMode,
-    showMediaManager,
     textareaRef,
     setFindQuery,
     toggleFindInNotePanel,
@@ -1107,10 +1092,8 @@ export function DocumentDetail({
     openFindReplacePanel,
     toggleOutlineEnabled,
     toggleSplitPreview: () => {
-      if (!showMediaManager) {
-        setMode((value) => (value === "split" ? "edit" : "split"));
-        onNotify?.("Split preview toggled.", "info");
-      }
+      setMode((value) => (value === "split" ? "edit" : "split"));
+      onNotify?.("Split preview toggled.", "info");
     },
     toggleFocusMode,
     openPdfOptions: () => {
@@ -1328,7 +1311,6 @@ export function DocumentDetail({
                       type="button"
                       className="copy-menu-trigger"
                       data-tooltip="Copy note content"
-                      disabled={showMediaManager}
                     >
                       <Clipboard size={16} />
                       <span>Copy</span>
@@ -1340,7 +1322,6 @@ export function DocumentDetail({
                         role="menuitem"
                         data-tooltip="Copy note content as rendered HTML"
                         onClick={handleCopyAsHtml}
-                        disabled={showMediaManager}
                       >
                         <Code2 size={16} />
                         <span>Copy HTML</span>
@@ -1350,31 +1331,19 @@ export function DocumentDetail({
                         role="menuitem"
                         data-tooltip="Copy note content as plain text (markdown source)"
                         onClick={handleCopyAsText}
-                        disabled={showMediaManager}
                       >
                         <Clipboard size={16} />
                         <span>Copy Text</span>
                       </button>
                     </div>
                   </div>
-                  <div className="button-group-separator" />
-                  <button
-                    className={showMediaManager ? "active" : ""}
-                    type="button"
-                    data-tooltip="Open assets manager"
-                    onClick={() => setShowMediaManager((value) => !value)}
-                  >
-                    <Images size={16} />
-                    <span>Assets</span>
-                  </button>
                   <div className="button-group mode-switch-modes">
                     {EDITOR_MODE_OPTIONS.map((item) => (
                       <button
                         className={mode === item.key ? "active" : ""}
                         key={item.key}
-                        disabled={showMediaManager}
                         onClick={() => setEditorMode(item.key, { announce: false })}
-                        data-tooltip={showMediaManager ? "Close Assets view to switch mode" : `Switch to ${item.label} mode`}
+                        data-tooltip={`Switch to ${item.label} mode`}
                       >
                         <item.icon size={16} />
                         <span>{item.label}</span>
@@ -1414,7 +1383,7 @@ export function DocumentDetail({
                 workspacePath={workspacePath}
                 typoCheckEnabled={typoCheckEnabled}
                 screenCaptureMode={screenCaptureMode}
-                showToolbar={!showMediaManager}
+                showToolbar={true}
                 onNotify={onNotify}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
@@ -1487,39 +1456,6 @@ export function DocumentDetail({
             }
           }}
         />
-      ) : null}
-
-      {showMediaManager ? (
-        <OverlayDialog
-          onClose={() => setShowMediaManager(false)}
-          ariaLabel="Assets"
-          cardClassName="assets-dialog-card"
-        >
-            <div className="overlay-dialog-header assets-dialog-header">
-              <div className="assets-dialog-title-group">
-                <h2>Assets Library</h2>
-                <p>Manage images referenced across your notes.</p>
-              </div>
-              <AppIconButton
-                className="assets-close-button"
-                onClick={() => setShowMediaManager(false)}
-                aria-label="Close assets dialog"
-              >
-                <X size={16} />
-              </AppIconButton>
-            </div>
-            <div className="assets-dialog-body">
-              <MediaTab
-                content={mediaContent}
-                basePath={document.filePath}
-                onNotify={onNotify}
-                onOpenDocument={async (filePath) => {
-                  setShowMediaManager(false);
-                  await onOpenDocument?.(filePath);
-                }}
-              />
-            </div>
-        </OverlayDialog>
       ) : null}
 
       {pdfOptionsOpen ? (

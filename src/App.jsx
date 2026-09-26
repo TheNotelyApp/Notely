@@ -318,7 +318,6 @@ export default function App() {
     return () => unsubscribe();
   }, [notify]);
   const {
-    landingAssetsOpen, setLandingAssetsOpen,
     commandPaletteOpen, setCommandPaletteOpen,
     globalSearchOpen, setGlobalSearchOpen,
     globalSearchQuery, setGlobalSearchQuery,
@@ -1645,7 +1644,7 @@ export default function App() {
       }
 
       if (action === "open-assets") {
-        setLandingAssetsOpen(true);
+        setDiagramsMediaOpen(true);
         return;
       }
 
@@ -2463,8 +2462,7 @@ export default function App() {
       disabled: recentWorkspacePaths.length === 0,
       aliases: "recent workspaces recently opened folders",
     },
-    { id: "open-assets", label: "Open Assets Library", group: "Workspace", aliases: "media images assets" },
-    { id: "open-workspace-diagrams-media", label: "Open Diagrams & Media Gallery", group: "Workspace", aliases: "diagrams media pdfs gallery assets mermaid drawio excalidraw" },
+    { id: "open-workspace-diagrams-media", label: "Open Media Gallery", group: "Workspace", aliases: "media gallery assets diagrams pdfs images video audio mermaid drawio excalidraw" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
@@ -2889,12 +2887,7 @@ export default function App() {
       return;
     }
 
-    if (resolvedCommandId === "open-assets") {
-      setLandingAssetsOpen(true);
-      return;
-    }
-
-    if (resolvedCommandId === "open-workspace-diagrams-media") {
+    if (resolvedCommandId === "open-workspace-diagrams-media" || resolvedCommandId === "open-assets") {
       setDiagramsMediaOpen(true);
       return;
     }
@@ -3955,14 +3948,6 @@ export default function App() {
         feedbackOpen={feedbackOpen}
         setFeedbackOpen={setFeedbackOpen}
         themePreference={themePreference}
-        landingAssetsOpen={landingAssetsOpen}
-        setLandingAssetsOpen={setLandingAssetsOpen}
-        landingFolderPath={landingFolderPath}
-        current={current}
-        activeProject={activeProject}
-        notesFolderPath={notesFolderPath}
-        notify={notify}
-        handleOpenReferencedDocumentFromUI={handleOpenReferencedDocumentFromUI}
         showUpdateModal={showUpdateModal}
         setShowUpdateModal={setShowUpdateModal}
         updateStatus={updateStatus}
