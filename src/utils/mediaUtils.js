@@ -120,11 +120,51 @@ export function isLocalMediaPath(path) {
   );
 }
 
-export function getImageFileName(path) {
-  return path.split(/[\\/]/).pop() || "image";
+export function decodePathForDisplay(pathValue) {
+  const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
+  if (!normalized) return "";
+  return normalized
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
 }
 
-export function getMediaFileName(path) {
-  return path.split(/[\\/]/).pop() || "media";
+export function getAssetPathDisplayLabel(pathValue) {
+  const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
+  if (!normalized) return "";
+
+  const withoutPrefix = normalized
+    .replace(/^\.\/images\//i, "")
+    .replace(/^\/images\//i, "")
+    .replace(/^images\//i, "");
+
+  return decodePathForDisplay(withoutPrefix);
+}
+
+export function getAssetMediaType(pathValue) {
+  const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
+  if (!normalized) return "document";
+
+  const withoutSuffix = normalized.split(/[?#]/)[0];
+  const fileName = withoutSuffix.split("/").pop() || "";
+  let decodedFileName = fileName;
+  try {
+    decodedFileName = decodeURIComponent(fileName);
+  } catch {
+    decodedFileName = fileName;
+  }
+
+  const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
+  if (extension === "json" && decodedFileName.toLowerCase().includes("transcript")) {
+    return "transcript";
+  }
+  return getMediaTypeFromExtension(extension, normalized) || "document";
 }
 

@@ -287,3 +287,15 @@ export function extractNoteSnippet(text, maxLength = 140) {
   if (raw.length <= maxLength) return raw;
   return raw.slice(0, maxLength).trim() + "…";
 }
+
+export function hasMarkdownExtension(pathValue) {
+  const normalized = String(pathValue || "").trim().toLowerCase();
+  return normalized.endsWith(".md") || normalized.endsWith(".markdown");
+}
+
+export {
+  getAssetMediaType,
+  getAssetPathDisplayLabel,
+  decodePathForDisplay,
+} from "./mediaUtils.js";
+

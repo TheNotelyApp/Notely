@@ -160,7 +160,7 @@ export function EditorPane({
       clearTimeout(resetSyncTimer);
       resetSyncTimer = setTimeout(() => {
         activeSyncSource = null;
-      }, 60);
+      }, 100);
     };
 
     const getScrollRatio = (element) => {
@@ -177,10 +177,37 @@ export function EditorPane({
       if (typeof editorElement.getLineTop === "function") {
         return editorElement.getLineTop(lineNumber);
       }
-      const lineHeight = typeof editorElement.getLineHeight === "function"
-        ? editorElement.getLineHeight()
-        : 20;
-      return Math.max(0, (Math.max(Number(lineNumber) || 1, 1) - 1) * lineHeight);
+      
+      const computed = typeof window !== "undefined" ? window.getComputedStyle(editorElement) : null;
+      const lineHeight = (computed && parseFloat(computed.lineHeight)) ||
+        (typeof editorElement.getLineHeight === "function" ? editorElement.getLineHeight() : 20);
+      const paddingTop = (computed && parseFloat(computed.paddingTop)) || 0;
+      const targetLine = Math.max(Number(lineNumber) || 1, 1);
+      
+      const text = editorElement.value ?? value ?? "";
+      if (!text || !computed) {
+        return paddingTop + (targetLine - 1) * lineHeight;
+      }
+
+      // Dynamic visual line calculation accounting for word wrapping in textarea
+      const lines = text.split("\n");
+      const clientWidth = editorElement.clientWidth || 600;
+      const paddingLeft = parseFloat(computed.paddingLeft) || 16;
+      const paddingRight = parseFloat(computed.paddingRight) || 16;
+      const contentWidth = Math.max(80, clientWidth - paddingLeft - paddingRight);
+      const fontSize = parseFloat(computed.fontSize) || 13;
+      const avgCharWidth = fontSize * 0.6;
+      const charsPerLine = Math.max(15, Math.floor(contentWidth / avgCharWidth));
+
+      let visualLinesBefore = 0;
+      const limit = Math.min(targetLine - 1, lines.length);
+      for (let i = 0; i < limit; i++) {
+        const lineLen = lines[i]?.length || 0;
+        const wrapped = lineLen > 0 ? Math.max(1, Math.ceil(lineLen / charsPerLine)) : 1;
+        visualLinesBefore += wrapped;
+      }
+
+      return paddingTop + visualLinesBefore * lineHeight;
     };
 
     const updateAnchors = () => {
@@ -203,6 +230,12 @@ export function EditorPane({
     const getPreviewAnchors = () => {
       if (!cachedAnchors) updateAnchors();
       return cachedAnchors;
+    };
+
+    // Smoothstep interpolation for seamless cross-block transitions
+    const interpolateProgress = (ratio) => {
+      const clamped = Math.max(0, Math.min(1, ratio));
+      return clamped * clamped * (3 - 2 * clamped);
     };
 
     const syncPreviewFromEditor = () => {
@@ -237,11 +270,13 @@ export function EditorPane({
         const ratio = remainingEditorScroll > 0 ? Math.min(1, Math.max(0, editorScroll - prevAnchor.editorTop) / remainingEditorScroll) : (editorScroll >= editorMaxScroll ? 1 : 0);
         previewElement.scrollTop = prevAnchor.previewTop + ratio * remainingPreviewScroll;
       } else if (prevAnchor && nextAnchor) {
-        let ratio = 0;
+        let linearRatio = 0;
         const editorDiff = nextAnchor.editorTop - prevAnchor.editorTop;
         if (editorDiff > 0) {
-          ratio = (editorScroll - prevAnchor.editorTop) / editorDiff;
+          linearRatio = (editorScroll - prevAnchor.editorTop) / editorDiff;
         }
+        // Apply weighted interpolation curve for smooth diagram/table traversal
+        const ratio = 0.5 * linearRatio + 0.5 * interpolateProgress(linearRatio);
         previewElement.scrollTop = prevAnchor.previewTop + ratio * (nextAnchor.previewTop - prevAnchor.previewTop);
       }
     };
@@ -279,11 +314,12 @@ export function EditorPane({
         const ratio = remainingPreviewScroll > 0 ? Math.min(1, Math.max(0, previewScroll - prevAnchor.previewTop) / remainingPreviewScroll) : (previewScroll >= previewMaxScroll ? 1 : 0);
         editorElement.scrollTop = prevEditorTop + ratio * remainingEditorScroll;
       } else if (prevAnchor && nextAnchor) {
-        let ratio = 0;
+        let linearRatio = 0;
         const previewDiff = nextAnchor.previewTop - prevAnchor.previewTop;
         if (previewDiff > 0) {
-          ratio = (previewScroll - prevAnchor.previewTop) / previewDiff;
+          linearRatio = (previewScroll - prevAnchor.previewTop) / previewDiff;
         }
+        const ratio = 0.5 * linearRatio + 0.5 * interpolateProgress(linearRatio);
         const prevEditorTop = getEditorLineTop(prevAnchor.line);
         const nextEditorTop = getEditorLineTop(nextAnchor.line);
         editorElement.scrollTop = prevEditorTop + ratio * (nextEditorTop - prevEditorTop);
@@ -321,7 +357,7 @@ export function EditorPane({
       if (!resizeObserver || !previewElement) return;
       resizeObserver.disconnect();
       resizeObserver.observe(previewElement);
-      previewElement.querySelectorAll("img, video, iframe, table, pre, .markdown-image-frame").forEach((node) => {
+      previewElement.querySelectorAll("img, video, iframe, table, pre, .markdown-image-frame, .mermaid-block, .excalidraw-canvas, .callout, .table-container, svg").forEach((node) => {
         resizeObserver.observe(node);
       });
     };
@@ -355,7 +391,7 @@ export function EditorPane({
       editorElement.removeEventListener("scroll", handleEditorScroll);
       previewElement.removeEventListener("scroll", handlePreviewScroll);
     };
-  }, [mode, textareaRef, editorReadyTick, scrollSyncEnabled]);
+  }, [mode, textareaRef, editorReadyTick, scrollSyncEnabled, value]);
 
   const startSplitResize = (event) => {
     const pane = splitPaneRef.current;

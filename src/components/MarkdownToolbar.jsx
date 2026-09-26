@@ -13,7 +13,14 @@ import {
   Link2,
   Table2,
   FileText,
-  ImagePlus,
+  Paperclip,
+  Image as ImageIcon,
+  Music,
+  Film,
+  FileDigit,
+  MessageSquareText,
+  Upload,
+  ExternalLink,
   Zap,
   Scan,
   Workflow,
@@ -27,6 +34,7 @@ import {
 import { ScreenRecordingBar } from "./ScreenRecordingBar";
 import { ScreenSourcePickerModal } from "./ScreenSourcePickerModal";
 import AudioRecorderBar from "./AudioRecorderBar";
+import { MediaAttachmentPicker } from "./MediaAttachmentPicker";
 import { createAudioMixer } from "../utils/audioMixer";
 import AppSelect from "./AppSelect";
 import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath } from "../utils/markdownUtils";
@@ -81,6 +89,9 @@ function getAssetMediaType(pathValue) {
   }
 
   const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
+  if (extension === "json" && decodedFileName.toLowerCase().includes("transcript")) {
+    return "transcript";
+  }
   return getMediaTypeFromExtension(extension) || "document";
 }
 
@@ -135,7 +146,6 @@ export function MarkdownToolbar({
   onIgnoreSpellingWord,
   screenCaptureMode = "auto",
 }) {
-  const imageInputRef = useRef(null);
   const mermaidPopoverRef = useRef(null);
   const assetLinkPopoverRef = useRef(null);
   const referenceLinkPopoverRef = useRef(null);
@@ -156,12 +166,8 @@ export function MarkdownToolbar({
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [assetsError, setAssetsError] = useState("");
   const [referenceError, setReferenceError] = useState("");
-  const [assetSearch, setAssetSearch] = useState("");
-  const [assetFilter, setAssetFilter] = useState("all");
   const [referenceSearch, setReferenceSearch] = useState("");
-  const [linkText, setLinkText] = useState("");
   const [referenceLinkText, setReferenceLinkText] = useState("");
-  const [assetUrl, setAssetUrl] = useState("");
   const [webLinkText, setWebLinkText] = useState("");
   const [webLinkUrl, setWebLinkUrl] = useState("");
   const [webLinkError, setWebLinkError] = useState("");
@@ -307,22 +313,7 @@ export function MarkdownToolbar({
     };
   }, [anyPopoverOpen]);
 
-  const handleMediaSelect = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    try {
-      const { mediaPath, altText } = await insertMediaFromFile(file);
-      const markdown = createMediaMarkdown(altText, mediaPath);
-      insertTextAtCursor(value, onChange, markdown, textareaRef);
-      onNotify?.("Media inserted.", "success");
-    } catch (error) {
-      console.error("Media insertion failed:", error);
-      onNotify?.(error?.message || "Failed to insert media.", "error");
-    } finally {
-      event.target.value = "";
-    }
-  };
 
   const handleInsertCodeBlock = ({ language, code }) => {
     const markdown = `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
@@ -339,20 +330,8 @@ export function MarkdownToolbar({
     { key: "code", icon: Code, title: "Code", before: "`", after: "`", placeholder: "code" },
   ];
 
-  const filteredAssets = availableAssets.filter((asset) => {
-    if (assetFilter !== "all") {
-      const mediaType = asset.mediaType || getAssetMediaType(asset.path);
-      if (mediaType !== assetFilter) return false;
-    }
-
-    const search = assetSearch.trim().toLowerCase();
-    if (!search) return true;
-    const label = `${asset.path || ""} ${getAssetPathDisplayLabel(asset.path)}`;
-    return label.toLowerCase().includes(search);
-  });
   const normalizedTableRows = Math.min(Math.max(Number(tableRows) || 1, 1), 20);
   const normalizedTableColumns = Math.min(Math.max(Number(tableColumns) || 1, 1), 20);
-  const hasValidAssetUrl = isValidHttpUrl(assetUrl);
   const hasValidWebLinkUrl = isValidHttpUrl(webLinkUrl);
   const validationSummary =
     validationStatus === "checking"
@@ -531,7 +510,6 @@ export function MarkdownToolbar({
   async function openAssetLinker() {
     const shouldOpen = toggleToolbarPanel("asset");
     setAssetsError("");
-
     if (!shouldOpen) return;
 
     if (!basePath) {
@@ -542,19 +520,32 @@ export function MarkdownToolbar({
 
     setAssetsLoading(true);
     try {
-      const paths = await listImages(basePath);
-
-      const mediaAssets = (paths || []).map((pathValue) => ({
-        type: "media",
-        path: pathValue,
-        mediaType: getAssetMediaType(pathValue),
-      }));
-
-      setAvailableAssets(mediaAssets);
-      setAssetFilter("all");
-    } catch (error) {
+      const [images, docs] = await Promise.allSettled([
+        listImages(basePath),
+        listDocuments(basePath),
+      ]);
+      const mediaList = images.status === "fulfilled" && Array.isArray(images.value)
+        ? images.value.map((pathValue) => ({
+            type: "media",
+            path: pathValue,
+            mediaType: getAssetMediaType(pathValue),
+            title: getAssetPathDisplayLabel(pathValue) || pathValue,
+          }))
+        : [];
+      const docsList = docs.status === "fulfilled" && Array.isArray(docs.value)
+        ? docs.value.map((doc) => ({
+            type: "document",
+            path: doc.filePath,
+            fileName: doc.fileName,
+            title: (doc.title || doc.fileName || "Untitled note").trim(),
+            displayPath: doc.displayPath || doc.filePath,
+            mediaType: "document",
+          }))
+        : [];
+      setAvailableAssets([...mediaList, ...docsList]);
+    } catch (err) {
       setAvailableAssets([]);
-      setAssetsError(error?.message || "Unable to load workspace assets.");
+      setAssetsError(err?.message || "Unable to load workspace assets.");
     } finally {
       setAssetsLoading(false);
     }
@@ -1280,14 +1271,8 @@ export function MarkdownToolbar({
       <AppIconButton onClick={openTableBuilder} title="Insert table" aria-label="Insert table">
         <Table2 size={16} />
       </AppIconButton>
-      <AppIconButton onClick={openWebLinker} title="Insert web link" aria-label="Insert web link">
-        <Link2 size={16} />
-      </AppIconButton>
-      <AppIconButton onClick={() => void openReferenceLinker()} title="Insert reference note link (Ctrl/Cmd+Shift+K)" aria-label="Insert reference note link">
-        <FileText size={16} />
-      </AppIconButton>
-      <AppIconButton onClick={() => imageInputRef.current?.click()} title="Insert media from file" aria-label="Insert media from file">
-        <ImagePlus size={16} />
+      <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert media and attachments">
+        <Paperclip size={16} />
       </AppIconButton>
       <AppIconButton
         onClick={() => {
@@ -1320,9 +1305,6 @@ export function MarkdownToolbar({
         className={audioRecorderOpen ? "toolbar-btn-capture review" : ""}
       >
         <Mic size={16} />
-      </AppIconButton>
-      <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert workspace asset">
-        <Link size={16} />
       </AppIconButton>
       <AppIconButton onClick={openDiagramBuilder} title="Insert diagram" aria-label="Insert diagram">
         <Zap size={16} />
@@ -1468,83 +1450,20 @@ export function MarkdownToolbar({
         </div>
       )}
 
-      {showAssetLinker && (
-        <div className="image-linker" ref={assetLinkPopoverRef} role="dialog" aria-label="Workspace asset linker">
-          <div className="mermaid-builder-header">
-            <strong>Insert Media From Workspace</strong>
-            <button className="mermaid-close" onClick={() => setShowAssetLinker(false)} data-tooltip="Close">
-              x
-            </button>
-          </div>
-
-          <div className="mermaid-fields">
-            <label>
-              Search assets
-              <input
-                value={assetSearch}
-                onChange={(event) => setAssetSearch(event.target.value)}
-                placeholder="Type media path"
-              />
-            </label>
-            <label>
-              Filter
-              <AppSelect
-                value={assetFilter}
-                onChange={(event) => setAssetFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="image">Images</option>
-                <option value="video">Videos</option>
-                <option value="audio">Audio</option>
-                <option value="pdf">PDFs</option>
-                <option value="document">Documents</option>
-              </AppSelect>
-            </label>
-            <label>
-              Link text (optional)
-              <input
-                value={linkText}
-                onChange={(event) => setLinkText(event.target.value)}
-                placeholder="Defaults to item name"
-              />
-            </label>
-            <label>
-              Asset URL (optional)
-              <input
-                value={assetUrl}
-                onChange={(event) => {
-                  setAssetUrl(event.target.value);
-                  setAssetsError("");
-                }}
-                placeholder="https://example.com/file"
-              />
-            </label>
-          </div>
-
-          <div className="image-linker-url-actions">
-            <button onClick={linkAssetFromUrl} disabled={!hasValidAssetUrl}>Insert URL Asset</button>
-          </div>
-
-          {assetUrl.trim() && !hasValidAssetUrl ? (
-            <p className="toolbar-inline-error">Use a valid http/https URL.</p>
-          ) : null}
-
-          {assetsError && <p className="toolbar-inline-error">{assetsError}</p>}
-          {assetsLoading ? <p className="toolbar-inline-note">Loading assets...</p> : null}
-
-          {!assetsLoading && !filteredAssets.length ? (
-            <p className="toolbar-inline-note">No matching assets found.</p>
-          ) : (
-            <div className="image-linker-list">
-              {filteredAssets.map((asset) => (
-                <button key={asset.path} onClick={() => linkExistingAsset(asset.path)} data-tooltip={asset.path}>
-                  {getAssetPathDisplayLabel(asset.path) || asset.path}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <MediaAttachmentPicker
+        ref={assetLinkPopoverRef}
+        isOpen={showAssetLinker}
+        onClose={() => setShowAssetLinker(false)}
+        basePath={basePath}
+        availableAssets={availableAssets}
+        assetsLoading={assetsLoading}
+        assetsError={assetsError}
+        onInsert={(markdown) => {
+          insertTextAtCursor(value, onChange, `${markdown} `, textareaRef);
+          onNotify?.("Inserted into note.", "success");
+        }}
+        onNotify={onNotify}
+      />
 
       {showReferenceLinker && (
         <div className="image-linker" ref={referenceLinkPopoverRef} role="dialog" aria-label="Reference note picker">
@@ -1775,13 +1694,6 @@ export function MarkdownToolbar({
           ) : null}
         </div>
       )}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept={MEDIA_FILE_INPUT_ACCEPT}
-        onChange={handleMediaSelect}
-        hidden
-      />
       </div>
       <ImageCropModal
         open={screenCaptureOpen}

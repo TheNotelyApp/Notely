@@ -169,8 +169,6 @@ const MENU_ICON_MAP = {
   "mcp tools & capabilities": Wrench,
   "mcp capabilities": Wrench,
 
-  "diagrams media gallery": ImageIcon,
-  "diagrams & media gallery": ImageIcon,
   "trash / removed items": Trash2,
   "trash removed items": Trash2,
 

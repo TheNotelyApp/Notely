@@ -104,7 +104,10 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const requestedFolderPath = String(
       (typeof payload === "string" ? payload : payload?.folderPath) || ""
     ).trim();
-    const targetDir = path.resolve(requestedFolderPath || projectRoot);
+    let targetDir = path.resolve(requestedFolderPath || projectRoot);
+    if (fs.existsSync(targetDir) && fs.statSync(targetDir).isFile()) {
+      targetDir = path.dirname(targetDir);
+    }
 
     if (!filePathWithin(projectRoot, targetDir)) {
       throw new Error("Invalid folder path.");
