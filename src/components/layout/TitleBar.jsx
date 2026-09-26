@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Minus, Square, Copy, X, Check, ChevronRight, Globe,
-  FilePlus, FolderPlus, FolderOpen, Clock, Save, RefreshCw, Package, Edit2, Trash2, ArrowLeft, RotateCcw, Power,
+  FilePlus, FolderPlus, FolderOpen, Folder, Clock, Save, RefreshCw, Package, Edit2, Trash2, ArrowLeft, RotateCcw, Power,
   Undo2, Redo2, Scissors, Clipboard, CheckSquare, Search, Replace, Camera, BookOpen, Command,
   SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
   ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
-  Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type
+  Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type,
+  Calendar, FolderTree, FileCode, FileSpreadsheet, LayoutGrid, AlignJustify, AlignLeft
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -19,21 +20,32 @@ const MENU_ICON_MAP = {
   "new note": FilePlus,
   "note": FileText,
   "folder": FolderPlus,
+  "new folder": FolderPlus,
   "open workspace": FolderOpen,
   "open recent": Clock,
   "no recent workspaces": Clock,
   "recent workspaces": Clock,
   "save": Save,
   "save*": Save,
+  "close tab": X,
   "auto save": RefreshCw,
   "export pdf": FileDown,
   "export note package": Upload,
   "import note package": Download,
   "export/import note package": Package,
   "rename note": Edit2,
+  "copy note": Copy,
+  "move note": FolderOutput,
+  "to workspace": FolderOpen,
+  "to folder (current workspace)": Folder,
+  "[ workspace root ]": FolderOpen,
+  "[ root / top level ]": FolderOpen,
+  "no other folders available": Folder,
+  "no workspaces available": FolderOpen,
   "reload from disk": RefreshCw,
   "reload workspace from disk": RefreshCw,
   "move note to removed": Trash2,
+  "remove note": Trash2,
   "back to notes": ArrowLeft,
   "restart notely": RotateCcw,
   "quit": Power,
@@ -58,26 +70,49 @@ const MENU_ICON_MAP = {
   "dark": SunMoon,
   "font": Type,
   "font family": Type,
+  "inter (default)": Type,
+  "jetbrains mono": Type,
+  "fira code": Type,
+  "cascadia code": Type,
+  "source code pro": Type,
   "enable typo check": SpellCheck,
   "set icon & color": Palette,
+  "set icon color": Palette,
+  "icon & color": Palette,
+  "icon color": Palette,
   "editor layout": Layout,
   "show outline": Layout,
   "split preview": Columns,
   "focus mode": Maximize2,
   "sync split scroll": RefreshCw,
   "table click behavior": Table,
+  "interactive table editor": Table,
+  "raw markdown": FileCode,
   "preview options": Eye,
+  "images": ImageIcon,
+  "thumbnail": ImageIcon,
+  "original": Maximize2,
+  "embedded markdown files": FileText,
+  "open linked note": ExternalLink,
+  "inline render": Eye,
+  "toggle full screen (focus mode)": Maximize2,
   "zoom": ZoomIn,
   "zoom in": ZoomIn,
   "zoom out": ZoomOut,
   "reset zoom": Minimize2,
   "developer": Code,
+  "reload": RefreshCw,
+  "force reload": RefreshCw,
+  "toggle developer tools": Code,
   "dashboard view": Layout,
-  "tile notes": Layout,
-  "table notes": Layout,
+  "tile notes": LayoutGrid,
+  "table notes": Table,
+  "tree notes": FolderTree,
+  "comfortable density": AlignJustify,
+  "compact density": AlignLeft,
 
   "tasks": CheckSquare,
-  "calendar": Clock,
+  "calendar": Calendar,
   "assets library": ImageIcon,
   "downloads & export history": Download,
   "downloads export history": Download,
@@ -85,6 +120,9 @@ const MENU_ICON_MAP = {
   "workspace index": Layers,
   "workspace information": Info,
   "workspace activity": Activity,
+  "write note metadata to file": FileSpreadsheet,
+  "enabled": Check,
+  "disabled": X,
   "reload workspace": RefreshCw,
   "open workspace in vs code": ExternalLink,
   "reveal workspace in file explorer": FolderSearch,
@@ -99,6 +137,7 @@ const MENU_ICON_MAP = {
 
   "open version control": GitBranch,
   "commit…": GitCommit,
+  "commit": GitCommit,
   "history": History,
   "diff current note": GitCompare,
   "compare versions": GitCompare,
@@ -134,10 +173,8 @@ const MENU_ICON_MAP = {
   "trash / removed items": Trash2,
   "trash removed items": Trash2,
 
-
   "help center": HelpCircle,
   "markdown guide": Book,
-  "commit": GitCommit,
   "keyboard shortcuts": Keyboard,
   "report bug / feedback": MessageSquareWarning,
   "system & application logs": FileTerminal,
@@ -149,11 +186,12 @@ const MENU_ICON_MAP = {
 function getItemIcon(item) {
   if (!item) return null;
 
-  const rawLabel = String(item.label || "").toLowerCase().replace(/&/g, " ").replace(/\s+/g, " ").trim();
-  const cleanLabel = rawLabel.replace(/…/g, "").replace(/\.\.\./g, "").trim();
+  const rawLabel = String(item.label || "").toLowerCase().trim();
+  const normalizedLabel = rawLabel.replace(/&/g, " ").replace(/\s+/g, " ").trim();
+  const cleanLabel = normalizedLabel.replace(/…/g, "").replace(/\.\.\./g, "").trim();
   const roleKey = String(item.role || "").toLowerCase().trim();
 
-  let IconComponent = MENU_ICON_MAP[cleanLabel] || MENU_ICON_MAP[rawLabel] || MENU_ICON_MAP[roleKey];
+  let IconComponent = MENU_ICON_MAP[cleanLabel] || MENU_ICON_MAP[normalizedLabel] || MENU_ICON_MAP[rawLabel] || MENU_ICON_MAP[roleKey];
 
   if (!IconComponent) {
     if (rawLabel.includes("asset")) {
@@ -172,12 +210,16 @@ function getItemIcon(item) {
       IconComponent = Trash2;
     } else if (rawLabel.includes("workspace")) {
       IconComponent = FolderOpen;
-    } else if (rawLabel.includes("recent")) {
+    } else if (rawLabel.includes("recent") || rawLabel.includes("more")) {
       IconComponent = Clock;
     } else if (rawLabel.includes("export") || rawLabel.includes("import")) {
       IconComponent = Package;
     } else if (rawLabel.includes("theme")) {
       IconComponent = SunMoon;
+    } else if (rawLabel.includes("color") || (rawLabel.includes("icon") && !rawLabel.includes("notely"))) {
+      IconComponent = Palette;
+    } else if (rawLabel.includes("font") || rawLabel.includes("code") || rawLabel.includes("mono")) {
+      IconComponent = Type;
     } else if (rawLabel.includes("zoom")) {
       IconComponent = ZoomIn;
     } else if (rawLabel.includes("reload") || rawLabel.includes("refresh")) {
@@ -185,7 +227,7 @@ function getItemIcon(item) {
     } else if (rawLabel.includes("task")) {
       IconComponent = CheckSquare;
     } else if (rawLabel.includes("calendar")) {
-      IconComponent = Clock;
+      IconComponent = Calendar;
     } else if (rawLabel.includes("remove") || rawLabel.includes("delete") || rawLabel.includes("trash")) {
       IconComponent = Trash2;
     } else if (rawLabel.includes("new")) {
@@ -200,6 +242,22 @@ function getItemIcon(item) {
       IconComponent = RefreshCw;
     } else if (rawLabel.includes("help") || rawLabel.includes("about")) {
       IconComponent = HelpCircle;
+    } else if (rawLabel.includes("table")) {
+      IconComponent = Table;
+    } else if (rawLabel.includes("tile")) {
+      IconComponent = LayoutGrid;
+    } else if (rawLabel.includes("tree")) {
+      IconComponent = FolderTree;
+    } else if (rawLabel.includes("density")) {
+      IconComponent = AlignJustify;
+    } else if (rawLabel.includes("close")) {
+      IconComponent = X;
+    } else if (rawLabel.includes("metadata")) {
+      IconComponent = FileSpreadsheet;
+    } else if (rawLabel.includes("folder") || rawLabel.includes("directory")) {
+      IconComponent = Folder;
+    } else if (/^[a-zA-Z]:[\\/]/.test(rawLabel) || rawLabel.startsWith("/") || rawLabel.startsWith("~") || rawLabel.includes("\\") || rawLabel.includes("/")) {
+      IconComponent = Folder;
     }
   }
 
