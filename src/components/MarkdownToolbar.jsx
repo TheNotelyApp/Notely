@@ -22,9 +22,12 @@ import {
   LayoutTemplate,
   Info,
   Video,
+  Mic,
 } from "lucide-react";
 import { ScreenRecordingBar } from "./ScreenRecordingBar";
 import { ScreenSourcePickerModal } from "./ScreenSourcePickerModal";
+import AudioRecorderBar from "./AudioRecorderBar";
+import { createAudioMixer } from "../utils/audioMixer";
 import AppSelect from "./AppSelect";
 import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath } from "../utils/markdownUtils";
 import { insertMediaFromFile } from "../services/imageService";
@@ -182,6 +185,7 @@ export function MarkdownToolbar({
   const [screenRecording, setScreenRecording] = useState(false);
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [sourcePickerSources, setSourcePickerSources] = useState([]);
+  const [audioRecorderOpen, setAudioRecorderOpen] = useState(false);
   const screenRecorderRef = useRef(null);
   const screenRecorderAudioTrackRef = useRef(null);
 
@@ -778,7 +782,11 @@ export function MarkdownToolbar({
       let displayStream = null;
       try {
         displayStream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
+          audio: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+            },
+          },
           video: {
             mandatory: {
               chromeMediaSource: "desktop",
@@ -787,20 +795,47 @@ export function MarkdownToolbar({
           },
         });
       } catch {
-        displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        try {
+          displayStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: "desktop",
+                chromeMediaSourceId: selectedSource.id,
+              },
+            },
+          });
+        } catch {
+          displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        }
       }
 
+      let micStream = null;
       let audioTrack = null;
       if (recordMic) {
         try {
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioTrack = micStream.getAudioTracks()[0] ?? null;
         } catch {
           // Mic denied or unavailable
         }
       }
 
-      const tracks = [...displayStream.getTracks(), ...(audioTrack ? [audioTrack] : [])];
+      const systemAudioTracks = displayStream.getAudioTracks();
+      let combinedAudioTrack = audioTrack;
+
+      if (micStream && systemAudioTracks.length > 0) {
+        try {
+          const mixer = createAudioMixer({ micStream, systemStream: displayStream });
+          combinedAudioTrack = mixer.mixedAudioTrack;
+        } catch (mixErr) {
+          console.warn("[MarkdownToolbar] Audio mixing failed, falling back to mic track:", mixErr);
+        }
+      } else if (systemAudioTracks.length > 0 && !audioTrack) {
+        combinedAudioTrack = systemAudioTracks[0];
+      }
+
+      const tracks = [...displayStream.getVideoTracks(), ...(combinedAudioTrack ? [combinedAudioTrack] : [])];
       const combined = new MediaStream(tracks);
 
       let mimeType = "";
@@ -954,6 +989,25 @@ export function MarkdownToolbar({
     onNotify?.("Screen recording canceled.", "info");
   };
 
+  const handleAudioRecordingSuccess = ({ audioPath, transcriptPath, duration, transcript }) => {
+    let markdown = `![[${audioPath}]]\n\n`;
+    if (transcript) {
+      const mins = Math.floor((duration || 0) / 60).toString().padStart(2, "0");
+      const secs = Math.floor((duration || 0) % 60).toString().padStart(2, "0");
+      markdown += `> [!NOTE] 🎙️ Audio Recording & Transcript (${mins}:${secs})\n`;
+      markdown += `> **Source**: ${transcript.sourceMode === "meeting" ? "Meeting (Mic + System Audio)" : "Microphone"}\n`;
+      if (transcriptPath) {
+        markdown += `> [[${transcriptPath}|View Full Transcript & Summary]]\n`;
+      }
+      if (transcript.fullText) {
+        const preview = transcript.fullText.length > 200 ? transcript.fullText.slice(0, 200) + "..." : transcript.fullText;
+        markdown += `>\n> "${preview}"\n`;
+      }
+    }
+    insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
+    onNotify?.("Audio recording & transcript inserted into note.", "success");
+  };
+
   const insertCapturedImage = async (dataUrl) => {
     if (screenCaptureSaving) return false;
 
@@ -1036,6 +1090,11 @@ export function MarkdownToolbar({
 
   useEffect(() => {
     const onShortcut = (event) => {
+      if (event.altKey && String(event.key || "").toLowerCase() === "v") {
+        event.preventDefault();
+        setAudioRecorderOpen((prev) => !prev);
+        return;
+      }
       if (!(event.ctrlKey || event.metaKey) || !event.shiftKey) return;
       const key = String(event.key || "").toLowerCase();
       if (key === "k") {
@@ -1252,6 +1311,15 @@ export function MarkdownToolbar({
         className={screenRecording ? "toolbar-btn-capture review" : ""}
       >
         <Video size={16} />
+      </AppIconButton>
+      <AppIconButton
+        onClick={() => setAudioRecorderOpen(true)}
+        title="Record audio & meeting with Speech-to-Text (Alt+V)"
+        aria-label="Record audio and meeting"
+        disabled={audioRecorderOpen || screenRecording}
+        className={audioRecorderOpen ? "toolbar-btn-capture review" : ""}
+      >
+        <Mic size={16} />
       </AppIconButton>
       <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert workspace asset">
         <Link size={16} />
@@ -1743,6 +1811,16 @@ export function MarkdownToolbar({
           onStop={handleRecordingStop}
           onCancel={handleRecordingCancel}
         />
+      )}
+      {audioRecorderOpen && (
+        <div style={{ position: "fixed", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 9999 }}>
+          <AudioRecorderBar
+            isOpen={audioRecorderOpen}
+            onClose={() => setAudioRecorderOpen(false)}
+            onSaveSuccess={handleAudioRecordingSuccess}
+            initialMode="meeting"
+          />
+        </div>
       )}
     </>
   );

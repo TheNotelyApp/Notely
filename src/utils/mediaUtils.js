@@ -61,10 +61,24 @@ export function extractAllMediaFromMarkdown(content) {
   return mediaItems;
 }
 
-export function getMediaTypeFromExtension(extension) {
+export function getMediaTypeFromExtension(extension, filePath = "") {
   if (!extension) return null;
 
   const ext = extension.toLowerCase();
+
+  // Transcripts (json in audio directory, transcript in path/name, or vtt/srt captions)
+  if (
+    (ext === "json" && (/[/\\]audio[/\\]/i.test(filePath) || /transcript/i.test(filePath))) ||
+    ext === "vtt" ||
+    ext === "srt"
+  ) {
+    return MEDIA_TYPES.TRANSCRIPT;
+  }
+
+  // If path is in audio folder or contains audio, treat webm/ogg/audio files as audio
+  if (filePath && /[/\\]audio[/\\]/i.test(filePath) && ["webm", "ogg", "wav", "mp3", "m4a", "flac", "aac", "wma"].includes(ext)) {
+    return MEDIA_TYPES.AUDIO;
+  }
 
   // Images
   if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) {

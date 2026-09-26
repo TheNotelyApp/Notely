@@ -6,6 +6,24 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ### Added
 
+- Added **Dual-Stream Audio Capture & Meeting Recording**:
+  - Captures microphone and Windows desktop/system audio loopback simultaneously using Web Audio API AudioContext mixer (`src/utils/audioMixer.js`).
+  - Supports 3 capture modes: Meeting Mode (Mic + System Audio), Microphone Only, and System Audio Only.
+  - Live audio waveform visualizer canvas and recording timer with pause/resume support (`AudioRecorderBar.jsx`).
+  - Keyboard shortcut `Alt + V` to toggle audio/meeting recorder in the editor toolbar.
+- Added **Speech-to-Text (STT) Transcription Service & Model Settings**:
+  - Offline on-device transcription via Local ONNX Whisper (`whisper-tiny.en`, `whisper-base.en`, `whisper-small`).
+  - High-speed cloud transcription via Groq (`whisper-large-v3`) and OpenAI (`whisper-1`).
+  - Dedicated **Speech-to-Text** subtab in AI Settings (`AISettings.jsx`) for selecting engines, local models, capture defaults, and languages.
+  - Transcripts saved as structured companion `.json` files alongside audio in `media/audio/*.json` with timestamps, speaker attributions, key points, and action items.
+- Added **Landing Page Quick Capture Bar**:
+  - Integrated header toolbar on the landing dashboard (`LandingQuickCaptureBar.jsx`) for one-click Screen Snip, Desktop Recording, and Audio/Meeting Recording.
+  - Saves captured media directly to workspace media storage with zero note modifications.
+  - Notification toast provides direct 1-click `[Open Gallery]` action.
+- Added **Workspace Media Gallery Unused Media Filter & Audio Player**:
+  - Physical disk scanner (`media:list-disk-assets` IPC) discovers files in `media/`, `assets/`, and `images/`.
+  - New `⚠️ Unused / Orphans` filter tab and header stats indicator isolating unreferenced media files (`referenceCount === 0`).
+  - Interactive audio player preview (`AudioPlayerPreviewItem`) and orphan action buttons (`Copy Markdown Embed`).
 - Added **Multiple Developer-Friendly Fonts Support** (`View → Font`).
   - Choose between 5 curated IDE/developer-friendly typefaces: Inter (Default), JetBrains Mono, Fira Code, Cascadia Code, and Source Code Pro.
   - Changes cascade in real time across all app labels, navigation items, buttons, dialogs, and controls.

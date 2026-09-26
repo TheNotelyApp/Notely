@@ -55,6 +55,8 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Toggle Outline Panel | `Ctrl/Cmd + Alt + L` | Editor |
 | Open Reference Note | `Ctrl/Cmd + Shift + K` | Editor |
 | Insert Reference Link | `Ctrl/Cmd + Shift + L` | Editor |
+| Capture Screen Snip | `Ctrl/Cmd + Shift + S` | Editor |
+| Toggle Audio / Meeting Recorder | `Alt + V` | Editor |
 
 ## Search & Find Panel
 

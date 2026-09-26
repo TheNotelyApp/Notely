@@ -25,7 +25,7 @@ describe("ExportPdfModal component", () => {
     document.body.innerHTML = "";
   });
 
-  it("renders all preset quality cards and target document name", async () => {
+  it("renders all preset quality cards", async () => {
     const handleSelect = vi.fn();
     const handleExport = vi.fn();
     const handleClose = vi.fn();
@@ -34,7 +34,6 @@ describe("ExportPdfModal component", () => {
       root.render(
         <ExportPdfModal
           open={true}
-          documentTitle="Architecture Design.md"
           pdfQualityPreset="full"
           onSelectPreset={handleSelect}
           onExport={handleExport}

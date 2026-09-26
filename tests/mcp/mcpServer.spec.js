@@ -30,9 +30,10 @@ describe('Notely MCP Server Subsystem Tests', () => {
   const tempDir = path.join(__dirname, 'temp-mcp-test');
 
   beforeAll(() => {
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    if (fs.existsSync(tempDir)) {
+      try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
     }
+    fs.mkdirSync(tempDir, { recursive: true });
   });
 
   afterAll(() => {
@@ -107,7 +108,7 @@ describe('Notely MCP Server Subsystem Tests', () => {
 
   describe('McpServer HTTP & Tool Endpoints', () => {
     let server;
-    const testPort = 3798;
+    const testPort = 3800 + Math.floor(Math.random() * 400);
     const sessionManager = new McpSessionManager();
     const recordedEvents = [];
 

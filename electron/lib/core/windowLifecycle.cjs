@@ -345,12 +345,12 @@ function createWindowLifecycle(deps) {
     const isDev = Boolean(rendererUrl);
  
     const scriptSrc = isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-      : "script-src 'self' 'unsafe-inline'";
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net"
+      : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net";
  
     const connectSrc = isDev
-      ? "connect-src 'self' https://api.languagetool.org https://esm.sh https://unpkg.com ws: http://127.0.0.1:* http://localhost:*"
-      : "connect-src 'self' https://api.languagetool.org https://esm.sh https://unpkg.com";
+      ? "connect-src 'self' data: blob: https://huggingface.co https://*.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://api.languagetool.org https://esm.sh https://unpkg.com ws: http://127.0.0.1:* http://localhost:*"
+      : "connect-src 'self' data: blob: https://huggingface.co https://*.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://api.languagetool.org https://esm.sh https://unpkg.com";
  
     return [
       "default-src 'self'",
@@ -360,7 +360,7 @@ function createWindowLifecycle(deps) {
       "media-src 'self' data: blob: file:",
       "font-src 'self' https://fonts.gstatic.com https://esm.sh https://unpkg.com data:",
       connectSrc,
-      "worker-src 'self' blob:",
+      "worker-src 'self' blob: data: https://cdn.jsdelivr.net",
       "child-src 'self' blob: data:",
       "object-src 'none'",
       "base-uri 'self'",
@@ -462,7 +462,8 @@ function createWindowLifecycle(deps) {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        webviewTag: false
+        webviewTag: false,
+        backgroundThrottling: false,
       }
     };
 
@@ -616,6 +617,7 @@ function createWindowLifecycle(deps) {
         nodeIntegration: false,
         sandbox: true,
         webviewTag: false,
+        backgroundThrottling: false,
       },
     });
 

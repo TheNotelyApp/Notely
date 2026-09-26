@@ -284,6 +284,21 @@
   transform: translateY(0);
 }
 
+.preview .markdown-audio-card .markdown-image-actions {
+  top: 8px;
+  right: 12px;
+}
+
+.preview .markdown-audio-badge {
+  transition: opacity 0.15s ease;
+}
+
+.preview .markdown-audio-card:hover .markdown-audio-badge,
+.preview .markdown-audio-card:focus-within .markdown-audio-badge {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .preview .markdown-image-action {
   border: none;
   background: transparent;

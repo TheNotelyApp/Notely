@@ -1,5 +1,3 @@
-const path = require("node:path");
-
 function sanitizePdfMarkdown(markdown) {
   const source = String(markdown || "");
 

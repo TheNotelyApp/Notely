@@ -27,7 +27,6 @@ const PRESET_OPTIONS = [
 export function ExportPdfModal({
   open,
   onClose,
-  documentTitle = "",
   pdfQualityPreset = "full",
   onSelectPreset,
   onExport,

@@ -5,6 +5,7 @@ import {
   normalizeAssetPath,
   extractWorkspaceUsedAssets,
   filterAssets,
+  mergeDiskMediaIntoCatalog,
 } from "../../services/workspaceMediaService";
 
 describe("workspaceMediaService", () => {
@@ -137,6 +138,59 @@ And the same architecture image:
     // Usage filter (multi notes)
     expect(filterAssets(items, { usageFilter: "multi" }).length).toBe(2);
     expect(filterAssets(items, { usageFilter: "single" }).length).toBe(1);
+
+    // Usage filter (unused / orphans)
+    const itemsWithUnused = [
+      ...items,
+      {
+        id: "disk-4",
+        name: "meeting_recording.webm",
+        category: "audio",
+        subType: "webm",
+        referenceCount: 0,
+        referencedBy: [],
+        isUnused: true,
+      },
+    ];
+    expect(filterAssets(itemsWithUnused, { usageFilter: "unused" }).length).toBe(1);
+    expect(filterAssets(itemsWithUnused, { usageFilter: "unused" })[0].name).toBe("meeting_recording.webm");
+  });
+
+  it("merges physical disk files into catalog and identifies unreferenced orphans", () => {
+    const usedAssets = [
+      {
+        id: "1",
+        name: "logo.png",
+        path: "images/logo.png",
+        category: "image",
+        referenceCount: 1,
+        referencedBy: [{ noteTitle: "Intro" }],
+      },
+    ];
+
+    const diskFiles = [
+      { path: "images/logo.png", name: "logo.png", ext: "png", size: 1024 },
+      { path: "media/audio/meeting_2026.webm", name: "meeting_2026.webm", ext: "webm", size: 50000 },
+      { path: "media/snips/snip_123.png", name: "snip_123.png", ext: "png", size: 24000 },
+    ];
+
+    const combined = mergeDiskMediaIntoCatalog(usedAssets, diskFiles);
+    expect(combined.length).toBe(3);
+
+    const unusedAudio = combined.find((a) => a.name === "meeting_2026.webm");
+    expect(unusedAudio).toBeDefined();
+    expect(unusedAudio.category).toBe("audio");
+    expect(unusedAudio.referenceCount).toBe(0);
+    expect(unusedAudio.isUnused).toBe(true);
+
+    const unusedSnip = combined.find((a) => a.name === "snip_123.png");
+    expect(unusedSnip).toBeDefined();
+    expect(unusedSnip.referenceCount).toBe(0);
+    expect(unusedSnip.isUnused).toBe(true);
+
+    // Existing used logo kept its references
+    const logo = combined.find((a) => a.name === "logo.png");
+    expect(logo.referenceCount).toBe(1);
   });
 
   it("extracts Excalidraw and Draw.io diagrams with diagramId", () => {
@@ -165,5 +219,43 @@ Excalidraw:
     expect(excalidraw).toBeDefined();
     expect(excalidraw.category).toBe("diagram");
     expect(excalidraw.diagramId).toBe("exc_123");
+  });
+
+  it("identifies audio companion transcripts and filters them by transcript category", () => {
+    const diskFiles = [
+      {
+        path: "media/audio/meeting_2026-09-26.webm",
+        name: "meeting_2026-09-26.webm",
+        ext: "webm",
+        size: 500000,
+        mtime: "2026-09-26T10:00:00Z",
+      },
+      {
+        path: "media/audio/meeting_2026-09-26.json",
+        name: "meeting_2026-09-26.json",
+        ext: "json",
+        size: 1200,
+        mtime: "2026-09-26T10:01:00Z",
+      },
+      {
+        path: "media/interview_transcript.json",
+        name: "interview_transcript.json",
+        ext: "json",
+        size: 2400,
+        mtime: "2026-09-26T11:00:00Z",
+      },
+    ];
+
+    const catalog = mergeDiskMediaIntoCatalog([], diskFiles);
+    const transcripts = catalog.filter((a) => a.category === "transcript");
+
+    expect(transcripts.length).toBe(2);
+    expect(transcripts.map((t) => t.name)).toContain("meeting_2026-09-26.json");
+    expect(transcripts.map((t) => t.name)).toContain("interview_transcript.json");
+
+    const filtered = filterAssets(catalog, {
+      selectedCategories: { transcript: true, audio: false, video: false, image: false, diagram: false, document: false, pdf: false },
+    });
+    expect(filtered.length).toBe(2);
   });
 });

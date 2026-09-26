@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  FileDown,
   FilePenLine,
   PenLine,
   SplitSquareHorizontal,
@@ -1527,7 +1526,6 @@ export function DocumentDetail({
         <ExportPdfModal
           open={pdfOptionsOpen}
           onClose={() => setPdfOptionsOpen(false)}
-          documentTitle={document.title}
           pdfQualityPreset={pdfQualityPreset}
           onSelectPreset={setPdfQualityPreset}
           onExport={handleConfirmPdfExport}

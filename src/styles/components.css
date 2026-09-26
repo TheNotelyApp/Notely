@@ -6031,6 +6031,202 @@
   height: auto !important;
 }
 
+/* ==========================================================================
+   Quick Capture & Audio Recorder Bar (STT)
+   ========================================================================== */
+
+.landing-quick-capture-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3, 8px);
+  padding: var(--space-3, 8px) var(--space-4, 12px);
+  background: var(--surface-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg, 8px);
+  margin-bottom: var(--space-4, 12px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--motion-fast);
+}
+
+.landing-quick-capture-bar:hover {
+  border-color: var(--border-default);
+}
+
+.landing-quick-capture-label {
+  font-size: var(--font-size-caption, 11px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-right: var(--space-2, 4px);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 4px);
+  user-select: none;
+}
+
+.landing-quick-capture-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 6px);
+  font-size: var(--font-size-label, 12px);
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: var(--radius-md, 6px);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: all var(--motion-fast);
+  user-select: none;
+}
+
+.landing-quick-capture-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--border-default);
+  color: var(--text-strong);
+  transform: translateY(-1px);
+}
+
+.landing-quick-capture-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.landing-quick-capture-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.landing-quick-gallery-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-caption, 11px);
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--accent-solid);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 4px);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.landing-quick-gallery-link:hover {
+  background: var(--surface-accent, rgba(47, 93, 98, 0.08));
+  color: var(--accent-strong);
+}
+
+/* Floating / Embedded Audio Recorder Bar */
+.audio-recorder-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 12px);
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.2));
+  border-radius: var(--radius-xl, 10px);
+  padding: 8px 14px;
+  color: var(--text-strong);
+  font-size: var(--font-size-body-sm, 13px);
+  font-family: inherit;
+  z-index: 1000;
+  min-width: 460px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.audio-recorder-mode-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 6px);
+  padding: 2px;
+  gap: 2px;
+}
+
+.audio-recorder-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: var(--font-size-caption, 11px);
+  font-weight: 600;
+  transition: all var(--motion-fast);
+  user-select: none;
+}
+
+.audio-recorder-mode-btn:hover:not(.active) {
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--text-strong) 8%, transparent);
+}
+
+.audio-recorder-mode-btn.active {
+  background: var(--accent-solid);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.audio-recorder-timer-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-recorder-pulsing-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: rec-pulse 1.2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+.audio-recorder-pulsing-dot.is-paused {
+  background: #f59e0b;
+  box-shadow: none;
+  animation: none;
+}
+
+.audio-recorder-timer-digits {
+  font-family: var(--font-mono, "JetBrains Mono", Consolas, monospace);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+.audio-recorder-canvas {
+  border-radius: var(--radius-xs, 3px);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+}
+
+.audio-recorder-status-msg {
+  font-size: var(--font-size-caption, 11px);
+  color: var(--text-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-recorder-status-msg.is-error {
+  color: var(--accent-red, #ef4444);
+}
+
+
 
 
 

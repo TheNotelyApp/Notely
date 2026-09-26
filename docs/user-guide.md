@@ -177,3 +177,28 @@ Customize app look and feel to fit your workflow:
 - **Help -> Help Center** (`F1`) for in-app help.
 - **Help -> Keyboard Shortcuts** (`Ctrl/Cmd + /`) for key bindings.
 - **Help -> About Notely** for app version details.
+
+## 14. Record Meetings, Capture Audio & Manage Media Gallery
+
+### Record a Meeting with Dual-Stream Audio (Mic + System Loopback)
+
+1. Open any note or press `Alt + V` (or click the 🎙️ **Record Audio** icon on the editor toolbar).
+2. Choose **Meeting Mode** to capture both your voice and speakers/participants (Zoom, Google Meet, Teams, YouTube).
+3. Click **Start Recording**. A live waveform visualizer and recording timer start.
+4. When the discussion finishes, click **Stop & Transcribe**.
+5. Notely transcribes the discussion with Whisper (local offline ONNX or cloud), saves the `.webm` audio and `.json` transcript to `media/audio/`, and automatically inserts the audio player and transcript block at your cursor.
+
+### Quick Capture from the Landing Dashboard
+
+1. On the landing dashboard, use the **Quick Capture** toolbar:
+   - 📸 **Snip Screen**: Capture any desktop region to an image file.
+   - 🎥 **Record Screen**: Select a screen or application window to record.
+   - 🎙️ **Record Audio**: Capture quick voice memos or meeting audio.
+2. Captured media is stored directly in workspace media storage without modifying any notes.
+3. A notification toast appears with a 1-click **[Open Gallery]** button to inspect the asset immediately.
+
+### Find and Embed Unused / Orphaned Media
+
+1. Open **Workspace -> Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`).
+2. Click the **⚠️ Unused / Orphans** filter tab in the left sidebar or the header stats pill.
+3. Inspect unreferenced files, listen to audio recordings, or click **Copy Markdown Embed** to link them into your notes.

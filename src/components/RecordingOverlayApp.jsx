@@ -10,6 +10,7 @@ export function RecordingOverlayApp() {
   const [paused, setPaused] = useState(false);
   const [hasMic, setHasMic] = useState(true);
   const [micEnabled, setMicEnabled] = useState(true);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     // Listen to state updates pushed from main window
@@ -26,6 +27,15 @@ export function RecordingOverlayApp() {
 
     return () => cleanup();
   }, []);
+
+  // Local ticker fallback to keep elapsed time advancing smoothly
+  useEffect(() => {
+    if (paused || finishing) return;
+    const timer = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [paused, finishing]);
 
   function formatTime(seconds) {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -66,27 +76,35 @@ export function RecordingOverlayApp() {
           50% { opacity: 0.35; }
         }
         .overlay-drag-pill {
-          -webkit-app-region: drag;
-          cursor: grab;
+          -webkit-app-region: no-drag;
           display: flex;
           align-items: center;
           gap: 8px;
           padding: 8px 16px;
-          background: rgba(15, 23, 42, 0.92);
+          background: rgba(15, 23, 42, 0.94);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.18);
           border-radius: 999px;
-          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
           color: #f8fafc;
-          font-family: system-ui, -apple-system, sans-serif;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           font-size: 13px;
         }
-        .overlay-drag-pill:active {
+        .overlay-drag-handle {
+          -webkit-app-region: drag;
+          cursor: grab;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          user-select: none;
+        }
+        .overlay-drag-handle:active {
           cursor: grabbing;
         }
         .overlay-drag-pill button {
-          -webkit-app-region: no-drag;
+          -webkit-app-region: no-drag !important;
+          pointer-events: auto !important;
           background: rgba(255, 255, 255, 0.08);
           border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 8px;
@@ -98,43 +116,54 @@ export function RecordingOverlayApp() {
           display: flex;
           align-items: center;
           gap: 5px;
-          transition: background 0.15s, border-color 0.15s;
+          transition: background 0.15s, border-color 0.15s, transform 0.1s;
           white-space: nowrap;
         }
-        .overlay-drag-pill button:hover {
-          background: rgba(255, 255, 255, 0.18);
-          border-color: rgba(255, 255, 255, 0.3);
+        .overlay-drag-pill button * {
+          pointer-events: none !important;
+        }
+        .overlay-drag-pill button:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.35);
+        }
+        .overlay-drag-pill button:active:not(:disabled) {
+          transform: scale(0.96);
+        }
+        .overlay-drag-pill button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
         }
         .overlay-drag-pill .rec-stop-btn {
           background: rgba(239, 68, 68, 0.25);
           border-color: rgba(239, 68, 68, 0.5);
           color: #fca5a5;
         }
-        .overlay-drag-pill .rec-stop-btn:hover {
+        .overlay-drag-pill .rec-stop-btn:hover:not(:disabled) {
           background: rgba(239, 68, 68, 0.45);
         }
       `}</style>
 
       <div className="overlay-drag-pill">
-        {/* Drag handle icon */}
-        <GripVertical size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
-
-        {/* Recording dot + timer */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: "52px" }}>
-          <span
-            aria-hidden="true"
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: paused ? "#94a3b8" : "#ef4444",
-              flexShrink: 0,
-              animation: paused ? "none" : "rec-pulse 1.4s ease-in-out infinite",
-            }}
-          />
-          <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, letterSpacing: "0.5px" }}>
-            {formatTime(elapsed)}
-          </span>
+        {/* Dedicated drag handle (grip + timer) */}
+        <div className="overlay-drag-handle" title="Drag to reposition">
+          <GripVertical size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: "52px" }}>
+            <span
+              aria-hidden="true"
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: paused ? "#94a3b8" : "#ef4444",
+                flexShrink: 0,
+                animation: paused ? "none" : "rec-pulse 1.4s ease-in-out infinite",
+              }}
+            />
+            <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, letterSpacing: "0.5px" }}>
+              {formatTime(elapsed)}
+            </span>
+          </div>
         </div>
 
         <span style={{ width: "1px", height: "18px", background: "rgba(255,255,255,0.15)" }} aria-hidden="true" />
@@ -142,6 +171,7 @@ export function RecordingOverlayApp() {
         {/* Pause / Resume */}
         <button
           type="button"
+          disabled={finishing}
           title={paused ? "Resume recording" : "Pause recording"}
           aria-label={paused ? "Resume recording" : "Pause recording"}
           onClick={() => sendAction("toggle-pause")}
@@ -154,6 +184,7 @@ export function RecordingOverlayApp() {
         {hasMic && (
           <button
             type="button"
+            disabled={finishing}
             title={micEnabled ? "Mute microphone" : "Unmute microphone"}
             aria-label={micEnabled ? "Mute microphone" : "Unmute microphone"}
             onClick={() => sendAction("toggle-mic")}
@@ -169,19 +200,27 @@ export function RecordingOverlayApp() {
         <button
           type="button"
           className="rec-stop-btn"
+          disabled={finishing}
           title="Stop and save recording"
           aria-label="Stop and save recording"
-          onClick={() => sendAction("stop")}
+          onClick={() => {
+            setFinishing(true);
+            sendAction("stop");
+          }}
         >
-          <Square size={14} fill="currentColor" /> Stop
+          <Square size={14} fill="currentColor" /> {finishing ? "Saving..." : "Stop"}
         </button>
 
         {/* Cancel */}
         <button
           type="button"
+          disabled={finishing}
           title="Cancel recording"
           aria-label="Cancel recording"
-          onClick={() => sendAction("cancel")}
+          onClick={() => {
+            setFinishing(true);
+            sendAction("cancel");
+          }}
           style={{ opacity: 0.6 }}
         >
           <X size={14} />

@@ -302,7 +302,7 @@ export default function App() {
   useEffect(() => {
     const handleToast = (e) => {
       if (e.detail && e.detail.message) {
-        notify(e.detail.message, e.detail.type || "info");
+        notify(e.detail.message, e.detail.type || "info", e.detail.action || null);
       }
     };
     window.addEventListener("app:toast", handleToast);

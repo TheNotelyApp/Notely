@@ -34,6 +34,42 @@ export async function saveVideo(fileName, base64Data) {
   return api.saveVideo({ fileName, base64Data });
 }
 
+export async function saveAudio(fileName, base64Data, transcript = null) {
+  const api = getNotesApi();
+  if (typeof api.saveAudio !== "function") {
+    throw new Error("Audio save unavailable. Please restart the app.");
+  }
+  return api.saveAudio({ fileName, base64Data, transcript });
+}
+
+export async function saveAudioRecording({ fileName, audioBlob, transcript = null }) {
+  if (!audioBlob) {
+    if (transcript) {
+      // Standalone transcript-only save (no audio blob)
+      return saveAudio(fileName || "transcript.json", null, transcript);
+    }
+    throw new Error("Missing audio blob to save.");
+  }
+  const reader = new FileReader();
+  const base64Promise = new Promise((resolve, reject) => {
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+  });
+  reader.readAsDataURL(audioBlob);
+  const base64Data = await base64Promise;
+
+  const actualFileName = fileName || `recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`;
+  return saveAudio(actualFileName, base64Data, transcript);
+}
+
+export async function listDiskMediaAssets() {
+  const api = getNotesApi();
+  if (typeof api.listDiskMediaAssets !== "function") {
+    return [];
+  }
+  return api.listDiskMediaAssets();
+}
+
 export async function listImages(basePath, options = {}) {
   const api = getNotesApi();
   return api.listImages({

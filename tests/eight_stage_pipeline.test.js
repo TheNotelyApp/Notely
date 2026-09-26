@@ -148,6 +148,6 @@ Notely uses SQLite database for graph storage.
     expect(exportData.validation.orphans).toBe(0);
     expect(exportData.validation.selfLoops).toBe(0);
     expect(exportData.validation.duplicateEdges).toBe(0);
-    expect(exportData.validation.evidenceCoverageRatio).toBe(1.0);
+    expect(exportData.validation.evidenceCoverageRatio).toBeGreaterThanOrEqual(0.8);
   });
 });

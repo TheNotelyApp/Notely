@@ -79,9 +79,12 @@ During transfer:
 
 Open via **Workspace -> Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`) or Command Palette:
 - Catalogs all used diagrams (inline Mermaid, Draw.io, Excalidraw), images, videos, audio, and PDF documents in the workspace.
+- **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`) to identify files present on disk that have zero note references.
+- **Unused Media Filter**: Quickly isolate unreferenced assets with the `⚠️ Unused / Orphans` filter tab.
+- **Audio & Media Preview**: Embedded audio players, video thumbnails, and transcript drawer with key points and action items.
 - Reuses Knowledge Graph layout aesthetics with collapsible category filters, search, and stat indicators.
 - Inspect details for any item with high-res/diagram live previews, file paths, and exact note references with line numbers and snippets.
-- Direct "Open Note" navigation into the editor.
+- Direct "Open Note" navigation and "Copy Markdown Link" actions.
 
 ## 2. Editor and Writing Experience
 
@@ -327,6 +330,26 @@ Notely supports area-based screen capture and full screen/window video recording
   - **Draggable Floating Overlay**: Always-on-top pill window with timer (`00:00`), Pause/Resume, Mic Mute/Unmute, Stop & Save (`⏹`), and Cancel (`✕`).
   - **Auto-Save & Linking**: Saves `.webm` files under `media/recordings/` and inserts `![Screen Recording](media/recordings/*.webm)` into the note.
   - **Note Preview & Modal Player**: Renders video links as interactive thumbnail cards with `▶ Play Video` badges and frame decoding. Clicking opens a full-screen playback modal with Download and Copy Path options.
+
+### Audio & Meeting Recording with Speech-to-Text
+
+Record voice notes or entire conference calls (Zoom, Google Meet, Teams, YouTube) directly into Notely with synchronized audio and transcription.
+
+- **Dual-Stream Audio Capture**:
+  - **Meeting Mode**: Simultaneously captures your local microphone and Windows desktop/system audio loopback, combining them into a single stereo track with Web Audio API mixer.
+  - **Microphone Only**: Dedicated voice memo recording.
+  - **System Audio Only**: Captures speakers/audio loopback without mic.
+- **Speech-to-Text (STT) Transcription**:
+  - **Local ONNX Whisper (Offline)**: Runs locally in-app via WebAssembly/ONNX runtime (`whisper-tiny.en`, `whisper-base.en`, `whisper-small`). No internet connection or cloud API keys required.
+  - **Cloud Whisper**: High-speed cloud transcription using Groq (`whisper-large-v3`) or OpenAI (`whisper-1`) with API keys configured in AI Settings.
+- **Transcript Storage**:
+  - Audio files are stored under `media/audio/*.webm`.
+  - Transcripts are saved alongside audio in `media/audio/*.json` containing segmented timestamps, speaker attributions, key points, and action items.
+- **Workflow Differences**:
+- **Media Gallery Integration & Transcripts Filter**:
+  - The **Diagrams, Media & PDFs** gallery (`Workspace -> Diagrams, Media & PDFs`) includes a dedicated **Transcripts** filter category alongside Diagrams, Images, Videos, Audio, PDFs, and Documents.
+  - Selecting a transcript in the gallery opens a rich inspector showing the AI executive summary, timestamped speaker segments, and a one-click button to copy the full transcript text.
+  - **On-Demand Transcript Generation**: Any existing audio or video recording in the Media Gallery has a **Generate AI Transcript** button (`✨`). Clicking it decodes the media track, resamples it to 16kHz mono Float32, runs Whisper (Local ONNX or Cloud Groq/OpenAI based on your AI Settings), and saves a companion transcript JSON file in `media/audio/`.
 
 ### Media preview tools
 

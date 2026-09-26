@@ -4,7 +4,7 @@ import {
   parseDiagramBlocks,
   normalizeMarkdownImagePaths,
 } from "../utils/renderUtils";
-import { readImage } from "../services/electronService";
+import { readImage, runExport } from "../services/electronService";
 import { MermaidBlock } from "./MermaidBlock";
 import { ExcalidrawBlock } from "./ExcalidrawBlock";
 import { DrawioBlock } from "./DrawioBlock";
@@ -21,10 +21,10 @@ export function WebViewPreview({ content, basePath }) {
     const container = pageRef.current;
     if (!container || !basePath) return undefined;
 
-    const mediaElements = Array.from(container.querySelectorAll("img, video"));
+    const mediaElements = Array.from(container.querySelectorAll("img, video, audio"));
     for (const el of mediaElements) {
       const isImg = el instanceof HTMLImageElement;
-      const rawSrc = el.getAttribute("data-asset-path") || el.getAttribute("data-video-src") || el.getAttribute("src") || "";
+      const rawSrc = el.getAttribute("data-asset-path") || el.getAttribute("data-video-src") || el.getAttribute("data-audio-src") || el.getAttribute("src") || "";
       if (!rawSrc || /^(data:|blob:|https?:)/i.test(rawSrc)) continue;
 
       const cleanPath = rawSrc.split(/[?#]/)[0];
@@ -54,6 +54,55 @@ export function WebViewPreview({ content, basePath }) {
   const handlePageClick = async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+
+    // Handle media action buttons (copy, download)
+    const imageAction = target.closest?.("[data-image-action]");
+    if (imageAction instanceof HTMLButtonElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      const frame = imageAction.closest?.(".markdown-image-frame");
+      const media = frame?.querySelector?.("img, audio, video");
+      const assetPath = frame?.getAttribute?.("data-asset-path") || frame?.getAttribute?.("data-audio-src") || frame?.getAttribute?.("data-video-src") || media?.getAttribute?.("src") || "";
+      if (imageAction.dataset.imageAction === "copy") {
+        if (assetPath) {
+          navigator.clipboard.writeText(assetPath);
+        }
+        return;
+      }
+      if (imageAction.dataset.imageAction === "download") {
+        const altText = frame?.getAttribute?.("data-audio-title") || frame?.getAttribute?.("data-video-title") || media?.getAttribute?.("alt") || "media";
+        const rawName = (assetPath || altText).split(/[?#]/)[0].split(/[/\\]/).pop() || "media";
+        (async () => {
+          try {
+            let downloadSrc = assetPath;
+            if (basePath && assetPath && !/^(https?:|data:|blob:)/i.test(assetPath)) {
+              try { downloadSrc = (await readImage(basePath, assetPath)) || assetPath; } catch { /* ignore */ }
+            }
+            if (!downloadSrc && media) downloadSrc = media.src || "";
+            let dataUrl;
+            let srcPath;
+            if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+              dataUrl = downloadSrc;
+            } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("http") || downloadSrc.startsWith("blob:"))) {
+              const resp = await fetch(downloadSrc);
+              const blob = await resp.blob();
+              dataUrl = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+              });
+            } else {
+              srcPath = downloadSrc;
+            }
+            const ext = (rawName.split(".").pop() || "").toLowerCase();
+            await runExport("media", { dataUrl, srcPath, filename: rawName, customExportType: ext, category: "media" });
+          } catch (err) {
+            console.error("Download failed in webview:", err);
+          }
+        })();
+        return;
+      }
+    }
 
     // Handle video card click
     const videoCard = target.closest(".markdown-video-card");

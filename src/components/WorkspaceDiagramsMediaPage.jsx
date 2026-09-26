@@ -20,16 +20,249 @@ import {
   Sparkles,
   ArrowRight,
   Filter,
+  AlertCircle,
+  MessageSquareText,
+  Loader2,
 } from "lucide-react";
 import {
   extractWorkspaceUsedAssets,
   filterAssets,
+  mergeDiskMediaIntoCatalog,
 } from "../services/workspaceMediaService";
-import { readImage, openMediaInDefaultApp } from "../services/electronService";
+import { readImage, openMediaInDefaultApp, listDiskMediaAssets } from "../services/electronService";
 import { readDrawioImage } from "../services/drawioService";
 import { readDiagramImage } from "../services/diagramService";
+import { saveAudioRecording } from "../services/electron/mediaService";
+import { transcribeAudio } from "../services/sttService";
+import { showToast } from "../utils/notificationUtils";
 import AppSelect from "./AppSelect";
 import "../styles/WorkspaceDiagramsMedia.css";
+
+// Audio Preview Component
+function AudioPlayerPreviewItem({ asset, basePath }) {
+  const [dataUrl, setDataUrl] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAudio() {
+      try {
+        const res = await readImage(basePath || "", asset.path);
+        if (!cancelled && res) {
+          setDataUrl(res);
+        }
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    }
+    loadAudio();
+    return () => { cancelled = true; };
+  }, [asset, basePath]);
+
+  if (error || !dataUrl) {
+    return (
+      <div style={{ padding: "16px", textAlign: "center" }}>
+        <Music size={20} style={{ width: 32, height: 32, color: "var(--accent-solid, #ec4899)", marginBottom: "8px" }} />
+        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{asset.name}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "12px", width: "100%", display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
+      <audio controls src={dataUrl} style={{ width: "100%", maxHeight: "36px" }} />
+    </div>
+  );
+}
+
+// Video Preview Component
+function VideoPlayerPreviewItem({ asset, basePath }) {
+  const [dataUrl, setDataUrl] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadVideo() {
+      try {
+        const res = await readImage(basePath || "", asset.path);
+        if (!cancelled && res) {
+          setDataUrl(res);
+        }
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    }
+    loadVideo();
+    return () => { cancelled = true; };
+  }, [asset, basePath]);
+
+  if (error || !dataUrl) {
+    return (
+      <div style={{ padding: "16px", textAlign: "center" }}>
+        <Video size={20} style={{ width: 32, height: 32, color: "var(--accent-solid, #f59e0b)", marginBottom: "8px" }} />
+        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{asset.name}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "8px", width: "100%", display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
+      <video controls src={dataUrl} style={{ width: "100%", maxHeight: "240px", borderRadius: "6px", background: "#000" }} />
+    </div>
+  );
+}
+
+function formatTranscriptSummary(summary) {
+  if (!summary) return "";
+  if (typeof summary === "string") return summary;
+  if (typeof summary === "object") {
+    const parts = [];
+    if (Array.isArray(summary.keyPoints) && summary.keyPoints.length > 0) {
+      parts.push(summary.keyPoints.join(" • "));
+    }
+    if (Array.isArray(summary.actionItems) && summary.actionItems.length > 0) {
+      parts.push("Actions: " + summary.actionItems.join("; "));
+    }
+    return parts.join("\n\n");
+  }
+  return String(summary);
+}
+
+// Transcript Preview Component
+function TranscriptPreviewItem({ asset, basePath, isCardPreview = false, onNotify }) {
+  const [transcriptData, setTranscriptData] = useState(null);
+  const [error, setError] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTranscript() {
+      try {
+        const res = await readImage(basePath || "", asset.path);
+        if (!cancelled && res) {
+          let text = "";
+          if (res.startsWith("data:")) {
+            const base64 = res.split(",")[1];
+            text = decodeURIComponent(escape(atob(base64)));
+          } else {
+            text = res;
+          }
+          try {
+            const parsed = JSON.parse(text);
+            if (!cancelled) setTranscriptData(parsed);
+          } catch {
+            if (!cancelled) setTranscriptData({ text });
+          }
+        }
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    }
+    loadTranscript();
+    return () => { cancelled = true; };
+  }, [asset, basePath]);
+
+  const summaryText = formatTranscriptSummary(transcriptData?.summary);
+  const rawText = transcriptData?.fullText || transcriptData?.text || "";
+
+  if (isCardPreview) {
+    const previewSnippet = summaryText || rawText || (error ? "Transcript" : "Loading transcript...");
+    return (
+      <div style={{ padding: "12px", width: "100%", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: "4px", fontSize: "11px", color: "var(--text-muted)", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 600 }}>
+          <MessageSquareText size={14} />
+          <span style={{ fontSize: "10px", letterSpacing: "0.05em" }}>TRANSCRIPT</span>
+        </div>
+        <p style={{ margin: "4px 0 0 0", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35, fontSize: "11px", color: "var(--text-secondary)" }}>
+          {previewSnippet}
+        </p>
+      </div>
+    );
+  }
+
+  const handleCopyText = () => {
+    const fullText = rawText || JSON.stringify(transcriptData, null, 2);
+    navigator.clipboard.writeText(fullText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    onNotify?.("Transcript copied to clipboard", "success");
+  };
+
+  const hasStructuredSummary = Boolean(
+    transcriptData?.summary &&
+    typeof transcriptData.summary === "object" &&
+    ((Array.isArray(transcriptData.summary.keyPoints) && transcriptData.summary.keyPoints.length > 0) ||
+     (Array.isArray(transcriptData.summary.actionItems) && transcriptData.summary.actionItems.length > 0))
+  );
+
+  return (
+    <div style={{ padding: "12px", width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 600, fontSize: "12px" }}>
+          <MessageSquareText size={16} />
+          <span>Speech-to-Text Transcript</span>
+        </div>
+        <button
+          className="btn btn-secondary btn-sm"
+          type="button"
+          onClick={handleCopyText}
+          style={{ display: "flex", alignItems: "center", gap: "4px", height: "24px", fontSize: "11px", padding: "0 8px" }}
+        >
+          {copied ? <Check size={12} style={{ color: "#10b981" }} /> : <Copy size={12} />}
+          <span>{copied ? "Copied" : "Copy Full Text"}</span>
+        </button>
+      </div>
+
+      {hasStructuredSummary ? (
+        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "6px", fontSize: "11px", lineHeight: 1.4 }}>
+          <strong style={{ color: "#38bdf8", display: "block", marginBottom: "4px" }}>Summary</strong>
+          {Array.isArray(transcriptData.summary.keyPoints) && transcriptData.summary.keyPoints.length > 0 && (
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ fontWeight: 600, color: "var(--text-secondary)", marginBottom: "2px" }}>Key Points</div>
+              <ul style={{ margin: 0, paddingLeft: "16px", color: "var(--text-primary)" }}>
+                {transcriptData.summary.keyPoints.map((pt, idx) => (
+                  <li key={idx} style={{ marginBottom: "2px" }}>{pt}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(transcriptData.summary.actionItems) && transcriptData.summary.actionItems.length > 0 && (
+            <div>
+              <div style={{ fontWeight: 600, color: "var(--text-secondary)", marginBottom: "2px" }}>Action Items</div>
+              <ul style={{ margin: 0, paddingLeft: "16px", color: "var(--text-primary)" }}>
+                {transcriptData.summary.actionItems.map((act, idx) => (
+                  <li key={idx} style={{ marginBottom: "2px" }}>{act}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : summaryText ? (
+        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "6px", fontSize: "11px", lineHeight: 1.4 }}>
+          <strong style={{ color: "#38bdf8", display: "block", marginBottom: "2px" }}>Summary</strong>
+          <span>{summaryText}</span>
+        </div>
+      ) : null}
+
+      {transcriptData?.segments && transcriptData.segments.length > 0 ? (
+        <div style={{ maxHeight: "200px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "4px" }}>
+          {transcriptData.segments.map((seg, idx) => (
+            <div key={idx} style={{ fontSize: "11px", lineHeight: 1.35, display: "flex", gap: "6px" }}>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                [{Math.floor(seg.start || 0)}s]
+              </span>
+              <span>{seg.text}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ maxHeight: "200px", overflowY: "auto", fontSize: "11px", lineHeight: 1.4, whiteSpace: "pre-wrap", color: "var(--text-secondary)" }}>
+          {rawText || "No text content available in transcript."}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Harmonious category colors inspired by Knowledge Graph palette
 const CATEGORY_THEMES = {
@@ -38,6 +271,7 @@ const CATEGORY_THEMES = {
   pdf: { border: "#10b981", bg: "rgba(16, 185, 129, 0.12)", text: "#34d399", label: "PDF" },
   video: { border: "#f59e0b", bg: "rgba(245, 158, 11, 0.12)", text: "#fbbf24", label: "Video" },
   audio: { border: "#ec4899", bg: "rgba(236, 72, 153, 0.12)", text: "#f472b6", label: "Audio" },
+  transcript: { border: "#0ea5e9", bg: "rgba(14, 165, 233, 0.12)", text: "#38bdf8", label: "Transcript" },
   document: { border: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)", text: "#a78bfa", label: "Doc" },
 };
 
@@ -207,6 +441,7 @@ export default function WorkspaceDiagramsMediaPage({
   workspacePath = "",
   onBack,
   onOpenNote,
+  onNotify,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -222,34 +457,137 @@ export default function WorkspaceDiagramsMediaPage({
     pdf: true,
     video: true,
     audio: true,
+    transcript: true,
     document: true,
   });
+
+  const [diskFiles, setDiskFiles] = useState([]);
+  const [transcribingAssetId, setTranscribingAssetId] = useState(null);
+  const [transcriptionStatus, setTranscriptionStatus] = useState("");
+
+  const showNotification = (message, type = "info") => {
+    if (typeof onNotify === "function") {
+      onNotify(message, type);
+    }
+    showToast(message, type);
+  };
+
+  const refreshDiskFiles = async () => {
+    try {
+      const files = await listDiskMediaAssets();
+      if (Array.isArray(files)) {
+        setDiskFiles(files);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    listDiskMediaAssets().then((files) => {
+      if (!cancelled && Array.isArray(files)) {
+        setDiskFiles(files);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [workspacePath, documents]);
 
   // Extract catalog from documents
   const allUsedAssets = useMemo(() => {
     return extractWorkspaceUsedAssets(documents);
   }, [documents]);
 
+  // Merge referenced assets with physical files on disk
+  const allCatalogAssets = useMemo(() => {
+    return mergeDiskMediaIntoCatalog(allUsedAssets, diskFiles);
+  }, [allUsedAssets, diskFiles]);
+
   // Statistics calculation
   const stats = useMemo(() => {
-    const total = allUsedAssets.length;
-    const diagrams = allUsedAssets.filter((a) => a.category === "diagram").length;
-    const images = allUsedAssets.filter((a) => a.category === "image").length;
-    const pdfs = allUsedAssets.filter((a) => a.category === "pdf").length;
-    const media = allUsedAssets.filter((a) => a.category === "video" || a.category === "audio").length;
-    const docs = allUsedAssets.filter((a) => a.category === "document").length;
-    return { total, diagrams, images, pdfs, media, docs };
-  }, [allUsedAssets]);
+    const total = allCatalogAssets.length;
+    const diagrams = allCatalogAssets.filter((a) => a.category === "diagram").length;
+    const images = allCatalogAssets.filter((a) => a.category === "image").length;
+    const pdfs = allCatalogAssets.filter((a) => a.category === "pdf").length;
+    const media = allCatalogAssets.filter((a) => a.category === "video" || a.category === "audio").length;
+    const transcripts = allCatalogAssets.filter((a) => a.category === "transcript").length;
+    const docs = allCatalogAssets.filter((a) => a.category === "document").length;
+    const unused = allCatalogAssets.filter((a) => (a.referenceCount || 0) === 0).length;
+    return { total, diagrams, images, pdfs, media, transcripts, docs, unused };
+  }, [allCatalogAssets]);
+
+  // Generate transcript from audio or video asset
+  const handleGenerateTranscript = async (asset) => {
+    if (!asset || transcribingAssetId) return;
+    setTranscribingAssetId(asset.id);
+    setTranscriptionStatus("Loading media file...");
+
+    // Yield to let React render spinner and status banner immediately
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    try {
+      const targetNotePath = asset.referencedBy[0]?.notePath || workspacePath || "";
+      const dataUrl = await readImage(targetNotePath, asset.path);
+      if (!dataUrl) {
+        throw new Error("Could not read media file data from disk.");
+      }
+
+      // Convert data URL to Blob — sttService.transcribeAudio handles decode/resample internally
+      const res = await fetch(dataUrl);
+      const audioBlob = await res.blob();
+
+      setTranscriptionStatus("Transcribing with Whisper AI (running on CPU/WASM)...");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const result = await transcribeAudio(audioBlob, {
+        language: "auto",
+        generateSummary: true,
+        onProgress: (info) => {
+          if (info?.status === "progress" && typeof info.progress === "number") {
+            const percent = Math.min(100, Math.round(info.progress));
+            if (percent >= 100) {
+              setTranscriptionStatus("Decoding text & generating summary...");
+            } else {
+              setTranscriptionStatus(`Transcribing audio... ${percent}%`);
+            }
+          } else if (info?.status === "done") {
+            setTranscriptionStatus("Finalizing transcript & generating summary...");
+          }
+        },
+      });
+
+      setTranscriptionStatus("Saving companion transcript...");
+      const baseName = asset.name.replace(/\.[^/.]+$/, "");
+      const transcriptFileName = `${baseName}_transcript.json`;
+
+      await saveAudioRecording({
+        fileName: transcriptFileName,
+        audioBlob: null,
+        transcript: {
+          ...result,
+          sourceMedia: asset.path,
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      await refreshDiskFiles();
+      showNotification(`Transcript generated for "${asset.name}"!`, "success");
+    } catch (err) {
+      showNotification(`Transcription failed: ${err.message || err}`, "error");
+    } finally {
+      setTranscribingAssetId(null);
+      setTranscriptionStatus("");
+    }
+  };
 
   // Filtered & searched assets
   const filteredAssets = useMemo(() => {
-    return filterAssets(allUsedAssets, {
+    return filterAssets(allCatalogAssets, {
       searchQuery,
       selectedCategories,
       usageFilter,
       sortOrder,
     });
-  }, [allUsedAssets, searchQuery, selectedCategories, usageFilter, sortOrder]);
+  }, [allCatalogAssets, searchQuery, selectedCategories, usageFilter, sortOrder]);
 
   // Handle toggling categories
   const toggleCategory = (cat) => {
@@ -266,6 +604,7 @@ export default function WorkspaceDiagramsMediaPage({
       pdf: true,
       video: true,
       audio: true,
+      transcript: true,
       document: true,
     });
   };
@@ -277,6 +616,7 @@ export default function WorkspaceDiagramsMediaPage({
       pdf: false,
       video: false,
       audio: false,
+      transcript: false,
       document: false,
     });
   };
@@ -296,6 +636,7 @@ export default function WorkspaceDiagramsMediaPage({
     navigator.clipboard.writeText(textToCopy);
     setCopiedId(asset.id);
     setTimeout(() => setCopiedId(null), 1800);
+    showNotification(`Copied reference for "${asset.name}" to clipboard`, "success");
   };
 
   return (
@@ -316,6 +657,25 @@ export default function WorkspaceDiagramsMediaPage({
       </div>
 
       <div className="wdm-container">
+        {transcribingAssetId && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "8px 14px",
+            background: "rgba(56, 189, 248, 0.12)",
+            border: "1px solid rgba(56, 189, 248, 0.3)",
+            borderRadius: "6px",
+            marginBottom: "12px",
+            fontSize: "12px",
+            color: "var(--text-strong)",
+            fontWeight: "500"
+          }}>
+            <Loader2 size={14} className="spin" style={{ color: "#38bdf8", flexShrink: 0 }} />
+            <span>{transcriptionStatus || "Transcribing audio..."}</span>
+          </div>
+        )}
+
         {/* Header Bar */}
         <div className="wdm-header-actions">
           {/* Search Input */}
@@ -345,8 +705,32 @@ export default function WorkspaceDiagramsMediaPage({
             </span>
             <span style={{ opacity: 0.3 }}>|</span>
             <span>
+              Media: <strong>{stats.media}</strong>
+            </span>
+            <span style={{ opacity: 0.3 }}>|</span>
+            <span>
+              Transcripts: <strong>{stats.transcripts}</strong>
+            </span>
+            <span style={{ opacity: 0.3 }}>|</span>
+            <span>
               PDFs: <strong>{stats.pdfs}</strong>
             </span>
+            {stats.unused > 0 && (
+              <>
+                <span style={{ opacity: 0.3 }}>|</span>
+                <span
+                  onClick={() => setUsageFilter(usageFilter === "unused" ? "all" : "unused")}
+                  style={{
+                    cursor: "pointer",
+                    color: "var(--accent-strong, #f59e0b)",
+                    fontWeight: usageFilter === "unused" ? 700 : 500,
+                  }}
+                  title="Click to toggle Unused / Orphaned assets"
+                >
+                  ⚠️ Unused: <strong>{stats.unused}</strong>
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -395,8 +779,9 @@ export default function WorkspaceDiagramsMediaPage({
                     { key: "diagram", label: "Diagrams", icon: FileCode, count: stats.diagrams, color: CATEGORY_THEMES.diagram.border },
                     { key: "image", label: "Images", icon: ImageIcon, count: stats.images, color: CATEGORY_THEMES.image.border },
                     { key: "pdf", label: "PDF Documents", icon: FileDigit, count: stats.pdfs, color: CATEGORY_THEMES.pdf.border },
-                    { key: "video", label: "Videos", icon: Video, count: allUsedAssets.filter((a) => a.category === "video").length, color: CATEGORY_THEMES.video.border },
-                    { key: "audio", label: "Audio", icon: Music, count: allUsedAssets.filter((a) => a.category === "audio").length, color: CATEGORY_THEMES.audio.border },
+                    { key: "video", label: "Videos", icon: Video, count: allCatalogAssets.filter((a) => a.category === "video").length, color: CATEGORY_THEMES.video.border },
+                    { key: "audio", label: "Audio", icon: Music, count: allCatalogAssets.filter((a) => a.category === "audio").length, color: CATEGORY_THEMES.audio.border },
+                    { key: "transcript", label: "Transcripts", icon: MessageSquareText, count: stats.transcripts, color: CATEGORY_THEMES.transcript.border },
                     { key: "document", label: "Other Documents", icon: File, count: stats.docs, color: CATEGORY_THEMES.document.border },
                   ].map(({ key, label, count, color }) => (
                     <label key={key} className="wdm-filter-checkbox">
@@ -424,9 +809,10 @@ export default function WorkspaceDiagramsMediaPage({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   {[
-                    { id: "all", label: `All Used (${stats.total})` },
-                    { id: "single", label: `Single Note Only (${allUsedAssets.filter((a) => a.referenceCount === 1).length})` },
-                    { id: "multi", label: `Reused in Multi Notes (${allUsedAssets.filter((a) => a.referenceCount > 1).length})` },
+                    { id: "all", label: `All Media & Assets (${stats.total})` },
+                    { id: "single", label: `Single Note Only (${allCatalogAssets.filter((a) => a.referenceCount === 1).length})` },
+                    { id: "multi", label: `Reused in Multi Notes (${allCatalogAssets.filter((a) => a.referenceCount > 1).length})` },
+                    { id: "unused", label: `⚠️ Unused / Orphans (${stats.unused})` },
                   ].map((opt) => (
                     <label key={opt.id} className="wdm-filter-checkbox">
                       <input
@@ -435,7 +821,9 @@ export default function WorkspaceDiagramsMediaPage({
                         checked={usageFilter === opt.id}
                         onChange={() => setUsageFilter(opt.id)}
                       />
-                      <span>{opt.label}</span>
+                      <span style={{ color: opt.id === "unused" && stats.unused > 0 ? "var(--accent-strong, #f59e0b)" : "inherit", fontWeight: usageFilter === opt.id ? 600 : 400 }}>
+                        {opt.label}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -534,6 +922,12 @@ export default function WorkspaceDiagramsMediaPage({
                                 {asset.subType.toUpperCase()} AUDIO
                               </span>
                             </div>
+                          ) : asset.category === "transcript" ? (
+                            <TranscriptPreviewItem
+                              asset={asset}
+                              basePath={asset.referencedBy[0]?.notePath || workspacePath}
+                              isCardPreview={true}
+                            />
                           ) : (
                             <div className="wdm-card-preview-doc">
                               <File size={20} style={{ width: 38, height: 38, color: theme.text }} />
@@ -564,20 +958,48 @@ export default function WorkspaceDiagramsMediaPage({
                               {asset.diagramType || asset.subType.toUpperCase()}
                             </span>
 
-                            <span className="wdm-reference-count-badge">
+                            <span
+                              className="wdm-reference-count-badge"
+                              style={
+                                asset.referenceCount === 0
+                                  ? {
+                                      background: "rgba(245, 158, 11, 0.15)",
+                                      color: "#f59e0b",
+                                      border: "1px solid rgba(245, 158, 11, 0.3)",
+                                    }
+                                  : undefined
+                              }
+                            >
                               <FileText size={12} />
-                              {asset.referenceCount} {asset.referenceCount === 1 ? "note" : "notes"}
+                              {asset.referenceCount === 0
+                                ? "0 references (Unused)"
+                                : `${asset.referenceCount} ${asset.referenceCount === 1 ? "note" : "notes"}`}
                             </span>
                           </div>
                         </div>
 
                         {/* Card Footer Actions */}
                         <div className="wdm-card-footer">
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "160px" }}>
-                            {asset.referencedBy[0]?.noteTitle || "Referenced in workspace"}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "150px" }}>
+                            {asset.referencedBy[0]?.noteTitle || (asset.referenceCount === 0 ? "⚠️ Not linked in any note" : "Referenced in workspace")}
                           </span>
 
                           <div className="wdm-card-footer-actions">
+                            {(asset.category === "audio" || asset.category === "video") && (
+                              <button
+                                className="wdm-icon-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGenerateTranscript(asset);
+                                }}
+                                disabled={Boolean(transcribingAssetId)}
+                                title={transcribingAssetId === asset.id ? transcriptionStatus : "Generate AI Speech-to-Text Transcript"}
+                                style={{ color: "#38bdf8" }}
+                              >
+                                {transcribingAssetId === asset.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
+                              </button>
+                            )}
+
                             <button
                               className="wdm-icon-btn"
                               onClick={(e) => handleCopy(asset, e)}
@@ -643,6 +1065,23 @@ export default function WorkspaceDiagramsMediaPage({
                       <div style={{ fontSize: "13px", fontWeight: 600 }}>{selectedAsset.name}</div>
                       <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>PDF Document</div>
                     </div>
+                  ) : selectedAsset.category === "video" ? (
+                    <VideoPlayerPreviewItem
+                      asset={selectedAsset}
+                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
+                    />
+                  ) : selectedAsset.category === "audio" ? (
+                    <AudioPlayerPreviewItem
+                      asset={selectedAsset}
+                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
+                    />
+                  ) : selectedAsset.category === "transcript" ? (
+                    <TranscriptPreviewItem
+                      asset={selectedAsset}
+                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
+                      isCardPreview={false}
+                      onNotify={showNotification}
+                    />
                   ) : (
                     <div style={{ textAlign: "center", padding: "16px" }}>
                       <File size={20} style={{ width: 48, height: 48, color: CATEGORY_THEMES.document.text, marginBottom: "8px" }} />
@@ -650,6 +1089,32 @@ export default function WorkspaceDiagramsMediaPage({
                     </div>
                   )}
                 </div>
+
+                {/* Generate AI Transcript action card for audio and video assets */}
+                {(selectedAsset.category === "audio" || selectedAsset.category === "video") && (
+                  <div style={{ margin: "10px 0", padding: "10px 12px", background: "var(--status-info-bg)", border: "1px solid var(--status-info-border)", borderRadius: "var(--radius-md, 8px)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--status-info-text)" }}>
+                        Speech-to-Text Transcription
+                      </span>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        type="button"
+                        onClick={() => handleGenerateTranscript(selectedAsset)}
+                        disabled={Boolean(transcribingAssetId)}
+                        style={{ display: "flex", alignItems: "center", gap: "5px", height: "26px", fontSize: "11px", cursor: transcribingAssetId ? "not-allowed" : "pointer" }}
+                      >
+                        {transcribingAssetId === selectedAsset.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
+                        <span>{transcribingAssetId === selectedAsset.id ? "Transcribing..." : "Generate AI Transcript"}</span>
+                      </button>
+                    </div>
+                    {transcribingAssetId === selectedAsset.id && (
+                      <span style={{ fontSize: "11px", color: "var(--status-info-text)", fontStyle: "italic" }}>
+                        {transcriptionStatus}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Metadata details */}
                 <div className="wdm-detail-row">
@@ -697,9 +1162,10 @@ export default function WorkspaceDiagramsMediaPage({
                   <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => {
-                      if (openMediaInDefaultApp) {
-                        openMediaInDefaultApp(selectedAsset.path);
-                      }
+                      const targetBase = selectedAsset.referencedBy[0]?.notePath || workspacePath || "";
+                      openMediaInDefaultApp(targetBase, selectedAsset.path).catch((err) => {
+                        showNotification(`Failed to open in default app: ${err.message || err}`, "error");
+                      });
                     }}
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", height: "30px", fontSize: "11px" }}
                   >
@@ -716,7 +1182,24 @@ export default function WorkspaceDiagramsMediaPage({
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedAsset.referencedBy.length === 0 ? (
+                    <div style={{ padding: "12px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-md, 6px)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-warning-text)", fontWeight: "600", fontSize: "12px", marginBottom: "4px" }}>
+                        <AlertCircle size={14} /> Unused Media File
+                      </div>
+                      <p style={{ margin: "0 0 8px 0", fontSize: "11px", color: "var(--text-muted)" }}>
+                        This asset is saved in your workspace media storage but is not yet embedded or linked in any note.
+                      </p>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px" }}
+                        onClick={(e) => handleCopy(selectedAsset, e)}
+                      >
+                        <Copy size={12} /> Copy Markdown Embed
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {selectedAsset.referencedBy.map((ref, idx) => (
                       <div key={idx} className="wdm-note-reference-card">
                         <div className="wdm-note-reference-header">
@@ -760,6 +1243,7 @@ export default function WorkspaceDiagramsMediaPage({
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,10 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Trash2, Zap, AlertCircle, Eye, EyeOff, Download, Database } from 'lucide-react';
+import { Save, Trash2, Zap, AlertCircle, Eye, EyeOff, Download, Database, Mic, Cpu, Network } from 'lucide-react';
 import AppInput from './AppInput';
 import AppSelect from './AppSelect';
 import "../styles/AISettings.css";
 import OverlayDialog from './OverlayDialog';
 import KnowledgeGraphSettings from './KnowledgeGraphSettings';
+import {
+  getSTTPreferences,
+  setSTTPreferences,
+  checkLocalWhisperModelStatus,
+  preDownloadLocalWhisperModel,
+  deleteLocalWhisperModel,
+} from '../services/sttService';
+import {
+  showSuccessToast,
+  showErrorToast,
+  showInfoToast,
+} from '../utils/notificationUtils';
 import {
   aiClearData,
   aiGetApiKey,
@@ -61,6 +73,47 @@ export const AISettingsContent = ({ _onClose }) => {
 
   const [activeSubTab, setActiveSubTab] = useState("providers");
   const [modelStatus, setModelStatus] = useState({ downloaded: false, isDownloading: false, progress: 0 });
+  const [sttSettings, setSttSettings] = useState({
+    engine: "local-onnx",
+    localModel: "onnx-community/whisper-tiny.en",
+    language: "auto",
+    defaultSourceMode: "meeting",
+    autoTranscribe: true,
+  });
+  const [whisperModelStatus, setWhisperModelStatus] = useState({
+    downloaded: false,
+    isDownloading: false,
+    progress: 0,
+    statusText: '',
+  });
+
+  useEffect(() => {
+    getSTTPreferences().then((res) => {
+      if (res) setSttSettings(res);
+    }).catch(() => {});
+  }, []);
+
+  // Check whether selected local Whisper model is downloaded/cached
+  useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      if (sttSettings.engine !== "local-onnx") return;
+      try {
+        const res = await checkLocalWhisperModelStatus(sttSettings.localModel);
+        if (active) {
+          setWhisperModelStatus(prev => ({
+            ...prev,
+            downloaded: Boolean(res.downloaded),
+            cachedFilesCount: res.cachedFilesCount,
+          }));
+        }
+      } catch (err) {
+        console.warn('Error checking Whisper model status:', err);
+      }
+    };
+    checkStatus();
+    return () => { active = false; };
+  }, [sttSettings.localModel, sttSettings.engine]);
 
   useEffect(() => {
     const loadModelStatus = async () => {
@@ -353,9 +406,6 @@ export const AISettingsContent = ({ _onClose }) => {
             <span style={{ fontWeight: "700", color: "var(--text-strong)", fontSize: "14px" }}>
               Enable AI Subsystem
             </span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-              Toggle the global switch to enable or disable all background AI services, embeddings, and graph extraction.
-            </span>
           </div>
           <label style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", position: "relative", width: "40px", height: "20px" }}>
             <input
@@ -407,82 +457,46 @@ export const AISettingsContent = ({ _onClose }) => {
         </div>
 
         <div style={{ opacity: isAIEnabled ? 1 : 0.5, pointerEvents: isAIEnabled ? "auto" : "none", transition: "opacity var(--motion-standard)" }}>
-        <div className="ai-subtabs-nav" role="tablist" style={{ display: "flex", gap: "16px", marginBottom: "16px", borderBottom: "1px solid var(--border-soft)", paddingBottom: "8px" }}>
+        <div className="ai-segmented-tabs-bar" role="tablist">
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === "providers"}
-            className={`ai-subtab-btn ${activeSubTab === "providers" ? "active" : ""}`}
-            style={{
-              background: "transparent",
-              border: "none",
-              borderBottom: activeSubTab === "providers" ? "2px solid var(--accent-solid)" : "2px solid transparent",
-              color: activeSubTab === "providers" ? "var(--text-strong)" : "var(--text-muted)",
-              padding: "4px 8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "0.85rem"
-            }}
+            className={`ai-segmented-tab-btn ${activeSubTab === "providers" ? "active" : ""}`}
             onClick={() => setActiveSubTab("providers")}
           >
-            Connection & Providers
+            <Cpu size={14} />
+            <span>Models</span>
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === "embeddings"}
-            className={`ai-subtab-btn ${activeSubTab === "embeddings" ? "active" : ""}`}
-            style={{
-              background: "transparent",
-              border: "none",
-              borderBottom: activeSubTab === "embeddings" ? "2px solid var(--accent-solid)" : "2px solid transparent",
-              color: activeSubTab === "embeddings" ? "var(--text-strong)" : "var(--text-muted)",
-              padding: "4px 8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "0.85rem"
-            }}
+            className={`ai-segmented-tab-btn ${activeSubTab === "embeddings" ? "active" : ""}`}
             onClick={() => setActiveSubTab("embeddings")}
           >
-            Embeddings Engine
+            <Database size={14} />
+            <span>Embeddings</span>
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === "graph"}
-            className={`ai-subtab-btn ${activeSubTab === "graph" ? "active" : ""}`}
-            style={{
-              background: "transparent",
-              border: "none",
-              borderBottom: activeSubTab === "graph" ? "2px solid var(--accent-solid)" : "2px solid transparent",
-              color: activeSubTab === "graph" ? "var(--text-strong)" : "var(--text-muted)",
-              padding: "4px 8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "0.85rem"
-            }}
+            className={`ai-segmented-tab-btn ${activeSubTab === "graph" ? "active" : ""}`}
             onClick={() => setActiveSubTab("graph")}
           >
-            Knowledge Graph
+            <Network size={14} />
+            <span>Graph</span>
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={activeSubTab === "behavior"}
-            className={`ai-subtab-btn ${activeSubTab === "behavior" ? "active" : ""}`}
-            style={{
-              background: "transparent",
-              border: "none",
-              borderBottom: activeSubTab === "behavior" ? "2px solid var(--accent-solid)" : "2px solid transparent",
-              color: activeSubTab === "behavior" ? "var(--text-strong)" : "var(--text-muted)",
-              padding: "4px 8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "0.85rem"
-            }}
-            onClick={() => setActiveSubTab("behavior")}
+            aria-selected={activeSubTab === "stt"}
+            className={`ai-segmented-tab-btn ${activeSubTab === "stt" ? "active" : ""}`}
+            onClick={() => setActiveSubTab("stt")}
           >
-            Behavior & Tuning
+            <Mic size={14} />
+            <span>Audio</span>
           </button>
         </div>
 
@@ -494,55 +508,32 @@ export const AISettingsContent = ({ _onClose }) => {
                   <h3>Providers Setup</h3>
                 </div>
 
-                <div className="preference-group compact" style={{ marginBottom: "8px" }}>
-                  <label htmlFor="active-provider-select" style={{ fontSize: "11px" }}>Active Text Provider</label>
-                  <div style={{ display: "flex", gap: "5px", alignItems: "center", marginTop: "2px" }}>
-                    <AppSelect
-                      id="active-provider-select"
-                      value={selectedProvider || 'gemini'}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedProvider(val);
-                        setPreferences((prev) => ({ ...prev, aiProvider: val }));
-                      }}
-                      disabled={loading}
-                      style={{ flex: 1 }}
-                    >
-                      {providers.filter(p => p.available).map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </AppSelect>
-                    <button
-                      className="btn btn-primary"
-                      onClick={async () => {
-                        try {
-                          setLoading(true);
-                          const updatedPrefs = { ...preferences, aiProvider: selectedProvider };
-                          setPreferences(updatedPrefs);
-                          const response = await aiSetPreferences(updatedPrefs);
-                          if (response.success) {
-                            window.dispatchEvent(new CustomEvent('app:toast', {
-                              detail: { message: `Active provider set to ${selectedProvider} and saved.`, type: 'success' }
-                            }));
-                          } else {
-                            window.dispatchEvent(new CustomEvent('app:toast', {
-                              detail: { message: `Failed to save active provider: ${response.error}`, type: 'error' }
-                            }));
-                          }
-                        } catch (err) {
-                          window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Error: ${err.message}`, type: 'error' }
-                          }));
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading || !selectedProvider}
-                      type="button"
-                    >
-                      <Save size={12} /> Save
-                    </button>
-                  </div>
+                <div className="preference-group compact" style={{ marginBottom: "12px" }}>
+                  <label htmlFor="active-provider-select" style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-strong)" }}>Active Text Provider</label>
+                  <AppSelect
+                    id="active-provider-select"
+                    value={selectedProvider || 'gemini'}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      setSelectedProvider(val);
+                      const updatedPrefs = { ...preferences, aiProvider: val };
+                      setPreferences(updatedPrefs);
+                      try {
+                        await aiSetPreferences(updatedPrefs);
+                        window.dispatchEvent(new CustomEvent('app:toast', {
+                          detail: { message: `Active provider set to ${val}.`, type: 'success' }
+                        }));
+                      } catch (err) {
+                        console.error('Failed to set active provider:', err);
+                      }
+                    }}
+                    disabled={loading}
+                    style={{ width: "100%", marginTop: "4px" }}
+                  >
+                    {providers.filter(p => p.available).map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </AppSelect>
                 </div>
 
                 <div className="api-key-group compact" style={{ marginBottom: "8px" }}>
@@ -641,36 +632,15 @@ export const AISettingsContent = ({ _onClose }) => {
                     </div>
                     
                     {/* Provider-specific details and helper links */}
-                    <div style={{ marginTop: "8px", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ marginTop: "8px", fontSize: "11px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
                       {selectedProvider === "groq" && (
-                        <>
-                          <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Groq Cloud Provider Info:</div>
-                          <div>
-                            Get your API key at: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>console.groq.com/keys</a>
-                          </div>
-                          <div style={{ color: "var(--text-muted)", fontSize: "10px", borderLeft: "2px solid var(--accent-solid)", paddingLeft: "6px" }}>
-                            ⚠️ <strong>Rate Limit Warning:</strong> Groq free tier has daily token limits (TPD). If you hit a 429 rate limit error, you will need to wait for quota reset or upgrade to a developer tier.
-                          </div>
-                        </>
+                        <span>API Keys available at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>console.groq.com/keys</a></span>
                       )}
                       {selectedProvider === "gemini" && (
-                        <>
-                          <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Google Gemini Provider Info:</div>
-                          <div>
-                            Get your API key at: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>aistudio.google.com/app/apikey</a>
-                          </div>
-                          <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>
-                            Gemini offers a generous free tier for developers with high limits.
-                          </div>
-                        </>
+                        <span>API Keys available at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>aistudio.google.com/app/apikey</a></span>
                       )}
                       {selectedProvider === "openai" && (
-                        <>
-                          <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>OpenAI Provider Info:</div>
-                          <div>
-                            Get your API key at: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>platform.openai.com/api-keys</a>
-                          </div>
-                        </>
+                        <span>API Keys available at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-solid)", textDecoration: "underline" }}>platform.openai.com/api-keys</a></span>
                       )}
                     </div>
                   </div>
@@ -688,6 +658,70 @@ export const AISettingsContent = ({ _onClose }) => {
                     ))}
                   </div>
                 )}
+
+                {/* Advanced Features & Storage */}
+                <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border-soft)" }}>
+                  <h4 style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)", margin: "0 0 8px 0" }}>
+                    Advanced & Local Storage
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px" }}>
+                    <label className="checkbox-label" style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.85rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={preferences.enablePatternLearning}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          handlePreferenceChange('enablePatternLearning', val);
+                          aiSetPreferences({ ...preferences, enablePatternLearning: val });
+                        }}
+                        disabled={loading}
+                      />
+                      <span>Learn user writing patterns</span>
+                    </label>
+                    <label className="checkbox-label" style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.85rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={preferences.enableEmbeddings}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          handlePreferenceChange('enableEmbeddings', val);
+                          aiSetPreferences({ ...preferences, enableEmbeddings: val });
+                        }}
+                        disabled={loading}
+                      />
+                      <span>Generate vector embeddings automatically</span>
+                    </label>
+                    <label className="checkbox-label" style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.85rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={preferences.enableRelationshipDiscovery}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          handlePreferenceChange('enableRelationshipDiscovery', val);
+                          aiSetPreferences({ ...preferences, enableRelationshipDiscovery: val });
+                        }}
+                        disabled={loading}
+                      />
+                      <span>Discover semantic relationships between notes</span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", fontSize: "11px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span style={{ fontWeight: "600", color: "var(--text-strong)" }}>Local AI Memory & Cache</span>
+                      <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Data stored in <code>.notes-app/ai-memory.db</code></span>
+                    </div>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleClearData}
+                      disabled={loading}
+                      type="button"
+                      style={{ color: "var(--text-danger)", display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", fontSize: "11px" }}
+                    >
+                      <Trash2 size={12} /> Clear AI Data
+                    </button>
+                  </div>
+                </div>
               </section>
             </>
           )}
@@ -903,74 +937,207 @@ export const AISettingsContent = ({ _onClose }) => {
             </div>
           )}
 
-          {activeSubTab === "behavior" && (
+
+
+          {activeSubTab === "stt" && (
             <>
-              <section className="ai-settings-section ai-settings-features-card" style={{ gridColumn: "1 / -1" }}>
-                <h3>Features</h3>
-                <div className="ai-settings-option-list">
-                  <label className="preference-checkbox ai-settings-option-row">
-                    <input
-                      type="checkbox"
-                      checked={preferences.enablePatternLearning}
-                      onChange={(e) => handlePreferenceChange('enablePatternLearning', e.target.checked)}
-                      disabled={loading}
-                    />
-                    <span>Learn user patterns</span>
+              <section className="ai-settings-section ai-settings-setup-card" style={{ gridColumn: "1 / -1" }}>
+                <div className="ai-settings-setup-head" style={{ marginBottom: "14px" }}>
+                  <h3>Speech-to-Text & Transcription</h3>
+                </div>
+
+                <div className="preference-group" style={{ marginBottom: "14px" }}>
+                  <label htmlFor="stt-engine-select" style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-strong)" }}>
+                    Transcription Engine & Model
                   </label>
-                  <label className="preference-checkbox ai-settings-option-row">
-                    <input
-                      type="checkbox"
-                      checked={preferences.enableEmbeddings}
-                      onChange={(e) => handlePreferenceChange('enableEmbeddings', e.target.checked)}
-                      disabled={loading}
-                    />
-                    <span>Generate embeddings</span>
+                  <AppSelect
+                    id="stt-engine-select"
+                    value={sttSettings.engine === "local-onnx" ? `local-onnx:${sttSettings.localModel}` : sttSettings.engine}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.startsWith("local-onnx:")) {
+                        const model = val.replace("local-onnx:", "");
+                        setSttSettings(prev => ({ ...prev, engine: "local-onnx", localModel: model }));
+                      } else {
+                        setSttSettings(prev => ({ ...prev, engine: val }));
+                      }
+                    }}
+                    style={{ marginTop: "4px" }}
+                  >
+                    <optgroup label="Local ONNX Whisper (Offline, In-Browser / WebAssembly)">
+                      <option value="local-onnx:onnx-community/whisper-tiny.en">Local: whisper-tiny.en (~40MB, English, Fastest)</option>
+                      <option value="local-onnx:onnx-community/whisper-base.en">Local: whisper-base.en (~140MB, English, Balanced)</option>
+                      <option value="local-onnx:onnx-community/whisper-small">Local: whisper-small (~460MB, Multilingual, Accurate)</option>
+                    </optgroup>
+                    <optgroup label="Cloud Whisper">
+                      <option value="groq">Groq Cloud Whisper (Ultra-Fast whisper-large-v3)</option>
+                      <option value="openai">OpenAI Cloud Whisper (whisper-1)</option>
+                    </optgroup>
+                  </AppSelect>
+                  <small style={{ display: "block", marginTop: "4px", color: "var(--text-muted)", fontSize: "11px" }}>
+                    {sttSettings.engine === "local-onnx" && "Runs completely on-device without sending audio to the cloud."}
+                    {sttSettings.engine === "groq" && "Uses your configured Groq API key from Connection & Providers for near-instant transcription."}
+                    {sttSettings.engine === "openai" && "Uses your configured OpenAI API key from Connection & Providers."}
+                  </small>
+                </div>
+
+                {sttSettings.engine === "local-onnx" && (
+                  <div className="preference-group" style={{ marginBottom: "14px" }}>
+
+                    <div style={{
+                      padding: "10px 12px",
+                      background: "var(--surface-muted)",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border-soft)",
+                      marginTop: "8px",
+                      minHeight: "68px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center"
+                    }}>
+                      <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 6px 0" }}>Local ONNX Model Cache Status</h4>
+                      {whisperModelStatus.downloaded ? (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-success-text)", fontSize: "11px" }}>
+                            <Database size={12} />
+                            <span>{sttSettings.localModel.split("/")[1] || sttSettings.localModel} is downloaded and ready offline.</span>
+                          </div>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={async () => {
+                              if (!window.confirm(`Delete local weights for ${sttSettings.localModel} from browser cache? You can redownload anytime.`)) return;
+                              try {
+                                setLoading(true);
+                                await deleteLocalWhisperModel(sttSettings.localModel);
+                                setWhisperModelStatus({ downloaded: false, isDownloading: false, progress: 0, statusText: '' });
+                                showInfoToast('Local Whisper model cache cleared.');
+                              } catch (err) {
+                                showErrorToast(`Failed to delete model: ${err.message}`);
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            disabled={loading || whisperModelStatus.isDownloading}
+                            style={{ display: "flex", gap: "4px", alignItems: "center", padding: "4px 8px", fontSize: "10px", color: "var(--text-danger)", flexShrink: 0 }}
+                            title="Remove model weights from browser cache storage to free disk space"
+                            type="button"
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete Model</span>
+                          </button>
+                        </div>
+                      ) : whisperModelStatus.isDownloading ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                            <span>{whisperModelStatus.statusText || 'Downloading ONNX model weights...'}</span>
+                            <span>{whisperModelStatus.progress}%</span>
+                          </div>
+                          <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                            <div style={{ width: `${whisperModelStatus.progress}%`, height: "100%", background: "var(--accent-solid)", transition: "width 0.2s ease" }}></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)", flex: "1 1 auto" }}>
+                            Model not yet downloaded. Download now for offline use or it will download automatically on first transcription.
+                          </span>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                setWhisperModelStatus(prev => ({ ...prev, isDownloading: true, progress: 0, statusText: 'Initializing download...' }));
+                                await preDownloadLocalWhisperModel(sttSettings.localModel, (info) => {
+                                  if (info?.status === "progress" && typeof info.progress === "number") {
+                                    const percent = Math.min(100, Math.round(info.progress));
+                                    const fileLabel = info.file ? ` (${info.file})` : '';
+                                    setWhisperModelStatus(prev => ({
+                                      ...prev,
+                                      progress: percent,
+                                      statusText: `Downloading${fileLabel}...`,
+                                    }));
+                                  } else if (info?.status === "done") {
+                                    setWhisperModelStatus(prev => ({ ...prev, progress: 100, statusText: 'Finalizing model...' }));
+                                  }
+                                });
+
+                                const res = await checkLocalWhisperModelStatus(sttSettings.localModel);
+                                setWhisperModelStatus({
+                                  downloaded: Boolean(res.downloaded) || true,
+                                  isDownloading: false,
+                                  progress: 100,
+                                  statusText: '',
+                                });
+                                showSuccessToast(`${sttSettings.localModel.split("/")[1] || sttSettings.localModel} downloaded and ready offline.`);
+                              } catch (err) {
+                                console.error('Failed to download Whisper model:', err);
+                                setWhisperModelStatus(prev => ({ ...prev, isDownloading: false, progress: 0, statusText: '' }));
+                                showErrorToast(`Download failed: ${err.message}`);
+                              }
+                            }}
+                            style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", whiteSpace: "nowrap", flexShrink: 0 }}
+                          >
+                            <Download size={12} />
+                            <span>
+                              Download Model ({sttSettings.localModel.includes('small') ? '~460MB' : sttSettings.localModel.includes('base') ? '~140MB' : '~40MB'})
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="preference-group" style={{ marginBottom: "14px" }}>
+                  <label htmlFor="stt-language-select" style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-strong)" }}>
+                    Primary Spoken Language
                   </label>
-                  <label className="preference-checkbox ai-settings-option-row">
+                    <AppSelect
+                      id="stt-language-select"
+                      value={sttSettings.language}
+                      onChange={(e) => setSttSettings(prev => ({ ...prev, language: e.target.value }))}
+                      style={{ marginTop: "4px" }}
+                    >
+                      <option value="auto">Auto-Detect</option>
+                      <option value="en">English</option>
+                      <option value="es">Spanish</option>
+                      <option value="fr">French</option>
+                      <option value="de">German</option>
+                      <option value="it">Italian</option>
+                      <option value="ja">Japanese</option>
+                      <option value="zh">Chinese</option>
+                    </AppSelect>
+                  </div>
+
+                <div className="preference-checkboxes" style={{ marginBottom: "16px" }}>
+                  <label className="checkbox-label" style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.85rem" }}>
                     <input
                       type="checkbox"
-                      checked={preferences.enableRelationshipDiscovery}
-                      onChange={(e) => handlePreferenceChange('enableRelationshipDiscovery', e.target.checked)}
-                      disabled={loading}
+                      checked={Boolean(sttSettings.autoTranscribe)}
+                      onChange={(e) => setSttSettings(prev => ({ ...prev, autoTranscribe: e.target.checked }))}
                     />
-                    <span>Discover relationships</span>
+                    <span>Automatically generate speech-to-text transcript when audio recording completes</span>
                   </label>
                 </div>
-                <div className="ai-settings-inline-actions compact" style={{ marginTop: "12px" }}>
+
+                <div className="ai-settings-inline-actions" style={{ marginTop: "8px" }}>
                   <button
                     className="btn btn-primary"
+                    type="button"
                     onClick={async () => {
-                      setLoading(true);
-                      await aiSetPreferences(preferences);
-                      setLoading(false);
-                      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Preferences saved.', type: 'success' } }));
+                      try {
+                        setLoading(true);
+                        await setSTTPreferences(sttSettings);
+                        showSuccessToast('Speech-to-Text preferences saved successfully.');
+                      } catch (err) {
+                        showErrorToast(`Failed to save STT preferences: ${err.message}`);
+                      } finally {
+                        setLoading(false);
+                      }
                     }}
                     disabled={loading}
-                    type="button"
                   >
-                    <Save size={12} /> Save Preferences
-                  </button>
-                </div>
-              </section>
-
-              <section className="ai-settings-section ai-settings-storage-card" style={{ gridColumn: "1 / -1" }}>
-                <div className="ai-settings-storage-meta">
-                  <div className="ai-settings-meta-pill">Local only</div>
-                  <div className="ai-settings-meta-pill">SQLite memory</div>
-                </div>
-                <div className="data-management compact">
-                  <div className="ai-settings-storage-copy">
-                    <strong>Data paths</strong>
-                    <span><code>.notes-app/ai-memory.db</code></span>
-                    <span><code>%APPDATA%/Notely/ai-config.json</code></span>
-                  </div>
-                  <button
-                    className="btn btn-danger"
-                    onClick={handleClearData}
-                    disabled={loading}
-                    type="button"
-                  >
-                    <Trash2 size={12} /> Clear AI data
+                    <Save size={14} /> Save STT Settings
                   </button>
                 </div>
               </section>

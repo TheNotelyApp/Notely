@@ -177,12 +177,64 @@ md.renderer.rules.link_close = (tokens, idx, options, env, self) => {
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const token = tokens[idx];
   const src = token.attrGet("src") || "";
+  const isExplicitAudioExt = /\.(mp3|wav|m4a|aac|flac|wma)(\?|#|$)/i.test(src);
+  const isInAudioDir = /[/\\]audio[/\\]/i.test(src);
+  const isAudioNamed = /(recording|voice|meeting|mic|audio).*?\.(webm|ogg)$/i.test(src);
+  const isAudioAlt = /(audio|voice)/i.test(token.content || token.attrGet("alt") || "");
+
+  const isAudio =
+    isExplicitAudioExt ||
+    (isInAudioDir && /\.(webm|ogg|wav|mp3|m4a|aac|flac)(\?|#|$)/i.test(src)) ||
+    (isAudioNamed && !src.includes("screen") && !src.includes("rec_")) ||
+    (isAudioAlt && !src.includes("screen") && /\.(webm|ogg)(\?|#|$)/i.test(src));
+
+  if (isAudio) {
+    const safeSrc = escapeHtml(src);
+    const label = getImageDisplayName(src, token.content || token.attrGet("alt") || "Audio Recording");
+    const actionsHtml = `<span class="markdown-image-actions">` +
+      `<button type="button" class="markdown-image-action" data-image-action="copy" aria-label="Copy audio path">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>` +
+        `<span>Copy</span>` +
+      `</button>` +
+      `<span class="markdown-image-action-separator"></span>` +
+      `<button type="button" class="markdown-image-action" data-image-action="download" aria-label="Download audio">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>` +
+        `<span>Download</span>` +
+      `</button>` +
+    `</span>`;
+
+    return `<span class="markdown-image-frame markdown-audio-card" data-asset-path="${safeSrc}" data-audio-src="${safeSrc}" data-audio-title="${escapeHtml(label)}" style="display:inline-flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface-bg, rgba(255,255,255,0.05));border:1px solid var(--border-default, rgba(255,255,255,0.12));border-radius:10px;min-width:320px;max-width:100%;box-sizing:border-box;margin:8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;">` +
+      `${actionsHtml}` +
+      `<span style="display:flex;align-items:center;justify-content:space-between;gap:8px;">` +
+        `<span style="display:flex;align-items:center;gap:8px;overflow:hidden;padding-right:60px;">` +
+          `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(236,72,153,0.15);color:#f472b6;flex-shrink:0;">` +
+            `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>` +
+          `</span>` +
+          `<span style="font-size:12px;font-weight:600;color:var(--text-strong, #f8fafc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(label)}</span>` +
+        `</span>` +
+        `<span class="markdown-audio-badge" style="font-size:10px;font-weight:700;color:#f472b6;background:rgba(236,72,153,0.12);padding:2px 8px;border-radius:999px;border:1px solid rgba(236,72,153,0.3);letter-spacing:0.04em;">AUDIO</span>` +
+      `</span>` +
+      `<audio controls controlsList="nodownload" preload="metadata" src="${safeSrc}" data-asset-path="${safeSrc}" style="width:100%;height:36px;outline:none;border-radius:6px;"></audio>` +
+    `</span>`;
+  }
+
   const isVideo = /\.(webm|mp4|ogg)(\?|#|$)/i.test(src);
 
   if (isVideo) {
     const safeSrc = escapeHtml(src);
     const label = getImageDisplayName(src, token.content || token.attrGet("alt") || "Video");
-    return `<span class="markdown-image-frame markdown-video-card" data-asset-path="${safeSrc}" data-video-src="${safeSrc}" data-video-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to play video" style="cursor:pointer;position:relative;display:inline-block;"><video src="${safeSrc}" preload="metadata" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:cover;pointer-events:none;display:block;"></video><span class="markdown-video-play-badge" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);pointer-events:none;">▶ Play Video</span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
+    const actionsHtml = `<span class="markdown-image-actions">` +
+      `<button type="button" class="markdown-image-action" data-image-action="copy" aria-label="Copy video path">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>` +
+        `<span>Copy</span>` +
+      `</button>` +
+      `<span class="markdown-image-action-separator"></span>` +
+      `<button type="button" class="markdown-image-action" data-image-action="download" aria-label="Download video">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>` +
+        `<span>Download</span>` +
+      `</button>` +
+    `</span>`;
+    return `<span class="markdown-image-frame markdown-video-card" data-asset-path="${safeSrc}" data-video-src="${safeSrc}" data-video-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to play video" style="cursor:pointer;position:relative;display:inline-block;">${actionsHtml}<video src="${safeSrc}" preload="metadata" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:cover;pointer-events:none;display:block;"></video><span class="markdown-video-play-badge" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);pointer-events:none;">▶ Play Video</span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
   }
 
   if (src && !token.attrGet("data-asset-path") && !/^(data:|blob:)/i.test(src)) {

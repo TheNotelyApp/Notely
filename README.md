@@ -34,6 +34,9 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - **Regex search** with validation and pattern matching for advanced queries.
   - **Code-aware search** to find patterns inside code blocks only.
 - Insert common Markdown snippets from the toolbar.
+- Record audio notes and full meetings with dual-stream audio capture (Microphone + Windows System Audio loopback) with automatic Speech-to-Text (STT) transcription powered by offline local ONNX Whisper or ultra-fast cloud providers (Groq whisper-large-v3, OpenAI whisper-1).
+- Quick capture directly from the landing dashboard with one-click screen snip, desktop recording, and meeting audio capture that saves directly to workspace media without altering notes until you embed them.
+- Explore and audit all diagrams, media, audio, and documents in the **Workspace Diagrams & Media Gallery**, featuring physical disk scanning, unreferenced orphan detection, and an **Unused Media** filter with audio playback and transcript preview.
 - Edit Markdown tables inline with a focused grid editor (row/column add/remove, alignment controls, and compact action chips).
 - Browse, annotate, optimize, and manage linked media.
 - Open note files in VS Code or the system default app.

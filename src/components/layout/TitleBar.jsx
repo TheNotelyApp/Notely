@@ -310,10 +310,22 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
 
     const handleToastEvent = (e) => {
       const msg = String(e.detail?.message || "").toLowerCase();
+      // Never animate downloads button for recordings, media capture, or transcripts
+      if (
+        msg.includes("recording") ||
+        msg.includes("audio") ||
+        msg.includes("video") ||
+        msg.includes("transcript") ||
+        msg.includes("snip") ||
+        msg.includes("media gallery")
+      ) {
+        return;
+      }
+
       if (
         msg.includes("export") ||
         msg.includes("download") ||
-        msg.includes("saved to") ||
+        msg.includes("exported to") ||
         msg.includes("pdf") ||
         msg.includes("package") ||
         msg.includes("zip")
