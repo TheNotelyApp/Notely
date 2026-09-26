@@ -162,11 +162,13 @@ export function extractWorkspaceUsedAssets(documents = []) {
       const lineNumber = content.substring(0, matchIndex).split("\n").length;
       const contextLine = (lines[lineNumber - 1] || "").trim();
 
-      const ext = (normalizedPath.split(".").pop() || "").toLowerCase();
+      const lastSegment = (normalizedPath.split("/").pop() || "").split("?")[0].split("#")[0];
+      const hasDot = lastSegment.includes(".") && !lastSegment.startsWith(".");
+      const ext = hasDot ? (lastSegment.split(".").pop() || "").toLowerCase().slice(0, 10) : "";
       const isDiagram = isDiagramReference(normalizedPath) || /draw\.?io|excalidraw/i.test(rawAlt);
 
-      let category = "media";
-      let subType = ext || "file";
+      let category = "document";
+      let subType = ext || "link";
       let diagramId = null;
 
       if (isDiagram) {
@@ -187,22 +189,16 @@ export function extractWorkspaceUsedAssets(documents = []) {
           subType = "diagram";
         }
       } else {
-        const detectedType = getMediaTypeFromExtension(ext);
-        if (detectedType === "pdf") {
-          category = "pdf";
-          subType = "pdf";
-        } else if (detectedType === "image") {
-          category = "image";
-          subType = ext;
-        } else if (detectedType === "video" || detectedType === "audio") {
+        const detectedType = ext ? getMediaTypeFromExtension(ext, normalizedPath) : null;
+        if (detectedType) {
           category = detectedType;
-          subType = ext;
-        } else if (detectedType === "document") {
-          category = "document";
           subType = ext;
         } else if (isImageSyntax) {
           category = "image";
-          subType = ext || "png";
+          subType = ext || "image";
+        } else {
+          category = "document";
+          subType = ext || "link";
         }
       }
 

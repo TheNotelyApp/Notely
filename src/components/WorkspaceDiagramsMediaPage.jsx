@@ -23,6 +23,7 @@ import {
   AlertCircle,
   MessageSquareText,
   Loader2,
+  X,
 } from "lucide-react";
 import {
   extractWorkspaceUsedAssets,
@@ -36,6 +37,8 @@ import { saveAudioRecording } from "../services/electron/mediaService";
 import { transcribeAudio } from "../services/sttService";
 import { showToast } from "../utils/notificationUtils";
 import AppSelect from "./AppSelect";
+import OverlayDialog from "./OverlayDialog";
+import AppIconButton from "./AppIconButton";
 import "../styles/WorkspaceDiagramsMedia.css";
 
 // Audio Preview Component
@@ -521,8 +524,9 @@ export default function WorkspaceDiagramsMediaPage({
     if (!asset || transcribingAssetId) return;
     setTranscribingAssetId(asset.id);
     setTranscriptionStatus("Loading media file...");
+    showNotification(`Transcribing "${asset.name}" with Whisper...`, "info");
 
-    // Yield to let React render spinner and status banner immediately
+    // Yield to let React render spinner
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     try {
@@ -536,7 +540,7 @@ export default function WorkspaceDiagramsMediaPage({
       const res = await fetch(dataUrl);
       const audioBlob = await res.blob();
 
-      setTranscriptionStatus("Transcribing with Whisper AI (running on CPU/WASM)...");
+      setTranscriptionStatus("Transcribing audio with Whisper...");
       await new Promise((resolve) => setTimeout(resolve, 10));
       const result = await transcribeAudio(audioBlob, {
         language: "auto",
@@ -657,27 +661,16 @@ export default function WorkspaceDiagramsMediaPage({
       </div>
 
       <div className="wdm-container">
-        {transcribingAssetId && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "8px 14px",
-            background: "rgba(56, 189, 248, 0.12)",
-            border: "1px solid rgba(56, 189, 248, 0.3)",
-            borderRadius: "6px",
-            marginBottom: "12px",
-            fontSize: "12px",
-            color: "var(--text-strong)",
-            fontWeight: "500"
-          }}>
-            <Loader2 size={14} className="spin" style={{ color: "#38bdf8", flexShrink: 0 }} />
-            <span>{transcriptionStatus || "Transcribing audio..."}</span>
-          </div>
-        )}
-
         {/* Header Bar */}
         <div className="wdm-header-actions">
+          <AppIconButton
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            aria-label={sidebarOpen ? "Hide filters sidebar" : "Show filters sidebar"}
+            title={sidebarOpen ? "Hide filters sidebar" : "Show filters sidebar"}
+          >
+            {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+          </AppIconButton>
+
           {/* Search Input */}
           <div className="wdm-search-wrapper">
             <Search size={14} className="wdm-search-icon" />
@@ -690,30 +683,10 @@ export default function WorkspaceDiagramsMediaPage({
             />
           </div>
 
-          {/* Stats Pill */}
+          {/* Compact Stats Pill */}
           <div className="wdm-stats-pill">
             <span>
-              Total: <strong>{stats.total}</strong>
-            </span>
-            <span style={{ opacity: 0.3 }}>|</span>
-            <span>
-              Diagrams: <strong>{stats.diagrams}</strong>
-            </span>
-            <span style={{ opacity: 0.3 }}>|</span>
-            <span>
-              Images: <strong>{stats.images}</strong>
-            </span>
-            <span style={{ opacity: 0.3 }}>|</span>
-            <span>
-              Media: <strong>{stats.media}</strong>
-            </span>
-            <span style={{ opacity: 0.3 }}>|</span>
-            <span>
-              Transcripts: <strong>{stats.transcripts}</strong>
-            </span>
-            <span style={{ opacity: 0.3 }}>|</span>
-            <span>
-              PDFs: <strong>{stats.pdfs}</strong>
+              <strong>{filteredAssets.length}</strong> {filteredAssets.length === 1 ? "item" : "items"}
             </span>
             {stats.unused > 0 && (
               <>
@@ -727,7 +700,7 @@ export default function WorkspaceDiagramsMediaPage({
                   }}
                   title="Click to toggle Unused / Orphaned assets"
                 >
-                  ⚠️ Unused: <strong>{stats.unused}</strong>
+                  ⚠️ <strong>{stats.unused}</strong> unused
                 </span>
               </>
             )}
@@ -851,17 +824,7 @@ export default function WorkspaceDiagramsMediaPage({
 
           {/* Main Gallery Area */}
           <div className="wdm-canvas-wrapper">
-            {/* Sidebar toggle button */}
-            <button
-              className="wdm-sidebar-toggle-btn"
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              title={sidebarOpen ? "Hide filters sidebar" : "Show filters sidebar"}
-            >
-              {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-            </button>
-
-            <div style={{ paddingLeft: sidebarOpen ? "0px" : "36px", transition: "padding-left 0.2s ease" }}>
-              {filteredAssets.length === 0 ? (
+            {filteredAssets.length === 0 ? (
                 <div className="wdm-empty-state">
                   <Layers size={20} style={{ width: 40, height: 40, opacity: 0.3 }} />
                   <div>
@@ -903,24 +866,21 @@ export default function WorkspaceDiagramsMediaPage({
                             />
                           ) : asset.category === "pdf" ? (
                             <div className="wdm-card-preview-doc">
-                              <FileDigit size={20} style={{ width: 38, height: 38, color: theme.text }} />
-                              <span style={{ fontSize: "10px", fontWeight: 700, color: theme.text }}>
-                                PDF DOCUMENT
-                              </span>
+                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
+                                <FileDigit size={20} />
+                              </div>
                             </div>
                           ) : asset.category === "video" ? (
                             <div className="wdm-card-preview-doc">
-                              <Video size={20} style={{ width: 38, height: 38, color: theme.text }} />
-                              <span style={{ fontSize: "10px", fontWeight: 700, color: theme.text }}>
-                                {asset.subType.toUpperCase()} VIDEO
-                              </span>
+                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
+                                <Video size={20} />
+                              </div>
                             </div>
                           ) : asset.category === "audio" ? (
                             <div className="wdm-card-preview-doc">
-                              <Music size={20} style={{ width: 38, height: 38, color: theme.text }} />
-                              <span style={{ fontSize: "10px", fontWeight: 700, color: theme.text }}>
-                                {asset.subType.toUpperCase()} AUDIO
-                              </span>
+                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
+                                <Music size={20} />
+                              </div>
                             </div>
                           ) : asset.category === "transcript" ? (
                             <TranscriptPreviewItem
@@ -930,10 +890,9 @@ export default function WorkspaceDiagramsMediaPage({
                             />
                           ) : (
                             <div className="wdm-card-preview-doc">
-                              <File size={20} style={{ width: 38, height: 38, color: theme.text }} />
-                              <span style={{ fontSize: "10px", fontWeight: 700, color: theme.text }}>
-                                {asset.subType.toUpperCase()} FILE
-                              </span>
+                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
+                                <File size={20} />
+                              </div>
                             </div>
                           )}
                         </div>
@@ -955,33 +914,37 @@ export default function WorkspaceDiagramsMediaPage({
                                 border: `1px solid ${theme.border}`,
                               }}
                             >
-                              {asset.diagramType || asset.subType.toUpperCase()}
+                              {(() => {
+                                const raw = asset.diagramType || asset.extension || (asset.subType && asset.subType.length <= 8 && !asset.subType.includes("/") ? asset.subType : "") || asset.category || "FILE";
+                                return String(raw).toUpperCase();
+                              })()}
                             </span>
 
                             <span
-                              className="wdm-reference-count-badge"
-                              style={
-                                asset.referenceCount === 0
-                                  ? {
-                                      background: "rgba(245, 158, 11, 0.15)",
-                                      color: "#f59e0b",
-                                      border: "1px solid rgba(245, 158, 11, 0.3)",
-                                    }
-                                  : undefined
-                              }
+                              className={`wdm-reference-count-badge ${asset.referenceCount === 0 ? "is-unused" : ""}`}
                             >
-                              <FileText size={12} />
-                              {asset.referenceCount === 0
-                                ? "0 references (Unused)"
-                                : `${asset.referenceCount} ${asset.referenceCount === 1 ? "note" : "notes"}`}
+                              {asset.referenceCount === 0 ? (
+                                <>
+                                  <AlertCircle size={12} />
+                                  Unused
+                                </>
+                              ) : (
+                                <>
+                                  <FileText size={12} />
+                                  {asset.referenceCount} {asset.referenceCount === 1 ? "note" : "notes"}
+                                </>
+                              )}
                             </span>
                           </div>
                         </div>
 
                         {/* Card Footer Actions */}
                         <div className="wdm-card-footer">
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "150px" }}>
-                            {asset.referencedBy[0]?.noteTitle || (asset.referenceCount === 0 ? "⚠️ Not linked in any note" : "Referenced in workspace")}
+                          <span
+                            className={`wdm-card-footer-path ${asset.referenceCount === 0 ? "is-unused" : ""}`}
+                            title={asset.referencedBy[0]?.noteTitle || (asset.referenceCount === 0 ? "Unlinked asset in workspace" : "Referenced in workspace")}
+                          >
+                            {asset.referencedBy[0]?.noteTitle || (asset.referenceCount === 0 ? "Unlinked" : "Referenced in workspace")}
                           </span>
 
                           <div className="wdm-card-footer-actions">
@@ -1026,23 +989,23 @@ export default function WorkspaceDiagramsMediaPage({
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Slide-out Inspector Drawer (Knowledge Graph inspired) */}
+          {/* Standard Notely OverlayDialog Inspector */}
           {selectedAsset && (
-            <div className="wdm-details-overlay">
-              <div className="wdm-details-header">
-                <h3>
-                  <Sparkles size={14} style={{ color: "var(--accent-solid)" }} />
+            <OverlayDialog
+              open={Boolean(selectedAsset)}
+              onClose={() => setSelectedAsset(null)}
+              ariaLabel={selectedAsset.subType === "mermaid" ? "Diagram Inspector" : "Asset Inspector"}
+              size="lg"
+            >
+              <div className="overlay-dialog-header">
+                <h2>
+                  <Sparkles size={16} style={{ color: "var(--accent-solid)", marginRight: 8, display: "inline-block", verticalAlign: "middle" }} />
                   {selectedAsset.subType === "mermaid" ? "Diagram Inspector" : "Asset Inspector"}
-                </h3>
-                <button
-                  className="wdm-details-close"
-                  onClick={() => setSelectedAsset(null)}
-                  title="Close Inspector"
-                >
-                  ✕
-                </button>
+                </h2>
+                <AppIconButton onClick={() => setSelectedAsset(null)} aria-label="Close inspector">
+                  <X size={16} />
+                </AppIconButton>
               </div>
 
               <div className="wdm-details-body">
@@ -1145,7 +1108,10 @@ export default function WorkspaceDiagramsMediaPage({
                         padding: "3px 8px",
                       }}
                     >
-                      {selectedAsset.diagramType || selectedAsset.subType.toUpperCase()}
+                      {(() => {
+                        const raw = selectedAsset.diagramType || selectedAsset.extension || (selectedAsset.subType && selectedAsset.subType.length <= 8 && !selectedAsset.subType.includes("/") ? selectedAsset.subType : "") || selectedAsset.category || "FILE";
+                        return String(raw).toUpperCase();
+                      })()}
                     </span>
                   </div>
                 </div>
@@ -1246,7 +1212,7 @@ export default function WorkspaceDiagramsMediaPage({
                   )}
                 </div>
               </div>
-            </div>
+            </OverlayDialog>
           )}
         </div>
       </div>
