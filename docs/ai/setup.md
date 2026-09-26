@@ -38,7 +38,16 @@ Relationship extraction and entity graph generation:
 
 ---
 
-## 4. SQLite Database Locality
+## 4. Speech-to-Text (STT) Engine Setup
+
+Configure meeting and audio transcription inside **AI → AI Settings → Speech-to-Text**:
+- **Local ONNX Whisper (Offline)**: Download `whisper-tiny.en` (~40MB), `whisper-base.en` (~140MB), or `whisper-small` (~460MB) for private, zero-latency on-device transcription via WebAssembly/ONNX Runtime.
+- **Cloud Whisper (Groq / OpenAI)**: Sub-second cloud transcription using your saved Groq or OpenAI API key.
+- **Audio Capture Preference**: Set default recording mode to `Meeting: Mic + System Audio`, `Microphone Only`, or `System Audio Only`.
+
+---
+
+## 5. SQLite Database Locality
 
 All AI databases are workspace-scoped and stored inside the hidden `{workspace}/.notes-app/` folder to keep your data local and portable:
 1. `ai-embeddings.db`: Stores chunk text, line mappings, content hashes, and indexing queues.

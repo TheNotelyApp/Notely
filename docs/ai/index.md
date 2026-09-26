@@ -29,7 +29,12 @@ Notely features a modular, local-first AI platform designed around private data 
 - Runs entirely offline using a local ONNX runtime for `BGE-small-en-v1.5` 384-dimensional dense vectors, with optional fallback to cloud embedding APIs.
 - Background worker process handles queue processing and debounced note indexing to prevent UI thread latency.
 
-### 4. In-App Tools Catalog & MCP Diagnostics
+### 4. Speech-to-Text (STT) Transcription Pipeline
+- Transcribe voice memos and meeting discussions into Markdown and companion JSON transcript files.
+- Runs offline via on-device WebAssembly/ONNX Whisper models (`whisper-tiny.en`, `whisper-base.en`, `whisper-small`), with optional sub-second cloud transcription via Groq or OpenAI Whisper.
+- Synchronized transcript view with key points and action items embedded into notes and the Media Gallery.
+
+### 5. In-App Tools Catalog & MCP Diagnostics
 - **MCP Tools Page** (`Ctrl/Cmd + Shift + M`): Interactive catalog to view tool definitions, test inputs, and verify outputs.
 - **AI Health / Diagnostics**: Real-time telemetry dashboard monitoring MCP connection status, client sessions, request volume, and error diagnostics.
-- **AI Settings** (`Ctrl/Cmd + Shift + ,`): Configure API providers, embedding options, and Knowledge Graph extraction confidence thresholds.
+- **AI Settings** (`Ctrl/Cmd + Shift + ,`): Configure API providers, embedding options, STT engines, and Knowledge Graph extraction confidence thresholds.

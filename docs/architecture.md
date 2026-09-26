@@ -135,8 +135,8 @@ The following diagram shows the full request path from the React UI through each
 flowchart TD
     subgraph Renderer["Renderer Process (React / Vite)"]
         direction LR
-        ACP["AIChatPanel"] & AIS["AISettings"] & EBP["EmbeddingsPage"] & KGV["KnowledgeGraph"]
-        UAI["useAIAssistant hook"]
+        AIS["AISettings"] & MCP["MCPToolsPage"] & MED["WorkspaceDiagramsMediaPage"] & KGV["KnowledgeGraph"]
+        ARB["AudioRecorderBar"] & LQC["LandingQuickCaptureBar"]
     end
 
     subgraph Preload["Preload Bridge (preload.cjs)"]
