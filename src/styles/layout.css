@@ -1184,6 +1184,12 @@
   gap: 8px;
 }
 
+.overlay-dialog-actions button,
+.overlay-dialog-actions .small-button,
+.overlay-dialog-actions .primary-button {
+  min-height: var(--btn-height-md);
+}
+
 
 .overlay-dialog-header h2 {
   margin: 0;

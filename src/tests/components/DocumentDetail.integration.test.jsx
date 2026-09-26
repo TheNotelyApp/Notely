@@ -208,31 +208,23 @@ describe("DocumentDetail popup and panel toggles", () => {
     view.unmount();
   });
 
-  it("closes Export PDF quality dropdown after selecting an option", () => {
+  it("allows selecting Export PDF quality preset options", () => {
     const view = renderDetail({
       ...baseProps,
       menuAction: { action: "export-pdf", nonce: Date.now() },
     });
 
-    const qualitySelectTrigger = view.host.querySelector("#pdf-export-quality");
-    expect(qualitySelectTrigger).toBeTruthy();
+    const qualityPresetsGroup = view.host.querySelector("#pdf-export-quality");
+    expect(qualityPresetsGroup).toBeTruthy();
+
+    const balancedOption = view.host.querySelector('[data-preset-id="balanced"]');
+    expect(balancedOption).toBeTruthy();
 
     act(() => {
-      qualitySelectTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      balancedOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(view.host.querySelector(".app-select-panel")).toBeTruthy();
-
-    const qualityOption = Array.from(view.host.querySelectorAll(".app-select-option")).find((button) =>
-      button.textContent?.includes("Balanced size")
-    );
-    expect(qualityOption).toBeTruthy();
-
-    act(() => {
-      qualityOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(view.host.querySelector(".app-select-panel")).toBeFalsy();
+    expect(balancedOption.getAttribute("aria-checked")).toBe("true");
 
     view.unmount();
   });

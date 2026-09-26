@@ -145,12 +145,48 @@ class TaskDatabase {
     this.db = null;
   }
 
+  _getUniqueSourceHash(filePath, title, preferredOcc = 1, excludeTaskId = null) {
+    let occ = Math.max(1, preferredOcc || 1);
+    while (true) {
+      const hash = hashSource(filePath, title, occ);
+      if (this.db) {
+        let stmt;
+        let existing;
+        if (excludeTaskId) {
+          stmt = this.db.prepare('SELECT id FROM tasks WHERE source_hash = ? AND id != ?');
+          existing = stmt.get(hash, excludeTaskId);
+        } else {
+          stmt = this.db.prepare('SELECT id FROM tasks WHERE source_hash = ?');
+          existing = stmt.get(hash);
+        }
+        if (!existing) return hash;
+      } else if (this.jsonState) {
+        const existing = this.jsonState.tasks.find(
+          t => t.source_hash === hash && (excludeTaskId ? t.id !== excludeTaskId : true)
+        );
+        if (!existing) return hash;
+      } else {
+        return hash;
+      }
+      occ++;
+    }
+  }
+
   // ── Tasks ─────────────────────────────────────────────────────────────────
 
   syncFromNote(filePath, parsedTasks) {
     const now = nowISO();
     let inserted = 0;
     let updated = 0;
+
+    const titleOccurrences = new Map();
+    const tasksWithOcc = (parsedTasks || []).map((t, idx) => {
+      const norm = String(t.title || '').trim().toLowerCase();
+      const occ = (titleOccurrences.get(norm) || 0) + 1;
+      titleOccurrences.set(norm, occ);
+      const hash = hashSource(filePath, t.title, occ);
+      return { ...t, idx, hash, occ };
+    });
 
     if (this.db) {
       const existingDbTasks = this.db.prepare(
@@ -160,15 +196,13 @@ class TaskDatabase {
       const matchedTaskIds = new Set();
       const matchedParsedIndices = new Set();
 
-      // Pass 1: Exact hash match (title + filePath)
-      for (let i = 0; i < parsedTasks.length; i++) {
-        const t = parsedTasks[i];
-        const hash = hashSource(filePath, t.title);
-        const match = existingDbTasks.find(dbT => !matchedTaskIds.has(dbT.id) && dbT.source_hash === hash);
+      // Pass 1: Exact hash match (title + filePath + occurrence)
+      for (const t of tasksWithOcc) {
+        const match = existingDbTasks.find(dbT => !matchedTaskIds.has(dbT.id) && dbT.source_hash === t.hash);
 
         if (match) {
           matchedTaskIds.add(match.id);
-          matchedParsedIndices.add(i);
+          matchedParsedIndices.add(t.idx);
           if (match.status !== t.status || match.source_line !== t.line) {
             const completedAt = t.status === 'done' ? now : (t.status === 'open' ? null : match.completed_at);
             this.db.prepare(
@@ -180,15 +214,14 @@ class TaskDatabase {
       }
 
       // Pass 2: Line index match for title edits on same line
-      for (let i = 0; i < parsedTasks.length; i++) {
-        if (matchedParsedIndices.has(i)) continue;
-        const t = parsedTasks[i];
+      for (const t of tasksWithOcc) {
+        if (matchedParsedIndices.has(t.idx)) continue;
         const match = existingDbTasks.find(dbT => !matchedTaskIds.has(dbT.id) && dbT.source_line === t.line);
 
         if (match) {
           matchedTaskIds.add(match.id);
-          matchedParsedIndices.add(i);
-          const newHash = hashSource(filePath, t.title);
+          matchedParsedIndices.add(t.idx);
+          const newHash = this._getUniqueSourceHash(filePath, t.title, t.occ, match.id);
           const completedAt = t.status === 'done' ? now : null;
           this.db.prepare(
             'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
@@ -199,7 +232,7 @@ class TaskDatabase {
 
       // Pass 3: Fuzzy title / positional alignment for remaining unmatched tasks
       const unmatchedDb = existingDbTasks.filter(dbT => !matchedTaskIds.has(dbT.id));
-      const unmatchedParsed = parsedTasks.map((t, idx) => ({ ...t, idx })).filter(t => !matchedParsedIndices.has(t.idx));
+      const unmatchedParsed = tasksWithOcc.filter(t => !matchedParsedIndices.has(t.idx));
 
       for (const p of unmatchedParsed) {
         let bestMatch = null;
@@ -221,7 +254,7 @@ class TaskDatabase {
         if (bestMatch) {
           matchedTaskIds.add(bestMatch.id);
           matchedParsedIndices.add(p.idx);
-          const newHash = hashSource(filePath, p.title);
+          const newHash = this._getUniqueSourceHash(filePath, p.title, p.occ, bestMatch.id);
           const completedAt = p.status === 'done' ? now : null;
           this.db.prepare(
             'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
@@ -229,10 +262,11 @@ class TaskDatabase {
           updated++;
         } else {
           // Insert new task safely checking if source_hash already exists
-          const hash = hashSource(filePath, p.title);
-          const existingHashMatch = this.db.prepare('SELECT id FROM tasks WHERE source_hash = ?').get(hash);
+          const hash = this._getUniqueSourceHash(filePath, p.title, p.occ);
+          const existingHashMatch = this.db.prepare('SELECT id, user_managed FROM tasks WHERE source_hash = ?').get(hash);
 
-          if (existingHashMatch) {
+          if (existingHashMatch && !existingHashMatch.user_managed) {
+            matchedTaskIds.add(existingHashMatch.id);
             const completedAt = p.status === 'done' ? now : null;
             this.db.prepare(
               'UPDATE tasks SET status = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
@@ -261,8 +295,8 @@ class TaskDatabase {
 
     if (this.jsonState) {
       const activeHashSet = new Set();
-      for (const t of parsedTasks) {
-        const hash = hashSource(filePath, t.title);
+      for (const t of tasksWithOcc) {
+        const hash = this._getUniqueSourceHash(filePath, t.title, t.occ);
         activeHashSet.add(hash);
         const existing = this.jsonState.tasks.find(x => x.source_hash === hash);
 
@@ -434,12 +468,13 @@ class TaskDatabase {
       }
 
       const id = randomId();
+      const finalHash = isNoteTask ? this._getUniqueSourceHash(sourcePath, title) : null;
       this.db.prepare(`
         INSERT INTO tasks (id, title, description, status, priority, source_path, source_line, source_hash,
                            user_managed, due_date, scheduled_start, scheduled_end, is_all_day, reminder,
                            person_tags, metadata, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, title, description, status, priority, isNoteTask ? sourcePath : null, sourceLine ?? null, sourceHash,
+      `).run(id, title, description, status, priority, isNoteTask ? sourcePath : null, sourceLine ?? null, finalHash,
              isNoteTask ? 0 : 1, dueDate ?? null, scheduledStart ?? null, scheduledEnd ?? null, isAllDay ? 1 : 0,
              reminder ?? null, JSON.stringify(personTags), JSON.stringify(metadata), now, now);
       return this.getTask(id);

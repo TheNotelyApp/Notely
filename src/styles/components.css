@@ -1505,7 +1505,7 @@
   gap: 4px;
   height: 20px;
   padding: 0 8px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--surface-accent);
   color: var(--text-strong);
   font-size: var(--font-size-meta);

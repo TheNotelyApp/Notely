@@ -21,7 +21,7 @@ import AppInput from "./AppInput";
 import { EditorPane } from "./EditorPane";
 import { MediaTab } from "./MediaTab";
 import OverlayDialog from "./OverlayDialog";
-import DialogSelectField from "./DialogSelectField";
+import { ExportPdfModal } from "./ExportPdfModal";
 
 import { downloadPdf, syncTasksFromNote, gitGetLog, gitGetFileAtCommit, gitRestoreFileAtCommit } from "../services/electronService";
 import { GitNoteHistoryPanel } from "./GitNoteHistoryPanel";
@@ -1526,37 +1526,15 @@ export function DocumentDetail({
       ) : null}
 
       {pdfOptionsOpen ? (
-        <OverlayDialog
+        <ExportPdfModal
+          open={pdfOptionsOpen}
           onClose={() => setPdfOptionsOpen(false)}
-          ariaLabel="Export PDF"
-        >
-            <div className="overlay-dialog-header">
-              <h2>Export PDF</h2>
-              <AppIconButton onClick={() => setPdfOptionsOpen(false)} aria-label="Close export options">
-                <X size={16} />
-              </AppIconButton>
-            </div>
-            <DialogSelectField
-              id="pdf-export-quality"
-              label="Quality"
-              value={pdfQualityPreset}
-              onChange={(event) => setPdfQualityPreset(event.target.value)}
-            >
-                <option value="full">Full quality</option>
-                <option value="balanced">Balanced size</option>
-                <option value="compact">Compact file</option>
-            </DialogSelectField>
-            <div className="overlay-dialog-actions">
-              <AppButton
-                variant="primary"
-                onClick={handleConfirmPdfExport}
-                disabled={pdfExporting}
-              >
-                <FileDown size={14} />
-                {pdfExporting ? "Exporting..." : "Export"}
-              </AppButton>
-            </div>
-        </OverlayDialog>
+          documentTitle={document.title}
+          pdfQualityPreset={pdfQualityPreset}
+          onSelectPreset={setPdfQualityPreset}
+          onExport={handleConfirmPdfExport}
+          isExporting={pdfExporting}
+        />
       ) : null}
 
       <TaskDetailModal

@@ -1,0 +1,103 @@
+.export-pdf-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.export-pdf-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 14px;
+  min-height: 42px;
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-bg);
+  cursor: pointer;
+  transition: background-color var(--motion-fast), border-color var(--motion-fast);
+  outline: none;
+  user-select: none;
+  font-family: inherit;
+}
+
+.export-pdf-option:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+.export-pdf-option:focus-visible {
+  border-color: var(--focus-ring-color);
+  outline: 1px solid var(--focus-ring-color);
+}
+
+.export-pdf-option.selected {
+  background: var(--surface-accent);
+  border-color: var(--border-soft);
+}
+
+.export-pdf-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color var(--motion-fast);
+}
+
+.export-pdf-option.selected .export-pdf-icon {
+  color: var(--accent-solid);
+}
+
+.export-pdf-option-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.export-pdf-option-title {
+  font-size: var(--font-size-body-sm);
+  font-weight: 500;
+  color: var(--text-strong);
+}
+
+.export-pdf-option.selected .export-pdf-option-title {
+  font-weight: 500;
+  color: var(--text-strong);
+}
+
+.export-pdf-recommended-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
+  border: 1px solid var(--status-success-border);
+  line-height: 1.2;
+}
+
+.export-pdf-check-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.export-pdf-check {
+  color: var(--accent-solid);
+  animation: export-pdf-check-in var(--motion-fast);
+}
+
+@keyframes export-pdf-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
