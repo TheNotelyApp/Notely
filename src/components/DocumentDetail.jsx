@@ -1133,10 +1133,8 @@ export function DocumentDetail({
       const result = await downloadPdf({
         filePath: document.filePath,
         title: document.title,
-        rawNotes: document.rawNotes,
-        cleansed: "",
-        includeRawNotes: true,
-        includeCleansed: false,
+        content: document.rawNotes || content || "",
+        rawNotes: document.rawNotes || content || "",
         pdfQualityPreset,
       });
       if (!result?.canceled) {

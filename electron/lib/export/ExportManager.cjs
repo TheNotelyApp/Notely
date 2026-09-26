@@ -257,16 +257,10 @@ class ExportManager {
       }
     }
 
-    const includeRawNotes = Boolean(payload?.includeRawNotes);
-    const includeCleansed = Boolean(payload?.includeCleansed);
     const pdfQualityPreset = ["full", "balanced", "compact"].includes(payload?.pdfQualityPreset)
       ? payload.pdfQualityPreset
       : "full";
     const downsampleImages = Boolean(payload?.downsampleImages) || pdfQualityPreset !== "full";
-
-    if (!includeRawNotes && !includeCleansed) {
-      throw new Error("Select at least one section to export.");
-    }
 
     const rawTitle = payload?.title || path.basename(resolved, ".md") || "document";
     const defaultName = `${rawTitle.replace(/[<>:"/\\|?*]/g, "_")}.pdf`;
@@ -277,8 +271,8 @@ class ExportManager {
     const tempHtmlPath = path.join(tempDir, `${slugify(path.basename(resolved))}-export.html`);
 
     const markdownContent = typeof this.buildPdfExportMarkdown === "function"
-      ? this.buildPdfExportMarkdown(payload, { includeRawNotes, includeCleansed })
-      : (payload.cleansed || payload.rawNotes || "");
+      ? this.buildPdfExportMarkdown(payload)
+      : (payload.content || payload.rawNotes || payload.cleansed || "");
 
     fs.writeFileSync(tempMarkdownPath, markdownContent, "utf8");
 
@@ -299,8 +293,8 @@ class ExportManager {
 
       const pdfWindow = new this.BrowserWindow({
         show: false,
-        width: 1280,
-        height: 1600,
+        width: 794,
+        height: 1200,
         backgroundColor: "#ffffff",
         webPreferences: {
           backgroundThrottling: false,
@@ -315,6 +309,27 @@ class ExportManager {
         await pdfWindow.loadFile(tempHtmlPath);
         await this._renderMermaidInWindow(pdfWindow);
         await pdfWindow.webContents.executeJavaScript("document.fonts ? document.fonts.ready : Promise.resolve()");
+
+        // Measure content height and inject dynamic single-page CSS rule
+        await pdfWindow.webContents.executeJavaScript(`
+          (() => {
+            const body = document.body;
+            const html = document.documentElement;
+            const scrollH = Math.max(
+              body ? body.scrollHeight : 0,
+              body ? body.offsetHeight : 0,
+              html ? html.scrollHeight : 0,
+              html ? html.offsetHeight : 0
+            );
+            // 794px width = 210mm @ 96 DPI. Convert px height to mm + margins:
+            const contentMm = Math.ceil((scrollH * 25.4 / 96) + 32);
+            const pageHeightMm = Math.max(297, contentMm);
+
+            const style = document.createElement("style");
+            style.textContent = "@page { size: 210mm " + pageHeightMm + "mm !important; margin: 12mm 10mm !important; }";
+            document.head.appendChild(style);
+          })()
+        `);
 
         const pdfData = await pdfWindow.webContents.printToPDF({
           printBackground: true,

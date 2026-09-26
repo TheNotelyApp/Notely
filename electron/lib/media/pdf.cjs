@@ -12,32 +12,20 @@ function sanitizePdfMarkdown(markdown) {
   );
 }
 
-function buildPdfExportMarkdown(document, options = {}) {
-  const includeRawNotes = Boolean(options.includeRawNotes);
-  const includeCleansed = Boolean(options.includeCleansed);
-  const title = String(document?.title || path.basename(document?.filePath || "note", ".md") || "Note").trim() || "Note";
-
-  const sections = [];
-  if (includeRawNotes) {
-    sections.push([
-      "## Raw Notes",
-      sanitizePdfMarkdown(document?.rawNotes || "").trim() || "_No raw notes captured yet._"
-    ].join("\n\n"));
-  }
-
-  if (includeCleansed) {
-    sections.push([
-      "## Formal Notes",
-      sanitizePdfMarkdown(document?.cleansed || "").trim() || "_No formal notes captured yet._"
-    ].join("\n\n"));
-  }
-
-  return [
-    `# ${title}`,
-    "",
-    sections.join("\n\n")
-  ].filter(Boolean).join("\n");
+function stripFrontmatter(text) {
+  if (!text) return "";
+  const clean = String(text).replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  return clean.replace(/^---\s*\n[\s\S]*?\n(?:---|\.\.\.)\s*\n?/, "");
 }
+
+function buildPdfExportMarkdown(document) {
+  const rawContent = typeof document === "string"
+    ? document
+    : (document?.rawNotes ?? document?.content ?? document?.markdown ?? "");
+  const cleanContent = stripFrontmatter(rawContent);
+  return sanitizePdfMarkdown(cleanContent).trim();
+}
+
 
 function buildPdfStyles({ compact = false } = {}) {
   const bodyFontSize = compact ? "13px" : "14px";
@@ -364,8 +352,10 @@ function buildPdfStyles({ compact = false } = {}) {
       }
 
       blockquote,
+      .notely-callout,
       table,
       tr,
+      .markdown-code-block,
       .notely-image-frame,
       .notely-mermaid-container,
       .mermaid,
@@ -386,13 +376,6 @@ function buildPdfStyles({ compact = false } = {}) {
       .mermaid svg {
         max-width: 100% !important;
         height: auto !important;
-      }
-
-      .markdown-code-block,
-      .markdown-code-pre,
-      .markdown-code-line {
-        break-inside: auto;
-        page-break-inside: auto;
       }
 
       /* Slightly shrink images in print to reduce forced page splits and large white gaps. */
