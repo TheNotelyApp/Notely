@@ -140,12 +140,10 @@ export function getAssetPathDisplayLabel(pathValue) {
   const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
   if (!normalized) return "";
 
-  const withoutPrefix = normalized
-    .replace(/^\.\/images\//i, "")
-    .replace(/^\/images\//i, "")
-    .replace(/^images\//i, "");
-
-  return decodePathForDisplay(withoutPrefix);
+  const withoutQuery = normalized.split(/[?#]/)[0];
+  const parts = withoutQuery.split("/").filter(Boolean);
+  const fileName = parts.length ? parts[parts.length - 1] : normalized;
+  return decodePathForDisplay(fileName) || fileName;
 }
 
 export function getAssetMediaType(pathValue) {
@@ -162,7 +160,12 @@ export function getAssetMediaType(pathValue) {
   }
 
   const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
-  if (extension === "json" && decodedFileName.toLowerCase().includes("transcript")) {
+  if (
+    (extension === "json" && (decodedFileName.toLowerCase().includes("transcript") || normalized.toLowerCase().includes("transcript") || normalized.toLowerCase().includes("/audio/"))) ||
+    extension === "vtt" ||
+    extension === "srt" ||
+    (decodedFileName.toLowerCase().includes("transcript") && ["json", "txt", "vtt", "srt"].includes(extension))
+  ) {
     return "transcript";
   }
   return getMediaTypeFromExtension(extension, normalized) || "document";

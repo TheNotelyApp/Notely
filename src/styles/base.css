@@ -53,11 +53,6 @@ button {
 
 :where(
     a[href],
-    button,
-    input,
-    select,
-    textarea,
-    [role="button"],
     [tabindex]:not([tabindex="-1"])
   ):focus-visible {
   outline: 1.5px solid var(--focus-ring-color);
@@ -69,8 +64,7 @@ button {
     [role="button"]
   ):focus-visible {
   outline: none;
-  border-color: var(--focus-ring-color) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring-color) 35%, transparent) !important;
+  border-color: var(--focus-ring-color);
 }
 
 :where(
@@ -79,8 +73,8 @@ button {
     textarea
   ):focus-visible {
   outline: none;
-  border-color: var(--focus-ring-color) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent) !important;
+  border-color: var(--focus-ring-color);
+  box-shadow: none;
 }
 
 .app-shell {

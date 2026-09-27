@@ -483,10 +483,10 @@ function resolveImageAssetPath(basePath, assetPath) {
         break;
       }
     }
-    const isWorkspaceImageLink = /^[/\\]+(images|media)[/\\]/i.test(decodedAsset);
+    const isWorkspaceImageLink = /^[/\\]+(images|media|audio|transcripts)[/\\]/i.test(decodedAsset);
     const normalizedAsset = decodedAsset
       .replace(/^\.\//, "")
-      .replace(/^[/\\]+(images|media)[/\\]/i, "$1/");
+      .replace(/^[/\\]+(images|media|audio|transcripts)[/\\]/i, "$1/");
     const legacyDiagramMatch = normalizedAsset.match(/^(?:\.notes-app[\\/])?excali-diagrams[\\/]([^\\/]+)[\\/]([^\\/]+)[\\/]diagram\.png$/i);
     const sluglessDiagramMatch = normalizedAsset.match(/^(?:\.notes-app[\\/])?excali-diagrams[\\/]([^\\/]+)[\\/]diagram\.png$/i);
 
@@ -501,16 +501,20 @@ function resolveImageAssetPath(basePath, assetPath) {
 
     if (isWorkspaceImageLink) {
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
-    } else if (/^(images|media)[\\/]/i.test(normalizedAsset)) {
+    } else if (/^(images|media|audio|transcripts)[\\/]/i.test(normalizedAsset)) {
       candidates.push(path.resolve(baseDir, normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
     } else {
       candidates.push(path.resolve(baseDir, normalizedAsset));
       candidates.push(path.resolve(baseDir, "images", normalizedAsset));
       candidates.push(path.resolve(baseDir, "media", normalizedAsset));
+      candidates.push(path.resolve(baseDir, "audio", normalizedAsset));
+      candidates.push(path.resolve(baseDir, "transcripts", normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), "images", normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), "media", normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), "audio", normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), "transcripts", normalizedAsset));
       if (sluglessDiagramMatch && !/^\.notes-app[\\/]/i.test(normalizedAsset)) {
         const [, diagramId] = sluglessDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
@@ -968,28 +972,32 @@ registerTrustedHandler("images:list", (_event, payload) => {
   };
 
   const baseDir = path.dirname(path.resolve(basePath));
-  const localImagesDir = path.join(baseDir, "images");
-  const rootImagesDir = path.join(getNotesRoot(), "images");
-  const mediaImagesDir = path.join(getNotesRoot(), "media", "images");
-  const mediaDocsDir = path.join(getNotesRoot(), "media", "docs");
+  const paths = [];
+  const seen = new Set();
 
-  const localNames = readImagesIn(localImagesDir);
-  const seen = new Set(localNames.map((name) => name.toLowerCase()));
-  
-  const rootNames = readImagesIn(rootImagesDir).filter((name) => !seen.has(name.toLowerCase()));
-  rootNames.forEach(name => seen.add(name.toLowerCase()));
+  const addEntries = (dir, prefix) => {
+    const names = readImagesIn(dir);
+    for (const name of names) {
+      const assetPath = `${prefix}/${name}`.replace(/\/+/g, "/").replace(/^\.\//, "./");
+      const key = assetPath.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        paths.push(assetPath);
+      }
+    }
+  };
 
-  const mediaImagesNames = readImagesIn(mediaImagesDir).filter((name) => !seen.has(name.toLowerCase()));
-  mediaImagesNames.forEach(name => seen.add(name.toLowerCase()));
+  // Local note-adjacent directories
+  addEntries(path.join(baseDir, "images"), "./images");
+  addEntries(path.join(baseDir, "audio"), "./audio");
+  addEntries(path.join(baseDir, "transcripts"), "./transcripts");
+  addEntries(path.join(baseDir, "media"), "./media");
 
-  const mediaDocsNames = readImagesIn(mediaDocsDir).filter((name) => !seen.has(name.toLowerCase()));
-
-  const paths = [
-    ...localNames.map((name) => `./images/${name}`),
-    ...rootNames.map((name) => `/images/${name}`),
-    ...mediaImagesNames.map((name) => `/media/images/${name}`),
-    ...mediaDocsNames.map((name) => `/media/docs/${name}`),
-  ];
+  // Workspace-root directories
+  addEntries(path.join(getNotesRoot(), "images"), "/images");
+  addEntries(path.join(getNotesRoot(), "audio"), "/audio");
+  addEntries(path.join(getNotesRoot(), "transcripts"), "/transcripts");
+  addEntries(path.join(getNotesRoot(), "media"), "/media");
 
   if (!includeAnnotations && !includeOriginalStatus) return paths;
 

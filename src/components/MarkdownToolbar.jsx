@@ -117,18 +117,6 @@ function cleanRelativePathForDisplay(relativePath) {
   return decodePathForDisplay(withoutParents);
 }
 
-function getAssetPathDisplayLabel(pathValue) {
-  const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
-  if (!normalized) return "";
-
-  const withoutPrefix = normalized
-    .replace(/^\.\/images\//i, "")
-    .replace(/^\/images\//i, "")
-    .replace(/^images\//i, "");
-
-  return decodePathForDisplay(withoutPrefix);
-}
-
 export function MarkdownToolbar({
   value,
   onChange,
@@ -525,22 +513,56 @@ export function MarkdownToolbar({
         listDocuments(basePath),
       ]);
       const mediaList = images.status === "fulfilled" && Array.isArray(images.value)
-        ? images.value.map((pathValue) => ({
-            type: "media",
-            path: pathValue,
-            mediaType: getAssetMediaType(pathValue),
-            title: getAssetPathDisplayLabel(pathValue) || pathValue,
-          }))
+        ? images.value.map((pathValue) => {
+            const rawNormalized = String(pathValue || "").replace(/\\/g, "/").trim();
+            const withoutQuery = rawNormalized.split(/[?#]/)[0];
+            const parts = withoutQuery.split("/").filter(Boolean);
+            const rawFileName = parts.length ? parts[parts.length - 1] : rawNormalized;
+            const decodedTitle = decodePathForDisplay(rawFileName) || rawFileName;
+
+            let folderDir = "";
+            if (parts.length > 1) {
+              const dirParts = parts.slice(0, -1).filter((p) => p !== ".");
+              folderDir = dirParts.length ? `${dirParts.join("/")}/` : "";
+            }
+
+            return {
+              type: "media",
+              path: pathValue,
+              fileName: rawFileName,
+              mediaType: getAssetMediaType(pathValue),
+              title: decodedTitle,
+              displayPath: folderDir,
+            };
+          })
         : [];
       const docsList = docs.status === "fulfilled" && Array.isArray(docs.value)
-        ? docs.value.map((doc) => ({
-            type: "document",
-            path: doc.filePath,
-            fileName: doc.fileName,
-            title: (doc.title || doc.fileName || "Untitled note").trim(),
-            displayPath: doc.displayPath || doc.filePath,
-            mediaType: "document",
-          }))
+        ? docs.value.map((doc) => {
+            const fileNameLower = String(doc.fileName || "").toLowerCase();
+            const titleLower = String(doc.title || "").toLowerCase();
+            const pathLower = String(doc.filePath || "").toLowerCase();
+            const isTranscriptDoc =
+              fileNameLower.includes("transcript") ||
+              titleLower.includes("transcript") ||
+              pathLower.includes("transcript");
+
+            const title = (doc.title || doc.fileName || "Untitled note").trim();
+            let displayPath = doc.displayPath || "";
+            if (!displayPath || displayPath === title || displayPath === doc.fileName) {
+              const normPath = String(doc.filePath || "").replace(/\\/g, "/");
+              const parts = normPath.split("/").filter(Boolean);
+              displayPath = parts.length > 1 ? `${parts.slice(0, -1).join("/")}/` : "";
+            }
+
+            return {
+              type: "document",
+              path: doc.filePath,
+              fileName: doc.fileName,
+              title,
+              displayPath,
+              mediaType: isTranscriptDoc ? "transcript" : "document",
+            };
+          })
         : [];
       setAvailableAssets([...mediaList, ...docsList]);
     } catch (err) {
