@@ -1100,7 +1100,7 @@ export default function App() {
 
   async function handleOpenReferencedDocumentFromUI(filePath, optionsOrLineNumber) {
     await handleOpenReferencedDocument(filePath, optionsOrLineNumber);
-    setLandingAssetsOpen(false);
+    setDiagramsMediaOpen(false);
   }
 
   const refreshGitWorkspaceMeta = useCallback(async function refreshGitWorkspaceMeta() {
@@ -3082,7 +3082,7 @@ export default function App() {
     }
 
     if (action === "assets") {
-      setLandingAssetsOpen(true);
+      setDiagramsMediaOpen(true);
       return;
     }
 
@@ -3243,7 +3243,6 @@ export default function App() {
           );
         })}
       </div>
-      {error && <div className="error-banner">{error}</div>}
       {!showTerminal && !(focusModeEnabled && current) ? (
         <div className="terminal-status-bar">
           <div className="terminal-status-left">

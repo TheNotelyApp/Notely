@@ -9,6 +9,7 @@ const md = new MarkdownIt({
   html: false,
   linkify: false,
   typographer: true,
+  breaks: true,
 });
 
 md.validateLink = (url) => {
@@ -203,7 +204,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
       `</button>` +
     `</span>`;
 
-    return `<span class="markdown-image-frame markdown-audio-card" data-asset-path="${safeSrc}" data-audio-src="${safeSrc}" data-audio-title="${escapeHtml(label)}" style="display:inline-flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface-bg, rgba(255,255,255,0.05));border:1px solid var(--border-default, rgba(255,255,255,0.12));border-radius:10px;min-width:320px;max-width:100%;box-sizing:border-box;margin:8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;">` +
+    return `<span class="markdown-image-frame markdown-audio-card" data-asset-path="${safeSrc}" data-audio-src="${safeSrc}" data-audio-title="${escapeHtml(label)}" style="display:flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface-bg, rgba(255,255,255,0.05));border:1px solid var(--border-default, rgba(255,255,255,0.12));border-radius:10px;min-width:320px;max-width:520px;box-sizing:border-box;margin:8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;">` +
       `${actionsHtml}` +
       `<span style="display:flex;align-items:center;justify-content:space-between;gap:8px;">` +
         `<span style="display:flex;align-items:center;gap:8px;overflow:hidden;padding-right:60px;">` +

@@ -1,0 +1,1 @@
+{"elements":[{"type":"text","text":"Gateway"},{"type":"text","text":"Microservice"},{"type":"arrow","startBinding":{"elementId":"1"},"endBinding":{"elementId":"2"}}]}

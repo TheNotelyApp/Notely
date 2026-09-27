@@ -153,7 +153,9 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
           setSavedHash(hash);
         })
         .catch((err) => {
-          setError(err?.message || "Unable to read note.");
+          const msg = err?.message || "Unable to read note.";
+          setError(msg);
+          notify(msg, "error");
           setOpenTabs((prev) => prev.filter((p) => p !== activeTabPath));
           setActiveTabPath(null);
         })

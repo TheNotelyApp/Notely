@@ -403,7 +403,7 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
       return;
     }
 
-    const label = linkText.trim() || getAssetPathDisplayLabel(targetAsset.path) || "Media";
+    const label = linkText.trim() || targetAsset.title || targetAsset.fileName || "Media";
     const markdown = createMediaMarkdown(label, targetAsset.path);
     onInsert?.(markdown, label);
     onClose?.();

@@ -284,6 +284,12 @@
   transform: translateY(0);
 }
 
+.preview .markdown-audio-card {
+  display: flex !important;
+  width: 100%;
+  max-width: 520px;
+}
+
 .preview .markdown-audio-card .markdown-image-actions {
   top: 8px;
   right: 12px;

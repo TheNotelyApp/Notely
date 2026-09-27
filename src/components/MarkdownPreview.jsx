@@ -501,11 +501,43 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     return parseDiagramBlocks(content);
   }, [content]);
 
+  const lastBasePathRef = useRef(basePath);
+  const lastOriginalsRef = useRef(showOriginalImages);
+
   useEffect(() => {
-    imageResolveCacheRef.current.clear();
+    if (lastBasePathRef.current !== basePath || lastOriginalsRef.current !== showOriginalImages) {
+      imageResolveCacheRef.current.clear();
+      lastBasePathRef.current = basePath;
+      lastOriginalsRef.current = showOriginalImages;
+    }
     let cancelled = false;
     const previewElement = previewRef.current;
     if (!previewElement || !basePath) return undefined;
+
+    const setMediaSrcSafely = (element, nextSrc) => {
+      if (!nextSrc) return;
+      const currentResolved = element.getAttribute("data-resolved-src");
+      if (currentResolved === nextSrc && element.src === nextSrc) return;
+
+      const isMedia = element instanceof HTMLMediaElement;
+      const wasPlaying = isMedia && !element.paused;
+      const prevTime = isMedia ? element.currentTime : 0;
+
+      element.setAttribute("data-resolved-src", nextSrc);
+      if (element.src !== nextSrc) {
+        element.src = nextSrc;
+        if (isMedia && prevTime > 0) {
+          try {
+            element.currentTime = prevTime;
+            if (wasPlaying) {
+              element.play().catch(() => {});
+            }
+          } catch {
+            // Ignore seek error
+          }
+        }
+      }
+    };
 
     const resolveMediaElement = async (element) => {
       if (!element || (!(element instanceof HTMLImageElement) && !(element instanceof HTMLVideoElement) && !(element instanceof HTMLAudioElement))) return;
@@ -537,7 +569,9 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       const cacheKey = imageCacheKey(assetPath, variant);
       if (cache.has(cacheKey)) {
         const cached = cache.get(cacheKey);
-        if (!cancelled && cached) element.src = cached;
+        if (!cancelled && cached) {
+          setMediaSrcSafely(element, cached);
+        }
         if (isImage) {
           const annotationKey = `annotation:${assetPath}`;
           if (cache.has(annotationKey)) {
@@ -552,7 +586,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         const resolved = await readImage(basePath, cleanAssetPath, { thumbnail: isImage ? !showOriginalImages : false });
         if (!cancelled && resolved) {
           cache.set(cacheKey, resolved);
-          element.src = resolved;
+          setMediaSrcSafely(element, resolved);
           if (!isImage && element instanceof HTMLVideoElement) {
             element.onloadeddata = () => {
               try {

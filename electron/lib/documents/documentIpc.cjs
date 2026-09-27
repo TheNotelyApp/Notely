@@ -249,7 +249,34 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
-    const resolved = path.resolve(filePath);
+    
+    let targetPath = String(filePath || "").trim();
+    if (!targetPath.toLowerCase().endsWith(".md")) {
+      targetPath = `${targetPath}.md`;
+    }
+
+    let resolved = path.resolve(targetPath);
+    if (!fs.existsSync(resolved)) {
+      const inProject = path.resolve(projectRoot, targetPath);
+      if (fs.existsSync(inProject)) {
+        resolved = inProject;
+      } else if (notesRoot) {
+        const inNotes = path.resolve(notesRoot, targetPath);
+        if (fs.existsSync(inNotes)) {
+          resolved = inNotes;
+        }
+      }
+    }
+
+    if (!fs.existsSync(resolved)) {
+      const fileName = path.basename(targetPath).toLowerCase();
+      const allFiles = listWorkspaceFileEntries(projectRoot);
+      const found = allFiles.find((f) => path.basename(f.filePath).toLowerCase() === fileName);
+      if (found && fs.existsSync(found.filePath)) {
+        resolved = found.filePath;
+      }
+    }
+
     const isAllowed = (filePathWithin(projectRoot, resolved) || (notesRoot && filePathWithin(notesRoot, resolved)));
     if (!isAllowed || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
@@ -266,7 +293,34 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const activeProject = getActiveProject();
     const notesRoot = getNotesRoot();
     const projectRoot = path.resolve(activeProject?.rootPath || notesRoot);
-    const resolved = path.resolve(String(filePath || ""));
+    
+    let targetPath = String(filePath || "").trim();
+    if (!targetPath.toLowerCase().endsWith(".md")) {
+      targetPath = `${targetPath}.md`;
+    }
+
+    let resolved = path.resolve(targetPath);
+    if (!fs.existsSync(resolved)) {
+      const inProject = path.resolve(projectRoot, targetPath);
+      if (fs.existsSync(inProject)) {
+        resolved = inProject;
+      } else if (notesRoot) {
+        const inNotes = path.resolve(notesRoot, targetPath);
+        if (fs.existsSync(inNotes)) {
+          resolved = inNotes;
+        }
+      }
+    }
+
+    if (!fs.existsSync(resolved)) {
+      const fileName = path.basename(targetPath).toLowerCase();
+      const allFiles = listWorkspaceFileEntries(projectRoot);
+      const found = allFiles.find((f) => path.basename(f.filePath).toLowerCase() === fileName);
+      if (found && fs.existsSync(found.filePath)) {
+        resolved = found.filePath;
+      }
+    }
+
     const isAllowed = (filePathWithin(projectRoot, resolved) || (notesRoot && filePathWithin(notesRoot, resolved)));
     if (!isAllowed || path.extname(resolved).toLowerCase() !== ".md") {
       throw new Error("Invalid document path.");
