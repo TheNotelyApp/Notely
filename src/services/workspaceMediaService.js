@@ -165,7 +165,7 @@ export function extractWorkspaceUsedAssets(documents = []) {
       const lastSegment = (normalizedPath.split("/").pop() || "").split("?")[0].split("#")[0];
       const hasDot = lastSegment.includes(".") && !lastSegment.startsWith(".");
       const ext = hasDot ? (lastSegment.split(".").pop() || "").toLowerCase().slice(0, 10) : "";
-      const isDiagram = isDiagramReference(normalizedPath) || /draw\.?io|excalidraw/i.test(rawAlt);
+      const isDiagram = isDiagramReference(normalizedPath) || /draw\.?io|excalidraw|wireframe|prototype/i.test(rawAlt) || /media\/(wireframes|draw\.io|excalidraw)/i.test(normalizedPath) || /\.wireframe\.json$/i.test(normalizedPath);
 
       let category = "document";
       let subType = ext || "link";
@@ -185,6 +185,11 @@ export function extractWorkspaceUsedAssets(documents = []) {
             const matchId = normalizedPath.match(/(?:excalidraw|excali-diagrams)[\\/]([^/]+)(?:[\\/]diagram\.png|\.png)?/i);
             diagramId = matchId ? matchId[1] : null;
           }
+        } else if (normalizedPath.includes("wireframe") || /\.wireframe\.json$/i.test(normalizedPath) || /wireframe|prototype/i.test(rawAlt)) {
+          category = "wireframe";
+          subType = "wireframe";
+          const matchId = normalizedPath.match(/(?:wireframe|wireframes)[\\/]([^/.]+)/i);
+          diagramId = matchId ? matchId[1].replace(/\.(?:wireframe\.json|png|json)$/i, "") : (normalizedPath.split("/").pop() || "").replace(/\.(?:wireframe\.json|png|json)$/i, "");
         } else {
           subType = "diagram";
         }
@@ -202,8 +207,9 @@ export function extractWorkspaceUsedAssets(documents = []) {
         }
       }
 
-      const fileName = normalizedPath.split("/").pop() || "Media";
-      const displayName = rawAlt && rawAlt !== "Image" && rawAlt !== "Media" ? rawAlt : fileName;
+      const fileName = (category === "wireframe" && diagramId) ? `${diagramId}.wireframe.json` : (normalizedPath.split("/").pop() || "Media");
+      const isGenericAlt = ["Image", "Media", "Wireframe Diagram", "Drawio Diagram", "Excalidraw Diagram", "Diagram"].includes(rawAlt);
+      const displayName = rawAlt && !isGenericAlt ? rawAlt : fileName;
 
       const ref = {
         notePath: filePath,
@@ -212,7 +218,7 @@ export function extractWorkspaceUsedAssets(documents = []) {
         snippet: contextLine.length > 90 ? `${contextLine.slice(0, 90)}…` : contextLine,
       };
 
-      const assetKey = normalizedPath.toLowerCase();
+      const assetKey = diagramId ? `diag:${category}:${diagramId.toLowerCase()}` : normalizedPath.toLowerCase();
       const existing = fileAssetMap.get(assetKey);
       if (existing) {
         existing.referencedBy.push(ref);
@@ -322,6 +328,9 @@ export function mergeDiskMediaIntoCatalog(usedAssets = [], diskFiles = []) {
   const knownNames = new Set(
     usedAssets.map((a) => a.name.toLowerCase())
   );
+  const knownDiagramIds = new Set(
+    usedAssets.filter((a) => a.diagramId).map((a) => a.diagramId.toLowerCase())
+  );
 
   for (const file of diskFiles) {
     const norm = normalizeAssetPath(file.path).toLowerCase();
@@ -332,17 +341,41 @@ export function mergeDiskMediaIntoCatalog(usedAssets = [], diskFiles = []) {
 
     // Determine category
     let category = getMediaTypeFromExtension(file.ext, file.path) || "document";
-    if (file.ext === "webm" && file.path.toLowerCase().includes("recordings")) {
+    let subType = file.ext || "file";
+    let diagramId = null;
+
+    if (file.path.includes("wireframe") || file.name.includes("wireframe") || file.path.endsWith(".wireframe.json") || file.path.includes("drawio") || file.path.includes("draw.io") || file.path.includes("excalidraw") || isDiagramReference(file.path)) {
+      category = "diagram";
+      if (file.path.includes("wireframe") || file.name.includes("wireframe") || file.path.endsWith(".wireframe.json")) {
+        category = "wireframe";
+        subType = "wireframe";
+        const matchId = file.path.match(/(?:wireframe|wireframes)[\\/]([^/.]+)/i);
+        diagramId = matchId ? matchId[1].replace(/\.(?:wireframe\.json|png|json)$/i, "") : (file.name || "").replace(/\.(?:wireframe\.json|png|json)$/i, "");
+      } else if (file.path.includes("draw.io") || file.path.includes("drawio")) {
+        subType = "drawio";
+        const matchId = file.path.match(/(?:draw\.io|drawio|drawio-diagrams)[\\/]([^/.]+)\.png/i);
+        diagramId = matchId ? matchId[1] : (file.name || "").replace(/\.png$/i, "");
+      } else if (file.path.includes("excalidraw") || file.path.includes("excali")) {
+        subType = "excalidraw";
+        const matchId = file.path.match(/(?:excalidraw|excali-diagrams)[\\/]([^/]+)(?:[\\/]diagram\.png|\.png)?/i);
+        diagramId = matchId ? matchId[1] : null;
+      }
+    } else if (file.ext === "webm" && file.path.toLowerCase().includes("recordings")) {
       category = "video";
     }
 
-    // Mark as unused / orphan
+    // If this diagram (or its saved preview image / companion file) is already known, skip duplicate display
+    if (diagramId && knownDiagramIds.has(diagramId.toLowerCase())) {
+      continue;
+    }
+
     results.push({
       id: `disk-${hashString(file.path)}`,
       name: file.name,
       path: file.path,
       category,
-      subType: file.ext || "file",
+      subType,
+      diagramId,
       extension: file.ext,
       referenceCount: 0,
       referencedBy: [],
@@ -351,6 +384,9 @@ export function mergeDiskMediaIntoCatalog(usedAssets = [], diskFiles = []) {
       createdAt: file.mtime || null,
     });
 
+    if (diagramId) {
+      knownDiagramIds.add(diagramId.toLowerCase());
+    }
     knownPaths.add(norm);
     knownNames.add(file.name.toLowerCase());
   }

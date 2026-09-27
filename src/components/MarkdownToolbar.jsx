@@ -9,18 +9,8 @@ import {
   CheckCircle2,
   Quote,
   Code,
-  Link,
-  Link2,
   Table2,
-  FileText,
   Paperclip,
-  Image as ImageIcon,
-  Music,
-  Film,
-  FileDigit,
-  MessageSquareText,
-  Upload,
-  ExternalLink,
   Zap,
   Scan,
   Workflow,
@@ -38,10 +28,8 @@ import { MediaAttachmentPicker } from "./MediaAttachmentPicker";
 import { createAudioMixer } from "../utils/audioMixer";
 import AppSelect from "./AppSelect";
 import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath } from "../utils/markdownUtils";
-import { insertMediaFromFile } from "../services/imageService";
 import { captureCurrentDisplay, getDesktopSources, listDocuments, listImages, saveImage, saveVideo } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
-import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUtils";
 import { ImageCropModal } from "./ImageCropModal";
@@ -573,11 +561,6 @@ export function MarkdownToolbar({
     }
   }
 
-  function openWebLinker() {
-    toggleToolbarPanel("web");
-    setWebLinkError("");
-  }
-
   function insertReferenceDocLink(targetDoc) {
     const filePath = targetDoc?.filePath;
     const text = (referenceLinkText || "").trim() || targetDoc?.title || targetDoc?.fileName || "Linked note";
@@ -601,41 +584,6 @@ export function MarkdownToolbar({
     setReferenceLinkText("");
     setReferenceSearch("");
     onNotify?.("Document link inserted.", "success");
-  }
-
-
-
-  function linkExistingAsset(pathValue) {
-    const fileName = pathValue.split(/[\\/]/).pop() || "Media";
-    const fallbackLabel = fileName.replace(/\.[^.]+$/, "");
-    const markdown = createMediaMarkdown(linkText.trim() || fallbackLabel, pathValue);
-    insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
-    setShowAssetLinker(false);
-    setLinkText("");
-    setAssetSearch("");
-    onNotify?.("Media link inserted.", "success");
-  }
-
-  function linkAssetFromUrl() {
-    const trimmedUrl = assetUrl.trim();
-    if (!trimmedUrl) {
-      setAssetsError("Enter an asset URL first.");
-      return;
-    }
-    if (!isValidHttpUrl(trimmedUrl)) {
-      setAssetsError("Use a valid http/https URL.");
-      return;
-    }
-
-    const fallbackLabel = trimmedUrl.split(/[/?#]/).filter(Boolean).pop() || "Media";
-    const markdown = createMediaMarkdown(linkText.trim() || fallbackLabel, trimmedUrl);
-    insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
-    setShowAssetLinker(false);
-    setLinkText("");
-    setAssetSearch("");
-    setAssetUrl("");
-    setAssetsError("");
-    onNotify?.("Asset URL inserted.", "success");
   }
 
   function insertWebLink() {

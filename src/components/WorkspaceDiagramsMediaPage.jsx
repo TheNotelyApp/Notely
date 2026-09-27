@@ -24,6 +24,7 @@ import {
   MessageSquareText,
   Loader2,
   X,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   extractWorkspaceUsedAssets,
@@ -33,6 +34,7 @@ import {
 import { readImage, openMediaInDefaultApp, listDiskMediaAssets } from "../services/electronService";
 import { readDrawioImage } from "../services/drawioService";
 import { readDiagramImage } from "../services/diagramService";
+import { readWireframeImage } from "../services/wireframeService";
 import { saveAudioRecording } from "../services/electron/mediaService";
 import { transcribeAudio } from "../services/sttService";
 import { showToast } from "../utils/notificationUtils";
@@ -270,6 +272,7 @@ function TranscriptPreviewItem({ asset, basePath, isCardPreview = false, onNotif
 // Harmonious category colors inspired by Knowledge Graph palette
 const CATEGORY_THEMES = {
   diagram: { border: "#6366f1", bg: "rgba(99, 102, 241, 0.12)", text: "#818cf8", label: "Diagram" },
+  wireframe: { border: "#14b8a6", bg: "rgba(20, 184, 166, 0.12)", text: "#2dd4bf", label: "UI Prototype" },
   image: { border: "#06b6d4", bg: "rgba(6, 182, 212, 0.12)", text: "#22d3ee", label: "Image" },
   pdf: { border: "#10b981", bg: "rgba(16, 185, 129, 0.12)", text: "#34d399", label: "PDF" },
   video: { border: "#f59e0b", bg: "rgba(245, 158, 11, 0.12)", text: "#fbbf24", label: "Video" },
@@ -385,7 +388,19 @@ function DiagramOrImagePreviewItem({ asset, basePath, className = "" }) {
           }
         }
 
-        // 3. Fallback to readImage with asset path
+        // 3. If Wireframe diagram, try readWireframeImage
+        if (!res && asset.subType === "wireframe") {
+          const diagId = asset.diagramId || asset.path?.match(/(?:wireframe|wireframes)[\\/]([^/.]+)/i)?.[1] || (asset.fileName || asset.name || "").replace(/\.png$/i, "");
+          if (diagId) {
+            try {
+              res = await readWireframeImage(diagId, basePath || "");
+            } catch {
+              // fallback
+            }
+          }
+        }
+
+        // 4. Fallback to readImage with asset path
         if (!res && asset.path) {
           try {
             res = await readImage(basePath || "", asset.path);
@@ -394,7 +409,7 @@ function DiagramOrImagePreviewItem({ asset, basePath, className = "" }) {
           }
         }
 
-        // 4. Fallback to readImage with rawPath
+        // 5. Fallback to readImage with rawPath
         if (!res && asset.rawPath) {
           try {
             res = await readImage(basePath || "", asset.rawPath);
@@ -425,7 +440,7 @@ function DiagramOrImagePreviewItem({ asset, basePath, className = "" }) {
   }, [asset, basePath]);
 
   if (error || !dataUrl) {
-    const isDiagram = asset?.category === "diagram" || asset?.subType === "drawio" || asset?.subType === "excalidraw";
+    const isDiagram = asset?.category === "diagram" || asset?.subType === "drawio" || asset?.subType === "excalidraw" || asset?.subType === "wireframe";
     return (
       <div className={className} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", color: "var(--text-muted)", width: "100%", height: "100%", boxSizing: "border-box", padding: "10px" }}>
         {isDiagram ? <FileCode size={20} style={{ width: 34, height: 34, opacity: 0.6 }} /> : <ImageIcon size={20} style={{ width: 34, height: 34, opacity: 0.5 }} />}
@@ -456,6 +471,7 @@ export default function WorkspaceDiagramsMediaPage({
   // Category filters
   const [selectedCategories, setSelectedCategories] = useState({
     diagram: true,
+    wireframe: true,
     image: true,
     pdf: true,
     video: true,
@@ -510,13 +526,14 @@ export default function WorkspaceDiagramsMediaPage({
   const stats = useMemo(() => {
     const total = allCatalogAssets.length;
     const diagrams = allCatalogAssets.filter((a) => a.category === "diagram").length;
+    const wireframes = allCatalogAssets.filter((a) => a.category === "wireframe" || a.subType === "wireframe").length;
     const images = allCatalogAssets.filter((a) => a.category === "image").length;
     const pdfs = allCatalogAssets.filter((a) => a.category === "pdf").length;
     const media = allCatalogAssets.filter((a) => a.category === "video" || a.category === "audio").length;
     const transcripts = allCatalogAssets.filter((a) => a.category === "transcript").length;
     const docs = allCatalogAssets.filter((a) => a.category === "document").length;
     const unused = allCatalogAssets.filter((a) => (a.referenceCount || 0) === 0).length;
-    return { total, diagrams, images, pdfs, media, transcripts, docs, unused };
+    return { total, diagrams, wireframes, images, pdfs, media, transcripts, docs, unused };
   }, [allCatalogAssets]);
 
   // Generate transcript from audio or video asset
@@ -604,6 +621,7 @@ export default function WorkspaceDiagramsMediaPage({
   const selectAllCategories = () => {
     setSelectedCategories({
       diagram: true,
+      wireframe: true,
       image: true,
       pdf: true,
       video: true,
@@ -616,6 +634,7 @@ export default function WorkspaceDiagramsMediaPage({
   const selectNoneCategories = () => {
     setSelectedCategories({
       diagram: false,
+      wireframe: false,
       image: false,
       pdf: false,
       video: false,
@@ -747,15 +766,16 @@ export default function WorkspaceDiagramsMediaPage({
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                   {[
                     { key: "diagram", label: "Diagrams", icon: FileCode, count: stats.diagrams, color: CATEGORY_THEMES.diagram.border },
+                    { key: "wireframe", label: "UI Prototypes", icon: LayoutTemplate, count: stats.wireframes, color: CATEGORY_THEMES.wireframe.border },
                     { key: "image", label: "Images", icon: ImageIcon, count: stats.images, color: CATEGORY_THEMES.image.border },
-                    { key: "pdf", label: "PDF Documents", icon: FileDigit, count: stats.pdfs, color: CATEGORY_THEMES.pdf.border },
+                    { key: "pdf", label: "PDFs", icon: FileDigit, count: stats.pdfs, color: CATEGORY_THEMES.pdf.border },
                     { key: "video", label: "Videos", icon: Video, count: allCatalogAssets.filter((a) => a.category === "video").length, color: CATEGORY_THEMES.video.border },
                     { key: "audio", label: "Audio", icon: Music, count: allCatalogAssets.filter((a) => a.category === "audio").length, color: CATEGORY_THEMES.audio.border },
                     { key: "transcript", label: "Transcripts", icon: MessageSquareText, count: stats.transcripts, color: CATEGORY_THEMES.transcript.border },
-                    { key: "document", label: "Other Documents", icon: File, count: stats.docs, color: CATEGORY_THEMES.document.border },
+                    { key: "document", label: "Documents", icon: File, count: stats.docs, color: CATEGORY_THEMES.document.border },
                   ].map(({ key, label, count, color }) => (
                     <label key={key} className="wdm-filter-checkbox">
                       <input
@@ -764,9 +784,10 @@ export default function WorkspaceDiagramsMediaPage({
                         onChange={() => toggleCategory(key)}
                       />
                       <span className="wdm-filter-dot" style={{ background: color }} />
-                      <span style={{ color: selectedCategories[key] !== false ? "var(--text-strong)" : "var(--text-secondary)" }}>
-                        {label} ({count})
+                      <span className="wdm-filter-label" style={{ color: selectedCategories[key] !== false ? "var(--text-strong)" : "var(--text-secondary)" }}>
+                        {label}
                       </span>
+                      <span className="wdm-filter-count">{count}</span>
                     </label>
                   ))}
                 </div>
@@ -780,12 +801,12 @@ export default function WorkspaceDiagramsMediaPage({
                     Note Usage Scope
                   </span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                   {[
-                    { id: "all", label: `All Media & Assets (${stats.total})` },
-                    { id: "single", label: `Single Note Only (${allCatalogAssets.filter((a) => a.referenceCount === 1).length})` },
-                    { id: "multi", label: `Reused in Multi Notes (${allCatalogAssets.filter((a) => a.referenceCount > 1).length})` },
-                    { id: "unused", label: `⚠️ Unused / Orphans (${stats.unused})` },
+                    { id: "all", label: "All Items", count: stats.total },
+                    { id: "single", label: "Single Note", count: allCatalogAssets.filter((a) => a.referenceCount === 1).length },
+                    { id: "multi", label: "Multi-Note", count: allCatalogAssets.filter((a) => a.referenceCount > 1).length },
+                    { id: "unused", label: "Unused / Orphan", count: stats.unused, isWarn: stats.unused > 0 },
                   ].map((opt) => (
                     <label key={opt.id} className="wdm-filter-checkbox">
                       <input
@@ -794,8 +815,20 @@ export default function WorkspaceDiagramsMediaPage({
                         checked={usageFilter === opt.id}
                         onChange={() => setUsageFilter(opt.id)}
                       />
-                      <span style={{ color: opt.id === "unused" && stats.unused > 0 ? "var(--accent-strong, #f59e0b)" : "inherit", fontWeight: usageFilter === opt.id ? 600 : 400 }}>
+                      <span
+                        className="wdm-filter-label"
+                        style={{
+                          color: opt.isWarn ? "var(--accent-strong, #f59e0b)" : (usageFilter === opt.id ? "var(--text-strong)" : "var(--text-secondary)"),
+                          fontWeight: usageFilter === opt.id ? 600 : 400,
+                        }}
+                      >
                         {opt.label}
+                      </span>
+                      <span
+                        className="wdm-filter-count"
+                        style={{ color: opt.isWarn ? "var(--accent-strong, #f59e0b)" : undefined }}
+                      >
+                        {opt.count}
                       </span>
                     </label>
                   ))}
@@ -858,7 +891,7 @@ export default function WorkspaceDiagramsMediaPage({
                               className="wdm-card-preview-mermaid"
                               isCardPreview={true}
                             />
-                          ) : (asset.category === "image" || asset.subType === "drawio" || asset.subType === "excalidraw" || asset.category === "diagram") ? (
+                          ) : (asset.category === "image" || asset.category === "wireframe" || asset.subType === "wireframe" || asset.subType === "drawio" || asset.subType === "excalidraw" || asset.category === "diagram") ? (
                             <DiagramOrImagePreviewItem
                               asset={asset}
                               basePath={asset.referencedBy[0]?.notePath || workspacePath}
@@ -915,7 +948,10 @@ export default function WorkspaceDiagramsMediaPage({
                               }}
                             >
                               {(() => {
-                                const raw = asset.diagramType || asset.extension || (asset.subType && asset.subType.length <= 8 && !asset.subType.includes("/") ? asset.subType : "") || asset.category || "FILE";
+                                if (asset.category === "wireframe" || asset.subType === "wireframe") {
+                                  return "WIREFRAME";
+                                }
+                                const raw = asset.diagramType || (asset.subType && asset.subType.length <= 8 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
                                 return String(raw).toUpperCase();
                               })()}
                             </span>
@@ -1016,7 +1052,7 @@ export default function WorkspaceDiagramsMediaPage({
                       code={selectedAsset.rawCode}
                       className="wdm-details-preview-mermaid"
                     />
-                  ) : (selectedAsset.category === "image" || selectedAsset.subType === "drawio" || selectedAsset.subType === "excalidraw" || selectedAsset.category === "diagram") ? (
+                  ) : (selectedAsset.category === "image" || selectedAsset.category === "wireframe" || selectedAsset.subType === "wireframe" || selectedAsset.subType === "drawio" || selectedAsset.subType === "excalidraw" || selectedAsset.category === "diagram") ? (
                     <DiagramOrImagePreviewItem
                       asset={selectedAsset}
                       basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}

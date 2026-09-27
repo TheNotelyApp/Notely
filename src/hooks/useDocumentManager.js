@@ -163,7 +163,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
           setLoading(false);
         });
     }
-  }, [activeTabPath, setActiveTabPath, setOpenTabs]);
+  }, [activeTabPath, setActiveTabPath, setOpenTabs, notify]);
 
   // Pre-load all open tabs in parallel to ensure switching is instantaneous
   useEffect(() => {

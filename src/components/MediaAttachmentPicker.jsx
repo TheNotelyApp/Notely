@@ -257,30 +257,6 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
 
   const hasValidAssetUrl = isValidHttpUrl(assetUrl.trim());
 
-  // Category item counts
-  const categoryCounts = useMemo(() => {
-    const counts = {
-      all: availableAssets.length,
-      image: 0,
-      audio: 0,
-      transcript: 0,
-      video: 0,
-      pdf: 0,
-      document: 0,
-    };
-    for (const asset of availableAssets) {
-      if (asset.mediaType === "transcript") {
-        counts.transcript += 1;
-      }
-      if (asset.type === "document") {
-        counts.document += 1;
-      } else if (counts[asset.mediaType] !== undefined && asset.mediaType !== "transcript") {
-        counts[asset.mediaType] += 1;
-      }
-    }
-    return counts;
-  }, [availableAssets]);
-
   const filteredAssets = useMemo(() => {
     return availableAssets.filter((asset) => {
       if (assetFilter !== "all" && assetFilter !== "All Media") {

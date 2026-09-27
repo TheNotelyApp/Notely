@@ -415,7 +415,6 @@ export default function App() {
     saving,
     writeMetadataToFile,
     setWriteMetadataToFile,
-    error,
     setError,
     activeProject,
     newNoteTitle,

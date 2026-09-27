@@ -150,6 +150,7 @@
   border-radius: 4px;
   user-select: none;
   transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
 .wdm-filter-checkbox:hover {
@@ -157,8 +158,27 @@
   color: var(--text-strong);
 }
 
-.wdm-filter-checkbox input[type="checkbox"] {
+.wdm-filter-checkbox input[type="checkbox"],
+.wdm-filter-checkbox input[type="radio"] {
   cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.wdm-filter-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wdm-filter-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  padding-left: 6px;
 }
 
 .wdm-filter-dot {
