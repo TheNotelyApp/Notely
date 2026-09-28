@@ -162,11 +162,13 @@ export function extractWorkspaceUsedAssets(documents = []) {
       const lineNumber = content.substring(0, matchIndex).split("\n").length;
       const contextLine = (lines[lineNumber - 1] || "").trim();
 
-      const ext = (normalizedPath.split(".").pop() || "").toLowerCase();
-      const isDiagram = isDiagramReference(normalizedPath) || /draw\.?io|excalidraw/i.test(rawAlt);
+      const lastSegment = (normalizedPath.split("/").pop() || "").split("?")[0].split("#")[0];
+      const hasDot = lastSegment.includes(".") && !lastSegment.startsWith(".");
+      const ext = hasDot ? (lastSegment.split(".").pop() || "").toLowerCase().slice(0, 10) : "";
+      const isDiagram = isDiagramReference(normalizedPath) || /draw\.?io|excalidraw|wireframe|prototype/i.test(rawAlt) || /media\/(wireframes|draw\.io|excalidraw)/i.test(normalizedPath) || /\.wireframe\.json$/i.test(normalizedPath);
 
-      let category = "media";
-      let subType = ext || "file";
+      let category = "document";
+      let subType = ext || "link";
       let diagramId = null;
 
       if (isDiagram) {
@@ -183,31 +185,31 @@ export function extractWorkspaceUsedAssets(documents = []) {
             const matchId = normalizedPath.match(/(?:excalidraw|excali-diagrams)[\\/]([^/]+)(?:[\\/]diagram\.png|\.png)?/i);
             diagramId = matchId ? matchId[1] : null;
           }
+        } else if (normalizedPath.includes("wireframe") || /\.wireframe\.json$/i.test(normalizedPath) || /wireframe|prototype/i.test(rawAlt)) {
+          category = "wireframe";
+          subType = "wireframe";
+          const matchId = normalizedPath.match(/(?:wireframe|wireframes)[\\/]([^/.]+)/i);
+          diagramId = matchId ? matchId[1].replace(/\.(?:wireframe\.json|png|json)$/i, "") : (normalizedPath.split("/").pop() || "").replace(/\.(?:wireframe\.json|png|json)$/i, "");
         } else {
           subType = "diagram";
         }
       } else {
-        const detectedType = getMediaTypeFromExtension(ext);
-        if (detectedType === "pdf") {
-          category = "pdf";
-          subType = "pdf";
-        } else if (detectedType === "image") {
-          category = "image";
-          subType = ext;
-        } else if (detectedType === "video" || detectedType === "audio") {
+        const detectedType = ext ? getMediaTypeFromExtension(ext, normalizedPath) : null;
+        if (detectedType) {
           category = detectedType;
-          subType = ext;
-        } else if (detectedType === "document") {
-          category = "document";
           subType = ext;
         } else if (isImageSyntax) {
           category = "image";
-          subType = ext || "png";
+          subType = ext || "image";
+        } else {
+          category = "document";
+          subType = ext || "link";
         }
       }
 
-      const fileName = normalizedPath.split("/").pop() || "Media";
-      const displayName = rawAlt && rawAlt !== "Image" && rawAlt !== "Media" ? rawAlt : fileName;
+      const fileName = (category === "wireframe" && diagramId) ? `${diagramId}.wireframe.json` : (normalizedPath.split("/").pop() || "Media");
+      const isGenericAlt = ["Image", "Media", "Wireframe Diagram", "Drawio Diagram", "Excalidraw Diagram", "Diagram"].includes(rawAlt);
+      const displayName = rawAlt && !isGenericAlt ? rawAlt : fileName;
 
       const ref = {
         notePath: filePath,
@@ -216,7 +218,7 @@ export function extractWorkspaceUsedAssets(documents = []) {
         snippet: contextLine.length > 90 ? `${contextLine.slice(0, 90)}…` : contextLine,
       };
 
-      const assetKey = normalizedPath.toLowerCase();
+      const assetKey = diagramId ? `diag:${category}:${diagramId.toLowerCase()}` : normalizedPath.toLowerCase();
       const existing = fileAssetMap.get(assetKey);
       if (existing) {
         existing.referencedBy.push(ref);
@@ -283,11 +285,13 @@ export function filterAssets(items = [], { searchQuery = "", selectedCategories 
     filtered = filtered.filter((item) => selectedSubtypes[item.subType] !== false);
   }
 
-  // Usage filter (e.g. single vs multiple note references)
+  // Usage filter (e.g. single vs multiple note references, or unused orphans)
   if (usageFilter === "single") {
     filtered = filtered.filter((item) => item.referenceCount === 1);
   } else if (usageFilter === "multi") {
     filtered = filtered.filter((item) => item.referenceCount > 1);
+  } else if (usageFilter === "unused") {
+    filtered = filtered.filter((item) => (item.referenceCount || 0) === 0);
   }
 
   // Sort order
@@ -302,4 +306,90 @@ export function filterAssets(items = [], { searchQuery = "", selectedCategories 
   }
 
   return filtered;
+}
+
+/**
+ * Merges physical media files found on disk with catalog assets discovered from note references.
+ * Physical disk files that are not referenced by any document are added with referenceCount: 0.
+ *
+ * @param {Array} usedAssets - Catalog from extractWorkspaceUsedAssets()
+ * @param {Array} diskFiles - Array of { path, name, ext, size, mtime } from listDiskMediaAssets()
+ * @returns {Array} Combined catalog containing used and unused media assets
+ */
+export function mergeDiskMediaIntoCatalog(usedAssets = [], diskFiles = []) {
+  if (!Array.isArray(diskFiles) || diskFiles.length === 0) {
+    return usedAssets;
+  }
+
+  const results = [...usedAssets];
+  const knownPaths = new Set(
+    usedAssets.map((a) => normalizeAssetPath(a.path).toLowerCase())
+  );
+  const knownNames = new Set(
+    usedAssets.map((a) => a.name.toLowerCase())
+  );
+  const knownDiagramIds = new Set(
+    usedAssets.filter((a) => a.diagramId).map((a) => a.diagramId.toLowerCase())
+  );
+
+  for (const file of diskFiles) {
+    const norm = normalizeAssetPath(file.path).toLowerCase();
+    // If this file or its filename is already tracked as a note reference, skip it
+    if (knownPaths.has(norm) || knownNames.has(file.name.toLowerCase())) {
+      continue;
+    }
+
+    // Determine category
+    let category = getMediaTypeFromExtension(file.ext, file.path) || "document";
+    let subType = file.ext || "file";
+    let diagramId = null;
+
+    if (file.path.includes("wireframe") || file.name.includes("wireframe") || file.path.endsWith(".wireframe.json") || file.path.includes("drawio") || file.path.includes("draw.io") || file.path.includes("excalidraw") || isDiagramReference(file.path)) {
+      category = "diagram";
+      if (file.path.includes("wireframe") || file.name.includes("wireframe") || file.path.endsWith(".wireframe.json")) {
+        category = "wireframe";
+        subType = "wireframe";
+        const matchId = file.path.match(/(?:wireframe|wireframes)[\\/]([^/.]+)/i);
+        diagramId = matchId ? matchId[1].replace(/\.(?:wireframe\.json|png|json)$/i, "") : (file.name || "").replace(/\.(?:wireframe\.json|png|json)$/i, "");
+      } else if (file.path.includes("draw.io") || file.path.includes("drawio")) {
+        subType = "drawio";
+        const matchId = file.path.match(/(?:draw\.io|drawio|drawio-diagrams)[\\/]([^/.]+)\.png/i);
+        diagramId = matchId ? matchId[1] : (file.name || "").replace(/\.png$/i, "");
+      } else if (file.path.includes("excalidraw") || file.path.includes("excali")) {
+        subType = "excalidraw";
+        const matchId = file.path.match(/(?:excalidraw|excali-diagrams)[\\/]([^/]+)(?:[\\/]diagram\.png|\.png)?/i);
+        diagramId = matchId ? matchId[1] : null;
+      }
+    } else if (file.ext === "webm" && file.path.toLowerCase().includes("recordings")) {
+      category = "video";
+    }
+
+    // If this diagram (or its saved preview image / companion file) is already known, skip duplicate display
+    if (diagramId && knownDiagramIds.has(diagramId.toLowerCase())) {
+      continue;
+    }
+
+    results.push({
+      id: `disk-${hashString(file.path)}`,
+      name: file.name,
+      path: file.path,
+      category,
+      subType,
+      diagramId,
+      extension: file.ext,
+      referenceCount: 0,
+      referencedBy: [],
+      isUnused: true,
+      size: file.size || 0,
+      createdAt: file.mtime || null,
+    });
+
+    if (diagramId) {
+      knownDiagramIds.add(diagramId.toLowerCase());
+    }
+    knownPaths.add(norm);
+    knownNames.add(file.name.toLowerCase());
+  }
+
+  return results;
 }

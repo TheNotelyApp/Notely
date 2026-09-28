@@ -9,11 +9,8 @@ import {
   CheckCircle2,
   Quote,
   Code,
-  Link,
-  Link2,
   Table2,
-  FileText,
-  ImagePlus,
+  Paperclip,
   Zap,
   Scan,
   Workflow,
@@ -22,15 +19,17 @@ import {
   LayoutTemplate,
   Info,
   Video,
+  Mic,
 } from "lucide-react";
 import { ScreenRecordingBar } from "./ScreenRecordingBar";
 import { ScreenSourcePickerModal } from "./ScreenSourcePickerModal";
+import AudioRecorderBar from "./AudioRecorderBar";
+import { MediaAttachmentPicker } from "./MediaAttachmentPicker";
+import { createAudioMixer } from "../utils/audioMixer";
 import AppSelect from "./AppSelect";
 import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath } from "../utils/markdownUtils";
-import { insertMediaFromFile } from "../services/imageService";
 import { captureCurrentDisplay, getDesktopSources, listDocuments, listImages, saveImage, saveVideo } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
-import { MEDIA_FILE_INPUT_ACCEPT } from "../utils/mediaTypeUtils";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
 import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUtils";
 import { ImageCropModal } from "./ImageCropModal";
@@ -78,6 +77,9 @@ function getAssetMediaType(pathValue) {
   }
 
   const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
+  if (extension === "json" && decodedFileName.toLowerCase().includes("transcript")) {
+    return "transcript";
+  }
   return getMediaTypeFromExtension(extension) || "document";
 }
 
@@ -103,18 +105,6 @@ function cleanRelativePathForDisplay(relativePath) {
   return decodePathForDisplay(withoutParents);
 }
 
-function getAssetPathDisplayLabel(pathValue) {
-  const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
-  if (!normalized) return "";
-
-  const withoutPrefix = normalized
-    .replace(/^\.\/images\//i, "")
-    .replace(/^\/images\//i, "")
-    .replace(/^images\//i, "");
-
-  return decodePathForDisplay(withoutPrefix);
-}
-
 export function MarkdownToolbar({
   value,
   onChange,
@@ -132,7 +122,6 @@ export function MarkdownToolbar({
   onIgnoreSpellingWord,
   screenCaptureMode = "auto",
 }) {
-  const imageInputRef = useRef(null);
   const mermaidPopoverRef = useRef(null);
   const assetLinkPopoverRef = useRef(null);
   const referenceLinkPopoverRef = useRef(null);
@@ -153,12 +142,8 @@ export function MarkdownToolbar({
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [assetsError, setAssetsError] = useState("");
   const [referenceError, setReferenceError] = useState("");
-  const [assetSearch, setAssetSearch] = useState("");
-  const [assetFilter, setAssetFilter] = useState("all");
   const [referenceSearch, setReferenceSearch] = useState("");
-  const [linkText, setLinkText] = useState("");
   const [referenceLinkText, setReferenceLinkText] = useState("");
-  const [assetUrl, setAssetUrl] = useState("");
   const [webLinkText, setWebLinkText] = useState("");
   const [webLinkUrl, setWebLinkUrl] = useState("");
   const [webLinkError, setWebLinkError] = useState("");
@@ -182,6 +167,7 @@ export function MarkdownToolbar({
   const [screenRecording, setScreenRecording] = useState(false);
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [sourcePickerSources, setSourcePickerSources] = useState([]);
+  const [audioRecorderOpen, setAudioRecorderOpen] = useState(false);
   const screenRecorderRef = useRef(null);
   const screenRecorderAudioTrackRef = useRef(null);
 
@@ -303,22 +289,7 @@ export function MarkdownToolbar({
     };
   }, [anyPopoverOpen]);
 
-  const handleMediaSelect = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    try {
-      const { mediaPath, altText } = await insertMediaFromFile(file);
-      const markdown = createMediaMarkdown(altText, mediaPath);
-      insertTextAtCursor(value, onChange, markdown, textareaRef);
-      onNotify?.("Media inserted.", "success");
-    } catch (error) {
-      console.error("Media insertion failed:", error);
-      onNotify?.(error?.message || "Failed to insert media.", "error");
-    } finally {
-      event.target.value = "";
-    }
-  };
 
   const handleInsertCodeBlock = ({ language, code }) => {
     const markdown = `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
@@ -335,20 +306,8 @@ export function MarkdownToolbar({
     { key: "code", icon: Code, title: "Code", before: "`", after: "`", placeholder: "code" },
   ];
 
-  const filteredAssets = availableAssets.filter((asset) => {
-    if (assetFilter !== "all") {
-      const mediaType = asset.mediaType || getAssetMediaType(asset.path);
-      if (mediaType !== assetFilter) return false;
-    }
-
-    const search = assetSearch.trim().toLowerCase();
-    if (!search) return true;
-    const label = `${asset.path || ""} ${getAssetPathDisplayLabel(asset.path)}`;
-    return label.toLowerCase().includes(search);
-  });
   const normalizedTableRows = Math.min(Math.max(Number(tableRows) || 1, 1), 20);
   const normalizedTableColumns = Math.min(Math.max(Number(tableColumns) || 1, 1), 20);
-  const hasValidAssetUrl = isValidHttpUrl(assetUrl);
   const hasValidWebLinkUrl = isValidHttpUrl(webLinkUrl);
   const validationSummary =
     validationStatus === "checking"
@@ -527,7 +486,6 @@ export function MarkdownToolbar({
   async function openAssetLinker() {
     const shouldOpen = toggleToolbarPanel("asset");
     setAssetsError("");
-
     if (!shouldOpen) return;
 
     if (!basePath) {
@@ -538,27 +496,69 @@ export function MarkdownToolbar({
 
     setAssetsLoading(true);
     try {
-      const paths = await listImages(basePath);
+      const [images, docs] = await Promise.allSettled([
+        listImages(basePath),
+        listDocuments(basePath),
+      ]);
+      const mediaList = images.status === "fulfilled" && Array.isArray(images.value)
+        ? images.value.map((pathValue) => {
+            const rawNormalized = String(pathValue || "").replace(/\\/g, "/").trim();
+            const withoutQuery = rawNormalized.split(/[?#]/)[0];
+            const parts = withoutQuery.split("/").filter(Boolean);
+            const rawFileName = parts.length ? parts[parts.length - 1] : rawNormalized;
+            const decodedTitle = decodePathForDisplay(rawFileName) || rawFileName;
 
-      const mediaAssets = (paths || []).map((pathValue) => ({
-        type: "media",
-        path: pathValue,
-        mediaType: getAssetMediaType(pathValue),
-      }));
+            let folderDir = "";
+            if (parts.length > 1) {
+              const dirParts = parts.slice(0, -1).filter((p) => p !== ".");
+              folderDir = dirParts.length ? `${dirParts.join("/")}/` : "";
+            }
 
-      setAvailableAssets(mediaAssets);
-      setAssetFilter("all");
-    } catch (error) {
+            return {
+              type: "media",
+              path: pathValue,
+              fileName: rawFileName,
+              mediaType: getAssetMediaType(pathValue),
+              title: decodedTitle,
+              displayPath: folderDir,
+            };
+          })
+        : [];
+      const docsList = docs.status === "fulfilled" && Array.isArray(docs.value)
+        ? docs.value.map((doc) => {
+            const fileNameLower = String(doc.fileName || "").toLowerCase();
+            const titleLower = String(doc.title || "").toLowerCase();
+            const pathLower = String(doc.filePath || "").toLowerCase();
+            const isTranscriptDoc =
+              fileNameLower.includes("transcript") ||
+              titleLower.includes("transcript") ||
+              pathLower.includes("transcript");
+
+            const title = (doc.title || doc.fileName || "Untitled note").trim();
+            let displayPath = doc.displayPath || "";
+            if (!displayPath || displayPath === title || displayPath === doc.fileName) {
+              const normPath = String(doc.filePath || "").replace(/\\/g, "/");
+              const parts = normPath.split("/").filter(Boolean);
+              displayPath = parts.length > 1 ? `${parts.slice(0, -1).join("/")}/` : "";
+            }
+
+            return {
+              type: "document",
+              path: doc.filePath,
+              fileName: doc.fileName,
+              title,
+              displayPath,
+              mediaType: isTranscriptDoc ? "transcript" : "document",
+            };
+          })
+        : [];
+      setAvailableAssets([...mediaList, ...docsList]);
+    } catch (err) {
       setAvailableAssets([]);
-      setAssetsError(error?.message || "Unable to load workspace assets.");
+      setAssetsError(err?.message || "Unable to load workspace assets.");
     } finally {
       setAssetsLoading(false);
     }
-  }
-
-  function openWebLinker() {
-    toggleToolbarPanel("web");
-    setWebLinkError("");
   }
 
   function insertReferenceDocLink(targetDoc) {
@@ -584,41 +584,6 @@ export function MarkdownToolbar({
     setReferenceLinkText("");
     setReferenceSearch("");
     onNotify?.("Document link inserted.", "success");
-  }
-
-
-
-  function linkExistingAsset(pathValue) {
-    const fileName = pathValue.split(/[\\/]/).pop() || "Media";
-    const fallbackLabel = fileName.replace(/\.[^.]+$/, "");
-    const markdown = createMediaMarkdown(linkText.trim() || fallbackLabel, pathValue);
-    insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
-    setShowAssetLinker(false);
-    setLinkText("");
-    setAssetSearch("");
-    onNotify?.("Media link inserted.", "success");
-  }
-
-  function linkAssetFromUrl() {
-    const trimmedUrl = assetUrl.trim();
-    if (!trimmedUrl) {
-      setAssetsError("Enter an asset URL first.");
-      return;
-    }
-    if (!isValidHttpUrl(trimmedUrl)) {
-      setAssetsError("Use a valid http/https URL.");
-      return;
-    }
-
-    const fallbackLabel = trimmedUrl.split(/[/?#]/).filter(Boolean).pop() || "Media";
-    const markdown = createMediaMarkdown(linkText.trim() || fallbackLabel, trimmedUrl);
-    insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
-    setShowAssetLinker(false);
-    setLinkText("");
-    setAssetSearch("");
-    setAssetUrl("");
-    setAssetsError("");
-    onNotify?.("Asset URL inserted.", "success");
   }
 
   function insertWebLink() {
@@ -778,7 +743,11 @@ export function MarkdownToolbar({
       let displayStream = null;
       try {
         displayStream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
+          audio: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+            },
+          },
           video: {
             mandatory: {
               chromeMediaSource: "desktop",
@@ -787,20 +756,47 @@ export function MarkdownToolbar({
           },
         });
       } catch {
-        displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        try {
+          displayStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: "desktop",
+                chromeMediaSourceId: selectedSource.id,
+              },
+            },
+          });
+        } catch {
+          displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        }
       }
 
+      let micStream = null;
       let audioTrack = null;
       if (recordMic) {
         try {
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioTrack = micStream.getAudioTracks()[0] ?? null;
         } catch {
           // Mic denied or unavailable
         }
       }
 
-      const tracks = [...displayStream.getTracks(), ...(audioTrack ? [audioTrack] : [])];
+      const systemAudioTracks = displayStream.getAudioTracks();
+      let combinedAudioTrack = audioTrack;
+
+      if (micStream && systemAudioTracks.length > 0) {
+        try {
+          const mixer = createAudioMixer({ micStream, systemStream: displayStream });
+          combinedAudioTrack = mixer.mixedAudioTrack;
+        } catch (mixErr) {
+          console.warn("[MarkdownToolbar] Audio mixing failed, falling back to mic track:", mixErr);
+        }
+      } else if (systemAudioTracks.length > 0 && !audioTrack) {
+        combinedAudioTrack = systemAudioTracks[0];
+      }
+
+      const tracks = [...displayStream.getVideoTracks(), ...(combinedAudioTrack ? [combinedAudioTrack] : [])];
       const combined = new MediaStream(tracks);
 
       let mimeType = "";
@@ -954,6 +950,25 @@ export function MarkdownToolbar({
     onNotify?.("Screen recording canceled.", "info");
   };
 
+  const handleAudioRecordingSuccess = ({ audioPath, transcriptPath, duration, transcript }) => {
+    let markdown = `![[${audioPath}]]\n\n`;
+    if (transcript) {
+      const mins = Math.floor((duration || 0) / 60).toString().padStart(2, "0");
+      const secs = Math.floor((duration || 0) % 60).toString().padStart(2, "0");
+      markdown += `> [!NOTE] 🎙️ Audio Recording & Transcript (${mins}:${secs})\n`;
+      markdown += `> **Source**: ${transcript.sourceMode === "meeting" ? "Meeting (Mic + System Audio)" : "Microphone"}\n`;
+      if (transcriptPath) {
+        markdown += `> [[${transcriptPath}|View Full Transcript & Summary]]\n`;
+      }
+      if (transcript.fullText) {
+        const preview = transcript.fullText.length > 200 ? transcript.fullText.slice(0, 200) + "..." : transcript.fullText;
+        markdown += `>\n> "${preview}"\n`;
+      }
+    }
+    insertTextAtCursor(value, onChange, `${markdown}\n`, textareaRef);
+    onNotify?.("Audio recording & transcript inserted into note.", "success");
+  };
+
   const insertCapturedImage = async (dataUrl) => {
     if (screenCaptureSaving) return false;
 
@@ -1036,6 +1051,11 @@ export function MarkdownToolbar({
 
   useEffect(() => {
     const onShortcut = (event) => {
+      if (event.altKey && String(event.key || "").toLowerCase() === "v") {
+        event.preventDefault();
+        setAudioRecorderOpen((prev) => !prev);
+        return;
+      }
       if (!(event.ctrlKey || event.metaKey) || !event.shiftKey) return;
       const key = String(event.key || "").toLowerCase();
       if (key === "k") {
@@ -1221,14 +1241,8 @@ export function MarkdownToolbar({
       <AppIconButton onClick={openTableBuilder} title="Insert table" aria-label="Insert table">
         <Table2 size={16} />
       </AppIconButton>
-      <AppIconButton onClick={openWebLinker} title="Insert web link" aria-label="Insert web link">
-        <Link2 size={16} />
-      </AppIconButton>
-      <AppIconButton onClick={() => void openReferenceLinker()} title="Insert reference note link (Ctrl/Cmd+Shift+K)" aria-label="Insert reference note link">
-        <FileText size={16} />
-      </AppIconButton>
-      <AppIconButton onClick={() => imageInputRef.current?.click()} title="Insert media from file" aria-label="Insert media from file">
-        <ImagePlus size={16} />
+      <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert media and attachments">
+        <Paperclip size={16} />
       </AppIconButton>
       <AppIconButton
         onClick={() => {
@@ -1253,8 +1267,14 @@ export function MarkdownToolbar({
       >
         <Video size={16} />
       </AppIconButton>
-      <AppIconButton onClick={openAssetLinker} title="Insert workspace asset" aria-label="Insert workspace asset">
-        <Link size={16} />
+      <AppIconButton
+        onClick={() => setAudioRecorderOpen(true)}
+        title="Record audio & meeting with Speech-to-Text (Alt+V)"
+        aria-label="Record audio and meeting"
+        disabled={audioRecorderOpen || screenRecording}
+        className={audioRecorderOpen ? "toolbar-btn-capture review" : ""}
+      >
+        <Mic size={16} />
       </AppIconButton>
       <AppIconButton onClick={openDiagramBuilder} title="Insert diagram" aria-label="Insert diagram">
         <Zap size={16} />
@@ -1400,83 +1420,20 @@ export function MarkdownToolbar({
         </div>
       )}
 
-      {showAssetLinker && (
-        <div className="image-linker" ref={assetLinkPopoverRef} role="dialog" aria-label="Workspace asset linker">
-          <div className="mermaid-builder-header">
-            <strong>Insert Media From Workspace</strong>
-            <button className="mermaid-close" onClick={() => setShowAssetLinker(false)} data-tooltip="Close">
-              x
-            </button>
-          </div>
-
-          <div className="mermaid-fields">
-            <label>
-              Search assets
-              <input
-                value={assetSearch}
-                onChange={(event) => setAssetSearch(event.target.value)}
-                placeholder="Type media path"
-              />
-            </label>
-            <label>
-              Filter
-              <AppSelect
-                value={assetFilter}
-                onChange={(event) => setAssetFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="image">Images</option>
-                <option value="video">Videos</option>
-                <option value="audio">Audio</option>
-                <option value="pdf">PDFs</option>
-                <option value="document">Documents</option>
-              </AppSelect>
-            </label>
-            <label>
-              Link text (optional)
-              <input
-                value={linkText}
-                onChange={(event) => setLinkText(event.target.value)}
-                placeholder="Defaults to item name"
-              />
-            </label>
-            <label>
-              Asset URL (optional)
-              <input
-                value={assetUrl}
-                onChange={(event) => {
-                  setAssetUrl(event.target.value);
-                  setAssetsError("");
-                }}
-                placeholder="https://example.com/file"
-              />
-            </label>
-          </div>
-
-          <div className="image-linker-url-actions">
-            <button onClick={linkAssetFromUrl} disabled={!hasValidAssetUrl}>Insert URL Asset</button>
-          </div>
-
-          {assetUrl.trim() && !hasValidAssetUrl ? (
-            <p className="toolbar-inline-error">Use a valid http/https URL.</p>
-          ) : null}
-
-          {assetsError && <p className="toolbar-inline-error">{assetsError}</p>}
-          {assetsLoading ? <p className="toolbar-inline-note">Loading assets...</p> : null}
-
-          {!assetsLoading && !filteredAssets.length ? (
-            <p className="toolbar-inline-note">No matching assets found.</p>
-          ) : (
-            <div className="image-linker-list">
-              {filteredAssets.map((asset) => (
-                <button key={asset.path} onClick={() => linkExistingAsset(asset.path)} data-tooltip={asset.path}>
-                  {getAssetPathDisplayLabel(asset.path) || asset.path}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <MediaAttachmentPicker
+        ref={assetLinkPopoverRef}
+        isOpen={showAssetLinker}
+        onClose={() => setShowAssetLinker(false)}
+        basePath={basePath}
+        availableAssets={availableAssets}
+        assetsLoading={assetsLoading}
+        assetsError={assetsError}
+        onInsert={(markdown) => {
+          insertTextAtCursor(value, onChange, `${markdown} `, textareaRef);
+          onNotify?.("Inserted into note.", "success");
+        }}
+        onNotify={onNotify}
+      />
 
       {showReferenceLinker && (
         <div className="image-linker" ref={referenceLinkPopoverRef} role="dialog" aria-label="Reference note picker">
@@ -1707,13 +1664,6 @@ export function MarkdownToolbar({
           ) : null}
         </div>
       )}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept={MEDIA_FILE_INPUT_ACCEPT}
-        onChange={handleMediaSelect}
-        hidden
-      />
       </div>
       <ImageCropModal
         open={screenCaptureOpen}
@@ -1743,6 +1693,16 @@ export function MarkdownToolbar({
           onStop={handleRecordingStop}
           onCancel={handleRecordingCancel}
         />
+      )}
+      {audioRecorderOpen && (
+        <div style={{ position: "fixed", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 9999 }}>
+          <AudioRecorderBar
+            isOpen={audioRecorderOpen}
+            onClose={() => setAudioRecorderOpen(false)}
+            onSaveSuccess={handleAudioRecordingSuccess}
+            initialMode="meeting"
+          />
+        </div>
       )}
     </>
   );

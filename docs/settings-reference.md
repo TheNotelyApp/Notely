@@ -154,6 +154,19 @@ Open **AI -> AI Settings**.
 
 Use lower temperature for predictable output. Use higher temperature for brainstorming or variation.
 
+### Speech-to-Text (STT) setup
+
+Open the **Speech-to-Text** tab in AI Settings:
+
+- **Transcription Engine**:
+  - `Local ONNX Whisper (Offline, In-Browser / WebAssembly)`: default offline engine; runs private on-device transcription.
+  - `Groq Cloud Whisper`: utilizes Groq's high-throughput `whisper-large-v3` for sub-second transcriptions using your configured Groq API key.
+  - `OpenAI Cloud Whisper`: utilizes OpenAI's `whisper-1` model using your configured OpenAI API key.
+- **Local Whisper Model**: Select from `whisper-tiny.en` (~40MB, fastest), `whisper-base.en` (~140MB, balanced), or `whisper-small` (~460MB, multilingual).
+- **Default Audio Capture Mode**: Choose default mode when launching recorder (`Meeting: Mic + System Audio`, `Microphone Only`, `System Audio Only`).
+- **Primary Spoken Language**: Specify expected audio language (or `Auto-Detect`).
+- **Auto-transcribe toggle**: Automatically triggers Speech-to-Text generation as soon as an audio or meeting recording is stopped.
+
 ### Data and privacy controls
 
 - Shows where AI-related app data is stored on your device

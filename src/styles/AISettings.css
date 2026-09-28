@@ -60,12 +60,12 @@
 }
 
 .ai-settings-content {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: 0;
   overflow: visible;
-  background: var(--surface-bg);
+  background: transparent;
 }
 
 .ai-settings-intent-header {
@@ -862,4 +862,61 @@
   background: rgba(93, 153, 163, 0.08);
   border-color: rgba(93, 153, 163, 0.2);
   color: var(--text-muted);
+}
+
+/* Modern Segmented Navigation Bar */
+.ai-segmented-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-muted, #f1f5f4);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft, #dce4e1);
+  margin-bottom: 14px;
+}
+
+.ai-segmented-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted, #61767c);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.ai-segmented-tab-btn:hover:not(.active) {
+  color: var(--text-strong, #183036);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:root[data-theme="dark"] .ai-segmented-tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ai-segmented-tab-btn.active {
+  background: var(--surface-bg, #ffffff);
+  color: var(--text-strong, #183036);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme="dark"] .ai-segmented-tabs-bar {
+  background: var(--surface-elevated, #1f272a);
+  border-color: var(--border-default, #2a3538);
+}
+
+:root[data-theme="dark"] .ai-segmented-tab-btn.active {
+  background: var(--surface-subtle, #273337);
+  color: var(--text-strong, #e8f0ed);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }

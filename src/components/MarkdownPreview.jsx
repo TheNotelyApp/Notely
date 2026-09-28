@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw } from "lucide-react";
+import { Search, Copy, ExternalLink, Pencil, RefreshCw, Trash2, RotateCcw, Download } from "lucide-react";
 import {
   renderMarkdown,
   parseDiagramBlocks,
@@ -36,10 +36,12 @@ function imageCacheKey(assetPath, variant = "thumbnail") {
 function getImageActionElement(target) {
   if (!(target instanceof HTMLElement)) return null;
   if (target.closest?.(".excalidraw-block")) return null;
-  if (target.tagName === "IMG") return target;
+  if (target.tagName === "IMG" || target.tagName === "AUDIO" || target.tagName === "VIDEO") return target;
   const frame = target.closest?.(".markdown-image-frame");
-  const framedImage = frame?.querySelector?.("img");
-  return framedImage instanceof HTMLImageElement ? framedImage : null;
+  const media = frame?.querySelector?.("img, audio, video");
+  if (media instanceof HTMLElement) return media;
+  if (frame && (frame.getAttribute("data-asset-path") || frame.getAttribute("data-audio-src") || frame.getAttribute("data-video-src"))) return frame;
+  return null;
 }
 
 function getExcalidrawActionContext(target) {
@@ -499,14 +501,46 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     return parseDiagramBlocks(content);
   }, [content]);
 
+  const lastBasePathRef = useRef(basePath);
+  const lastOriginalsRef = useRef(showOriginalImages);
+
   useEffect(() => {
-    imageResolveCacheRef.current.clear();
+    if (lastBasePathRef.current !== basePath || lastOriginalsRef.current !== showOriginalImages) {
+      imageResolveCacheRef.current.clear();
+      lastBasePathRef.current = basePath;
+      lastOriginalsRef.current = showOriginalImages;
+    }
     let cancelled = false;
     const previewElement = previewRef.current;
     if (!previewElement || !basePath) return undefined;
 
+    const setMediaSrcSafely = (element, nextSrc) => {
+      if (!nextSrc) return;
+      const currentResolved = element.getAttribute("data-resolved-src");
+      if (currentResolved === nextSrc && element.src === nextSrc) return;
+
+      const isMedia = element instanceof HTMLMediaElement;
+      const wasPlaying = isMedia && !element.paused;
+      const prevTime = isMedia ? element.currentTime : 0;
+
+      element.setAttribute("data-resolved-src", nextSrc);
+      if (element.src !== nextSrc) {
+        element.src = nextSrc;
+        if (isMedia && prevTime > 0) {
+          try {
+            element.currentTime = prevTime;
+            if (wasPlaying) {
+              element.play().catch(() => {});
+            }
+          } catch {
+            // Ignore seek error
+          }
+        }
+      }
+    };
+
     const resolveMediaElement = async (element) => {
-      if (!element || (!(element instanceof HTMLImageElement) && !(element instanceof HTMLVideoElement))) return;
+      if (!element || (!(element instanceof HTMLImageElement) && !(element instanceof HTMLVideoElement) && !(element instanceof HTMLAudioElement))) return;
 
       const isImage = element instanceof HTMLImageElement;
       if (isImage) {
@@ -517,7 +551,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         element.setAttribute("aria-label", element.getAttribute("alt") || "Image");
       }
 
-      const existingAssetPath = element.getAttribute("data-asset-path") || element.getAttribute("data-video-src") || "";
+      const existingAssetPath = element.getAttribute("data-asset-path") || element.getAttribute("data-video-src") || element.getAttribute("data-audio-src") || "";
       const src = element.getAttribute("src") || "";
       const assetPath = (existingAssetPath && !/^(data:|blob:)/i.test(existingAssetPath))
         ? existingAssetPath
@@ -535,7 +569,9 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       const cacheKey = imageCacheKey(assetPath, variant);
       if (cache.has(cacheKey)) {
         const cached = cache.get(cacheKey);
-        if (!cancelled && cached) element.src = cached;
+        if (!cancelled && cached) {
+          setMediaSrcSafely(element, cached);
+        }
         if (isImage) {
           const annotationKey = `annotation:${assetPath}`;
           if (cache.has(annotationKey)) {
@@ -550,8 +586,8 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         const resolved = await readImage(basePath, cleanAssetPath, { thumbnail: isImage ? !showOriginalImages : false });
         if (!cancelled && resolved) {
           cache.set(cacheKey, resolved);
-          element.src = resolved;
-          if (!isImage) {
+          setMediaSrcSafely(element, resolved);
+          if (!isImage && element instanceof HTMLVideoElement) {
             element.onloadeddata = () => {
               try {
                 if (element.currentTime === 0) element.currentTime = 0.1;
@@ -585,7 +621,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     };
 
     const resolveAllMedia = () => {
-      const mediaElements = Array.from(previewElement.querySelectorAll("img, video"));
+      const mediaElements = Array.from(previewElement.querySelectorAll("img, video, audio"));
       mediaElements.forEach((element) => {
         void resolveMediaElement(element);
       });
@@ -598,11 +634,11 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (!(node instanceof HTMLElement)) return;
-          if (node.tagName === "IMG" || node.tagName === "VIDEO") {
+          if (node.tagName === "IMG" || node.tagName === "VIDEO" || node.tagName === "AUDIO") {
             void resolveMediaElement(node);
           }
           if (typeof node.querySelectorAll === "function") {
-            node.querySelectorAll("img, video").forEach((child) => {
+            node.querySelectorAll("img, video, audio").forEach((child) => {
               void resolveMediaElement(child);
             });
           }
@@ -1220,12 +1256,25 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           return;
         }
 
+        if (imageAction.dataset.imageAction === "copy") {
+          event.preventDefault();
+          event.stopPropagation();
+          const frame = imageElement.closest?.(".markdown-image-frame") || imageElement;
+          const assetPath = imageElement.getAttribute("data-asset-path") || frame.getAttribute?.("data-asset-path") || imageElement.getAttribute("data-audio-src") || frame.getAttribute?.("data-audio-src") || imageElement.getAttribute("data-video-src") || frame.getAttribute?.("data-video-src") || imageElement.getAttribute("src") || "";
+          if (assetPath) {
+            navigator.clipboard.writeText(assetPath);
+            onNotify?.(`Copied path: ${assetPath}`, "success");
+          }
+          return;
+        }
+
         if (imageAction.dataset.imageAction === "download") {
           event.preventDefault();
           event.stopPropagation();
-          const assetPath = imageElement.getAttribute("data-asset-path") || imageElement.getAttribute("src") || "";
-          const altText = imageElement.getAttribute("alt") || "image.png";
-          const rawName = (assetPath || altText).split(/[?#]/)[0].split(/[/\\]/).pop() || "image.png";
+          const frame = imageElement.closest?.(".markdown-image-frame") || imageElement;
+          const assetPath = imageElement.getAttribute("data-asset-path") || frame.getAttribute?.("data-asset-path") || imageElement.getAttribute("data-audio-src") || frame.getAttribute?.("data-audio-src") || imageElement.getAttribute("data-video-src") || frame.getAttribute?.("data-video-src") || imageElement.getAttribute("src") || "";
+          const altText = imageElement.getAttribute("alt") || frame.getAttribute?.("data-audio-title") || frame.getAttribute?.("data-video-title") || "media";
+          const rawName = (assetPath || altText).split(/[?#]/)[0].split(/[/\\]/).pop() || "media";
 
           (async () => {
             try {
@@ -1256,21 +1305,27 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
                 srcPath = downloadSrc;
               }
 
+              const ext = (rawName.split(".").pop() || "").toLowerCase();
+              const isAudioMedia = ["mp3", "wav", "webm", "ogg", "m4a", "aac", "flac"].includes(ext) && (imageElement.tagName === "AUDIO" || frame.classList?.contains("markdown-audio-card"));
+              const isVideoMedia = ["mp4", "webm", "ogg", "mov", "mkv"].includes(ext) && (imageElement.tagName === "VIDEO" || frame.classList?.contains("markdown-video-card"));
+              const customExportType = isAudioMedia ? (ext || "audio") : isVideoMedia ? (ext || "video") : (ext || "image");
+              const mediaTypeLabel = isAudioMedia ? "audio" : isVideoMedia ? "video" : "image";
+
               const result = await runExport("media", {
                 dataUrl,
                 srcPath,
                 filename: rawName,
-                customExportType: "image",
+                customExportType,
                 category: "media",
               });
 
               if (result?.success) {
                 onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
               } else {
-                onNotify?.(result?.error || "Failed to download image.", "error");
+                onNotify?.(result?.error || `Failed to download ${mediaTypeLabel}.`, "error");
               }
             } catch (err) {
-              onNotify?.(`Image download failed: ${err.message}`, "error");
+              onNotify?.(`Download failed: ${err.message}`, "error");
             }
           })();
           return;
@@ -1441,18 +1496,27 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       return;
     }
 
-    const rawAsset = imageElement.getAttribute("data-asset-path") || imageElement.getAttribute("src") || "";
+    const frame = imageElement.closest?.(".markdown-image-frame");
+    const rawAsset = imageElement.getAttribute("data-asset-path") ||
+      frame?.getAttribute?.("data-asset-path") ||
+      imageElement.getAttribute("data-audio-src") ||
+      frame?.getAttribute?.("data-audio-src") ||
+      imageElement.getAttribute("data-video-src") ||
+      frame?.getAttribute?.("data-video-src") ||
+      imageElement.getAttribute("src") || "";
     let assetPath = rawAsset.replace(/^https?:\/\/[^/]+\//i, "");
     if (/^(?:file|app|atom):\/\//i.test(assetPath) || /^(?:[a-z]:\/|\/)/i.test(assetPath)) {
       assetPath = toComparableAssetPath(assetPath, basePath);
     }
     const isWorkspaceImage = Boolean(basePath && assetPath && !/^(https?:|data:|blob:)/i.test(assetPath));
+    const isAudio = imageElement.tagName === "AUDIO" || Boolean(frame?.classList.contains("markdown-audio-card"));
+    const isVideo = imageElement.tagName === "VIDEO" || Boolean(frame?.classList.contains("markdown-video-card"));
 
     event?.preventDefault?.();
     const bounds = imageElement.getBoundingClientRect();
     menuSourceRef.current = imageElement;
     setContextMenu({
-      kind: "image",
+      kind: isAudio ? "audio" : isVideo ? "video" : "image",
       x: Number.isFinite(x) ? x : event.clientX,
       y: Number.isFinite(y) ? y : event.clientY,
       keyboardOpened: !Number.isFinite(event?.clientX),
@@ -1461,7 +1525,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       isWorkspaceImage,
       src: imageElement.currentSrc || imageElement.src || "",
       assetPath,
-      imageLabel: imageElement.getAttribute("alt") || assetPath,
+      imageLabel: imageElement.getAttribute("alt") || frame?.getAttribute?.("data-audio-title") || frame?.getAttribute?.("data-video-title") || assetPath,
     });
   };
 
@@ -1866,12 +1930,77 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     }
   };
 
+  const handleDownloadFromContextMenu = async () => {
+    if (!contextMenu?.assetPath && !contextMenu?.src) {
+      closeContextMenu();
+      return;
+    }
+    const assetPath = contextMenu.assetPath || contextMenu.src;
+    const rawName = assetPath.split(/[?#]/)[0].split(/[/\\]/).pop() || (contextMenu.kind === "audio" ? "audio.webm" : "media");
+    closeContextMenu();
+
+    try {
+      let downloadSrc = assetPath;
+      if (basePath && assetPath && !/^(https?:|data:|blob:)/i.test(assetPath)) {
+        try {
+          downloadSrc = (await readImage(basePath, assetPath)) || assetPath;
+        } catch { /* fallback */ }
+      }
+      if (!downloadSrc) {
+        downloadSrc = contextMenu.src || "";
+      }
+
+      let dataUrl;
+      let srcPath;
+
+      if (typeof downloadSrc === "string" && downloadSrc.startsWith("data:")) {
+        dataUrl = downloadSrc;
+      } else if (typeof downloadSrc === "string" && (downloadSrc.startsWith("http") || downloadSrc.startsWith("blob:"))) {
+        const resp = await fetch(downloadSrc);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        srcPath = downloadSrc;
+      }
+
+      const ext = (rawName.split(".").pop() || "").toLowerCase();
+      const isAudioMedia = ["mp3", "wav", "webm", "ogg", "m4a", "aac", "flac"].includes(ext) && contextMenu.kind === "audio";
+      const customExportType = isAudioMedia ? (ext || "audio") : (contextMenu.kind === "video" ? (ext || "video") : (ext || "image"));
+      const result = await runExport("media", {
+        dataUrl,
+        srcPath,
+        filename: rawName,
+        customExportType,
+        category: "media",
+      });
+
+      if (result?.success) {
+        onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
+      } else {
+        onNotify?.(result?.error || "Failed to download media.", "error");
+      }
+    } catch (err) {
+      onNotify?.(`Download failed: ${err.message}`, "error");
+    }
+  };
+
   const imageMenuActions = [
     {
       key: "view-image",
       label: "View image",
       icon: <ExternalLink size={16} />,
       onSelect: viewImageFromMenu,
+      disabled: false,
+    },
+    {
+      key: "download-image",
+      label: "Download image",
+      icon: <Download size={16} />,
+      onSelect: handleDownloadFromContextMenu,
       disabled: false,
     },
     {
@@ -1915,6 +2044,108 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       icon: <Trash2 size={16} />,
       onSelect: handleDeleteFromMenu,
       disabled: replaceState.busy,
+    },
+  ];
+
+  const audioMenuActions = [
+    {
+      key: "download-audio",
+      label: "Download audio",
+      icon: <Download size={16} />,
+      onSelect: handleDownloadFromContextMenu,
+      disabled: false,
+    },
+    {
+      key: "copy-path",
+      label: "Copy audio path",
+      icon: <Copy size={16} />,
+      onSelect: async () => {
+        if (contextMenu?.assetPath) {
+          await navigator.clipboard.writeText(contextMenu.assetPath);
+          onNotify?.(`Copied audio path: ${contextMenu.assetPath}`, "success");
+        }
+        closeContextMenu();
+      },
+      disabled: false,
+    },
+    {
+      key: "open-default",
+      label: "Open in default app",
+      icon: <ExternalLink size={16} />,
+      onSelect: () => {
+        if (basePath && contextMenu?.assetPath && typeof openMediaInDefaultApp === "function") {
+          openMediaInDefaultApp(basePath, contextMenu.assetPath).catch((err) => {
+            onNotify?.(err?.message || "Failed to open file in default app.", "error");
+          });
+        }
+        closeContextMenu();
+      },
+      disabled: false,
+    },
+    {
+      key: "rename-audio",
+      label: "Rename audio",
+      icon: <Pencil size={16} />,
+      onSelect: handleRenameFromMenu,
+      disabled: replaceState.busy || !contextMenu?.isWorkspaceImage,
+    },
+    {
+      key: "delete-audio",
+      label: "Delete audio",
+      icon: <Trash2 size={16} />,
+      onSelect: handleDeleteFromMenu,
+      disabled: replaceState.busy || !contextMenu?.isWorkspaceImage,
+    },
+  ];
+
+  const videoMenuActions = [
+    {
+      key: "download-video",
+      label: "Download video",
+      icon: <Download size={16} />,
+      onSelect: handleDownloadFromContextMenu,
+      disabled: false,
+    },
+    {
+      key: "copy-path",
+      label: "Copy video path",
+      icon: <Copy size={16} />,
+      onSelect: async () => {
+        if (contextMenu?.assetPath) {
+          await navigator.clipboard.writeText(contextMenu.assetPath);
+          onNotify?.(`Copied video path: ${contextMenu.assetPath}`, "success");
+        }
+        closeContextMenu();
+      },
+      disabled: false,
+    },
+    {
+      key: "open-default",
+      label: "Open in default app",
+      icon: <ExternalLink size={16} />,
+      onSelect: () => {
+        if (basePath && contextMenu?.assetPath && typeof openMediaInDefaultApp === "function") {
+          openMediaInDefaultApp(basePath, contextMenu.assetPath).catch((err) => {
+            onNotify?.(err?.message || "Failed to open file in default app.", "error");
+          });
+        }
+        closeContextMenu();
+      },
+      disabled: false,
+    },
+    {
+      key: "rename-video",
+      label: "Rename video",
+      icon: <Pencil size={16} />,
+      onSelect: handleRenameFromMenu,
+      disabled: replaceState.busy || !contextMenu?.isWorkspaceImage,
+    },
+    {
+      key: "delete-video",
+      label: "Delete video",
+      icon: <Trash2 size={16} />,
+      onSelect: handleDeleteFromMenu,
+      disabled: replaceState.busy || !contextMenu?.isWorkspaceImage,
     },
   ];
 
@@ -1977,6 +2208,10 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       ? textMenuActions
       : contextMenu?.kind === "diagram"
       ? diagramMenuActions
+      : contextMenu?.kind === "audio"
+      ? audioMenuActions
+      : contextMenu?.kind === "video"
+      ? videoMenuActions
       : imageMenuActions;
 
   const handleMenuKeyDown = (event) => {
@@ -2289,7 +2524,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         >
           <div className="editor-context-menu-group">
             <div className="editor-context-menu-label">
-              {contextMenu?.kind === "diagram" ? "Diagram actions" : contextMenu?.kind === "text" ? "Text actions" : "Image actions"}
+              {contextMenu?.kind === "diagram" ? "Diagram actions" : contextMenu?.kind === "text" ? "Text actions" : contextMenu?.kind === "audio" ? "Audio actions" : contextMenu?.kind === "video" ? "Video actions" : "Image actions"}
             </div>
             {activeMenuActions.map((action, index) => (
               <button

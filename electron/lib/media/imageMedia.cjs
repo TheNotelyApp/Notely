@@ -226,6 +226,19 @@ function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downs
     let annotation = null;
     if (srcIndex >= 0) {
       const rawSrc = String(tokens[idx].attrs[srcIndex][1] || "").trim();
+      const isExplicitAudio = /\.(mp3|wav|m4a|aac|flac|wma)(\?|#|$)/i.test(rawSrc);
+      const isAudioDir = /[/\\]audio[/\\]/i.test(rawSrc);
+      const isAudioNamed = /(recording|voice|meeting|mic|audio).*?\.(webm|ogg)$/i.test(rawSrc);
+      const isAudioAlt = /(audio|voice)/i.test(tokens[idx].content || tokens[idx].attrGet("alt") || "");
+      const isAudio = isExplicitAudio || (isAudioDir && /\.(webm|ogg|wav|mp3|m4a|aac|flac)(\?|#|$)/i.test(rawSrc)) || (isAudioNamed && !rawSrc.includes("screen") && !rawSrc.includes("rec_")) || (isAudioAlt && !rawSrc.includes("screen") && /\.(webm|ogg)(\?|#|$)/i.test(rawSrc));
+
+      if (isAudio) {
+        const altText = tokens[idx].content || tokens[idx].attrGet("alt") || "Audio Recording";
+        const fileName = rawSrc.split(/[?#]/)[0].split(/[/\\]/).pop() || "recording";
+        const ext = fileName.split(".").pop()?.toUpperCase() || "AUDIO";
+        return `<div class="notely-pdf-audio-card" style="display:inline-flex;align-items:center;gap:12px;padding:10px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;margin:8px 0;page-break-inside:avoid;"><span style="font-size:22px;line-height:1;">🎙️</span><div style="display:flex;flex-direction:column;"><strong style="font-size:13px;color:#0f172a;">${escapeCodeHtml(altText)}</strong><span style="font-size:11px;color:#64748b;">${escapeCodeHtml(fileName)} (${escapeCodeHtml(ext)})</span></div></div>`;
+      }
+
       const isVideo = /\.(webm|mp4|ogg|mov|mkv|avi|m4v)(\?|#|$)/i.test(rawSrc);
       if (isVideo) {
         const altText = tokens[idx].content || tokens[idx].attrGet("alt") || "Video Recording";
@@ -470,10 +483,10 @@ function resolveImageAssetPath(basePath, assetPath) {
         break;
       }
     }
-    const isWorkspaceImageLink = /^[/\\]+(images|media)[/\\]/i.test(decodedAsset);
+    const isWorkspaceImageLink = /^[/\\]+(images|media|audio|transcripts)[/\\]/i.test(decodedAsset);
     const normalizedAsset = decodedAsset
       .replace(/^\.\//, "")
-      .replace(/^[/\\]+(images|media)[/\\]/i, "$1/");
+      .replace(/^[/\\]+(images|media|audio|transcripts)[/\\]/i, "$1/");
     const legacyDiagramMatch = normalizedAsset.match(/^(?:\.notes-app[\\/])?excali-diagrams[\\/]([^\\/]+)[\\/]([^\\/]+)[\\/]diagram\.png$/i);
     const sluglessDiagramMatch = normalizedAsset.match(/^(?:\.notes-app[\\/])?excali-diagrams[\\/]([^\\/]+)[\\/]diagram\.png$/i);
 
@@ -488,16 +501,20 @@ function resolveImageAssetPath(basePath, assetPath) {
 
     if (isWorkspaceImageLink) {
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
-    } else if (/^(images|media)[\\/]/i.test(normalizedAsset)) {
+    } else if (/^(images|media|audio|transcripts)[\\/]/i.test(normalizedAsset)) {
       candidates.push(path.resolve(baseDir, normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
     } else {
       candidates.push(path.resolve(baseDir, normalizedAsset));
       candidates.push(path.resolve(baseDir, "images", normalizedAsset));
       candidates.push(path.resolve(baseDir, "media", normalizedAsset));
+      candidates.push(path.resolve(baseDir, "audio", normalizedAsset));
+      candidates.push(path.resolve(baseDir, "transcripts", normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), "images", normalizedAsset));
       candidates.push(path.resolve(getNotesRoot(), "media", normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), "audio", normalizedAsset));
+      candidates.push(path.resolve(getNotesRoot(), "transcripts", normalizedAsset));
       if (sluglessDiagramMatch && !/^\.notes-app[\\/]/i.test(normalizedAsset)) {
         const [, diagramId] = sluglessDiagramMatch;
         candidates.push(path.resolve(baseDir, `.notes-app/excali-diagrams/${diagramId}/diagram.png`));
@@ -780,6 +797,125 @@ registerTrustedHandler("video:save", (_event, payload) => {
   return `media/recordings/${safeFileName}`;
 });
 
+registerTrustedHandler("audio:save", (_event, payload) => {
+  const { fileName, base64Data, transcript } = payload || {};
+  const safeFileName = path.basename(fileName || "transcript.json").replace(/[<>:"/\\|?*]+/g, "-");
+  const audioDir = path.join(getNotesRoot(), "media", "audio");
+  ensureDir(audioDir);
+
+  // Handle standalone companion transcript saving
+  if (transcript && !base64Data) {
+    const transcriptFileName = safeFileName.endsWith(".json") ? safeFileName : safeFileName.replace(/\.[^.]+$/, "") + ".json";
+    const transcriptPath = path.join(audioDir, transcriptFileName);
+    const content = typeof transcript === "string" ? transcript : JSON.stringify(transcript, null, 2);
+    fs.writeFileSync(transcriptPath, content, "utf8");
+    return {
+      audioPath: null,
+      transcriptPath: `media/audio/${transcriptFileName}`,
+      fileName: transcriptFileName,
+    };
+  }
+
+  if (!base64Data || typeof base64Data !== "string" || !base64Data.includes(",")) {
+    throw new Error("Invalid audio payload.");
+  }
+
+  const targetPath = path.join(audioDir, safeFileName);
+  if (!filePathWithin(getNotesRoot(), targetPath)) {
+    throw new Error("Invalid audio path.");
+  }
+
+  const buffer = Buffer.from(base64Data.split(",")[1], "base64");
+  if (!buffer.length) {
+    throw new Error("Audio data is empty.");
+  }
+  fs.writeFileSync(targetPath, buffer);
+
+  let transcriptRelPath = null;
+  if (transcript) {
+    const transcriptFileName = safeFileName.replace(/\.[^.]+$/, "") + ".json";
+    const transcriptPath = path.join(audioDir, transcriptFileName);
+    const content = typeof transcript === "string" ? transcript : JSON.stringify(transcript, null, 2);
+    fs.writeFileSync(transcriptPath, content, "utf8");
+    transcriptRelPath = `media/audio/${transcriptFileName}`;
+  }
+
+  return {
+    audioPath: `media/audio/${safeFileName}`,
+    transcriptPath: transcriptRelPath,
+    fileName: safeFileName,
+  };
+});
+
+registerTrustedHandler("media:list-disk-assets", () => {
+  const notesRoot = getNotesRoot();
+  if (!notesRoot || !fs.existsSync(notesRoot)) {
+    return [];
+  }
+
+  const scanDirs = [
+    path.join(notesRoot, "media"),
+    path.join(notesRoot, "assets"),
+    path.join(notesRoot, "images"),
+  ];
+
+  const results = [];
+  const visitedPaths = new Set();
+
+  for (const rootDir of scanDirs) {
+    if (!fs.existsSync(rootDir)) continue;
+
+    const queue = [rootDir];
+    while (queue.length > 0) {
+      const currentDir = queue.shift();
+      let entries;
+      try {
+        entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+
+      for (const entry of entries) {
+        if (entry.name.startsWith(".")) continue;
+        if (entry.name === THUMBNAIL_DIR_NAME || entry.name === ORIGINAL_IMAGE_DIR_NAME) continue;
+
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          queue.push(fullPath);
+        } else if (entry.isFile()) {
+          const relFromRoot = path.relative(notesRoot, fullPath).replace(/\\/g, "/");
+          if (visitedPaths.has(relFromRoot.toLowerCase())) continue;
+          visitedPaths.add(relFromRoot.toLowerCase());
+
+          const ext = path.extname(entry.name).slice(1).toLowerCase();
+          // Skip internal metadata/temporary files
+          if (["tmp", "crswap", "bak"].includes(ext)) continue;
+
+          let size = 0;
+          let mtime = null;
+          try {
+            const stat = fs.statSync(fullPath);
+            size = stat.size;
+            mtime = stat.mtime.toISOString();
+          } catch {
+            // Ignore stat read failure for transient files
+          }
+
+          results.push({
+            path: relFromRoot,
+            name: entry.name,
+            ext,
+            size,
+            mtime,
+          });
+        }
+      }
+    }
+  }
+
+  return results;
+});
+
 registerTrustedHandler("images:download", async (event, payload) => {
   const { getExportManager } = require("../export/ExportManager.cjs");
   const exportManager = getExportManager();
@@ -836,28 +972,32 @@ registerTrustedHandler("images:list", (_event, payload) => {
   };
 
   const baseDir = path.dirname(path.resolve(basePath));
-  const localImagesDir = path.join(baseDir, "images");
-  const rootImagesDir = path.join(getNotesRoot(), "images");
-  const mediaImagesDir = path.join(getNotesRoot(), "media", "images");
-  const mediaDocsDir = path.join(getNotesRoot(), "media", "docs");
+  const paths = [];
+  const seen = new Set();
 
-  const localNames = readImagesIn(localImagesDir);
-  const seen = new Set(localNames.map((name) => name.toLowerCase()));
-  
-  const rootNames = readImagesIn(rootImagesDir).filter((name) => !seen.has(name.toLowerCase()));
-  rootNames.forEach(name => seen.add(name.toLowerCase()));
+  const addEntries = (dir, prefix) => {
+    const names = readImagesIn(dir);
+    for (const name of names) {
+      const assetPath = `${prefix}/${name}`.replace(/\/+/g, "/").replace(/^\.\//, "./");
+      const key = assetPath.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        paths.push(assetPath);
+      }
+    }
+  };
 
-  const mediaImagesNames = readImagesIn(mediaImagesDir).filter((name) => !seen.has(name.toLowerCase()));
-  mediaImagesNames.forEach(name => seen.add(name.toLowerCase()));
+  // Local note-adjacent directories
+  addEntries(path.join(baseDir, "images"), "./images");
+  addEntries(path.join(baseDir, "audio"), "./audio");
+  addEntries(path.join(baseDir, "transcripts"), "./transcripts");
+  addEntries(path.join(baseDir, "media"), "./media");
 
-  const mediaDocsNames = readImagesIn(mediaDocsDir).filter((name) => !seen.has(name.toLowerCase()));
-
-  const paths = [
-    ...localNames.map((name) => `./images/${name}`),
-    ...rootNames.map((name) => `/images/${name}`),
-    ...mediaImagesNames.map((name) => `/media/images/${name}`),
-    ...mediaDocsNames.map((name) => `/media/docs/${name}`),
-  ];
+  // Workspace-root directories
+  addEntries(path.join(getNotesRoot(), "images"), "/images");
+  addEntries(path.join(getNotesRoot(), "audio"), "/audio");
+  addEntries(path.join(getNotesRoot(), "transcripts"), "/transcripts");
+  addEntries(path.join(getNotesRoot(), "media"), "/media");
 
   if (!includeAnnotations && !includeOriginalStatus) return paths;
 
@@ -1141,6 +1281,8 @@ registerTrustedHandler("images:read", (_event, payload) => {
     ".wav": "audio/wav",
     ".ogg": "audio/ogg",
     ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".flac": "audio/flac",
     ".pdf": "application/pdf",
     ".doc": "application/msword",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -1160,7 +1302,10 @@ registerTrustedHandler("images:read", (_event, payload) => {
     ".7z": "application/x-7z-compressed",
     ".rar": "application/vnd.rar"
   };
-  const mimeType = mimeMap[ext] || "application/octet-stream";
+  let mimeType = mimeMap[ext] || "application/octet-stream";
+  if (ext === ".webm" && (/[/\\]audio[/\\]/i.test(fileToRead) || /(recording|voice|mic|audio)/i.test(path.basename(fileToRead)))) {
+    mimeType = "audio/webm";
+  }
   const buffer = fs.readFileSync(fileToRead);
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 });

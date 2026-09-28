@@ -4,16 +4,11 @@ import path from 'path';
 import GraphDB from '../ai/graph/GraphDB';
 
 describe('SQLite Knowledge Graph DB and CTE Traversals', () => {
-  const tempWorkspace = path.join(__dirname, '../scratch/temp-graph-test-workspace');
+  let tempWorkspace;
   let graphDb;
 
   beforeEach(() => {
-    // Ensure clean workspace directory
-    try {
-      if (fs.existsSync(tempWorkspace)) {
-        fs.rmSync(tempWorkspace, { recursive: true, force: true });
-      }
-    } catch { /* ignore */ }
+    tempWorkspace = path.join(__dirname, `../scratch/temp-graph-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     fs.mkdirSync(tempWorkspace, { recursive: true });
     
     // Initialize GraphDB targeting the temp workspace
@@ -26,12 +21,10 @@ describe('SQLite Knowledge Graph DB and CTE Traversals', () => {
     if (graphDb) {
       graphDb.close();
     }
-    try {
-      if (fs.existsSync(tempWorkspace)) {
+    if (tempWorkspace && fs.existsSync(tempWorkspace)) {
+      try {
         fs.rmSync(tempWorkspace, { recursive: true, force: true });
-      }
-    } catch (err) {
-      console.warn('Cleanup warning:', err.message);
+      } catch { /* ignore */ }
     }
   });
 

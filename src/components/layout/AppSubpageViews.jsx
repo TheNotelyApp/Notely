@@ -187,6 +187,7 @@ export function AppSubpageViews({
               documents={documents}
               workspacePath={notesFolderPath}
               onBack={() => setDiagramsMediaOpen(false)}
+              onNotify={notify}
               onOpenNote={(filePath, line) => {
                 setDiagramsMediaOpen(false);
                 if (handleOpenReferencedDocument) {

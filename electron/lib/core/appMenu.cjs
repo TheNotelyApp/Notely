@@ -851,7 +851,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           click: () => sendMenuAction(win, "open-workspace-index")
         },
         {
-          label: "Diagrams & Media Gallery",
+          label: "Media Gallery",
           accelerator: "CmdOrCtrl+Alt+M",
           click: () => sendMenuAction(win, "open-workspace-diagrams-media")
         },
@@ -859,10 +859,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")
-        },
-        {
-          label: "Assets Library",
-          click: () => sendMenuAction(win, "open-assets")
         },
         {
           label: "Trash / Removed Items",

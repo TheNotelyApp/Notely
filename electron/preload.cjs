@@ -145,6 +145,8 @@ contextBridge.exposeInMainWorld("notesApi", {
   captureCurrentDisplay: () => ipcRenderer.invoke("screen:capture-current-display"),
   getDesktopSources: () => ipcRenderer.invoke("screen:get-sources"),
   saveVideo: (payload) => ipcRenderer.invoke("video:save", payload),
+  saveAudio: (payload) => ipcRenderer.invoke("audio:save", payload),
+  listDiskMediaAssets: () => ipcRenderer.invoke("media:list-disk-assets"),
   minimizeMainWindow: () => ipcRenderer.invoke("window:minimize-main"),
   restoreMainWindow: () => ipcRenderer.invoke("window:restore-main"),
   openRecordingOverlay: () => ipcRenderer.invoke("window:open-recording-overlay"),

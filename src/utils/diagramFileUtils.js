@@ -99,10 +99,11 @@ export function parseDiagramReference(markdownRef) {
  * @returns {boolean}
  */
 export function isDiagramReference(imagePath) {
+  if (!imagePath || typeof imagePath !== "string") return false;
+  const p = imagePath.toLowerCase();
   return (
-    Boolean(imagePath) &&
-    (imagePath.includes('excali-diagrams') || imagePath.includes('excalidraw') || imagePath.includes('media/diagrams') || imagePath.includes('media/draw.io') || imagePath.includes('drawio-diagrams') || imagePath.includes('media/wireframes') || imagePath.includes('wireframes')) &&
-    (imagePath.includes('diagram.png') || imagePath.endsWith('.png'))
+    (p.includes("excali-diagrams") || p.includes("excalidraw") || p.includes("media/diagrams") || p.includes("media/draw.io") || p.includes("drawio-diagrams") || p.includes("media/wireframes") || p.includes("wireframes")) &&
+    (p.includes("diagram.png") || p.endsWith(".png") || p.endsWith(".wireframe.json") || p.endsWith(".drawio") || p.endsWith(".excalidraw"))
   );
 }
 

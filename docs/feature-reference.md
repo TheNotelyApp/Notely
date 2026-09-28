@@ -79,9 +79,12 @@ During transfer:
 
 Open via **Workspace -> Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`) or Command Palette:
 - Catalogs all used diagrams (inline Mermaid, Draw.io, Excalidraw), images, videos, audio, and PDF documents in the workspace.
+- **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`) to identify files present on disk that have zero note references.
+- **Unused Media Filter**: Quickly isolate unreferenced assets with the `⚠️ Unused / Orphans` filter tab.
+- **Audio & Media Preview**: Embedded audio players, video thumbnails, and transcript drawer with key points and action items.
 - Reuses Knowledge Graph layout aesthetics with collapsible category filters, search, and stat indicators.
 - Inspect details for any item with high-res/diagram live previews, file paths, and exact note references with line numbers and snippets.
-- Direct "Open Note" navigation into the editor.
+- Direct "Open Note" navigation and "Copy Markdown Link" actions.
 
 ## 2. Editor and Writing Experience
 
@@ -328,6 +331,26 @@ Notely supports area-based screen capture and full screen/window video recording
   - **Auto-Save & Linking**: Saves `.webm` files under `media/recordings/` and inserts `![Screen Recording](media/recordings/*.webm)` into the note.
   - **Note Preview & Modal Player**: Renders video links as interactive thumbnail cards with `▶ Play Video` badges and frame decoding. Clicking opens a full-screen playback modal with Download and Copy Path options.
 
+### Audio & Meeting Recording with Speech-to-Text
+
+Record voice notes or entire conference calls (Zoom, Google Meet, Teams, YouTube) directly into Notely with synchronized audio and transcription.
+
+- **Dual-Stream Audio Capture**:
+  - **Meeting Mode**: Simultaneously captures your local microphone and Windows desktop/system audio loopback, combining them into a single stereo track with Web Audio API mixer.
+  - **Microphone Only**: Dedicated voice memo recording.
+  - **System Audio Only**: Captures speakers/audio loopback without mic.
+- **Speech-to-Text (STT) Transcription**:
+  - **Local ONNX Whisper (Offline)**: Runs locally in-app via WebAssembly/ONNX runtime (`whisper-tiny.en`, `whisper-base.en`, `whisper-small`). No internet connection or cloud API keys required.
+  - **Cloud Whisper**: High-speed cloud transcription using Groq (`whisper-large-v3`) or OpenAI (`whisper-1`) with API keys configured in AI Settings.
+- **Transcript Storage**:
+  - Audio files are stored under `media/audio/*.webm`.
+  - Transcripts are saved alongside audio in `media/audio/*.json` containing segmented timestamps, speaker attributions, key points, and action items.
+- **Workflow Differences**:
+- **Media Gallery Integration & Transcripts Filter**:
+  - The **Diagrams, Media & PDFs** gallery (`Workspace -> Diagrams, Media & PDFs`) includes a dedicated **Transcripts** filter category alongside Diagrams, Images, Videos, Audio, PDFs, and Documents.
+  - Selecting a transcript in the gallery opens a rich inspector showing the AI executive summary, timestamped speaker segments, and a one-click button to copy the full transcript text.
+  - **On-Demand Transcript Generation**: Any existing audio or video recording in the Media Gallery has a **Generate AI Transcript** button (`✨`). Clicking it decodes the media track, resamples it to 16kHz mono Float32, runs Whisper (Local ONNX or Cloud Groq/OpenAI based on your AI Settings), and saves a companion transcript JSON file in `media/audio/`.
+
 ### Media preview tools
 
 Use zoom and media-aware preview controls to inspect assets.
@@ -373,40 +396,27 @@ This helps recover from aggressive crops or accidental edits.
 - Excalidraw previews have their own right-click actions.
 - If the diagram started from an image, you can switch back to the original image later.
 
-## 9. AI Assistance
+## 9. AI & Machine Intelligence
 
-### AI settings
+### Privacy-First Architecture
 
-Set up AI services and sign-in details in **AI -> AI Settings**.
+Notely features a local-first, privacy-conscious AI architecture. Rather than relying on cloud-dependent chat sidebars, AI functionality is centered around:
+1. **Model Context Protocol (MCP) Server**: Local standard interface on port `3700` (`http://127.0.0.1:3700/mcp` and `/sse`) for external AI assistants (Google Antigravity, Claude Desktop, Cursor).
+2. **Local Speech-to-Text (STT)**: On-device Whisper transcription via WebAssembly/ONNX, plus optional cloud transcription.
+3. **Local Vector Embeddings & Hybrid Search**: SQLite FTS5 combined with local `BGE-small-en-v1.5` dense embeddings.
+4. **Offline Knowledge Graph**: Neural zero-shot entity and relation extraction powered by local `gliner2-multi-v1-onnx`.
 
-You can set up:
+### AI Settings & Configuration
 
-- a writing assistant service for chat and rewriting
-- a separate service for smarter search and graph features
+Configure AI services and endpoints in **AI -> AI Settings** (`Ctrl/Cmd + Shift + ,`):
+- **LLM Provider Setup**: Configure Google Gemini, Groq, or OpenAI / OpenAI-compatible endpoints with custom Base URLs for cloud STT and external workflows.
+- **Speech-to-Text (STT) Settings**: Choose between Local ONNX Whisper (`whisper-tiny.en`, `whisper-base.en`, `whisper-small`) and Cloud Whisper (Groq `whisper-large-v3`, OpenAI `whisper-1`).
+- **Feature Toggles**: Toggle pattern learning, embedding generation, relationship discovery, and adjust the neural entity extraction confidence threshold slider.
 
-### AI chat and commands
+### MCP Diagnostics & Interactive Testing
 
-Use AI for writing support, note understanding, and quick content actions.
-
-### Semantic features
-
-When AI search data is turned on, Notely can find related notes by meaning, not just exact words.
-
-### What each AI service can do
-
-Not every AI service supports every feature.
-
-Notely shows capability warnings in settings when a selected provider cannot run a feature.
-
-You can also choose which AI model to use in AI settings.
-
-### AI operation feedback
-
-Longer AI actions show progress and completion messages so you know something is happening.
-
-### How recent the AI search data is
-
-Notely shows whether its AI search data is fresh or getting old.
+- **MCP Tools Catalog** (`Ctrl/Cmd + Shift + M`): Inspect all 7 enterprise tools (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`), run live tool test calls, and inspect JSON payloads.
+- **MCP Telemetry & Diagnostics**: View live connection status, active client sessions, request rates, execution latency, and error logs.
 
 ## 10. Peer-to-Peer Sync
 

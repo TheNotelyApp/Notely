@@ -5,6 +5,7 @@ import {
   normalizeAssetPath,
   extractWorkspaceUsedAssets,
   filterAssets,
+  mergeDiskMediaIntoCatalog,
 } from "../../services/workspaceMediaService";
 
 describe("workspaceMediaService", () => {
@@ -137,9 +138,62 @@ And the same architecture image:
     // Usage filter (multi notes)
     expect(filterAssets(items, { usageFilter: "multi" }).length).toBe(2);
     expect(filterAssets(items, { usageFilter: "single" }).length).toBe(1);
+
+    // Usage filter (unused / orphans)
+    const itemsWithUnused = [
+      ...items,
+      {
+        id: "disk-4",
+        name: "meeting_recording.webm",
+        category: "audio",
+        subType: "webm",
+        referenceCount: 0,
+        referencedBy: [],
+        isUnused: true,
+      },
+    ];
+    expect(filterAssets(itemsWithUnused, { usageFilter: "unused" }).length).toBe(1);
+    expect(filterAssets(itemsWithUnused, { usageFilter: "unused" })[0].name).toBe("meeting_recording.webm");
   });
 
-  it("extracts Excalidraw and Draw.io diagrams with diagramId", () => {
+  it("merges physical disk files into catalog and identifies unreferenced orphans", () => {
+    const usedAssets = [
+      {
+        id: "1",
+        name: "logo.png",
+        path: "images/logo.png",
+        category: "image",
+        referenceCount: 1,
+        referencedBy: [{ noteTitle: "Intro" }],
+      },
+    ];
+
+    const diskFiles = [
+      { path: "images/logo.png", name: "logo.png", ext: "png", size: 1024 },
+      { path: "media/audio/meeting_2026.webm", name: "meeting_2026.webm", ext: "webm", size: 50000 },
+      { path: "media/snips/snip_123.png", name: "snip_123.png", ext: "png", size: 24000 },
+    ];
+
+    const combined = mergeDiskMediaIntoCatalog(usedAssets, diskFiles);
+    expect(combined.length).toBe(3);
+
+    const unusedAudio = combined.find((a) => a.name === "meeting_2026.webm");
+    expect(unusedAudio).toBeDefined();
+    expect(unusedAudio.category).toBe("audio");
+    expect(unusedAudio.referenceCount).toBe(0);
+    expect(unusedAudio.isUnused).toBe(true);
+
+    const unusedSnip = combined.find((a) => a.name === "snip_123.png");
+    expect(unusedSnip).toBeDefined();
+    expect(unusedSnip.referenceCount).toBe(0);
+    expect(unusedSnip.isUnused).toBe(true);
+
+    // Existing used logo kept its references
+    const logo = combined.find((a) => a.name === "logo.png");
+    expect(logo.referenceCount).toBe(1);
+  });
+
+  it("extracts Excalidraw, Draw.io, and Wireframe diagrams with diagramId", () => {
     const documents = [
       {
         filePath: "/workspace/notes/Designs.md",
@@ -150,6 +204,9 @@ Draw.io:
 
 Excalidraw:
 ![Excalidraw Diagram](media/excalidraw/exc_123/diagram.png)
+
+Wireframe:
+![Wireframe Diagram](media/wireframes/wire_456.png)
 `,
       },
     ];
@@ -157,6 +214,7 @@ Excalidraw:
     const assets = extractWorkspaceUsedAssets(documents);
     const drawio = assets.find((a) => a.subType === "drawio");
     const excalidraw = assets.find((a) => a.subType === "excalidraw");
+    const wireframe = assets.find((a) => a.subType === "wireframe");
 
     expect(drawio).toBeDefined();
     expect(drawio.category).toBe("diagram");
@@ -165,5 +223,116 @@ Excalidraw:
     expect(excalidraw).toBeDefined();
     expect(excalidraw.category).toBe("diagram");
     expect(excalidraw.diagramId).toBe("exc_123");
+
+    expect(wireframe).toBeDefined();
+    expect(wireframe.category).toBe("wireframe");
+    expect(wireframe.diagramId).toBe("wire_456");
+  });
+
+  it("identifies audio companion transcripts and filters them by transcript category", () => {
+    const diskFiles = [
+      {
+        path: "media/audio/meeting_2026-09-26.webm",
+        name: "meeting_2026-09-26.webm",
+        ext: "webm",
+        size: 500000,
+        mtime: "2026-09-26T10:00:00Z",
+      },
+      {
+        path: "media/audio/meeting_2026-09-26.json",
+        name: "meeting_2026-09-26.json",
+        ext: "json",
+        size: 1200,
+        mtime: "2026-09-26T10:01:00Z",
+      },
+      {
+        path: "media/interview_transcript.json",
+        name: "interview_transcript.json",
+        ext: "json",
+        size: 2400,
+        mtime: "2026-09-26T11:00:00Z",
+      },
+    ];
+
+    const catalog = mergeDiskMediaIntoCatalog([], diskFiles);
+    const transcripts = catalog.filter((a) => a.category === "transcript");
+
+    expect(transcripts.length).toBe(2);
+    expect(transcripts.map((t) => t.name)).toContain("meeting_2026-09-26.json");
+    expect(transcripts.map((t) => t.name)).toContain("interview_transcript.json");
+
+    const filtered = filterAssets(catalog, {
+      selectedCategories: { transcript: true, audio: false, video: false, image: false, diagram: false, document: false, pdf: false },
+    });
+    expect(filtered.length).toBe(2);
+  });
+
+  it("shows each diagram once and suppresses duplicate saved preview images", () => {
+    const documents = [
+      {
+        filePath: "/workspace/notes/UI.md",
+        title: "UI Specs",
+        content: `
+# Dashboard Design
+![Wireframe Diagram](media/wireframes/f7f1c107.png)
+`,
+      },
+    ];
+
+    const diskFiles = [
+      {
+        path: "media/wireframes/f7f1c107.wireframe.json",
+        name: "f7f1c107.wireframe.json",
+        ext: "json",
+        size: 3400,
+        mtime: "2026-09-27T10:00:00Z",
+      },
+      {
+        path: "media/wireframes/f7f1c107.png",
+        name: "f7f1c107.png",
+        ext: "png",
+        size: 15000,
+        mtime: "2026-09-27T10:00:00Z",
+      },
+      {
+        path: "media/wireframes/unused_orphan.wireframe.json",
+        name: "unused_orphan.wireframe.json",
+        ext: "json",
+        size: 1500,
+        mtime: "2026-09-27T11:00:00Z",
+      },
+      {
+        path: "media/wireframes/unused_orphan.png",
+        name: "unused_orphan.png",
+        ext: "png",
+        size: 12000,
+        mtime: "2026-09-27T11:00:00Z",
+      },
+    ];
+
+    const usedAssets = extractWorkspaceUsedAssets(documents);
+    const catalog = mergeDiskMediaIntoCatalog(usedAssets, diskFiles);
+
+    // Only 2 wireframe items should exist total (f7f1c107 and unused_orphan)
+    const wireframes = catalog.filter((a) => a.category === "wireframe");
+    expect(wireframes.length).toBe(2);
+
+    // Used wireframe
+    const usedWireframe = wireframes.find((a) => a.diagramId === "f7f1c107");
+    expect(usedWireframe).toBeDefined();
+    expect(usedWireframe.name).toBe("f7f1c107.wireframe.json");
+    expect(usedWireframe.referenceCount).toBe(1);
+    expect(usedWireframe.referencedBy[0]?.noteTitle).toBe("UI Specs");
+
+    // Orphan wireframe (preview PNG unused_orphan.png was suppressed)
+    const orphanWireframe = wireframes.find((a) => a.diagramId === "unused_orphan");
+    expect(orphanWireframe).toBeDefined();
+    expect(orphanWireframe.name).toBe("unused_orphan.wireframe.json");
+    expect(orphanWireframe.referenceCount).toBe(0);
+    expect(orphanWireframe.isUnused).toBe(true);
+
+    // Ensure no duplicate PNG preview image card exists in images category
+    const images = catalog.filter((a) => a.category === "image");
+    expect(images.length).toBe(0);
   });
 });

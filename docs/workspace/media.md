@@ -38,8 +38,9 @@ Keep your assets tidy using the Media Health Dashboard:
 
 ## 4. Diagrams & Media Gallery
 
-Notely provides a dedicated full-screen page under **Workspace > Diagrams & Media Gallery** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`) inspired by the Knowledge Graph layout:
-- **Only Used Items**: Displays every diagram (inline Mermaid, Draw.io, Excalidraw), image, audio, video, and PDF actively referenced in notes.
-- **Collapsible Category Filter**: Filter by category (Diagrams, Images, PDFs, Videos, Audio, Documents) and usage scope (Single-note vs Multi-note).
+Notely provides a dedicated full-screen page under **Workspace > Diagrams & Media Gallery** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`):
+- **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`) to identify files present on disk that have zero note references, letting you clean up orphaned files with the `⚠️ Unused / Orphans` filter tab.
+- **Collapsible Category Filter**: Filter by category (Diagrams, Images, PDFs, Videos, Audio, Documents, Transcripts) and usage scope.
 - **Referenced Notes & Line Jumping**: Click any item to inspect details and see all notes referencing it, complete with line numbers and markdown snippets. Click **Open Note** to jump directly to the note and line.
-- **Live Previews**: Interactive rendered Mermaid previews and high-resolution media previews.
+- **Audio & Media Preview**: Embedded audio player with waveform preview, video modal player, and expandable transcript drawer with action items and key points.
+- **On-Demand AI Transcript Generation (`✨`)**: Run speech-to-text directly on any existing video or audio recording in the gallery.

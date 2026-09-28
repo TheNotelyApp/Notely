@@ -153,7 +153,9 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
           setSavedHash(hash);
         })
         .catch((err) => {
-          setError(err?.message || "Unable to read note.");
+          const msg = err?.message || "Unable to read note.";
+          setError(msg);
+          notify(msg, "error");
           setOpenTabs((prev) => prev.filter((p) => p !== activeTabPath));
           setActiveTabPath(null);
         })
@@ -161,7 +163,7 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
           setLoading(false);
         });
     }
-  }, [activeTabPath, setActiveTabPath, setOpenTabs]);
+  }, [activeTabPath, setActiveTabPath, setOpenTabs, notify]);
 
   // Pre-load all open tabs in parallel to ensure switching is instantaneous
   useEffect(() => {

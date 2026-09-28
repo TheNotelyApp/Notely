@@ -245,6 +245,15 @@ export function createImageMarkdown(altText, imagePath) {
   return `![${altText}](${normalizeImagePathForMarkdown(imagePath)})`;
 }
 
+const EMBED_MEDIA_EXTENSIONS = new Set([
+  // Images
+  "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico",
+  // Audio
+  "mp3", "wav", "ogg", "m4a", "aac", "flac", "wma",
+  // Video
+  "mp4", "webm", "avi", "mov", "mkv", "flv", "wmv", "m4v",
+]);
+
 export function createMediaMarkdown(labelText, mediaPath) {
   const normalizedPath = normalizeImagePathForMarkdown(mediaPath);
   const fallbackLabel = (labelText || "media").trim();
@@ -254,8 +263,8 @@ export function createMediaMarkdown(labelText, mediaPath) {
     .pop()
     ?.toLowerCase();
 
-  const isImage = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"]).has(extension);
-  if (isImage) {
+  const isEmbedMedia = EMBED_MEDIA_EXTENSIONS.has(extension);
+  if (isEmbedMedia) {
     return `![${fallbackLabel}](${normalizedPath})`;
   }
 
@@ -287,3 +296,15 @@ export function extractNoteSnippet(text, maxLength = 140) {
   if (raw.length <= maxLength) return raw;
   return raw.slice(0, maxLength).trim() + "…";
 }
+
+export function hasMarkdownExtension(pathValue) {
+  const normalized = String(pathValue || "").trim().toLowerCase();
+  return normalized.endsWith(".md") || normalized.endsWith(".markdown");
+}
+
+export {
+  getAssetMediaType,
+  getAssetPathDisplayLabel,
+  decodePathForDisplay,
+} from "./mediaUtils.js";
+

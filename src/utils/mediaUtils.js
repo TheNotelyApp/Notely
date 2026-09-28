@@ -61,10 +61,24 @@ export function extractAllMediaFromMarkdown(content) {
   return mediaItems;
 }
 
-export function getMediaTypeFromExtension(extension) {
+export function getMediaTypeFromExtension(extension, filePath = "") {
   if (!extension) return null;
 
   const ext = extension.toLowerCase();
+
+  // Transcripts (json in audio directory, transcript in path/name, or vtt/srt captions)
+  if (
+    (ext === "json" && (/[/\\]audio[/\\]/i.test(filePath) || /transcript/i.test(filePath))) ||
+    ext === "vtt" ||
+    ext === "srt"
+  ) {
+    return MEDIA_TYPES.TRANSCRIPT;
+  }
+
+  // If path is in audio folder or contains audio, treat webm/ogg/audio files as audio
+  if (filePath && /[/\\]audio[/\\]/i.test(filePath) && ["webm", "ogg", "wav", "mp3", "m4a", "flac", "aac", "wma"].includes(ext)) {
+    return MEDIA_TYPES.AUDIO;
+  }
 
   // Images
   if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) {
@@ -106,11 +120,54 @@ export function isLocalMediaPath(path) {
   );
 }
 
-export function getImageFileName(path) {
-  return path.split(/[\\/]/).pop() || "image";
+export function decodePathForDisplay(pathValue) {
+  const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
+  if (!normalized) return "";
+  return normalized
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
 }
 
-export function getMediaFileName(path) {
-  return path.split(/[\\/]/).pop() || "media";
+export function getAssetPathDisplayLabel(pathValue) {
+  const normalized = String(pathValue || "").replace(/\\/g, "/").trim();
+  if (!normalized) return "";
+
+  const withoutQuery = normalized.split(/[?#]/)[0];
+  const parts = withoutQuery.split("/").filter(Boolean);
+  const fileName = parts.length ? parts[parts.length - 1] : normalized;
+  return decodePathForDisplay(fileName) || fileName;
+}
+
+export function getAssetMediaType(pathValue) {
+  const normalized = String(pathValue || "").trim().replace(/\\/g, "/");
+  if (!normalized) return "document";
+
+  const withoutSuffix = normalized.split(/[?#]/)[0];
+  const fileName = withoutSuffix.split("/").pop() || "";
+  let decodedFileName = fileName;
+  try {
+    decodedFileName = decodeURIComponent(fileName);
+  } catch {
+    decodedFileName = fileName;
+  }
+
+  const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
+  if (
+    (extension === "json" && (decodedFileName.toLowerCase().includes("transcript") || normalized.toLowerCase().includes("transcript") || normalized.toLowerCase().includes("/audio/"))) ||
+    extension === "vtt" ||
+    extension === "srt" ||
+    (decodedFileName.toLowerCase().includes("transcript") && ["json", "txt", "vtt", "srt"].includes(extension))
+  ) {
+    return "transcript";
+  }
+  return getMediaTypeFromExtension(extension, normalized) || "document";
 }
 

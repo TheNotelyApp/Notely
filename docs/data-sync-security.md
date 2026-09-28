@@ -45,13 +45,12 @@ Tips:
 
 If you do not share notes between devices, you can ignore this section.
 
-## 4. AI Features for Daily Use
+## 4. AI & MCP Integration for Daily Use
 
-1. Open **AI -> AI Settings**.
-2. Add the sign-in details for the AI service you want to use.
-3. Use AI chat, smarter search, and related-note features as needed.
-
-If the service you chose cannot do something, Notely shows a warning in AI Settings.
+1. Open **AI -> AI Settings** (`Ctrl/Cmd + Shift + ,`).
+2. Configure your preferred Speech-to-Text engine (Local ONNX Whisper or Cloud Groq/OpenAI) and API keys.
+3. Connect external AI assistants (Google Antigravity, Claude Desktop, Cursor) directly to Notely via the built-in MCP server on port `3700`.
+4. Use hybrid semantic search and knowledge graph discovery locally and securely.
 
 ## 5. When to Use Workspace Graph
 

@@ -113,7 +113,8 @@ const MENU_ICON_MAP = {
 
   "tasks": CheckSquare,
   "calendar": Calendar,
-  "assets library": ImageIcon,
+  "media gallery": ImageIcon,
+  "diagrams & media gallery": ImageIcon,
   "downloads & export history": Download,
   "downloads export history": Download,
   "workspace": FolderOpen,
@@ -168,8 +169,6 @@ const MENU_ICON_MAP = {
   "mcp tools & capabilities": Wrench,
   "mcp capabilities": Wrench,
 
-  "diagrams media gallery": ImageIcon,
-  "diagrams & media gallery": ImageIcon,
   "trash / removed items": Trash2,
   "trash removed items": Trash2,
 
@@ -310,10 +309,22 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
 
     const handleToastEvent = (e) => {
       const msg = String(e.detail?.message || "").toLowerCase();
+      // Never animate downloads button for recordings, media capture, or transcripts
+      if (
+        msg.includes("recording") ||
+        msg.includes("audio") ||
+        msg.includes("video") ||
+        msg.includes("transcript") ||
+        msg.includes("snip") ||
+        msg.includes("media gallery")
+      ) {
+        return;
+      }
+
       if (
         msg.includes("export") ||
         msg.includes("download") ||
-        msg.includes("saved to") ||
+        msg.includes("exported to") ||
         msg.includes("pdf") ||
         msg.includes("package") ||
         msg.includes("zip")

@@ -9,6 +9,7 @@ export const MEDIA_TYPES = {
   AUDIO: "audio",
   PDF: "pdf",
   DOCUMENT: "document",
+  TRANSCRIPT: "transcript",
 };
 
 export const SUPPORTED_EXTENSIONS = {
@@ -62,6 +63,11 @@ export const SUPPORTED_EXTENSIONS = {
       "text/plain",
       "application/rtf",
     ],
+  },
+  // Transcripts
+  transcript: {
+    extensions: ["json", "vtt", "srt"],
+    mimeTypes: ["application/json", "text/vtt", "application/x-subrip"],
   },
 };
 

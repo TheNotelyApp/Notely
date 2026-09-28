@@ -146,12 +146,39 @@
   gap: 8px;
   font-size: 12px;
   cursor: pointer;
-  padding: 2px 0;
+  padding: 4px 6px;
+  border-radius: 4px;
   user-select: none;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
-.wdm-filter-checkbox input[type="checkbox"] {
+.wdm-filter-checkbox:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  color: var(--text-strong);
+}
+
+.wdm-filter-checkbox input[type="checkbox"],
+.wdm-filter-checkbox input[type="radio"] {
   cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.wdm-filter-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wdm-filter-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  padding-left: 6px;
 }
 
 .wdm-filter-dot {
@@ -192,30 +219,6 @@
   background: var(--bg-editor, transparent);
 }
 
-.wdm-sidebar-toggle-btn {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 10;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: var(--surface-elevated, #222);
-  border: 1px solid var(--border-default, #333);
-  color: var(--text-strong, #fff);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.wdm-sidebar-toggle-btn:hover {
-  background: var(--surface-hover, #2a2a2a);
-  border-color: var(--accent-solid, #6366f1);
-}
-
 /* Card Grid */
 .wdm-card-grid {
   display: grid;
@@ -243,14 +246,15 @@
   flex-direction: column;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
   position: relative;
 }
 
 .wdm-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent-solid, #6366f1);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+  background: var(--surface-hover, color-mix(in srgb, var(--surface-elevated) 96%, #fff));
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.16));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
 }
 
 .wdm-card.selected {
@@ -267,21 +271,18 @@
   overflow: hidden;
   position: relative;
   border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  padding: 12px;
+  box-sizing: border-box;
 }
 
 .wdm-card-preview-area img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  transition: transform 0.2s ease;
-}
-
-.wdm-card:hover .wdm-card-preview-area img {
-  transform: scale(1.03);
 }
 
 .wdm-card-preview-mermaid {
-  padding: 10px;
+  padding: 8px;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
@@ -299,18 +300,31 @@
 
 .wdm-card-preview-doc {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  color: var(--text-muted, #888);
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.wdm-card-icon-frame {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .wdm-card-content {
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   flex: 1;
+  box-sizing: border-box;
 }
 
 .wdm-card-title-row {
@@ -344,7 +358,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
   line-height: 1.4;
 }
 
@@ -354,30 +368,57 @@
   gap: 4px;
   font-size: 10px;
   padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--surface-subtle, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
-  color: var(--text-secondary, #bbb);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
   font-weight: 600;
   margin-top: 2px;
   align-self: flex-start;
 }
 
+.wdm-reference-count-badge.is-unused {
+  background: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
+}
+
 .wdm-card-footer {
-  padding: 8px 12px;
-  border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   font-size: 11px;
-  color: var(--text-muted, #777);
+  color: var(--text-muted);
   background: var(--surface-subtle, transparent);
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.wdm-card-footer-path {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.wdm-card-footer-path.is-unused {
+  color: var(--text-muted, #777);
+  opacity: 0.75;
+  font-style: italic;
 }
 
 .wdm-card-footer-actions {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .wdm-icon-btn {
@@ -390,7 +431,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .wdm-icon-btn:hover {
@@ -398,72 +439,11 @@
   color: var(--text-strong, #fff);
 }
 
-/* Slide-out Inspector Panel (Knowledge Graph inspired) */
-.wdm-details-overlay {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 380px;
-  background: var(--surface-elevated, #161616);
-  border-left: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  animation: wdmSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
-}
-
-@keyframes wdmSlideIn {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.wdm-details-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
-}
-
-.wdm-details-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-strong, #fff);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.wdm-details-close {
-  background: transparent;
-  border: none;
-  font-size: 16px;
-  color: var(--text-muted, #888);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wdm-details-close:hover {
-  color: var(--text-strong, #fff);
-  background: var(--surface-hover, rgba(255, 255, 255, 0.08));
-}
-
+/* Modal Inspector Body */
 .wdm-details-body {
-  padding: 16px;
+  padding: 16px 20px 20px;
   overflow-y: auto;
-  flex: 1;
+  max-height: 75vh;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -538,12 +518,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: all 0.15s ease;
+  transition: background 0.18s ease, border-color 0.18s ease;
 }
 
 .wdm-note-reference-card:hover {
-  background: var(--surface-elevated, rgba(255, 255, 255, 0.07));
-  border-color: var(--accent-solid, #6366f1);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.07));
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.18));
 }
 
 .wdm-note-reference-header {

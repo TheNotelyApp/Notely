@@ -2,6 +2,7 @@ import React from "react";
 import { Eye, X } from "lucide-react";
 import { DashboardPanels } from "../DashboardPanels";
 import { LandingListControls } from "../LandingListControls";
+import LandingQuickCaptureBar from "../LandingQuickCaptureBar";
 import { DocumentList } from "../DocumentList";
 import { useWorkspaceScopedStorage } from "../../hooks/useWorkspaceScopedStorage";
 import { useNoteDragDrop } from "../../utils/noteDragDrop";
@@ -225,6 +226,9 @@ export function LandingView({
               </div>
             </div>
           )}
+          <LandingQuickCaptureBar
+            onOpenGallery={() => onDashboardAction("workspace-diagrams-media")}
+          />
           <LandingListControls
             query={landingListQuery}
             onQueryChange={setLandingListQuery}

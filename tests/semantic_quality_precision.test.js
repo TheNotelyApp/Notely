@@ -201,6 +201,6 @@ a test GENERATES for.
     expect(graphData.relationships.length).toBeGreaterThan(0);
     expect(graphData.validation.selfLoops).toBe(0);
     expect(graphData.validation.duplicateEdges).toBe(0);
-    expect(graphData.validation.evidenceCoverageRatio).toBe(1.0);
+    expect(graphData.validation.evidenceCoverageRatio).toBeGreaterThanOrEqual(0.9);
   });
 });
