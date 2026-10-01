@@ -376,8 +376,13 @@ class GraphDB {
         } catch { /* ignore junction insert error */ }
       }
     } catch (err) {
-      if (err.message?.includes('FOREIGN KEY') && evidence_id) {
-        stmt.run(source_id, target_id, type, weight, clampedConfidence, extractor, metadataJson, null);
+      if (err.message?.includes('FOREIGN KEY')) {
+        try {
+          const now = new Date().toISOString();
+          this.db.prepare('INSERT OR IGNORE INTO entities (id, name, canonical_name, type, updated_at) VALUES (?, ?, ?, ?, ?)').run(source_id, source_id, source_id, 'Entity', now);
+          this.db.prepare('INSERT OR IGNORE INTO entities (id, name, canonical_name, type, updated_at) VALUES (?, ?, ?, ?, ?)').run(target_id, target_id, target_id, 'Entity', now);
+          stmt.run(source_id, target_id, type, weight, clampedConfidence, extractor, metadataJson, null);
+        } catch { /* ignore fallback error */ }
       } else {
         throw err;
       }

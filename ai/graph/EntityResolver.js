@@ -7,6 +7,48 @@ const { createLogger } = require('../core/logger');
 
 const log = createLogger('EntityResolver');
 
+const CANONICAL_TYPE_MAP = {
+  person: 'Person',
+  organization: 'Organization',
+  company: 'Company',
+  location: 'Location',
+  event: 'Event',
+  concept: 'Concept',
+  project: 'Project',
+  task: 'Task',
+  decision: 'Decision',
+  idea: 'Idea',
+  tag: 'Tag',
+  image: 'Image',
+  document: 'Document',
+  folder: 'Folder',
+  workspace: 'Workspace',
+  note: 'Note',
+  section: 'Section',
+  externalurl: 'ExternalURL',
+  external_url: 'ExternalURL',
+  codeblock: 'CodeBlock',
+  diagram: 'Diagram',
+  keyterm: 'KeyTerm',
+  formula: 'Formula',
+  callout: 'Callout',
+  repo: 'Repo',
+  codemodule: 'CodeModule',
+  codeclass: 'CodeClass',
+  codeinterface: 'CodeInterface',
+  codefunction: 'CodeFunction',
+  apiendpoint: 'APIEndpoint',
+  dbmodel: 'DBModel'
+};
+
+function canonicalizeType(t) {
+  if (!t) return 'Concept';
+  const clean = String(t).trim();
+  const key = clean.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (CANONICAL_TYPE_MAP[key]) return CANONICAL_TYPE_MAP[key];
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
 class EntityResolver {
   constructor(graphDb, embeddingService = null) {
     this.graphDb = graphDb;
@@ -185,7 +227,7 @@ class EntityResolver {
       }
     }
 
-    return proposedType || 'Concept';
+    return canonicalizeType(proposedType);
   }
 
   /**

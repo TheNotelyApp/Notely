@@ -697,15 +697,22 @@ async function handleBuildGraph(_event, _payload) {
     if (workspaceFiles.length === 0 && workspaceRoot && fs.existsSync(workspaceRoot)) {
       function scanMarkdownFiles(dir) {
         let results = [];
+        const IGNORE_DIR_NAMES = new Set([
+          'node_modules', 'dist', 'build', 'out', 'assets', 'chunks', 'bundle', 'static',
+          'test', 'tests', '__tests__', '__test__', 'spec', 'specs', 'fixtures', 'mocks',
+          'cypress', 'playwright', 'e2e'
+        ]);
         try {
           const list = fs.readdirSync(dir);
           for (const file of list) {
-            if (file.startsWith('.') || file === 'node_modules' || file === 'dist' || file === 'build') continue;
+            const lower = file.toLowerCase();
+            if (file.startsWith('.') || IGNORE_DIR_NAMES.has(lower) || /.*[-_.]dist.*/i.test(lower) || /.*[-_.]build.*/i.test(lower)) continue;
             const fullPath = path.join(dir, file);
             const stat = fs.statSync(fullPath);
             if (stat && stat.isDirectory()) {
               results = results.concat(scanMarkdownFiles(fullPath));
             } else if (file.endsWith('.md')) {
+              if (/\.(test|spec)\.md$/i.test(file)) continue;
               results.push(fullPath);
             }
           }

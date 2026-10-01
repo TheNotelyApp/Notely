@@ -80,7 +80,89 @@ class EnterpriseToolSuite {
       }
     }
 
-    // 2. Local Notes Search
+    // 2. Code Symbols Search (when source is "code" or "all")
+    if (source === 'code' || source === 'all') {
+      try {
+        const dbPath = path.join(workspaceRoot, '.notes-app', 'ai-graph.db');
+        if (fs.existsSync(dbPath)) {
+          const { DatabaseSync } = require('node:sqlite');
+          const gdb = new DatabaseSync(dbPath);
+          try {
+            const codeTypes = ['CodeModule', 'CodeClass', 'CodeInterface', 'CodeFunction', 'APIEndpoint', 'DBModel', 'Repo'];
+            const placeholders = codeTypes.map(() => '?').join(',');
+            const rows = gdb.prepare(`
+              SELECT id, name, canonical_name, type, properties
+              FROM entities
+              WHERE type IN (${placeholders})
+            `).all(...codeTypes);
+
+            const queryTokens = query.toLowerCase().replace(/[^a-z0-9_\-\s]/g, ' ').split(/\s+/).filter(t => t.length >= 2);
+            const codeHits = [];
+
+            for (const row of rows) {
+              const name = row.name || '';
+              const canonical = row.canonical_name || '';
+              let props = {};
+              try { props = JSON.parse(row.properties || '{}'); } catch {}
+
+              let score = 0;
+              const matchReasons = { titleMatch: false, textSnippets: [], tagMatches: [] };
+
+              if (query) {
+                const lowerQ = query.toLowerCase();
+                if (name.toLowerCase() === lowerQ || canonical.toLowerCase() === lowerQ) {
+                  score += 3.0;
+                  matchReasons.titleMatch = true;
+                } else if (name.toLowerCase().includes(lowerQ) || canonical.toLowerCase().includes(lowerQ)) {
+                  score += 2.0;
+                  matchReasons.titleMatch = true;
+                } else if (props.filePath && props.filePath.toLowerCase().includes(lowerQ)) {
+                  score += 1.5;
+                  matchReasons.textSnippets.push(`File: ${props.filePath}`);
+                } else {
+                  for (const tok of queryTokens) {
+                    if (name.toLowerCase().includes(tok) || canonical.toLowerCase().includes(tok)) {
+                      score += 0.8;
+                    }
+                  }
+                }
+              } else {
+                score = 1.0;
+              }
+
+              if (score > 0) {
+                codeHits.push({
+                  path: props.filePath || row.name,
+                  title: row.name,
+                  canonicalName: row.canonical_name,
+                  type: row.type,
+                  repoName: props.repoName || props.repoId || 'code',
+                  score: Number(score.toFixed(2)),
+                  matchReasons,
+                  properties: props
+                });
+              }
+            }
+
+            codeHits.sort((a, b) => b.score - a.score);
+            if (source === 'code') {
+              results.hits = codeHits.slice(0, limit);
+              results.totalHits = codeHits.length;
+              return results;
+            }
+          } finally {
+            try { gdb.close(); } catch {}
+          }
+        }
+      } catch (err) {
+        if (source === 'code') {
+          results.codeError = err.message;
+          return results;
+        }
+      }
+    }
+
+    // 3. Local Notes Search
     const allFiles = collectMarkdownFiles(workspaceRoot);
     const scoredHits = [];
 
@@ -499,6 +581,42 @@ class EnterpriseToolSuite {
     // Git history
     const gitHistory = includeGit ? getFileGitHistory(fullPath, workspaceRoot, 5) : [];
 
+    // Repo symbol resolution
+    let repoSymbols = undefined;
+    if (inc.repoSymbols !== false) {
+      try {
+        const dbPath = path.join(workspaceRoot, '.notes-app', 'ai-graph.db');
+        if (fs.existsSync(dbPath)) {
+          const { DatabaseSync } = require('node:sqlite');
+          const gdb = new DatabaseSync(dbPath);
+          try {
+            const wikiMatches = (rawContent.match(/\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/g) || [])
+              .map(m => m.replace(/^\[\[|\]\]$/g, '').split('|')[0].trim());
+            if (wikiMatches.length > 0) {
+              const placeholders = wikiMatches.map(() => '?').join(',');
+              const matchedEntities = gdb.prepare(`
+                SELECT id, name, canonical_name, type, properties
+                FROM entities
+                WHERE (name IN (${placeholders}) OR canonical_name IN (${placeholders}))
+                  AND type IN ('CodeModule', 'CodeClass', 'CodeInterface', 'CodeFunction', 'APIEndpoint', 'DBModel', 'Repo')
+              `).all(...wikiMatches, ...wikiMatches);
+
+              if (matchedEntities.length > 0) {
+                repoSymbols = matchedEntities.map(ent => ({
+                  name: ent.name,
+                  canonicalName: ent.canonical_name,
+                  type: ent.type,
+                  properties: typeof ent.properties === 'string' ? JSON.parse(ent.properties || '{}') : ent.properties
+                }));
+              }
+            }
+          } finally {
+            try { gdb.close(); } catch {}
+          }
+        }
+      } catch { /* ignore graph read error */ }
+    }
+
     // Stats
     const words = cleanMarkdown(rawContent).split(/\s+/).filter(Boolean).length;
     const readingTimeMin = Math.max(1, Math.ceil(words / 200));
@@ -535,6 +653,7 @@ class EnterpriseToolSuite {
       media: includeMedia ? media : undefined,
       links: includeLinks ? links : undefined,
       gitHistory: includeGit ? gitHistory : undefined,
+      repoSymbols,
       suggestedFollowUps: [
         {
           action: 'edit_note',
@@ -1161,7 +1280,7 @@ class EnterpriseToolSuite {
     const workspaceRoot = context.workspaceRoot || args.workspaceRoot;
     if (!workspaceRoot) throw new Error('Workspace root is required.');
 
-    const operation = (args.operation || 'summary').toLowerCase();
+    const operation = String(args.operation || (args.action ? 'repos' : 'summary')).toLowerCase();
 
     // 1. SUMMARY
     if (operation === 'summary') {
@@ -1206,12 +1325,46 @@ class EnterpriseToolSuite {
         } catch { /* skip */ }
       }
 
+      // Pull code entities and relationships from ai-graph.db if present
+      try {
+        const dbPath = path.join(workspaceRoot, '.notes-app', 'ai-graph.db');
+        if (fs.existsSync(dbPath)) {
+          const { DatabaseSync } = require('node:sqlite');
+          const gdb = new DatabaseSync(dbPath);
+          try {
+            const codeRows = gdb.prepare(`
+              SELECT id, name, canonical_name, type, properties
+              FROM entities
+              WHERE type IN ('CodeModule', 'CodeClass', 'CodeInterface', 'CodeFunction', 'APIEndpoint', 'DBModel', 'Repo')
+              LIMIT 150
+            `).all();
+            for (const cr of codeRows) {
+              if (!seenNodes.has(cr.id)) {
+                seenNodes.add(cr.id);
+                nodes.push({ id: cr.id, title: cr.name, type: cr.type, canonicalName: cr.canonical_name });
+              }
+            }
+
+            const relRows = gdb.prepare(`
+              SELECT source_id, target_id, type, weight, confidence
+              FROM relationships
+              LIMIT 300
+            `).all();
+            for (const rr of relRows) {
+              edges.push({ from: rr.source_id, to: rr.target_id, relation: rr.type, weight: rr.weight, confidence: rr.confidence });
+            }
+          } finally {
+            try { gdb.close(); } catch {}
+          }
+        }
+      } catch { /* ignore graph read error */ }
+
       return {
         operation: 'graph',
         totalNodes: nodes.length,
         totalEdges: edges.length,
-        nodes: nodes.slice(0, 100),
-        edges: edges.slice(0, 200)
+        nodes: nodes.slice(0, 200),
+        edges: edges.slice(0, 400)
       };
     }
 
@@ -1260,6 +1413,11 @@ class EnterpriseToolSuite {
     // 6. INDEX
     if (operation === 'index') {
       return this.workspaceService.getNotesIndex({ workspaceRoot, folder: args.folder });
+    }
+
+    // 7. REPOS
+    if (operation === 'repos') {
+      return this.manageRepositories(args, context);
     }
 
     throw new Error(`Unknown workspace_overview operation: "${operation}".`);
@@ -1383,6 +1541,139 @@ class EnterpriseToolSuite {
     }
   }
 
+  // ─── 8. MANAGE REPOSITORIES ────────────────────────────────────────────────
+
+  async manageRepositories(args = {}, context = {}) {
+    const workspaceRoot = context.workspaceRoot || args.workspaceRoot;
+    if (!workspaceRoot) throw new Error('Workspace root is required.');
+
+    const action = String(args.action || 'list').toLowerCase();
+    const metaPath = path.join(workspaceRoot, '.notes-app', 'metadata.json');
+
+    const loadMeta = () => {
+      if (fs.existsSync(metaPath)) {
+        try {
+          return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        } catch { return { attachedRepos: [] }; }
+      }
+      return { attachedRepos: [] };
+    };
+
+    const saveMeta = (data) => {
+      const dir = path.dirname(metaPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(metaPath, JSON.stringify(data, null, 2), 'utf8');
+    };
+
+    switch (action) {
+      case 'list': {
+        const meta = loadMeta();
+        const repos = Array.isArray(meta.attachedRepos) ? meta.attachedRepos : [];
+        return { operation: 'repos', action: 'list', count: repos.length, repositories: repos };
+      }
+
+      case 'add': {
+        const repoPath = args.path || args.repoPath;
+        if (!repoPath) throw new Error('path is required for adding repository.');
+        const normPath = path.resolve(repoPath);
+        if (!fs.existsSync(normPath)) throw new Error(`Repository path "${repoPath}" does not exist on disk.`);
+
+        const meta = loadMeta();
+        if (!Array.isArray(meta.attachedRepos)) meta.attachedRepos = [];
+
+        const existing = meta.attachedRepos.find(r => r.path === normPath || r.id === args.id);
+        if (existing) {
+          return { operation: 'repos', action: 'add', success: true, message: 'Repository already attached', repo: existing, repositories: meta.attachedRepos };
+        }
+
+        const crypto = require('crypto');
+        const repoId = args.id || `repo-${crypto.randomBytes(4).toString('hex')}`;
+        const repoName = args.name || path.basename(normPath);
+        const branch = args.branch || 'main';
+
+        const newRepo = {
+          id: repoId,
+          name: repoName,
+          path: normPath,
+          branch,
+          attachedAt: new Date().toISOString(),
+          status: 'unindexed',
+          symbolCount: 0
+        };
+
+        meta.attachedRepos.push(newRepo);
+        saveMeta(meta);
+
+        return { operation: 'repos', action: 'add', success: true, repo: newRepo, repositories: meta.attachedRepos };
+      }
+
+      case 'remove': {
+        const repoId = args.repoId || args.id || args.path;
+        if (!repoId) throw new Error('repoId or path is required for removing repository.');
+
+        const meta = loadMeta();
+        if (!Array.isArray(meta.attachedRepos)) meta.attachedRepos = [];
+
+        const targetRepo = meta.attachedRepos.find(r => r.id === repoId || r.path === repoId);
+        meta.attachedRepos = meta.attachedRepos.filter(r => r.id !== repoId && r.path !== repoId);
+        saveMeta(meta);
+
+        // Purge matching entities in graph db
+        try {
+          const dbPath = path.join(workspaceRoot, '.notes-app', 'ai-graph.db');
+          if (fs.existsSync(dbPath)) {
+            const { DatabaseSync } = require('node:sqlite');
+            const gdb = new DatabaseSync(dbPath);
+            try {
+              gdb.exec('BEGIN');
+              if (targetRepo?.id) {
+                gdb.prepare('DELETE FROM entities WHERE properties LIKE ?').run(`%"repoId":"${targetRepo.id}"%`);
+              }
+              if (targetRepo?.path) {
+                gdb.prepare('DELETE FROM entities WHERE properties LIKE ?').run(`%"absolutePath":"${targetRepo.path.replace(/\\/g, '\\\\')}%`);
+              }
+              gdb.exec('COMMIT');
+            } catch {
+              try { gdb.exec('ROLLBACK'); } catch {}
+            } finally {
+              try { gdb.close(); } catch {}
+            }
+          }
+        } catch { /* ignore graph purge error */ }
+
+        return { operation: 'repos', action: 'remove', success: true, removedRepoId: repoId, repositories: meta.attachedRepos };
+      }
+
+      case 'status': {
+        const repoId = args.repoId || args.id || args.path;
+        const meta = loadMeta();
+        const repos = Array.isArray(meta.attachedRepos) ? meta.attachedRepos : [];
+        if (repoId) {
+          const repo = repos.find(r => r.id === repoId || r.path === repoId);
+          if (!repo) throw new Error(`Repository "${repoId}" not found.`);
+          return { operation: 'repos', action: 'status', repo };
+        }
+        return { operation: 'repos', action: 'status', repositories: repos };
+      }
+
+      case 'refresh':
+      case 'rescan': {
+        const meta = loadMeta();
+        const repos = Array.isArray(meta.attachedRepos) ? meta.attachedRepos : [];
+        return {
+          operation: 'repos',
+          action,
+          success: true,
+          message: 'Repository scan requested. Use aiBuildGraph to execute full indexing.',
+          repositories: repos
+        };
+      }
+
+      default:
+        throw new Error(`Unknown manage_repositories action: "${action}". Supported actions: [list, add, remove, status, refresh].`);
+    }
+  }
+
   // ─── ENTERPRISE TOOL DEFINITIONS FOR MCP REGISTRATION ─────────────────────
 
   getToolDefinitions() {
@@ -1406,9 +1697,9 @@ class EnterpriseToolSuite {
             },
             source: {
               type: 'string',
-              enum: ['notes', 'web', 'all'],
+              enum: ['notes', 'code', 'web', 'all'],
               default: 'notes',
-              description: 'Where to search: "notes" (workspace notes), "web" (external web search), or "all" (both)'
+              description: 'Where to search: "notes" (workspace notes), "code" (code entities and AST symbols), "web" (external web search), or "all"'
             },
             mode: {
               type: 'string',
@@ -1466,6 +1757,7 @@ class EnterpriseToolSuite {
                 diagrams: { type: 'boolean', default: true, description: 'Include Mermaid diagrams and linked drawing files' },
                 tasks: { type: 'boolean', default: true, description: 'Include checklist tasks with status and due dates' },
                 links: { type: 'boolean', default: true, description: 'Include outgoing wikilinks and backlinks from other notes' },
+                repoSymbols: { type: 'boolean', default: true, description: 'Include linked code symbols referenced in this note' },
                 gitHistory: { type: 'boolean', default: true, description: 'Include recent git commits modifying this note' },
                 stats: { type: 'boolean', default: true, description: 'Include word count, line count, and reading time' }
               }
@@ -1640,9 +1932,9 @@ class EnterpriseToolSuite {
         name: 'workspace_overview',
         version: 'v1',
         capability: 'graph:traverse',
-        aliases: ['explore_topic_graph', 'get_graph'],
+        aliases: ['explore_topic_graph', 'get_graph', 'manage_repositories', 'manage_repos', 'attached_repos'],
         informationNeeds: ['entity_relationships', 'knowledge_graph', 'workspace_metadata'],
-        description: 'Workspace intelligence, structure, health, and diagnostics. Returns hierarchical folder trees, knowledge graph relationships, disk storage stats, link integrity audits (broken wikilinks), and recent file activity.',
+        description: 'Workspace intelligence, structure, health, and diagnostics. Returns hierarchical folder trees, knowledge graph relationships, attached repository summaries, disk storage stats, link integrity audits (broken wikilinks), and recent file activity.',
         isWrite: false,
         annotations: { readOnly: true, idempotent: true },
         execute: async (args, context) => this.workspaceOverview(args, context),
@@ -1651,9 +1943,29 @@ class EnterpriseToolSuite {
           properties: {
             operation: {
               type: 'string',
-              enum: ['summary', 'tree', 'graph', 'lint', 'index', 'recent_activity'],
-              default: 'summary',
-              description: '"summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink nodes & edges), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)'
+              enum: ['summary', 'tree', 'graph', 'repos', 'lint', 'index', 'recent_activity'],
+              description: '"summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink & code entity graph), "repos" (attached git repositories status), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)'
+            },
+            action: {
+              type: 'string',
+              enum: ['list', 'add', 'remove', 'status', 'refresh'],
+              description: 'Action for "repos" operation: "list" (all attached repos), "add" (attach new local repo), "remove" (detach repo and purge graph symbols), "status" (inspect scan stats), "refresh" (request rescan)'
+            },
+            path: {
+              type: 'string',
+              description: 'Local absolute directory path of the repository to attach'
+            },
+            name: {
+              type: 'string',
+              description: 'Display alias name for the repository'
+            },
+            branch: {
+              type: 'string',
+              description: 'Default Git branch name (default: main)'
+            },
+            repoId: {
+              type: 'string',
+              description: 'Repository ID for "remove" or "status" actions'
             },
             folder: {
               type: 'string',

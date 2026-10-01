@@ -98,17 +98,20 @@ class GraphWorker {
         const ExcalidrawKnowledgeSource = require('../graph/sources/ExcalidrawKnowledgeSource');
         const DrawioKnowledgeSource = require('../graph/sources/DrawioKnowledgeSource');
         const MermaidKnowledgeSource = require('../graph/sources/MermaidKnowledgeSource');
+        const { CodeKnowledgeSource } = require('../graph/sources/code');
         const EvidenceStore = require('../graph/EvidenceStore');
 
         const registry = new KnowledgeSourceRegistry();
         const excSrc = new ExcalidrawKnowledgeSource();
         const drwSrc = new DrawioKnowledgeSource();
         const mrmSrc = new MermaidKnowledgeSource();
+        const codeSrc = new CodeKnowledgeSource();
 
         let source = null;
         if (excSrc.supports(job.note_path)) source = excSrc;
         else if (drwSrc.supports(job.note_path)) source = drwSrc;
         else if (mrmSrc.supports(job.note_path)) source = mrmSrc;
+        else if (codeSrc.supports(job.note_path)) source = codeSrc;
 
         if (source && this.graphDb) {
           const { entities, relationships, evidence } = await registry.extract(source, job.note_path, content);

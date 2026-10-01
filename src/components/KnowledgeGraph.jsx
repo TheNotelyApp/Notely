@@ -6,7 +6,8 @@ import {
   useNodesState,
   useEdgesState,
   Handle,
-  Position
+  Position,
+  MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -47,8 +48,8 @@ import { useConfirm } from '../hooks/useConfirm';
 import * as d3Force from 'd3-force';
 import '../styles/KnowledgeGraph.css';
 
-// Custom Node component
-const CustomNode = ({ data, selected }) => {
+// Custom Node component with directional connection handles (memoized for high FPS)
+const CustomNode = React.memo(({ data, selected }) => {
   const isHub = (data.degree || 0) >= 5;
   const typeColor = data.typeColor || { border: 'var(--accent-solid, #2f5d62)', background: 'rgba(47, 93, 98, 0.12)', text: 'var(--accent-solid, #2f5d62)' };
   const name = data.raw?.name || data.raw?.canonical_name || 'Node';
@@ -70,22 +71,8 @@ const CustomNode = ({ data, selected }) => {
       }}
       title={`${name} (${data.raw?.type || 'Entity'}) — ${data.degree || 0} connections`}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{
-          opacity: 0,
-          pointerEvents: 'none',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 0,
-          height: 0,
-          minWidth: 0,
-          minHeight: 0,
-          border: 'none'
-        }}
-      />
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, width: '6px', height: '6px', top: '-3px' }} />
+      <Handle type="target" position={Position.Left} style={{ opacity: 0, width: '6px', height: '6px', left: '-3px' }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1.5px', pointerEvents: 'none' }}>
         <span
@@ -154,25 +141,11 @@ const CustomNode = ({ data, selected }) => {
         </span>
       )}
 
-      <Handle
-        type="source"
-        position={Position.Top}
-        style={{
-          opacity: 0,
-          pointerEvents: 'none',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 0,
-          height: 0,
-          minWidth: 0,
-          minHeight: 0,
-          border: 'none'
-        }}
-      />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: '6px', height: '6px', bottom: '-3px' }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, width: '6px', height: '6px', right: '-3px' }} />
     </div>
   );
-};
+});
 
 const nodeTypes = {
   customNode: CustomNode,
@@ -245,6 +218,49 @@ const RELATIONSHIP_COLORS = {
   DEFAULT: '#06b6d4'           // Vibrant Cyan fallback
 };
 
+const CANONICAL_TYPE_MAP = {
+  note: 'Note',
+  person: 'Person',
+  project: 'Project',
+  technology: 'Technology',
+  company: 'Company',
+  organization: 'Organization',
+  concept: 'Concept',
+  task: 'Task',
+  decision: 'Decision',
+  idea: 'Idea',
+  tag: 'Tag',
+  image: 'Image',
+  document: 'Document',
+  folder: 'Folder',
+  workspace: 'Workspace',
+  section: 'Section',
+  event: 'Event',
+  location: 'Location',
+  externalurl: 'ExternalURL',
+  external_url: 'ExternalURL',
+  codeblock: 'CodeBlock',
+  diagram: 'Diagram',
+  keyterm: 'KeyTerm',
+  formula: 'Formula',
+  callout: 'Callout',
+  repo: 'Repo',
+  codemodule: 'CodeModule',
+  codeclass: 'CodeClass',
+  codeinterface: 'CodeInterface',
+  codefunction: 'CodeFunction',
+  apiendpoint: 'APIEndpoint',
+  dbmodel: 'DBModel'
+};
+
+const normalizeType = (rawType) => {
+  if (!rawType) return 'Concept';
+  const clean = String(rawType).trim();
+  const key = clean.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (CANONICAL_TYPE_MAP[key]) return CANONICAL_TYPE_MAP[key];
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+};
+
 export default function KnowledgeGraph({ onBack }) {
   const { confirm } = useConfirm();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -256,11 +272,19 @@ export default function KnowledgeGraph({ onBack }) {
     Project: true,
     Technology: true,
     Company: true,
+    Organization: true,
     Concept: true,
     Task: true,
     Image: true,
     Document: true,
-    ExternalURL: true
+    ExternalURL: true,
+    Repo: true,
+    CodeModule: true,
+    CodeClass: true,
+    CodeInterface: true,
+    CodeFunction: true,
+    APIEndpoint: true,
+    DBModel: true
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -280,6 +304,7 @@ export default function KnowledgeGraph({ onBack }) {
 
   const [showEdgeLabels, setShowEdgeLabels] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [rawEntities, setRawEntities] = useState([]);
   const [rawRelationships, setRawRelationships] = useState([]);
   const [chargeStrength] = useState(-280);
   const [linkDistance] = useState(150);
@@ -328,7 +353,7 @@ export default function KnowledgeGraph({ onBack }) {
     }
   }, []);
 
-  // Load Graph Data
+  // Load Graph Data & Compute Force-Directed Layout
   const loadGraphData = useCallback(async () => {
     try {
       setLoading(true);
@@ -347,8 +372,15 @@ export default function KnowledgeGraph({ onBack }) {
       }
 
       if (graphRes.success && graphRes.data) {
-        const { entities, relationships } = graphRes.data;
-        setRawRelationships(relationships || []);
+        const rawEntitiesData = Array.isArray(graphRes.data.entities) ? graphRes.data.entities : [];
+        const entities = rawEntitiesData.map(ent => ({
+          ...ent,
+          type: normalizeType(ent.type)
+        }));
+        const relationships = Array.isArray(graphRes.data.relationships) ? graphRes.data.relationships : [];
+
+        setRawEntities(entities);
+        setRawRelationships(relationships);
 
         const degrees = {};
         entities.forEach(e => { degrees[e.id] = 0; });
@@ -361,8 +393,8 @@ export default function KnowledgeGraph({ onBack }) {
         const forceNodes = entities.map(entity => ({
           id: entity.id,
           entity,
-          x: Math.random() * 500,
-          y: Math.random() * 500
+          x: (Math.random() - 0.5) * 600 + 400,
+          y: (Math.random() - 0.5) * 600 + 350
         }));
 
         const forceLinks = relationships
@@ -384,7 +416,7 @@ export default function KnowledgeGraph({ onBack }) {
           .force('collision', d3Force.forceCollide().radius(dynamicCollision))
           .stop();
 
-        const ticks = Math.min(120, Math.max(40, Math.round(nodeCount * 1.5)));
+        const ticks = Math.min(80, Math.max(30, Math.round(nodeCount * 0.8)));
         for (let i = 0; i < ticks; i++) simulation.tick();
 
         forceNodes.forEach(node => {
@@ -406,8 +438,7 @@ export default function KnowledgeGraph({ onBack }) {
               raw: entity,
               degree,
               nodeSize,
-              typeColor: typeColors,
-              relationships: relationships.filter(r => r.source_id === entity.id || r.target_id === entity.id)
+              typeColor: typeColors
             },
             position: { x: node.x, y: node.y },
             style: {
@@ -452,8 +483,13 @@ export default function KnowledgeGraph({ onBack }) {
             labelBgStyle: { fill: 'var(--surface-bg)', stroke: 'var(--border-default)', strokeWidth: 0.5, fillOpacity: 0.9 },
             labelBgPadding: [1.5, 3],
             labelBgBorderRadius: 3,
-            markerEnd: { type: 'arrowclosed', color: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor, width: 8, height: 8 },
-            animated: relTypeUpper === 'DEPENDS_ON' || relTypeUpper === 'USES'
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: isMentions ? 'rgba(140, 140, 140, 0.45)' : relColor,
+              width: 14,
+              height: 14
+            },
+            animated: relTypeUpper === 'DEPENDS_ON' || relTypeUpper === 'USES' || relTypeUpper === 'IMPORTS'
           };
         });
 
@@ -478,13 +514,6 @@ export default function KnowledgeGraph({ onBack }) {
     const unsubscribe = onGraphProgress((payload) => {
       if (payload) {
         setGraphStatus(prev => ({ ...prev, ...payload }));
-        
-        // Refresh logs in real-time on progress events
-        aiGetLogs('graph', 50).then((logsRes) => {
-          if (logsRes && logsRes.success && Array.isArray(logsRes.data)) {
-            setGraphLogs(logsRes.data);
-          }
-        }).catch(() => {});
 
         if (!payload.isBuilding && isRebuilding) {
           setIsRebuilding(false);
@@ -589,49 +618,44 @@ export default function KnowledgeGraph({ onBack }) {
     const activeNeighbors = new Set();
     if (hoveredNodeId) {
       activeNeighbors.add(hoveredNodeId);
-      edges.forEach(edge => {
+      for (let i = 0; i < edges.length; i++) {
+        const edge = edges[i];
         if (edge.source === hoveredNodeId) activeNeighbors.add(edge.target);
         if (edge.target === hoveredNodeId) activeNeighbors.add(edge.source);
-      });
+      }
     }
 
-    const visibleNodes = nodes.map(node => {
-      const raw = node.data.raw;
+    const visibleNodes = [];
+    const visibleNodeIds = new Set();
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const raw = node.data?.raw || {};
       const typeMatch = selectedTypes[raw.type] !== false;
-      const searchMatch = !q || raw.name.toLowerCase().includes(q) || raw.type.toLowerCase().includes(q) || raw.id.toLowerCase().includes(q);
-      const isVisible = typeMatch && searchMatch;
+      const searchMatch = !q || (raw.name && raw.name.toLowerCase().includes(q)) || (raw.type && raw.type.toLowerCase().includes(q));
 
-      let opacity = 1;
-      if (isVisible && hoveredNodeId) {
-        if (!activeNeighbors.has(node.id)) opacity = 0.2;
+      if (typeMatch && searchMatch) {
+        visibleNodeIds.add(node.id);
+        const opacity = hoveredNodeId ? (activeNeighbors.has(node.id) ? 1 : 0.2) : 1;
+        visibleNodes.push(opacity === 1 ? node : { ...node, style: { ...node.style, opacity } });
       }
+    }
 
-      return {
-        ...node,
-        style: { ...node.style, display: isVisible ? 'flex' : 'none', opacity }
-      };
-    });
-
-    const visibleNodeIds = new Set(visibleNodes.filter(n => n.style.display !== 'none').map(n => n.id));
-    const visibleEdges = edges
-      .filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
-      .map(edge => {
-        let opacity = 1;
-        if (hoveredNodeId) {
-          const connectsHovered = edge.source === hoveredNodeId || edge.target === hoveredNodeId;
-          opacity = connectsHovered ? 1 : 0.15;
-        }
-        return {
+    const visibleEdges = [];
+    for (let i = 0; i < edges.length; i++) {
+      const edge = edges[i];
+      if (visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)) {
+        const opacity = hoveredNodeId ? ((edge.source === hoveredNodeId || edge.target === hoveredNodeId) ? 1 : 0.15) : 1;
+        visibleEdges.push({
           ...edge,
           label: showEdgeLabels ? edge.rawLabel : undefined,
-          style: { ...edge.style, opacity },
-          labelStyle: { ...edge.labelStyle, opacity },
-          labelBgStyle: { ...edge.labelBgStyle, opacity }
-        };
-      });
+          style: opacity === 1 ? edge.style : { ...edge.style, opacity }
+        });
+      }
+    }
 
     return {
-      filteredNodes: visibleNodes.filter(n => n.style.display !== 'none'),
+      filteredNodes: visibleNodes,
       filteredEdges: visibleEdges
     };
   }, [nodes, edges, searchQuery, selectedTypes, hoveredNodeId, showEdgeLabels]);
@@ -707,7 +731,7 @@ export default function KnowledgeGraph({ onBack }) {
 
           <div className="kg-stats-pill">
             <Database size={12} />
-            <span>Nodes: {graphStatus.nodeCount} | Edges: {graphStatus.edgeCount}</span>
+            <span>Nodes: {graphStatus.nodeCount || nodes.length} | Edges: {graphStatus.edgeCount || edges.length}</span>
           </div>
 
           <div className="kg-toolbar-divider" />
@@ -914,9 +938,13 @@ export default function KnowledgeGraph({ onBack }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px', marginTop: '2px' }}>
                   {[
                     { label: 'LINKS', color: RELATIONSHIP_COLORS.LINKS_TO },
+                    { label: 'IMPORTS', color: RELATIONSHIP_COLORS.IMPORTS },
+                    { label: 'CALLS', color: RELATIONSHIP_COLORS.CALLS },
+                    { label: 'CONTAINS', color: RELATIONSHIP_COLORS.CONTAINS },
+                    { label: 'EXPORTS', color: RELATIONSHIP_COLORS.EXPORTS },
+                    { label: 'DOCUMENTS', color: RELATIONSHIP_COLORS.DOCUMENTS },
                     { label: 'DEPENDS', color: RELATIONSHIP_COLORS.DEPENDS_ON },
                     { label: 'USES', color: RELATIONSHIP_COLORS.USES },
-                    { label: 'CONTAINS', color: RELATIONSHIP_COLORS.CONTAINS },
                     { label: 'MENTIONS', color: RELATIONSHIP_COLORS.MENTIONS_NOTE },
                     { label: 'TAGGED', color: RELATIONSHIP_COLORS.TAGGED },
                     { label: 'URL', color: RELATIONSHIP_COLORS.REFERENCES_URL },
@@ -1162,7 +1190,8 @@ export default function KnowledgeGraph({ onBack }) {
               onNodeMouseLeave={onNodeMouseLeave}
               fitView
               fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
-              minZoom={0.001}
+              onlyRenderVisibleElements={true}
+              minZoom={0.01}
               maxZoom={2.5}
               defaultViewport={{ x: 0, y: 0, zoom: 1.0 }}
               style={{ width: '100%', height: '100%', background: 'var(--app-bg)' }}
