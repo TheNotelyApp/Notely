@@ -433,14 +433,14 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Force React Flow default nodes to be clean, padding-free, flex-centered squares */
+/* Force React Flow default nodes to be clean, padding-free, flex-centered circles */
 .react-flow__node-default,
 .react-flow__node {
   padding: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: var(--radius-lg) !important;
+  border-radius: 50% !important;
   color: var(--text-strong) !important;
 }
 

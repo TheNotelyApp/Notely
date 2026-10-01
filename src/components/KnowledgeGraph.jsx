@@ -64,7 +64,8 @@ const CustomNode = ({ data, selected }) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '3px',
+        padding: '4px',
+        borderRadius: '50%',
         boxSizing: 'border-box',
         position: 'relative'
       }}
@@ -400,7 +401,7 @@ export default function KnowledgeGraph({ onBack }) {
             style: {
               background: typeColors.background,
               border: `1.5px solid ${typeColors.border}`,
-              borderRadius: isHub ? '50%' : '12px',
+              borderRadius: '50%',
               width: nodeSize,
               height: nodeSize,
               padding: 0,
