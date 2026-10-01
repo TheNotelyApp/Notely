@@ -32,6 +32,7 @@ import { useConfirm } from '../hooks/useConfirm';
 
 import GraphSidebar from './graph/GraphSidebar';
 import GraphCanvasView from './graph/GraphCanvasView';
+import EntityInspector from './graph/EntityInspector';
 import { normalizeType } from './graph/graphUtils';
 
 import '../styles/KnowledgeGraph.css';
@@ -429,15 +430,11 @@ export default function KnowledgeGraph({ onBack }) {
           <GraphSidebar
             sidebarOpen={sidebarOpen}
             entities={rawEntities}
-            relationships={rawRelationships}
             selectedTypes={selectedTypes}
             setSelectedTypes={setSelectedTypes}
             showEdgeLabels={showEdgeLabels}
             setShowEdgeLabels={setShowEdgeLabels}
-            selectedNode={selectedNode}
-            setSelectedNode={setSelectedNode}
             graphLogs={graphLogs}
-            onOpenNote={(notePath) => handleNodeDoubleClick({ note_path: notePath })}
           />
 
           {/* Canvas Viewport */}
@@ -561,6 +558,18 @@ export default function KnowledgeGraph({ onBack }) {
             </div>
           </div>
         </OverlayDialog>
+      )}
+
+      {/* Entity Inspector Popup Modal */}
+      {selectedNode && (
+        <EntityInspector
+          selectedNode={selectedNode}
+          entities={rawEntities}
+          relationships={rawRelationships}
+          onSelectNode={setSelectedNode}
+          onClose={() => setSelectedNode(null)}
+          onOpenNote={(notePath) => handleNodeDoubleClick({ note_path: notePath })}
+        />
       )}
     </div>
   );

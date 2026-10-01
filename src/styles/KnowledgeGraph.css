@@ -604,9 +604,14 @@
 
 /* Interactive Neighbor List Items in Inspector */
 .kg-neighbor-item:hover {
-  background: var(--surface-bg) !important;
-  border-color: var(--accent-solid) !important;
-  transform: translateX(2px);
+  background: var(--surface-elevated) !important;
+  border-color: var(--border-default) !important;
+}
+
+.kg-inspector-footer-close-btn:hover {
+  background: var(--surface-elevated) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-strong) !important;
 }
 
 /* Polished ReactFlow Canvas Controls */

@@ -1,20 +1,15 @@
 import React, { useMemo } from 'react';
 import { Layers, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { TYPE_COLORS, RELATIONSHIP_COLORS, getTypeColor } from './graphUtils';
-import EntityInspector from './EntityInspector';
 
 export default function GraphSidebar({
   sidebarOpen,
   entities = [],
-  relationships = [],
   selectedTypes = {},
   setSelectedTypes,
   showEdgeLabels,
   setShowEdgeLabels,
-  selectedNode,
-  setSelectedNode,
-  graphLogs = [],
-  onOpenNote
+  graphLogs = []
 }) {
   // Pre-calculate type counts efficiently
   const { activeTypes, typeCounts } = useMemo(() => {
@@ -208,18 +203,6 @@ export default function GraphSidebar({
           </div>
         </div>
       </div>
-
-      {/* Entity Inspector */}
-      {selectedNode && (
-        <EntityInspector
-          selectedNode={selectedNode}
-          entities={entities}
-          relationships={relationships}
-          onSelectNode={setSelectedNode}
-          onClose={() => setSelectedNode(null)}
-          onOpenNote={onOpenNote}
-        />
-      )}
     </div>
   );
 }
