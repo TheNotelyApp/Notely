@@ -4,8 +4,12 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ## Unreleased
 
-### Added
-
+- Added **Attached Code Repositories & AST Knowledge Graph Integration**:
+  - Connect external Git repositories to workspace metadata (`.notes-app/metadata.json`) with branch and commit tracking.
+  - Multi-language code AST extractor (`CodeKnowledgeSource.js`) parsing JS/TS, Python, Go, Rust, Java, C/C++, Ruby, and PHP files into structured code entities (CodeModule, CodeClass, CodeInterface, CodeFunction, APIEndpoint, DBModel) and mapping `IMPORTS`/`CONTAINS`/`DOCUMENTS` graph relationships.
+  - Interactive **Attached Repositories Explorer** page (`AttachedReposPage.jsx`, `AttachedReposPage.css`) accessible via dashboard card, TitleBar menu (`Workspace → Attached Repositories`), and Command Palette (`open-attached-repos`).
+  - Search, filter, and inspect attached repos alongside notes that cross-reference them via `[[RepoName]]` wikilinks.
+  - Integrated with Knowledge Graph visualization (`KnowledgeGraph.jsx`), displaying specialized color-coded code nodes and edge styles.
 - Added **Dual-Stream Audio Capture & Meeting Recording**:
   - Captures microphone and Windows desktop/system audio loopback simultaneously using Web Audio API AudioContext mixer (`src/utils/audioMixer.js`).
   - Supports 3 capture modes: Meeting Mode (Mic + System Audio), Microphone Only, and System Audio Only.

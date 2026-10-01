@@ -140,6 +140,65 @@ class WorkspaceMetadata {
     this._save();
     return true;
   }
+
+  getAttachedRepos() {
+    this._load();
+    return Array.isArray(this.state?.attachedRepos) ? this.state.attachedRepos : [];
+  }
+
+  addAttachedRepo(repo) {
+    this._load();
+    if (!Array.isArray(this.state.attachedRepos)) {
+      this.state.attachedRepos = [];
+    }
+    const id = repo.id || `repo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const existingIndex = this.state.attachedRepos.findIndex((r) => r.id === id || (r.path && repo.path && r.path === repo.path));
+    const repoEntry = {
+      id,
+      name: repo.name || (repo.path ? this.path.basename(repo.path) : "Repository"),
+      path: repo.path,
+      branch: repo.branch || "main",
+      remoteUrl: repo.remoteUrl || "",
+      headCommit: repo.headCommit || "",
+      lastScannedAt: repo.lastScannedAt || null,
+      symbolCount: repo.symbolCount || 0,
+      fileCount: repo.fileCount || 0,
+      status: repo.status || "unindexed",
+      addedAt: repo.addedAt || new Date().toISOString(),
+    };
+    if (existingIndex >= 0) {
+      this.state.attachedRepos[existingIndex] = { ...this.state.attachedRepos[existingIndex], ...repoEntry };
+    } else {
+      this.state.attachedRepos.push(repoEntry);
+    }
+    this._save();
+    return repoEntry;
+  }
+
+  removeAttachedRepo(repoId) {
+    this._load();
+    if (!Array.isArray(this.state.attachedRepos)) return false;
+    const initialLen = this.state.attachedRepos.length;
+    this.state.attachedRepos = this.state.attachedRepos.filter((r) => r.id !== repoId && r.path !== repoId);
+    if (this.state.attachedRepos.length !== initialLen) {
+      this._save();
+      return true;
+    }
+    return false;
+  }
+
+  updateAttachedRepo(repoId, updates = {}) {
+    this._load();
+    if (!Array.isArray(this.state.attachedRepos)) return null;
+    const index = this.state.attachedRepos.findIndex((r) => r.id === repoId || r.path === repoId);
+    if (index === -1) return null;
+    this.state.attachedRepos[index] = {
+      ...this.state.attachedRepos[index],
+      ...updates,
+    };
+    this._save();
+    return this.state.attachedRepos[index];
+  }
 }
 
 function validateIsWorkspace(fs, path, dirPath) {

@@ -328,6 +328,7 @@ export default function App() {
     gitVCOpen, setGitVCOpen,
     gitVCInitialTab, setGitVCInitialTab,
     graphPanelOpen, setGraphPanelOpen,
+    attachedReposPageOpen, setAttachedReposPageOpen,
     embeddingsPageOpen, setEmbeddingsPageOpen,
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,
@@ -2462,6 +2463,7 @@ export default function App() {
       aliases: "recent workspaces recently opened folders",
     },
     { id: "open-workspace-diagrams-media", label: "Open Media Gallery", group: "Workspace", aliases: "media gallery assets diagrams pdfs images video audio mermaid drawio excalidraw" },
+    { id: "open-attached-repos", label: "Open Attached Code Repositories", group: "Workspace", aliases: "git repos code ast symbols attach repositories graphify" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
@@ -2891,6 +2893,11 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-attached-repos" || resolvedCommandId === "open-git-repos") {
+      setAttachedReposPageOpen(true);
+      return;
+    }
+
     if (resolvedCommandId === "open-workspace-activity") {
       await handleOpenWorkspaceActivity();
       return;
@@ -3082,6 +3089,11 @@ export default function App() {
 
     if (action === "assets") {
       setDiagramsMediaOpen(true);
+      return;
+    }
+
+    if (action === "attached-repos" || action === "open-attached-repos") {
+      setAttachedReposPageOpen(true);
       return;
     }
 
@@ -3899,6 +3911,8 @@ export default function App() {
         documents={documents}
         graphPanelOpen={graphPanelOpen}
         setGraphPanelOpen={setGraphPanelOpen}
+        attachedReposPageOpen={attachedReposPageOpen}
+        setAttachedReposPageOpen={setAttachedReposPageOpen}
         embeddingsPageOpen={embeddingsPageOpen}
         setEmbeddingsPageOpen={setEmbeddingsPageOpen}
         healthPageOpen={healthPageOpen}

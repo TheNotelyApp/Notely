@@ -65,12 +65,14 @@ class GraphBuilder {
       const ExcalidrawKnowledgeSource = require('./sources/ExcalidrawKnowledgeSource');
       const DrawioKnowledgeSource = require('./sources/DrawioKnowledgeSource');
       const MermaidKnowledgeSource = require('./sources/MermaidKnowledgeSource');
+      const CodeKnowledgeSource = require('./sources/CodeKnowledgeSource');
 
       const registry = new KnowledgeSourceRegistry();
 
       // 1. Read metadata.json for workspace info and image annotations
       const workspaceRoot = this.agent?.workspaceRoot || this.graphDb?.workspaceRoot;
       let workspaceInfo = {};
+      let attachedRepos = [];
       const annotationMap = new Map();
 
       if (workspaceRoot) {
@@ -79,6 +81,7 @@ class GraphBuilder {
           try {
             const metaObj = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
             workspaceInfo = metaObj.info || {};
+            attachedRepos = Array.isArray(metaObj.attachedRepos) ? metaObj.attachedRepos : [];
             const items = metaObj.items || {};
             for (const [relPath, itemMeta] of Object.entries(items)) {
               if (itemMeta && itemMeta.annotation) {
@@ -96,6 +99,7 @@ class GraphBuilder {
       registry.register(new ExcalidrawKnowledgeSource());
       registry.register(new DrawioKnowledgeSource());
       registry.register(new MermaidKnowledgeSource());
+      registry.register(new CodeKnowledgeSource(attachedRepos));
 
       // 2. Discover non-markdown and markdown items
       const discoveredItems = registry.discoverAll(workspaceRoot);

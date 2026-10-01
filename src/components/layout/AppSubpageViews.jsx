@@ -34,6 +34,9 @@ const WorkspaceDiagramsMediaPage = lazy(() =>
 const MCPToolsPage = lazy(() =>
   import("../MCPToolsPage").then((m) => ({ default: m.default || m.MCPToolsPage }))
 );
+const AttachedReposPage = lazy(() =>
+  import("../AttachedReposPage").then((m) => ({ default: m.default || m.AttachedReposPage }))
+);
 
 
 export function AppSubpageViews({
@@ -47,6 +50,8 @@ export function AppSubpageViews({
   documents,
   graphPanelOpen,
   setGraphPanelOpen,
+  attachedReposPageOpen,
+  setAttachedReposPageOpen,
   embeddingsPageOpen,
   setEmbeddingsPageOpen,
   healthPageOpen,
@@ -93,6 +98,29 @@ export function AppSubpageViews({
         <div className="app-subpage-overlay">
           <Suspense fallback={<div className="lazy-loading">Loading Knowledge Graph…</div>}>
             <KnowledgeGraph onBack={() => setGraphPanelOpen(false)} />
+          </Suspense>
+        </div>
+      )}
+
+      {attachedReposPageOpen && (
+        <div className="app-subpage-overlay">
+          <Suspense fallback={<div className="lazy-loading">Loading Attached Repositories…</div>}>
+            <AttachedReposPage
+              notesFolderPath={notesFolderPath}
+              documents={documents}
+              onBack={() => setAttachedReposPageOpen(false)}
+              onClose={() => setAttachedReposPageOpen(false)}
+              onOpenKnowledgeGraph={() => {
+                setAttachedReposPageOpen(false);
+                setGraphPanelOpen(true);
+              }}
+              onOpenNote={(filePath) => {
+                setAttachedReposPageOpen(false);
+                if (handleOpenReferencedDocument) {
+                  void handleOpenReferencedDocument(filePath);
+                }
+              }}
+            />
           </Suspense>
         </div>
       )}

@@ -856,6 +856,11 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           click: () => sendMenuAction(win, "open-workspace-diagrams-media")
         },
         {
+          label: "Attached Code Repositories",
+          accelerator: "CmdOrCtrl+Alt+G",
+          click: () => sendMenuAction(win, "open-attached-repos")
+        },
+        {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")

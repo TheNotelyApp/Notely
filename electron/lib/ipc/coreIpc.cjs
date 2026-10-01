@@ -749,6 +749,77 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     return { success: false };
   });
 
+  registerTrustedHandler("workspace-metadata:get-attached-repos", () => {
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) return store.getAttachedRepos();
+    }
+    return [];
+  });
+
+  registerTrustedHandler("workspace-metadata:add-attached-repo", async (_event, payload) => {
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) {
+        let repoData = { ...payload };
+        // If git is available, attempt to detect branch & commit for the local path
+        if (repoData.path) {
+          try {
+            const gitService = require("../git/gitService.cjs");
+            const infoRes = await gitService.getRepoInfo(repoData.path);
+            if (infoRes && infoRes.ok && infoRes.data) {
+              repoData.branch = repoData.branch || infoRes.data.branch || "main";
+              repoData.headCommit = repoData.headCommit || infoRes.data.commitHash || "";
+              if (infoRes.data.remoteUrl) repoData.remoteUrl = repoData.remoteUrl || infoRes.data.remoteUrl;
+            }
+          } catch { /* ignore git info failure */ }
+        }
+        const added = store.addAttachedRepo(repoData);
+        const allRepos = store.getAttachedRepos();
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win || win.isDestroyed()) continue;
+          win.webContents.send("workspace-metadata:attached-repos-changed", allRepos);
+        }
+        return { success: true, repo: added, all: allRepos };
+      }
+    }
+    return { success: false };
+  });
+
+  registerTrustedHandler("workspace-metadata:remove-attached-repo", (_event, payload) => {
+    const { repoId } = payload || {};
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) {
+        const removed = store.removeAttachedRepo(repoId);
+        const allRepos = store.getAttachedRepos();
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win || win.isDestroyed()) continue;
+          win.webContents.send("workspace-metadata:attached-repos-changed", allRepos);
+        }
+        return { success: removed, all: allRepos };
+      }
+    }
+    return { success: false };
+  });
+
+  registerTrustedHandler("workspace-metadata:update-attached-repo", (_event, payload) => {
+    const { repoId, updates } = payload || {};
+    if (typeof getWorkspaceMetadataStore === "function") {
+      const store = getWorkspaceMetadataStore();
+      if (store) {
+        const updated = store.updateAttachedRepo(repoId, updates);
+        const allRepos = store.getAttachedRepos();
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win || win.isDestroyed()) continue;
+          win.webContents.send("workspace-metadata:attached-repos-changed", allRepos);
+        }
+        return { success: !!updated, repo: updated, all: allRepos };
+      }
+    }
+    return { success: false };
+  });
+
   registerTrustedHandler("workspace:create-new", async (_event, payload) => {
     const {
       name,

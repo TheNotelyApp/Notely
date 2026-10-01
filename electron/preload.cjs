@@ -362,6 +362,16 @@ contextBridge.exposeInMainWorld("notesApi", {
   getWorkspaceInfo: () => ipcRenderer.invoke("workspace-metadata:get-info"),
   updateWorkspaceInfo: (payload) => ipcRenderer.invoke("workspace-metadata:update-info", payload),
   createNewWorkspace: (payload) => ipcRenderer.invoke("workspace:create-new", payload),
+  getAttachedRepos: () => ipcRenderer.invoke("workspace-metadata:get-attached-repos"),
+  addAttachedRepo: (payload) => ipcRenderer.invoke("workspace-metadata:add-attached-repo", payload),
+  removeAttachedRepo: (payload) => ipcRenderer.invoke("workspace-metadata:remove-attached-repo", payload),
+  updateAttachedRepo: (payload) => ipcRenderer.invoke("workspace-metadata:update-attached-repo", payload),
+  onAttachedReposChanged: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("workspace-metadata:attached-repos-changed", listener);
+    return () => ipcRenderer.removeListener("workspace-metadata:attached-repos-changed", listener);
+  },
   onWorkspaceInfoChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, payload) => callback(payload);

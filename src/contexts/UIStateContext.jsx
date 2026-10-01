@@ -14,6 +14,7 @@ export function UIStateProvider({ children }) {
   const [gitVCOpen, setGitVCOpen] = useState(false);
   const [gitVCInitialTab, setGitVCInitialTab] = useState("status");
   const [graphPanelOpen, setGraphPanelOpen] = useState(false);
+  const [attachedReposPageOpen, setAttachedReposPageOpen] = useState(false);
   const [embeddingsPageOpen, setEmbeddingsPageOpen] = useState(false);
   const [healthPageOpen, setHealthPageOpen] = useState(false);
   const [appLogsOpen, setAppLogsOpen] = useState(false);
@@ -49,6 +50,7 @@ export function UIStateProvider({ children }) {
     gitVCOpen, setGitVCOpen,
     gitVCInitialTab, setGitVCInitialTab,
     graphPanelOpen, setGraphPanelOpen,
+    attachedReposPageOpen, setAttachedReposPageOpen,
     embeddingsPageOpen, setEmbeddingsPageOpen,
     healthPageOpen, setHealthPageOpen,
     appLogsOpen, setAppLogsOpen,

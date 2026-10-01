@@ -97,6 +97,7 @@ export default withMermaid(
             { text: "Tasks", link: "/workspace/tasks" },
             { text: "Calendar", link: "/workspace/calendar" },
             { text: "Media", link: "/workspace/media" },
+            { text: "Attached Repositories", link: "/workspace/attached-repos" },
             { text: "Embedded Terminal", link: "/workspace/terminal" },
             { text: "Screen Capture & Recording", link: "/workspace/screen-capture" },
             { text: "Workspace Graph", link: "/workspace/graph" },
@@ -119,6 +120,7 @@ export default withMermaid(
           collapsed: false,
           items: [
             { text: "Git Overview", link: "/git/" },
+            { text: "Attached Repositories", link: "/workspace/attached-repos" },
             { text: "Setup & Repository", link: "/git/setup" },
             { text: "Commit & Stage", link: "/git/commit" },
             { text: "History & Restore", link: "/git/history" },

@@ -1,4 +1,4 @@
-import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search, Trash2, FileText, Star, Calendar, AlertTriangle, Layers } from "lucide-react";
+import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderPlus, Image as ImageIcon, Search, Trash2, FileText, Star, Calendar, AlertTriangle, Layers, FolderGit2 } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 import { formatDate } from "../utils/dateUtils";
 import { extractOpenTasksFromDocuments, getTaskCountsFromDocuments } from "../utils/taskUtils";
@@ -270,9 +270,38 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
         </article>
 
         <article
-          className={`dashboard-panel trash-panel ${isDragOverTrash ? "is-drag-over-trash" : ""}`}
+          className="dashboard-panel attached-repos-panel"
           style={{
             marginTop: "auto",
+            marginBottom: "8px",
+            border: "1px solid var(--border-soft)",
+            background: "var(--surface-card)",
+            borderRadius: "var(--radius-md)",
+            padding: "8px 10px",
+            transition: "all 0.15s ease",
+            cursor: "pointer",
+          }}
+          onClick={() => onAction("attached-repos")}
+          data-tooltip="View and manage attached code repositories & symbols"
+          aria-label="Attached Code Repositories"
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-muted)" }}>
+              <FolderGit2 size={14} style={{ color: "var(--accent-solid, #8b5cf6)" }} />
+              <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-primary)" }}>Code Repos</span>
+            </div>
+            <em className="dashboard-item-open-indicator" style={{ display: "flex", alignItems: "center" }}>
+              <ArrowRight size={12} />
+            </em>
+          </div>
+          <div style={{ fontSize: "10px", opacity: 0.6, marginTop: "4px" }}>
+            AST Code Knowledge Hub
+          </div>
+        </article>
+
+        <article
+          className={`dashboard-panel trash-panel ${isDragOverTrash ? "is-drag-over-trash" : ""}`}
+          style={{
             border: isDragOverTrash ? "1.5px dashed var(--danger, #ef4444)" : "1px solid var(--border-soft)",
             background: isDragOverTrash ? "var(--danger-subtle, rgba(239, 68, 68, 0.15))" : "var(--surface-card)",
             borderRadius: "var(--radius-md)",
@@ -352,6 +381,10 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
             <button type="button" onClick={() => onAction("assets")}>
               <ImageIcon size={14} />
               Assets
+            </button>
+            <button type="button" onClick={() => onAction("attached-repos")}>
+              <FolderGit2 size={14} />
+              Git Repos
             </button>
             <button type="button" onClick={() => onAction("trash")}>
               <Trash2 size={14} />

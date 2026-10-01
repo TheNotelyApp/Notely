@@ -165,3 +165,40 @@ export async function openExternal(url) {
   }
   return api.openExternal(url);
 }
+
+export async function getAttachedRepos() {
+  const api = getNotesApi();
+  if (typeof api.getAttachedRepos !== "function") return [];
+  return api.getAttachedRepos();
+}
+
+export async function addAttachedRepo(payload) {
+  const api = getNotesApi();
+  if (typeof api.addAttachedRepo !== "function") {
+    throw new Error("addAttachedRepo API is not available");
+  }
+  return api.addAttachedRepo(payload);
+}
+
+export async function removeAttachedRepo(repoId) {
+  const api = getNotesApi();
+  if (typeof api.removeAttachedRepo !== "function") {
+    throw new Error("removeAttachedRepo API is not available");
+  }
+  return api.removeAttachedRepo({ repoId });
+}
+
+export async function updateAttachedRepo(repoId, updates) {
+  const api = getNotesApi();
+  if (typeof api.updateAttachedRepo !== "function") {
+    throw new Error("updateAttachedRepo API is not available");
+  }
+  return api.updateAttachedRepo({ repoId, updates });
+}
+
+export function onAttachedReposChanged(callback) {
+  const api = getNotesApi();
+  if (typeof api.onAttachedReposChanged !== "function") return () => {};
+  return api.onAttachedReposChanged(callback);
+}
+

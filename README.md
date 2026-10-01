@@ -11,7 +11,7 @@
   <a href="https://github.com/TheNotelyApp/Notely/actions">
     <img src="https://github.com/TheNotelyApp/Notely/actions/workflows/cd.yml/badge.svg" alt="CD Status">
   </a>
-  <img src="https://img.shields.io/badge/version-v0.1.48-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-v0.1.50-blue" alt="Version" />
   <img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform" />
 
@@ -50,7 +50,11 @@ Notely is built with Electron + React and is designed for project notes, meeting
   - Word-level inline diff highlights, automatic legacy history-to-commit migrations on startup, and direct commit tagging.
 - Preview Mermaid diagrams and rendered Markdown content.
 - Create and edit structured technical diagrams with **Draw.io integration** directly from markdown previews, supporting drag-and-drop import for `.drawio` and `.drawio.xml` files, image export, and offline drawing.
-- Visualize the workspace as an interactive note graph.
+- Attach and index external **Git Code Repositories** directly into workspace knowledge via the **Attached Repositories** manager (`Workspace → Attached Repositories` or Landing Dashboard).
+  - Multi-language AST parsing across JavaScript, TypeScript, Python, Go, Rust, Java, C/C++, Ruby, and PHP.
+  - Generates code entity nodes (modules, classes, interfaces, functions, API routes, DB models) and links them to documentation notes with bidirectional references (`[[RepoName]]`).
+  - Slide-out inspector drawer with quick launchers for File Explorer and VS Code.
+- Visualize the workspace as an interactive note and code knowledge graph.
 - Use built-in AI features powered by Vercel AI SDK (Gemini, Groq, OpenAI / OpenAI-compatible endpoints) with a 3-Brain Architecture (`WorkspaceBrain`, `ReasoningBrain`, `ActionBrain`), autonomous multi-step Planner, semantic domain tools, local-first ONNX Embeddings Engine (`BGE-small-en-v1.5`), zero-latency Context Compaction (`CompactionEngine`), local GLiNER2 ONNX Knowledge Graph Engine, strict read-only note immutability safeguards, ReAct self-correction engine (`SelfCorrectionEngine`), and an automated diagnostic evaluation harness (`AgentHarness`).
 - Aggregate tasks across notes with **Open Tasks** and **All Tasks** panels.
   - Open Tasks focuses on unchecked items.

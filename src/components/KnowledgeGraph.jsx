@@ -11,7 +11,6 @@ import {
 import '@xyflow/react/dist/style.css';
 import {
   Search,
-  RefreshCw,
   Layers,
   ShieldAlert,
   Database,
@@ -198,7 +197,16 @@ const TYPE_COLORS = {
   Tag: { background: 'var(--kg-project-bg)', border: 'var(--kg-project-border)', text: 'var(--kg-project-border)' },
   KeyTerm: { background: 'var(--kg-person-bg)', border: 'var(--kg-person-border)', text: 'var(--kg-person-border)' },
   Formula: { background: 'var(--kg-company-bg)', border: 'var(--kg-company-border)', text: 'var(--kg-company-border)' },
-  Callout: { background: 'var(--kg-task-bg)', border: 'var(--kg-task-border)', text: 'var(--kg-task-border)' }
+  Callout: { background: 'var(--kg-task-bg)', border: 'var(--kg-task-border)', text: 'var(--kg-task-border)' },
+
+  // Code & AST Graph Entities
+  Repo: { background: 'rgba(139, 92, 246, 0.16)', border: '#8b5cf6', text: '#8b5cf6' },
+  CodeModule: { background: 'rgba(99, 102, 241, 0.16)', border: '#6366f1', text: '#6366f1' },
+  CodeClass: { background: 'rgba(168, 85, 247, 0.16)', border: '#a855f7', text: '#a855f7' },
+  CodeInterface: { background: 'rgba(192, 132, 252, 0.16)', border: '#c084fc', text: '#c084fc' },
+  CodeFunction: { background: 'rgba(56, 189, 248, 0.16)', border: '#38bdf8', text: '#38bdf8' },
+  APIEndpoint: { background: 'rgba(245, 158, 11, 0.16)', border: '#f59e0b', text: '#f59e0b' },
+  DBModel: { background: 'rgba(16, 185, 129, 0.16)', border: '#10b981', text: '#10b981' }
 };
 
 const DEFAULT_COLOR = { background: 'var(--kg-default-bg)', border: 'var(--kg-default-border)', text: 'var(--text-strong)' };
@@ -213,6 +221,10 @@ const RELATIONSHIP_COLORS = {
   MENTIONS: '#8b5cf6',         // Purple
   CREATED_BY: '#f43f5e',       // Rose
   OWNED_BY: '#f43f5e',         // Rose
+  DOCUMENTS: '#a855f7',        // Purple (Doc -> Code)
+  IMPORTS: '#6366f1',          // Indigo (Code -> Code)
+  CALLS: '#f59e0b',            // Amber (Func -> API)
+  EXPORTS: '#38bdf8',          // Sky (Module -> Symbol)
 
   // Structural Note Graph Relationships
   LINKS_TO: '#6366f1',         // Indigo

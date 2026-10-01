@@ -8,7 +8,8 @@ import {
   ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
   Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type,
-  Calendar, FolderTree, FileCode, FileSpreadsheet, LayoutGrid, AlignJustify, AlignLeft
+  Calendar, FolderTree, FileCode, FileSpreadsheet, LayoutGrid, AlignJustify, AlignLeft,
+  FolderGit2
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -115,6 +116,9 @@ const MENU_ICON_MAP = {
   "calendar": Calendar,
   "media gallery": ImageIcon,
   "diagrams & media gallery": ImageIcon,
+  "attached code repositories": FolderGit2,
+  "attached repos": FolderGit2,
+  "code repositories": FolderGit2,
   "downloads & export history": Download,
   "downloads export history": Download,
   "workspace": FolderOpen,
