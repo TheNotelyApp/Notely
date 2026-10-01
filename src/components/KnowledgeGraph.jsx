@@ -70,7 +70,22 @@ const CustomNode = ({ data, selected }) => {
       }}
       title={`${name} (${data.raw?.type || 'Entity'}) — ${data.degree || 0} connections`}
     >
-      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none', top: '50%', left: '50%' }} />
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{
+          opacity: 0,
+          pointerEvents: 'none',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 0,
+          height: 0,
+          minWidth: 0,
+          minHeight: 0,
+          border: 'none'
+        }}
+      />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1.5px', pointerEvents: 'none' }}>
         <span
@@ -139,7 +154,22 @@ const CustomNode = ({ data, selected }) => {
         </span>
       )}
 
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none', top: '50%', left: '50%' }} />
+      <Handle
+        type="source"
+        position={Position.Top}
+        style={{
+          opacity: 0,
+          pointerEvents: 'none',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 0,
+          height: 0,
+          minWidth: 0,
+          minHeight: 0,
+          border: 'none'
+        }}
+      />
     </div>
   );
 };
@@ -398,7 +428,7 @@ export default function KnowledgeGraph({ onBack }) {
             target: rel.target_id,
             rawLabel: cleanLabel,
             label: cleanLabel,
-            type: 'smoothstep',
+            type: 'straight',
             style: {
               stroke: isMentions ? 'rgba(140, 140, 140, 0.35)' : relColor,
               strokeWidth: isMentions ? 1.0 : 1.5,
