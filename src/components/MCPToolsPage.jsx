@@ -25,10 +25,17 @@ import {
   BookOpen,
   ShieldAlert,
   ShieldCheck,
-  Ban
+  Ban,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Edit3,
+  ExternalLink,
+  X
 } from "lucide-react";
 import { listTools, executeTool } from "../services/electron/aiService";
 import { mcpGetStatus, mcpGetConfig, onMcpStatusChanged } from "../services/electronService";
+import { mcpListPrompts, mcpGetPrompt, mcpSavePrompt, mcpDeletePrompt } from "../services/electron/mcpService";
 import "../styles/KnowledgeGraph.css";
 import "../styles/AISettings.css";
 import "../styles/MCPSettings.css";
@@ -126,13 +133,26 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [configTarget, setConfigTarget] = useState("antigravity");
 
+  // Prompts Manager State
+  const [activeTab, setActiveTab] = useState("tools"); // "tools" | "prompts"
+  const [prompts, setPrompts] = useState([]);
+  const [promptFilterQuery, setPromptFilterQuery] = useState("");
+  const [expandedPrompt, setExpandedPrompt] = useState(null);
+  const [promptEditorOpen, setPromptEditorOpen] = useState(false);
+  const [promptFormData, setPromptFormData] = useState({ name: "", description: "", arguments: [], template: "" });
+  const [promptTestArgs, setPromptTestArgs] = useState({});
+  const [promptTestResult, setPromptTestResult] = useState(null);
+  const [testingPromptName, setTestingPromptName] = useState(null);
+  const [savingPrompt, setSavingPrompt] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [res, st, cfg] = await Promise.all([
+      const [res, st, cfg, promptList] = await Promise.all([
         listTools().catch(() => null),
         mcpGetStatus().catch(() => null),
-        mcpGetConfig().catch(() => null)
+        mcpGetConfig().catch(() => null),
+        mcpListPrompts().catch(() => [])
       ]);
       const toolArray = Array.isArray(res)
         ? res
@@ -141,6 +161,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
         : [];
       setTools(toolArray);
       setStatus(st);
+      setPrompts(Array.isArray(promptList) ? promptList : []);
       if (cfg) {
         setAllowWrite(cfg.allowWriteTools !== undefined ? Boolean(cfg.allowWriteTools) : true);
       }
@@ -180,6 +201,18 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
       );
     });
   }, [tools, filterQuery, selectedCategory]);
+
+  const filteredPrompts = useMemo(() => {
+    return prompts.filter((p) => {
+      const q = promptFilterQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.source && p.source.toLowerCase().includes(q))
+      );
+    });
+  }, [prompts, promptFilterQuery]);
 
   const handleRunTool = async (tool) => {
     try {
@@ -239,6 +272,75 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
       onNotify?.(`Tool execution failed: ${err.message}`, "error");
     } finally {
       setRunningTest(false);
+    }
+  };
+
+  const handleOpenNewPrompt = () => {
+    setPromptFormData({
+      name: "",
+      description: "",
+      arguments: [{ name: "topic", description: "Target topic or note name", required: true }],
+      template: "Please inspect all notes related to \"{{topic}}\" using the search and read_note tools.\nProvide a structured summary with key takeaways and open action items."
+    });
+    setPromptEditorOpen(true);
+  };
+
+  const handleEditPrompt = (prompt) => {
+    setPromptFormData({
+      name: prompt.name,
+      description: prompt.description || "",
+      arguments: Array.isArray(prompt.arguments) ? JSON.parse(JSON.stringify(prompt.arguments)) : [],
+      template: prompt.template || ""
+    });
+    setPromptEditorOpen(true);
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptFormData.name.trim()) {
+      onNotify?.("Prompt name is required.", "error");
+      return;
+    }
+    try {
+      setSavingPrompt(true);
+      const res = await mcpSavePrompt(promptFormData);
+      if (res?.success) {
+        onNotify?.(`Custom prompt "${res.name}" saved to .notes-app/prompts/`, "success");
+        setPromptEditorOpen(false);
+        await loadData();
+      }
+    } catch (err) {
+      onNotify?.(`Failed to save prompt: ${err.message}`, "error");
+    } finally {
+      setSavingPrompt(false);
+    }
+  };
+
+  const handleDeletePrompt = async (prompt) => {
+    if (!window.confirm(`Are you sure you want to delete the prompt "${prompt.name}"?`)) {
+      return;
+    }
+    try {
+      const res = await mcpDeletePrompt(prompt.name);
+      if (res?.success) {
+        onNotify?.(`Prompt "${prompt.name}" deleted.`, "success");
+        await loadData();
+      }
+    } catch (err) {
+      onNotify?.(`Failed to delete prompt: ${err.message}`, "error");
+    }
+  };
+
+  const handleTestPrompt = async (prompt) => {
+    try {
+      setTestingPromptName(prompt.name);
+      const args = promptTestArgs[prompt.name] || {};
+      const res = await mcpGetPrompt(prompt.name, args);
+      setPromptTestResult({ promptName: prompt.name, result: res });
+      onNotify?.(`Generated messages for prompt "${prompt.name}"`, "success");
+    } catch (err) {
+      onNotify?.(`Prompt evaluation failed: ${err.message}`, "error");
+    } finally {
+      setTestingPromptName(null);
     }
   };
 
@@ -463,7 +565,26 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
           </div>
         </div>
 
-        {/* Two Column Layout (Left Sidebar) */}
+        {/* Navigation Tabs */}
+        <div className="mcp-nav-tabs">
+          <button
+            type="button"
+            className={`mcp-nav-tab-btn ${activeTab === "tools" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("tools")}
+          >
+            <Wrench size={14} /> Tools &amp; Capabilities ({tools.length})
+          </button>
+          <button
+            type="button"
+            className={`mcp-nav-tab-btn ${activeTab === "prompts" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("prompts")}
+          >
+            <MessageSquare size={14} /> Prompt Workflows ({prompts.length})
+          </button>
+        </div>
+
+        {/* Tab 1: Tools Layout */}
+        {activeTab === "tools" && (
         <div className="mcp-tools-layout">
           {/* Left Sidebar Area */}
           <div className="mcp-tools-sidebar">
@@ -945,6 +1066,359 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             )}
           </div>
         </div>
+        )}
+
+        {/* Tab 2: Prompts Manager */}
+        {activeTab === "prompts" && (
+          <div className="mcp-prompts-manager-layout" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Prompts Top Controls */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <div style={{ position: "relative", flex: 1, maxWidth: "420px" }}>
+                <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  className="input-base"
+                  placeholder="Filter prompts by name, description, or source..."
+                  value={promptFilterQuery}
+                  onChange={(e) => setPromptFilterQuery(e.target.value)}
+                  style={{ paddingLeft: "32px", width: "100%", fontSize: "13px" }}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleOpenNewPrompt}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", height: "34px", padding: "0 14px" }}
+              >
+                <Plus size={14} /> New Custom Prompt
+              </button>
+            </div>
+
+            {/* Prompts Grid / List */}
+            {filteredPrompts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 20px", background: "var(--surface-bg)", border: "1px dashed var(--border-default)", borderRadius: "8px" }}>
+                <MessageSquare size={20} style={{ color: "var(--text-muted)", marginBottom: "8px" }} />
+                <h3 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700 }}>No Prompts Found</h3>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
+                  {promptFilterQuery ? "No prompt templates match your search query." : "Author your first custom workflow in .notes-app/prompts/"}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {filteredPrompts.map((prompt) => {
+                  const isExpanded = expandedPrompt === prompt.name;
+                  const isBuiltin = prompt.source === "builtin";
+                  const argsList = Array.isArray(prompt.arguments) ? prompt.arguments : [];
+
+                  return (
+                    <div key={prompt.name} className="mcp-prompt-card">
+                      <div className="mcp-prompt-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent-solid, #3b82f6)" }}>
+                            {prompt.name}
+                          </code>
+                          <span className={isBuiltin ? "mcp-prompt-badge-builtin" : "mcp-prompt-badge-workspace"}>
+                            {isBuiltin ? "Built-in Enterprise" : "Workspace Custom"}
+                          </span>
+                          {prompt.fileName && (
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono, monospace)" }}>
+                              .notes-app/prompts/{prompt.fileName}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setExpandedPrompt(isExpanded ? null : prompt.name)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", height: "26px", padding: "0 8px" }}
+                          >
+                            <Play size={12} /> {isExpanded ? "Close Tester" : "Test Prompt"}
+                          </button>
+                          {!isBuiltin && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleEditPrompt(prompt)}
+                              title="Edit custom prompt"
+                              style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", height: "26px", padding: "0 8px" }}
+                            >
+                              <Edit3 size={12} /> Edit
+                            </button>
+                          )}
+                          {!isBuiltin && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleDeletePrompt(prompt)}
+                              title="Delete custom prompt file"
+                              style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", height: "26px", padding: "0 8px", color: "#ef4444" }}
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <p style={{ margin: "0 0 10px", fontSize: "13px", color: "var(--text-default, #334155)" }}>
+                        {prompt.description}
+                      </p>
+
+                      {/* Arguments Pills */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: isExpanded ? "14px" : "0" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          Arguments:
+                        </span>
+                        {argsList.length === 0 ? (
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>None required</span>
+                        ) : (
+                          argsList.map((arg) => (
+                            <span key={arg.name} className={`mcp-prompt-arg-pill ${arg.required ? "is-required" : ""}`} title={arg.description}>
+                              {arg.name}{arg.required ? " *" : ""}
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Interactive Prompt Tester Block */}
+                      {isExpanded && (
+                        <div style={{ marginTop: "12px", padding: "16px", background: "var(--surface-subtle)", borderRadius: "8px", border: "1px solid var(--border-soft)" }}>
+                          <h4 style={{ margin: "0 0 12px", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
+                            Test Prompt Execution (Generate Messages)
+                          </h4>
+
+                          {argsList.length > 0 && (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", marginBottom: "12px" }}>
+                              {argsList.map((arg) => (
+                                <div key={arg.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)" }}>
+                                    {arg.name} {arg.required && <span style={{ color: "#ef4444" }}>*</span>}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="input-base"
+                                    placeholder={arg.description || arg.name}
+                                    value={promptTestArgs[prompt.name]?.[arg.name] || ""}
+                                    onChange={(e) => {
+                                      const current = promptTestArgs[prompt.name] || {};
+                                      setPromptTestArgs({
+                                        ...promptTestArgs,
+                                        [prompt.name]: { ...current, [arg.name]: e.target.value }
+                                      });
+                                    }}
+                                    style={{ fontSize: "12px", padding: "4px 8px", height: "28px" }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: promptTestResult?.promptName === prompt.name ? "12px" : "0" }}>
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={testingPromptName === prompt.name}
+                              onClick={() => handleTestPrompt(prompt)}
+                              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "28px", padding: "0 12px" }}
+                            >
+                              <Play size={12} /> {testingPromptName === prompt.name ? "Generating..." : "Generate Messages"}
+                            </button>
+                          </div>
+
+                          {promptTestResult && promptTestResult.promptName === prompt.name && (
+                            <div style={{ marginTop: "10px", background: "#090d16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                <span style={{ fontSize: "11px", fontWeight: 700, color: "#10b981" }}>MCP Prompt Messages Output:</span>
+                                <button
+                                  type="button"
+                                  className="btn-link"
+                                  onClick={() => copyResultOutput(promptTestResult.result)}
+                                  style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                >
+                                  <Copy size={12} /> Copy Output
+                                </button>
+                              </div>
+                              <pre style={{ margin: 0, color: "#38bdf8", fontSize: "11.5px", maxHeight: "200px", overflowY: "auto", fontFamily: "var(--font-mono, monospace)" }}>
+                                {JSON.stringify(promptTestResult.result, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Prompt Editor Modal */}
+        {promptEditorOpen && (
+          <div className="mcp-prompt-modal-overlay">
+            <div className="mcp-prompt-modal">
+              <div className="mcp-prompt-modal-header">
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <MessageSquare size={16} color="var(--accent-solid)" />
+                  <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>
+                    {promptFormData.name ? `Edit Prompt: ${promptFormData.name}` : "Create Custom Workspace Prompt"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPromptEditorOpen(false)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mcp-prompt-modal-body">
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Name * (Unique Identifier)</label>
+                  <input
+                    type="text"
+                    className="input-base"
+                    placeholder="e.g. code_review_brief"
+                    value={promptFormData.name}
+                    onChange={(e) => setPromptFormData({ ...promptFormData, name: e.target.value })}
+                    style={{ fontSize: "13px" }}
+                  />
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    Stored on disk as <code>.notes-app/prompts/{promptFormData.name || "name"}.md</code>
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Description</label>
+                  <input
+                    type="text"
+                    className="input-base"
+                    placeholder="Brief summary of what this workflow accomplishes..."
+                    value={promptFormData.description}
+                    onChange={(e) => setPromptFormData({ ...promptFormData, description: e.target.value })}
+                    style={{ fontSize: "13px" }}
+                  />
+                </div>
+
+                {/* Arguments List */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label style={{ fontSize: "12px", fontWeight: 700 }}>Arguments / Parameters</label>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        const current = Array.isArray(promptFormData.arguments) ? promptFormData.arguments : [];
+                        setPromptFormData({
+                          ...promptFormData,
+                          arguments: [...current, { name: "", description: "", required: false }]
+                        });
+                      }}
+                      style={{ fontSize: "11px", height: "22px", padding: "0 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    >
+                      <Plus size={12} /> Add Argument
+                    </button>
+                  </div>
+
+                  {(!promptFormData.arguments || promptFormData.arguments.length === 0) ? (
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>No arguments defined. Prompt will run without parameters.</span>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {promptFormData.arguments.map((arg, idx) => (
+                        <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <input
+                            type="text"
+                            className="input-base"
+                            placeholder="argName (e.g. topic)"
+                            value={arg.name}
+                            onChange={(e) => {
+                              const next = [...promptFormData.arguments];
+                              next[idx].name = e.target.value;
+                              setPromptFormData({ ...promptFormData, arguments: next });
+                            }}
+                            style={{ flex: 1, fontSize: "12px", height: "28px" }}
+                          />
+                          <input
+                            type="text"
+                            className="input-base"
+                            placeholder="Description..."
+                            value={arg.description}
+                            onChange={(e) => {
+                              const next = [...promptFormData.arguments];
+                              next[idx].description = e.target.value;
+                              setPromptFormData({ ...promptFormData, arguments: next });
+                            }}
+                            style={{ flex: 2, fontSize: "12px", height: "28px" }}
+                          />
+                          <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(arg.required)}
+                              onChange={(e) => {
+                                const next = [...promptFormData.arguments];
+                                next[idx].required = e.target.checked;
+                                setPromptFormData({ ...promptFormData, arguments: next });
+                              }}
+                            />
+                            Required
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = promptFormData.arguments.filter((_, i) => i !== idx);
+                              setPromptFormData({ ...promptFormData, arguments: next });
+                            }}
+                            style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: "4px" }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Template Body */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Markdown Template Body</label>
+                  <textarea
+                    className="input-base"
+                    rows={8}
+                    placeholder="Please inspect notes related to '{{topic}}' using the search and read_note tools..."
+                    value={promptFormData.template}
+                    onChange={(e) => setPromptFormData({ ...promptFormData, template: e.target.value })}
+                    style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "12px", lineHeight: "1.5" }}
+                  />
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    Use <code>{"{{argName}}"}</code> to substitute argument values dynamically during prompt execution.
+                  </span>
+                </div>
+              </div>
+
+              <div className="mcp-prompt-modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setPromptEditorOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={savingPrompt}
+                  onClick={handleSavePrompt}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <Check size={14} /> {savingPrompt ? "Saving..." : "Save Prompt"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

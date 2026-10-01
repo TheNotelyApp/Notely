@@ -40,6 +40,22 @@ class EnterpriseToolSuite {
   get workspaceService() { return this.registry.workspaceService; }
   get webService() { return this.registry.webService; }
 
+  _notifyResourceChange(workspaceRoot, noteRelPath = null) {
+    try {
+      const { mcpLifecycle } = require('../mcp/McpLifecycle.cjs');
+      if (mcpLifecycle && typeof mcpLifecycle.broadcastResourceUpdated === 'function') {
+        if (noteRelPath) {
+          mcpLifecycle.broadcastResourceUpdated(`notely://notes/${encodeURIComponent(noteRelPath)}`);
+          mcpLifecycle.broadcastResourceUpdated(`notely://notes/${noteRelPath}`);
+        }
+        mcpLifecycle.broadcastResourceUpdated('notely://workspace/tree');
+        mcpLifecycle.broadcastResourceUpdated('notely://workspace/stats');
+      }
+    } catch {
+      // Non-blocking notification
+    }
+  }
+
   // ─── 1. SEARCH ─────────────────────────────────────────────────────────────
 
   async search(args = {}, context = {}) {
@@ -693,6 +709,7 @@ class EnterpriseToolSuite {
       }
       if (!dryRun) {
         await safeDeleteFile(targetAbsPath);
+        this._notifyResourceChange(workspaceRoot, toWorkspaceRelative(targetAbsPath, workspaceRoot));
       }
       return {
         path: toWorkspaceRelative(targetAbsPath, workspaceRoot),
@@ -716,6 +733,8 @@ class EnterpriseToolSuite {
         const destDir = path.dirname(newAbsPath);
         if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
         fs.renameSync(targetAbsPath, newAbsPath);
+        this._notifyResourceChange(workspaceRoot, toWorkspaceRelative(newAbsPath, workspaceRoot));
+        this._notifyResourceChange(workspaceRoot, toWorkspaceRelative(targetAbsPath, workspaceRoot));
       }
       return {
         previousPath: toWorkspaceRelative(targetAbsPath, workspaceRoot),
@@ -873,6 +892,7 @@ class EnterpriseToolSuite {
 
     if (!dryRun) {
       atomicWriteFile(targetAbsPath, updatedContent, options.backup);
+      this._notifyResourceChange(workspaceRoot, toWorkspaceRelative(targetAbsPath, workspaceRoot));
     }
 
     const relPath = toWorkspaceRelative(targetAbsPath, workspaceRoot);

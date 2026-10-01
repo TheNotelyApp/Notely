@@ -134,7 +134,7 @@ export default function EntityInspector({
             onClick={onClose}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <X size={13} />
+            <X size={14} />
             Close
           </button>
           {selectedNode.note_path && (
@@ -146,7 +146,7 @@ export default function EntityInspector({
               }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <FileText size={13} />
+              <FileText size={14} />
               Open Note
             </button>
           )}
