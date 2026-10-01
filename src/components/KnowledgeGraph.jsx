@@ -23,7 +23,7 @@ import {
   RotateCw,
   ExternalLink,
   FileText,
-  Code,
+  Braces,
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles
@@ -341,7 +341,8 @@ export default function KnowledgeGraph({ onBack }) {
           .force('collision', d3Force.forceCollide().radius(dynamicCollision))
           .stop();
 
-        for (let i = 0; i < 40; i++) simulation.tick();
+        const ticks = Math.min(120, Math.max(40, Math.round(nodeCount * 1.5)));
+        for (let i = 0; i < ticks; i++) simulation.tick();
 
         forceNodes.forEach(node => {
           if (isNaN(node.x) || typeof node.x !== 'number') node.x = Math.random() * 500;
@@ -515,6 +516,23 @@ export default function KnowledgeGraph({ onBack }) {
     setSelectedNode(node.data.raw);
   }, []);
 
+  const onNodeDoubleClick = useCallback(async (event, node) => {
+    const raw = node?.data?.raw;
+    if (raw?.note_path) {
+      try {
+        const { appOpenNote } = await import('../services/electronService');
+        if (typeof appOpenNote === 'function') {
+          await appOpenNote(raw.note_path);
+        } else {
+          window.dispatchEvent(new CustomEvent('app:open-note', { detail: { path: raw.note_path } }));
+        }
+        if (onBack) onBack();
+      } catch (err) {
+        console.error('[KG] Failed to open note on double-click:', err);
+      }
+    }
+  }, [onBack]);
+
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const onNodeMouseEnter = useCallback((event, node) => setHoveredNodeId(node.id), []);
   const onNodeMouseLeave = useCallback(() => setHoveredNodeId(null), []);
@@ -591,8 +609,8 @@ export default function KnowledgeGraph({ onBack }) {
 
       <div className="knowledge-graph-container">
         {/* Header Bar with Live Top Progress Banner when Building */}
-        <div className="kg-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', height: '52px', boxSizing: 'border-box' }}>
-          <div className="kg-search-wrapper" style={{ height: '32px' }}>
+        <div className="kg-header-actions">
+          <div className="kg-search-wrapper">
             <Search size={16} className="kg-search-icon" />
             <input
               type="text"
@@ -600,118 +618,104 @@ export default function KnowledgeGraph({ onBack }) {
               placeholder="Search entity or type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ height: '32px', boxSizing: 'border-box' }}
             />
           </div>
 
           {/* Real-time Top Building Progress Indicator */}
           {graphStatus.isBuilding ? (
             <div
+              className="kg-building-pill"
               onClick={() => setShowProgressModal(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                background: 'var(--surface-muted)',
-                border: '1px solid var(--accent-solid)',
-                padding: '0 12px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                color: 'var(--text-strong)',
-                marginLeft: 'auto',
-                height: '32px',
-                cursor: 'pointer',
-                boxSizing: 'border-box'
-              }}
               title="Click to view detailed extraction log"
             >
-              <RefreshCw size={12} className="spin" style={{ color: 'var(--accent-solid)' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 600 }}>{graphStatus.noteName || 'Extracting graph...'}</span>
-                <div style={{ width: '120px', height: '3px', background: 'var(--border-soft)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ width: `${graphStatus.progress || 0}%`, height: '100%', background: 'var(--accent-solid)', transition: 'width 0.2s ease' }} />
+              <RotateCw size={12} className="spin" style={{ color: 'var(--accent-solid)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {graphStatus.noteName || 'Extracting graph...'}
+                </span>
+                <div className="kg-progress-track">
+                  <div className="kg-progress-fill" style={{ width: `${graphStatus.progress || 0}%` }} />
                 </div>
               </div>
-              <span style={{ fontWeight: 700, fontSize: '10px', color: 'var(--accent-solid)' }}>{graphStatus.progress || 0}%</span>
+              <span style={{ fontWeight: 700, fontSize: '10px', color: 'var(--accent-solid)' }}>
+                {graphStatus.progress || 0}%
+              </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
+            <div className="kg-status-badge">
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Engine:</span>
-                <strong style={{ color: 'var(--text-strong)' }}>{(preferences.graphProvider === 'gliner2-relex' || preferences.graphProvider === 'local') ? 'GLiNER2-Relex ONNX' : 'Cloud LLM'}</strong>
+                <strong style={{ color: 'var(--text-strong)' }}>
+                  {(preferences.graphProvider === 'gliner2-relex' || preferences.graphProvider === 'local') ? 'GLiNER2-Relex ONNX' : 'Cloud LLM'}
+                </strong>
               </div>
-              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
+              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>DB Size:</span>
                 <strong style={{ color: 'var(--text-strong)' }}>{sizeMB} MB</strong>
               </div>
-              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }}></span>
+              <span style={{ width: '1px', height: '10px', background: 'var(--border-soft)' }} />
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: (preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') || modelStatus.downloaded ? 'var(--status-success-text)' : 'var(--text-warning)' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: (preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') || modelStatus.downloaded ? 'var(--status-success-border)' : 'var(--text-warning)' }}></span>
+                <span className="kg-status-dot" style={{ background: (preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') || modelStatus.downloaded ? 'var(--status-success-border)' : 'var(--text-warning)' }} />
                 {(preferences.graphProvider !== 'gliner2-relex' && preferences.graphProvider !== 'local') ? 'Active' : modelStatus.downloaded ? 'Ready' : 'Missing'}
               </span>
             </div>
           )}
 
-          <div className="kg-stats-pill" style={{ gap: '12px', display: 'flex', alignItems: 'center', height: '32px', boxSizing: 'border-box', margin: 0, padding: '0 12px' }}>
+          <div className="kg-stats-pill">
             <Database size={12} />
             <span>Nodes: {graphStatus.nodeCount} | Edges: {graphStatus.edgeCount}</span>
           </div>
 
-          <div style={{ height: '20px', width: '1px', background: 'var(--border-soft)', margin: '0 4px', flexShrink: 0 }} />
+          <div className="kg-toolbar-divider" />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="kg-toolbar-group">
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm kg-icon-btn"
               onClick={loadGraphData}
               disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
-              data-tooltip="Reload Data"
+              data-tooltip="Reload Graph View"
             >
               <RotateCw size={14} className={loading ? 'spin' : ''} />
             </button>
 
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm kg-icon-btn"
               onClick={handlePauseResume}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
               data-tooltip={graphStatus.isPaused ? 'Resume Worker' : 'Pause Worker'}
             >
               {graphStatus.isPaused ? <Play size={14} /> : <Pause size={14} />}
             </button>
 
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm kg-icon-btn"
               onClick={handleRebuild}
               disabled={loading || graphStatus.isBuilding}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
               data-tooltip="Rebuild Knowledge Graph"
             >
-              <RefreshCw size={14} className={graphStatus.isBuilding ? 'spin' : ''} />
+              <Sparkles size={14} className={graphStatus.isBuilding ? 'spin' : ''} />
             </button>
 
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm kg-text-btn"
               onClick={handleCopyMarkdown}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 8px' }}
               data-tooltip="Copy Graph Summary (Markdown)"
             >
               <FileText size={14} />
-              <span style={{ fontSize: '12px' }}>Copy MD</span>
+              <span>Copy MD</span>
             </button>
 
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm kg-text-btn"
               onClick={handleCopyJSON}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '32px', padding: '0 8px' }}
               data-tooltip="Copy Complete Graph (JSON)"
             >
-              <Code size={14} />
-              <span style={{ fontSize: '12px' }}>Copy JSON</span>
+              <Braces size={14} />
+              <span>Copy JSON</span>
             </button>
 
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm kg-icon-btn"
               onClick={async () => {
                 const confirmed = await confirm({
                   title: 'Clear Knowledge Graph Cache?',
@@ -725,7 +729,7 @@ export default function KnowledgeGraph({ onBack }) {
                   loadGraphData();
                 }
               }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, color: 'var(--text-danger)' }}
+              style={{ color: 'var(--text-danger)' }}
               data-tooltip="Clear Data"
             >
               <Trash2 size={14} />
@@ -1092,6 +1096,17 @@ export default function KnowledgeGraph({ onBack }) {
               </div>
             )}
 
+            {!error && !loading && !graphStatus.isBuilding && nodes.length === 0 && (
+              <div className="kg-empty-state-canvas">
+                <Sparkles size={20} style={{ color: 'var(--accent-solid)' }} />
+                <h3>No Knowledge Graph Data</h3>
+                <p>Scan and extract entities, wikilinks, and semantic relations from your workspace notes.</p>
+                <button className="btn btn-primary btn-sm" onClick={handleRebuild}>
+                  Rebuild Knowledge Graph
+                </button>
+              </div>
+            )}
+
             <ReactFlow
               nodes={filteredNodes}
               edges={filteredEdges}
@@ -1099,13 +1114,14 @@ export default function KnowledgeGraph({ onBack }) {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onNodeClick={onNodeClick}
+              onNodeDoubleClick={onNodeDoubleClick}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
               fitView
-              fitViewOptions={{ padding: 0.2, maxZoom: 0.1 }}
+              fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
               minZoom={0.001}
               maxZoom={2.5}
-              defaultViewport={{ x: 0, y: 0, zoom: 0.1 }}
+              defaultViewport={{ x: 0, y: 0, zoom: 1.0 }}
               style={{ width: '100%', height: '100%', background: 'var(--app-bg)' }}
             >
               <Controls style={{ background: 'var(--surface-bg)', border: '1px solid var(--border-default)', color: 'var(--text-strong)' }} />

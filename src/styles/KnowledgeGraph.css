@@ -20,21 +20,23 @@
 .kg-header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-5) var(--space-6);
+  gap: var(--space-4, 8px);
+  padding: var(--space-3, 8px) var(--space-5, 14px);
   border-bottom: 1px solid var(--border-default);
   background: var(--surface-subtle);
+  min-height: 48px;
+  box-sizing: border-box;
 }
 
 .kg-search-wrapper {
   position: relative;
   flex: 1;
-  max-width: 320px;
+  max-width: 280px;
 }
 
 .kg-search-icon {
   position: absolute;
-  left: 10px;
+  left: 9px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
@@ -43,14 +45,16 @@
 
 .kg-search-input {
   width: 100%;
-  padding: var(--space-4) var(--space-5) var(--space-4) 34px;
+  height: 32px;
+  padding: 0 var(--space-4, 8px) 0 30px;
   background: var(--surface-bg);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 6px);
   color: var(--text-strong);
-  font-size: var(--font-size-body-sm);
+  font-size: var(--font-size-body-sm, 12px);
   outline: none;
-  transition: border-color var(--motion-standard), box-shadow var(--motion-standard);
+  box-sizing: border-box;
+  transition: border-color var(--motion-standard, 0.15s), box-shadow var(--motion-standard, 0.15s);
 }
 
 .kg-search-input:focus {
@@ -58,18 +62,153 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-solid) 15%, transparent);
 }
 
+/* Building Progress Indicator in Header */
+.kg-building-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 8px);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+  padding: 0 var(--space-4, 10px);
+  border-radius: var(--radius-md, 6px);
+  font-size: 11px;
+  color: var(--text-strong);
+  margin-left: auto;
+  height: 32px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color var(--motion-standard, 0.15s), background-color var(--motion-standard, 0.15s);
+}
+
+.kg-building-pill:hover {
+  border-color: var(--border-default);
+  background: var(--surface-elevated);
+}
+
+.kg-progress-track {
+  width: 110px;
+  height: 4px;
+  background: var(--border-soft);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+}
+
+.kg-progress-fill {
+  height: 100%;
+  background: var(--accent-solid);
+  border-radius: var(--radius-full, 9999px);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Status Badge in Header */
+.kg-status-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 10px);
+  font-size: 11px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+  padding: 0 var(--space-4, 10px);
+  border-radius: var(--radius-md, 6px);
+  color: var(--text-secondary);
+  margin-left: auto;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.kg-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .kg-stats-pill {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
+  gap: var(--space-3, 6px);
+  padding: 0 var(--space-4, 10px);
   background: var(--surface-muted);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-caption);
-  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 6px);
+  font-size: 11px;
+  color: var(--text-secondary);
   font-weight: 500;
-  margin-left: auto;
+  height: 32px;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.kg-toolbar-divider {
+  height: 20px;
+  width: 1px;
+  background: var(--border-soft);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.kg-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kg-icon-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+
+.kg-text-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: 32px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  box-sizing: border-box;
+}
+
+/* Empty State Canvas Overlay */
+.kg-empty-state-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg, 10px);
+  padding: var(--space-8, 24px) var(--space-7, 20px);
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4, 12px);
+  pointer-events: auto;
+}
+
+.kg-empty-state-canvas h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.kg-empty-state-canvas p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .kg-body {
