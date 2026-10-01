@@ -11,6 +11,12 @@ describe('LLMProvider & Registry Tests', () => {
     assert.ok(providers.includes('groq'));
   });
 
+  it('should have null activeProvider by default and throw on getActiveProvider', () => {
+    const registry = new LLMRegistry();
+    assert.strictEqual(registry.activeProvider, null);
+    assert.throws(() => registry.getActiveProvider(), /No active LLM provider/);
+  });
+
   it('should activate provider with configs', async () => {
     const registry = new LLMRegistry();
     

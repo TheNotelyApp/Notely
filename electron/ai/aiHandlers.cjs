@@ -289,8 +289,12 @@ async function handleInitialize(event, payload) {
     // Apply saved graphProvider preference (gliner2-relex ONNX vs text-provider Cloud LLM)
     if (aiService.agent) {
       if (prefs.graphProvider === 'text-provider') {
-        const activeProvider = aiService.agent.llmRegistry?.getActiveProvider();
-        aiService.agent.setGraphProvider(activeProvider);
+        const activeProvider = aiService.agent.llmRegistry?.activeProvider || null;
+        if (activeProvider) {
+          aiService.agent.setGraphProvider(activeProvider);
+        } else {
+          aiService.agent.setGraphProvider(null);
+        }
       } else {
         try {
           const GraphModelDownloader = require('../../ai/graph/GraphModelDownloader');
@@ -715,13 +719,16 @@ async function handleBuildGraph(_event, _payload) {
     logDb.close();
 
     if (workerManager) {
-      const activeProvider = aiService.agent.llmRegistry?.getActiveProvider();
       const prefs = aiService.agent.aiConfig ? aiService.agent.aiConfig.loadPreferences() : {};
+      const graphProvider = prefs.graphProvider || 'gliner2-relex';
+      const activeProvider = (graphProvider === 'text-provider')
+        ? (aiService.agent.llmRegistry?.activeProvider || null)
+        : null;
       const providerConfig = {
         name: activeProvider ? activeProvider.name : null,
         apiKey: activeProvider ? activeProvider.apiKey : null,
         model: activeProvider ? activeProvider.model : null,
-        graphProvider: prefs.graphProvider || 'gliner2-relex'
+        graphProvider
       };
       workerManager.rebuildGraph(workspaceFiles, providerConfig);
     }
@@ -997,6 +1004,9 @@ async function handleSetPreferences(event, payload) {
         } catch (graphErr) {
           console.warn('[AI IPC] Local GLiNER2-Relex ONNX graph provider set notice:', graphErr.message);
         }
+      } else if (graphProviderPref === 'text-provider') {
+        const activeProvider = aiService.agent.llmRegistry?.activeProvider || null;
+        aiService.agent.setGraphProvider(activeProvider);
       } else {
         aiService.agent.setGraphProvider(null);
       }
