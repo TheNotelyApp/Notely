@@ -218,6 +218,15 @@ class GraphBuilder {
       const validator = new GraphValidationEngine(this.graphDb, this._logDb);
       await validator.validate();
 
+      // Pre-compute & cache 2D force layout coordinates in SQLite
+      if (this.graphDb && typeof this.graphDb.recomputeLayout === 'function') {
+        try {
+          this.graphDb.recomputeLayout();
+        } catch (lErr) {
+          log.warn('GraphLayoutEngine pass skipped:', lErr.message);
+        }
+      }
+
       // Optimize SQLite query planner
       if (this.graphDb?.db) {
         try { this.graphDb.db.exec('PRAGMA ANALYZE;'); } catch { /* ignore */ }

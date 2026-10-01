@@ -64,6 +64,9 @@ class GraphWorker {
       // Run background maintenance when queue becomes empty
       try {
         await this.maintenance.runMaintenance();
+        if (this.graphDb && typeof this.graphDb.recomputeLayout === 'function') {
+          this.graphDb.recomputeLayout();
+        }
       } catch (mErr) {
         log.warn('Background GraphMaintenance pass skipped:', mErr.message);
       }

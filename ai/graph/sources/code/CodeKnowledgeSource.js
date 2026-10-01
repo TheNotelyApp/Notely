@@ -157,6 +157,7 @@ class CodeKnowledgeSource extends KnowledgeSource {
     const relPath = repo?.path
       ? path.relative(repo.path, filePath).replace(/\\/g, '/')
       : path.basename(filePath);
+    const ext = path.extname(filePath).toLowerCase();
     const moduleName = `${repoPrefix}/${relPath}`;
 
     const relationships = [
@@ -183,11 +184,17 @@ class CodeKnowledgeSource extends KnowledgeSource {
     let match;
     while ((match = importRegex.exec(fileContent)) !== null) {
       const target = match[1] || match[2];
-      if (target && (target.startsWith('.') || target.startsWith('/'))) {
+      if (target && target.startsWith('.')) {
+        const dir = path.dirname(relPath).replace(/\\/g, '/');
+        let resolvedRel = path.posix.normalize(path.posix.join(dir === '.' ? '' : dir, target));
+        if (!path.extname(resolvedRel)) {
+          resolvedRel = `${resolvedRel}${ext}`;
+        }
+        const targetName = `${repoPrefix}/${resolvedRel}`;
         relationships.push({
           source_name: moduleName,
           source_type: 'CodeModule',
-          target_name: target,
+          target_name: targetName,
           target_type: 'CodeModule',
           type: 'IMPORTS',
           weight: 0.8,

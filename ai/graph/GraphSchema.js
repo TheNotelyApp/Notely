@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS entities (
     extractor TEXT DEFAULT 'gliner',
     model_version TEXT DEFAULT '2.1',
     confidence REAL DEFAULT 1.0,
+    pos_x REAL,
+    pos_y REAL,
+    degree INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -101,7 +104,10 @@ const ALTER_ENTITIES_ADD_COLUMNS = [
   `ALTER TABLE entities ADD COLUMN source_count INTEGER DEFAULT 1;`,
   `ALTER TABLE entities ADD COLUMN first_seen_at TEXT DEFAULT (datetime('now'));`,
   `ALTER TABLE entities ADD COLUMN is_retired INTEGER DEFAULT 0;`,
-  `ALTER TABLE entities ADD COLUMN merged_into TEXT;`
+  `ALTER TABLE entities ADD COLUMN merged_into TEXT;`,
+  `ALTER TABLE entities ADD COLUMN pos_x REAL;`,
+  `ALTER TABLE entities ADD COLUMN pos_y REAL;`,
+  `ALTER TABLE entities ADD COLUMN degree INTEGER DEFAULT 0;`
 ];
 
 const CREATE_RELATIONSHIP_EVIDENCE_TABLE = `

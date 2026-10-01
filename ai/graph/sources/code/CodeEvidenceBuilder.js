@@ -4,8 +4,6 @@
  * Every relationship from a repository must have traceable provenance.
  */
 
-const path = require('path');
-
 class CodeEvidenceBuilder {
   /**
    * Build a list of evidence objects for a set of code relationships.

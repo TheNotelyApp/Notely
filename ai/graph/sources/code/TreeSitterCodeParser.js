@@ -354,16 +354,25 @@ class TreeSitterCodeParser {
       if (type === 'import_statement') {
         const sourceNode = node.childForFieldName('source');
         if (sourceNode) {
-          const importTarget = sourceNode.text.replace(/['"]/g, '');
-          ctx.relationships.push({
-            source_name: ctx.moduleName,
-            source_type: 'CodeModule',
-            target_name: importTarget,
-            target_type: 'CodeModule',
-            type: 'IMPORTS',
-            weight: 0.8,
-            confidence: 0.95
-          });
+          const importRaw = sourceNode.text.replace(/['"]/g, '').trim();
+          if (importRaw.startsWith('.')) {
+            const dir = path.dirname(ctx.relPath || '').replace(/\\/g, '/');
+            let resolvedRel = path.posix.normalize(path.posix.join(dir === '.' ? '' : dir, importRaw));
+            if (!path.extname(resolvedRel)) {
+              resolvedRel = `${resolvedRel}${ctx.ext}`;
+            }
+            const targetName = `${ctx.repoPrefix}/${resolvedRel}`;
+
+            ctx.relationships.push({
+              source_name: ctx.moduleName,
+              source_type: 'CodeModule',
+              target_name: targetName,
+              target_type: 'CodeModule',
+              type: 'IMPORTS',
+              weight: 0.8,
+              confidence: 0.95
+            });
+          }
         }
       }
     }
@@ -465,16 +474,25 @@ class TreeSitterCodeParser {
       if (type === 'import_from_statement' || type === 'import_statement') {
         const modNode = node.childForFieldName('module_name') || node.childForFieldName('name');
         if (modNode) {
-          const importTarget = modNode.text;
-          ctx.relationships.push({
-            source_name: ctx.moduleName,
-            source_type: 'CodeModule',
-            target_name: importTarget,
-            target_type: 'CodeModule',
-            type: 'IMPORTS',
-            weight: 0.8,
-            confidence: 0.95
-          });
+          const importRaw = modNode.text.trim();
+          if (importRaw.startsWith('.')) {
+            const dir = path.dirname(ctx.relPath || '').replace(/\\/g, '/');
+            let resolvedRel = path.posix.normalize(path.posix.join(dir === '.' ? '' : dir, importRaw.replace(/\./g, '/')));
+            if (!path.extname(resolvedRel)) {
+              resolvedRel = `${resolvedRel}.py`;
+            }
+            const targetName = `${ctx.repoPrefix}/${resolvedRel}`;
+
+            ctx.relationships.push({
+              source_name: ctx.moduleName,
+              source_type: 'CodeModule',
+              target_name: targetName,
+              target_type: 'CodeModule',
+              type: 'IMPORTS',
+              weight: 0.8,
+              confidence: 0.95
+            });
+          }
         }
       }
     }

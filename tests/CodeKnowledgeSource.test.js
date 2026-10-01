@@ -57,7 +57,7 @@ describe('CodeKnowledgeSource', () => {
 
     const relationships = await source.extractRelationships('/workspace/my-app/src/auth.ts', codeSnippet);
     expect(relationships.some((r) => r.type === 'CONTAINS' && r.target_name === 'my-app/src/auth.ts')).toBe(true);
-    expect(relationships.some((r) => r.type === 'IMPORTS' && r.target_name === './base')).toBe(true);
+    expect(relationships.some((r) => r.type === 'IMPORTS' && r.target_name === 'my-app/src/base.ts')).toBe(true);
   });
 
   it('should extract Python classes and functions', async () => {
