@@ -238,6 +238,47 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
     return `<span class="markdown-image-frame markdown-video-card" data-asset-path="${safeSrc}" data-video-src="${safeSrc}" data-video-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to play video" style="cursor:pointer;position:relative;display:inline-block;">${actionsHtml}<video src="${safeSrc}" preload="metadata" style="max-width:100%;max-height:280px;border-radius:var(--radius-default);object-fit:cover;pointer-events:none;display:block;"></video><span class="markdown-video-play-badge" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);pointer-events:none;">▶ Play Video</span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
   }
 
+  const isTranscript =
+    /\.(transcript\.json|vtt|srt)(\?|#|$)/i.test(src) ||
+    (/_transcript\.json(\?|#|$)/i.test(src)) ||
+    (/\/transcripts\/|\/audio\/.*transcript/i.test(src) && /\.json(\?|#|$)/i.test(src)) ||
+    (/\.json(\?|#|$)/i.test(src) && /(transcript|speech|whisper)/i.test(token.content || token.attrGet("alt") || src));
+
+  if (isTranscript) {
+    const safeSrc = escapeHtml(src);
+    const label = getImageDisplayName(src, token.content || token.attrGet("alt") || "Speech-to-Text Transcript");
+    const actionsHtml = `<span class="markdown-image-actions">` +
+      `<button type="button" class="markdown-image-action" data-image-action="view" aria-label="View transcript">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>` +
+        `<span>View</span>` +
+      `</button>` +
+      `<span class="markdown-image-action-separator"></span>` +
+      `<button type="button" class="markdown-image-action" data-image-action="copy" aria-label="Copy transcript path">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>` +
+        `<span>Copy</span>` +
+      `</button>` +
+      `<span class="markdown-image-action-separator"></span>` +
+      `<button type="button" class="markdown-image-action" data-image-action="download" aria-label="Download transcript">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>` +
+        `<span>Download</span>` +
+      `</button>` +
+    `</span>`;
+
+    return `<span class="markdown-image-frame markdown-transcript-card" data-asset-path="${safeSrc}" data-transcript-src="${safeSrc}" data-transcript-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to view full transcript" style="display:flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface-bg, rgba(255,255,255,0.05));border:1px solid var(--border-default, rgba(255,255,255,0.12));border-radius:var(--radius-default);min-width:320px;max-width:520px;box-sizing:border-box;margin:8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;cursor:pointer;">` +
+      `${actionsHtml}` +
+      `<span style="display:flex;align-items:center;justify-content:space-between;gap:8px;">` +
+        `<span style="display:flex;align-items:center;gap:8px;overflow:hidden;padding-right:60px;">` +
+          `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(14,165,233,0.15);color:#38bdf8;flex-shrink:0;">` +
+            `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h6"/></svg>` +
+          `</span>` +
+          `<span style="font-size:12px;font-weight:600;color:var(--text-strong, #f8fafc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(label)}</span>` +
+        `</span>` +
+        `<span class="markdown-transcript-badge" style="font-size:10px;font-weight:700;color:#38bdf8;background:rgba(14,165,233,0.12);padding:2px 8px;border-radius:999px;border:1px solid rgba(14,165,233,0.3);letter-spacing:0.04em;">TRANSCRIPT</span>` +
+      `</span>` +
+      `<span style="font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;background:var(--surface-muted, rgba(0,0,0,0.15));padding:6px 10px;border-radius:var(--radius-default);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Click to view Speech-to-Text transcript & summary</span>` +
+    `</span>`;
+  }
+
   if (src && !token.attrGet("data-asset-path") && !/^(data:|blob:)/i.test(src)) {
     token.attrSet("data-asset-path", src);
   }

@@ -1,7 +1,6 @@
 /**
  * Utility functions for extracting and managing media (images, videos, audio, PDFs, etc.)
  */
-
 import { MEDIA_TYPES } from "./mediaTypeUtils.js";
 
 export function extractImagesFromMarkdown(content) {
