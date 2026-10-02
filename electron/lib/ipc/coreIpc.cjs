@@ -761,6 +761,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
             if (fs.existsSync(dbPath)) {
               const { DatabaseSync } = require("node:sqlite");
               const gdb = new DatabaseSync(dbPath);
+              gdb.exec("PRAGMA busy_timeout = 5000;");
               try {
                 for (const r of repos) {
                   if (r.status === "unindexed" || !r.symbolCount) {
@@ -774,7 +775,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
                   }
                 }
               } finally {
-                try { gdb.close(); } catch {}
+                try { gdb.close(); } catch { /* ignore */ }
               }
             }
           } catch { /* ignore sync error */ }
@@ -853,6 +854,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
                 if (fs.existsSync(dbPath)) {
                   const { DatabaseSync } = require("node:sqlite");
                   const gdb = new DatabaseSync(dbPath);
+                  gdb.exec("PRAGMA busy_timeout = 5000;");
                   try {
                     // Process files in non-blocking chunks of 8
                     const CHUNK_SIZE = 8;
@@ -896,9 +898,9 @@ function registerCoreIpcHandlers(ipcMain, deps) {
                       await new Promise(resolve => setImmediate(resolve));
                     }
                   } catch {
-                    try { gdb.exec("ROLLBACK"); } catch {}
+                    try { gdb.exec("ROLLBACK"); } catch { /* ignore */ }
                   } finally {
-                    try { gdb.close(); } catch {}
+                    try { gdb.close(); } catch { /* ignore */ }
                   }
                 }
               }
@@ -941,6 +943,7 @@ function registerCoreIpcHandlers(ipcMain, deps) {
             if (fs.existsSync(dbPath)) {
               const { DatabaseSync } = require("node:sqlite");
               const gdb = new DatabaseSync(dbPath);
+              gdb.exec("PRAGMA busy_timeout = 5000;");
               try {
                 gdb.exec("BEGIN");
                 if (repo && repo.id) {
@@ -951,9 +954,9 @@ function registerCoreIpcHandlers(ipcMain, deps) {
                 }
                 gdb.exec("COMMIT");
               } catch {
-                try { gdb.exec("ROLLBACK"); } catch {}
+                try { gdb.exec("ROLLBACK"); } catch { /* ignore */ }
               } finally {
-                try { gdb.close(); } catch {}
+                try { gdb.close(); } catch { /* ignore */ }
               }
             }
           }

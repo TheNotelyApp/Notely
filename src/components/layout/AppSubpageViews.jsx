@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import { ErrorBoundary } from "../ErrorBoundary";
 
 const GitVersionControlPage = lazy(() =>
   import("../GitVersionControlPage").then((m) => ({ default: m.default || m.GitVersionControlPage }))
@@ -80,166 +81,188 @@ export function AppSubpageViews({
     <>
       {gitVCOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
-            <GitVersionControlPage
-              workspacePath={notesFolderPath}
-              onBack={() => setGitVCOpen(false)}
-              onNotify={notify}
-              onGitStateChange={handleGitStateChange}
-              currentFilePath={current?.filePath}
-              initialTab={gitVCInitialTab}
-              documents={documents}
-            />
-          </Suspense>
+          <ErrorBoundary label="Version Control" onReset={() => setGitVCOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Version Control…</div>}>
+              <GitVersionControlPage
+                workspacePath={notesFolderPath}
+                onBack={() => setGitVCOpen(false)}
+                onNotify={notify}
+                onGitStateChange={handleGitStateChange}
+                currentFilePath={current?.filePath}
+                initialTab={gitVCInitialTab}
+                documents={documents}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {graphPanelOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Knowledge Graph…</div>}>
-            <KnowledgeGraph onBack={() => setGraphPanelOpen(false)} />
-          </Suspense>
+          <ErrorBoundary label="Knowledge Graph" onReset={() => setGraphPanelOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Knowledge Graph…</div>}>
+              <KnowledgeGraph onBack={() => setGraphPanelOpen(false)} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {attachedReposPageOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Attached Repositories…</div>}>
-            <AttachedReposPage
-              notesFolderPath={notesFolderPath}
-              documents={documents}
-              onBack={() => setAttachedReposPageOpen(false)}
-              onClose={() => setAttachedReposPageOpen(false)}
-              onOpenKnowledgeGraph={() => {
-                setAttachedReposPageOpen(false);
-                setGraphPanelOpen(true);
-              }}
-              onOpenNote={(filePath) => {
-                setAttachedReposPageOpen(false);
-                if (handleOpenReferencedDocument) {
-                  void handleOpenReferencedDocument(filePath);
-                }
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary label="Attached Repositories" onReset={() => setAttachedReposPageOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Attached Repositories…</div>}>
+              <AttachedReposPage
+                notesFolderPath={notesFolderPath}
+                documents={documents}
+                onBack={() => setAttachedReposPageOpen(false)}
+                onClose={() => setAttachedReposPageOpen(false)}
+                onOpenKnowledgeGraph={() => {
+                  setAttachedReposPageOpen(false);
+                  setGraphPanelOpen(true);
+                }}
+                onOpenNote={(filePath) => {
+                  setAttachedReposPageOpen(false);
+                  if (handleOpenReferencedDocument) {
+                    void handleOpenReferencedDocument(filePath);
+                  }
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {embeddingsPageOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Embeddings Engine…</div>}>
-            <EmbeddingsPage onBack={() => setEmbeddingsPageOpen(false)} />
-          </Suspense>
+          <ErrorBoundary label="Embeddings Engine" onReset={() => setEmbeddingsPageOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Embeddings Engine…</div>}>
+              <EmbeddingsPage onBack={() => setEmbeddingsPageOpen(false)} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
-
-
       {healthPageOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
-            <AIHealthPage onBack={() => setHealthPageOpen(false)} />
-          </Suspense>
+          <ErrorBoundary label="Health & Diagnostics" onReset={() => setHealthPageOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Health & Diagnostics…</div>}>
+              <AIHealthPage onBack={() => setHealthPageOpen(false)} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {appLogsOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading System & Application Logs…</div>}>
-            <AppLogsPage onBack={() => setAppLogsOpen(false)} />
-          </Suspense>
+          <ErrorBoundary label="Application Logs" onReset={() => setAppLogsOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading System & Application Logs…</div>}>
+              <AppLogsPage onBack={() => setAppLogsOpen(false)} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {taskWorkspaceOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Task Workspace…</div>}>
-            <TaskWorkspacePage
-              onBack={() => setTaskWorkspaceOpen(false)}
-              onOpenNote={(filePath) => {
-                setTaskWorkspaceOpen(false);
-                void handleOpenReferencedDocument(filePath);
-              }}
-              noteFilter={taskWorkspaceContext?.noteFilter ?? null}
-            />
-          </Suspense>
+          <ErrorBoundary label="Task Workspace" onReset={() => setTaskWorkspaceOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Task Workspace…</div>}>
+              <TaskWorkspacePage
+                onBack={() => setTaskWorkspaceOpen(false)}
+                onOpenNote={(filePath) => {
+                  setTaskWorkspaceOpen(false);
+                  void handleOpenReferencedDocument(filePath);
+                }}
+                noteFilter={taskWorkspaceContext?.noteFilter ?? null}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {calendarPageOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Calendar…</div>}>
-            <CalendarPage
-              onBack={() => setCalendarPageOpen(false)}
-              onOpenNote={(filePath) => {
-                setCalendarPageOpen(false);
-                void handleOpenReferencedDocument(filePath);
-              }}
-              onOpenTask={(task) => {
-                setCalendarPageOpen(false);
-                setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
-                setTaskWorkspaceOpen(true);
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary label="Calendar" onReset={() => setCalendarPageOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Calendar…</div>}>
+              <CalendarPage
+                onBack={() => setCalendarPageOpen(false)}
+                onOpenNote={(filePath) => {
+                  setCalendarPageOpen(false);
+                  void handleOpenReferencedDocument(filePath);
+                }}
+                onOpenTask={(task) => {
+                  setCalendarPageOpen(false);
+                  setTaskWorkspaceContext(task?.source_path ? { noteFilter: task.source_path } : null);
+                  setTaskWorkspaceOpen(true);
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {downloadsPageOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
-            <DownloadsPage onBack={() => setDownloadsPageOpen(false)} />
-          </Suspense>
+          <ErrorBoundary label="Downloads & Export History" onReset={() => setDownloadsPageOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Downloads & Export History…</div>}>
+              <DownloadsPage onBack={() => setDownloadsPageOpen(false)} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {workspaceIndexOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Workspace Index…</div>}>
-            <WorkspaceIndexPage
-              documents={documents}
-              workspacePath={notesFolderPath}
-              onBack={() => setWorkspaceIndexOpen(false)}
-              onSelectHeader={(docId, line) => {
-                setWorkspaceIndexOpen(false);
-                if (onSelectHeader) onSelectHeader(docId, line);
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary label="Workspace Index" onReset={() => setWorkspaceIndexOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Workspace Index…</div>}>
+              <WorkspaceIndexPage
+                documents={documents}
+                workspacePath={notesFolderPath}
+                onBack={() => setWorkspaceIndexOpen(false)}
+                onSelectHeader={(docId, line) => {
+                  setWorkspaceIndexOpen(false);
+                  if (onSelectHeader) onSelectHeader(docId, line);
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {diagramsMediaOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading Diagrams & Media…</div>}>
-            <WorkspaceDiagramsMediaPage
-              documents={documents}
-              workspacePath={notesFolderPath}
-              onBack={() => setDiagramsMediaOpen(false)}
-              onNotify={notify}
-              onOpenNote={(filePath, line) => {
-                setDiagramsMediaOpen(false);
-                if (handleOpenReferencedDocument) {
-                  void handleOpenReferencedDocument(filePath, line);
-                }
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary label="Diagrams & Media" onReset={() => setDiagramsMediaOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading Diagrams & Media…</div>}>
+              <WorkspaceDiagramsMediaPage
+                documents={documents}
+                workspacePath={notesFolderPath}
+                onBack={() => setDiagramsMediaOpen(false)}
+                onNotify={notify}
+                onOpenNote={(filePath, line) => {
+                  setDiagramsMediaOpen(false);
+                  if (handleOpenReferencedDocument) {
+                    void handleOpenReferencedDocument(filePath, line);
+                  }
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 
       {mcpToolsPageOpen && (
         <div className="app-subpage-overlay">
-          <Suspense fallback={<div className="lazy-loading">Loading MCP Tools…</div>}>
-            <MCPToolsPage
-              onBack={() => setMcpToolsPageOpen(false)}
-              onNotify={notify}
-              onOpenSettings={() => {
-                setMcpToolsPageOpen(false);
-                if (onOpenMcpSettings) onOpenMcpSettings();
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary label="MCP Tools" onReset={() => setMcpToolsPageOpen(false)}>
+            <Suspense fallback={<div className="lazy-loading">Loading MCP Tools…</div>}>
+              <MCPToolsPage
+                onBack={() => setMcpToolsPageOpen(false)}
+                onNotify={notify}
+                onOpenSettings={() => {
+                  setMcpToolsPageOpen(false);
+                  if (onOpenMcpSettings) onOpenMcpSettings();
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
     </>

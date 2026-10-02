@@ -30,7 +30,6 @@ import {
   Plus,
   Trash2,
   Edit3,
-  ExternalLink,
   X
 } from "lucide-react";
 import { listTools, executeTool } from "../services/electron/aiService";

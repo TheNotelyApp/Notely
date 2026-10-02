@@ -103,6 +103,7 @@ class EnterpriseToolSuite {
         if (fs.existsSync(dbPath)) {
           const { DatabaseSync } = require('node:sqlite');
           const gdb = new DatabaseSync(dbPath);
+          gdb.exec('PRAGMA busy_timeout = 5000;');
           try {
             const codeTypes = ['CodeModule', 'CodeClass', 'CodeInterface', 'CodeFunction', 'APIEndpoint', 'DBModel', 'Repo'];
             const placeholders = codeTypes.map(() => '?').join(',');
@@ -119,7 +120,7 @@ class EnterpriseToolSuite {
               const name = row.name || '';
               const canonical = row.canonical_name || '';
               let props = {};
-              try { props = JSON.parse(row.properties || '{}'); } catch {}
+              try { props = JSON.parse(row.properties || '{}'); } catch { /* ignore */ }
 
               let score = 0;
               const matchReasons = { titleMatch: false, textSnippets: [], tagMatches: [] };
@@ -167,7 +168,7 @@ class EnterpriseToolSuite {
               return results;
             }
           } finally {
-            try { gdb.close(); } catch {}
+            try { gdb.close(); } catch { /* ignore */ }
           }
         }
       } catch (err) {
@@ -605,6 +606,7 @@ class EnterpriseToolSuite {
         if (fs.existsSync(dbPath)) {
           const { DatabaseSync } = require('node:sqlite');
           const gdb = new DatabaseSync(dbPath);
+          gdb.exec('PRAGMA busy_timeout = 5000;');
           try {
             const wikiMatches = (rawContent.match(/\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/g) || [])
               .map(m => m.replace(/^\[\[|\]\]$/g, '').split('|')[0].trim());
@@ -627,7 +629,7 @@ class EnterpriseToolSuite {
               }
             }
           } finally {
-            try { gdb.close(); } catch {}
+            try { gdb.close(); } catch { /* ignore */ }
           }
         }
       } catch { /* ignore graph read error */ }
@@ -1351,6 +1353,7 @@ class EnterpriseToolSuite {
         if (fs.existsSync(dbPath)) {
           const { DatabaseSync } = require('node:sqlite');
           const gdb = new DatabaseSync(dbPath);
+          gdb.exec('PRAGMA busy_timeout = 5000;');
           try {
             const codeRows = gdb.prepare(`
               SELECT id, name, canonical_name, type, properties
@@ -1374,7 +1377,7 @@ class EnterpriseToolSuite {
               edges.push({ from: rr.source_id, to: rr.target_id, relation: rr.type, weight: rr.weight, confidence: rr.confidence });
             }
           } finally {
-            try { gdb.close(); } catch {}
+            try { gdb.close(); } catch { /* ignore */ }
           }
         }
       } catch { /* ignore graph read error */ }
@@ -1644,6 +1647,7 @@ class EnterpriseToolSuite {
           if (fs.existsSync(dbPath)) {
             const { DatabaseSync } = require('node:sqlite');
             const gdb = new DatabaseSync(dbPath);
+            gdb.exec('PRAGMA busy_timeout = 5000;');
             try {
               gdb.exec('BEGIN');
               if (targetRepo?.id) {
@@ -1654,9 +1658,9 @@ class EnterpriseToolSuite {
               }
               gdb.exec('COMMIT');
             } catch {
-              try { gdb.exec('ROLLBACK'); } catch {}
+              try { gdb.exec('ROLLBACK'); } catch { /* ignore */ }
             } finally {
-              try { gdb.close(); } catch {}
+              try { gdb.close(); } catch { /* ignore */ }
             }
           }
         } catch { /* ignore graph purge error */ }
