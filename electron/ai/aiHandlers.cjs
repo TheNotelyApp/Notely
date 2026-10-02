@@ -637,10 +637,12 @@ async function handleGetModelStatus(_event, _payload) {
     const downloader = new ModelDownloader(appDataDir);
     const status = downloader.getProgress();
     
+    const isLoaded = Boolean(aiService.agent?.embeddingService?.embedder?.isLoaded);
     return new AIQueryResponse(true, {
       downloaded: downloader.isModelDownloaded(),
       isDownloading: status.isDownloading,
-      progress: status.progress
+      progress: status.progress,
+      isLoaded
     });
   } catch (error) {
     return new AIQueryResponse(false, null, error.message);
@@ -654,11 +656,13 @@ async function handleGetGraphModelStatus(_event, _payload) {
     const GraphModelDownloader = require('../../ai/graph/GraphModelDownloader');
     const downloader = new GraphModelDownloader(appDataDir);
     const status = downloader.getStatus();
+    const isLoaded = Boolean(aiService.agent?.graphWorker?.adapter?.isLoaded);
     
     return new AIQueryResponse(true, {
       downloaded: status.downloaded,
       isDownloading: status.isDownloading,
-      progress: status.progress
+      progress: status.progress,
+      isLoaded
     });
   } catch (error) {
     return new AIQueryResponse(false, null, error.message);

@@ -358,6 +358,30 @@ export function DocumentDetail({
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
   const content = document?.rawNotes || "";
+  const derivedBreadcrumbs = useMemo(() => {
+    if (Array.isArray(breadcrumbs) && breadcrumbs.length > 0) {
+      return breadcrumbs;
+    }
+    if (!document?.filePath || !workspacePath) {
+      return [];
+    }
+    const normDoc = String(document.filePath).replace(/\\/g, "/");
+    const normWs = String(workspacePath).replace(/\\/g, "/");
+    if (!normDoc.startsWith(normWs)) {
+      return [];
+    }
+    const rel = normDoc.slice(normWs.length).replace(/^\/+/, "");
+    const parts = rel.split("/").filter(Boolean);
+    parts.pop(); // Note file name is current
+    const result = [{ label: "Notes", path: workspacePath }];
+    let cur = normWs;
+    for (const seg of parts) {
+      cur = `${cur}/${seg}`;
+      result.push({ label: seg, path: cur });
+    }
+    return result;
+  }, [breadcrumbs, document?.filePath, workspacePath]);
+
   const fullWorkingCopyContent = useMemo(() => {
     const parts = [];
     if (document?.header?.trim()) parts.push(document.header.trim());
@@ -1168,7 +1192,7 @@ export function DocumentDetail({
       {!isTimeMachineOpen && (
         <DocumentDetailHeader
           isFocusMode={isFocusMode}
-          breadcrumbs={breadcrumbs}
+          breadcrumbs={derivedBreadcrumbs}
           onNavigateBreadcrumb={onNavigateBreadcrumb}
           onBack={onBack}
           document={document}

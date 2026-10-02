@@ -4036,13 +4036,28 @@
 
 /* Status Bar Button (Bottom Toolbar) */
 .git-status-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2, 0.5rem);
+  justify-content: center;
+  vertical-align: middle;
+  gap: 4px;
   cursor: pointer;
   border: none;
   font-weight: 500;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  box-sizing: border-box;
+  font-size: 11px;
+  line-height: 1;
   transition: background var(--motion-fast, 120ms ease);
+}
+
+.git-status-bar svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .git-status-bar:hover {
@@ -4062,7 +4077,7 @@
 .git-status-bar--pending {
   background: var(--status-warning-bg) !important;
   color: var(--status-warning-text) !important;
-  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  padding: 0 var(--space-2, 6px);
   border-radius: var(--radius-sm, 4px);
   border: 1px solid var(--status-warning-border) !important;
 }
@@ -4070,7 +4085,7 @@
 .git-status-bar--clean {
   background: var(--status-success-bg) !important;
   color: var(--status-success-text) !important;
-  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  padding: 0 var(--space-2, 6px);
   border-radius: var(--radius-sm, 4px);
   border: 1px solid var(--status-success-border) !important;
 }
@@ -4080,15 +4095,28 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .git-status-bar__badge {
-  font-size: 10px;
+  font-size: 9px;
   background: var(--status-warning-border);
   color: var(--status-warning-text);
-  padding: 1px 5px;
-  border-radius: 8px;
+  padding: 0 4px;
+  height: 13px;
+  min-height: 13px;
+  border-radius: var(--radius-sm, 4px);
   font-weight: bold;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 /* Commit Timeline */

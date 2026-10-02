@@ -8,6 +8,7 @@ const { aiService } = require('../core/AIService');
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 function getEmbeddingStats(db) {
   let chunks = 0;
@@ -153,10 +154,22 @@ function getSubsystemHealth() {
     console.error('[MCP Health] Failed to gather MCP stats:', err.message);
   }
 
+  const freeMemBytes = typeof os.freemem === 'function' ? os.freemem() : 0;
+  const totalMemBytes = typeof os.totalmem === 'function' ? os.totalmem() : 0;
+  const freeMemMb = Math.round(freeMemBytes / 1024 / 1024);
+  const totalMemMb = Math.round(totalMemBytes / 1024 / 1024);
+  const isLowMemory = freeMemMb < 400;
+
   return {
     enabled: isEnabled,
     initialized: isInitialized,
     serverStatus: isEnabled ? 'Running' : 'Stopped',
+    systemMemory: {
+      freeMemMb,
+      totalMemMb,
+      isLowMemory,
+      mode: isLowMemory ? 'standby' : 'normal'
+    },
     mcp: mcpStats,
     database: {
       status: dbStatus,

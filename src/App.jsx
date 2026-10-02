@@ -36,7 +36,6 @@ const KeyboardShortcutsModal = lazy(() =>
 
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
-import { MCPStatusBar } from "./components/MCPStatusBar";
 
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
@@ -3353,8 +3352,10 @@ export default function App() {
               }}
               onClick={() => setGitVCOpen(true)}
             />
-            <AIStatusBar onClick={() => openSettings("ai")} />
-            <MCPStatusBar onClick={() => openSettings("mcp")} />
+            <AIStatusBar
+              onClick={() => openSettings("ai")}
+              onOpenMcpSettings={() => openSettings("mcp")}
+            />
             {current && !(graphPanelOpen || embeddingsPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
                 {documentStats ? (

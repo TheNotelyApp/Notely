@@ -1,8 +1,9 @@
 import React from 'react';
-import { FileText, X } from 'lucide-react';
+import { FileText, ExternalLink, X } from 'lucide-react';
 import { OverlayDialog } from '../OverlayDialog';
 import AppButton from '../AppButton';
 import { TYPE_COLORS, DEFAULT_COLOR, RELATIONSHIP_COLORS } from './graphUtils';
+import { openInEditor } from '../../services/electronService';
 
 export default function EntityInspector({
   selectedNode,
@@ -20,6 +21,23 @@ export default function EntityInspector({
   );
 
   const entityMap = new Map(entities.map(e => [e.id, e]));
+
+  const targetFilePath =
+    selectedNode.properties?.file ||
+    selectedNode.properties?.sourceFile ||
+    selectedNode.note_path;
+  const targetLineNumber =
+    selectedNode.properties?.line ||
+    selectedNode.properties?.lineNumber;
+
+  const handleOpenInExternalEditor = async () => {
+    if (!targetFilePath) return;
+    try {
+      await openInEditor({ filePath: targetFilePath, line: targetLineNumber });
+    } catch (err) {
+      console.error('Failed to open file in external editor:', err);
+    }
+  };
 
   return (
     <OverlayDialog
@@ -64,6 +82,17 @@ export default function EntityInspector({
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-strong)', wordBreak: 'break-all', fontFamily: 'monospace' }}>
                 {selectedNode.note_path}
+              </span>
+            </div>
+          )}
+
+          {targetFilePath && targetFilePath !== selectedNode.note_path && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--surface-muted)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-soft)' }}>
+              <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                Code Location {targetLineNumber ? `(Line ${targetLineNumber})` : ''}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-strong)', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                {targetFilePath}
               </span>
             </div>
           )}
@@ -140,6 +169,18 @@ export default function EntityInspector({
             <X size={14} />
             Close
           </AppButton>
+          {targetFilePath && (
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handleOpenInExternalEditor}
+              title="Open in VS Code or external editor"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <ExternalLink size={14} />
+              Open in Editor
+            </AppButton>
+          )}
           {selectedNode.note_path && (
             <AppButton
               variant="primary"

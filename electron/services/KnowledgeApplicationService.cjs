@@ -138,36 +138,55 @@ class KnowledgeApplicationService {
   }
 
   /**
-   * Hybrid search combining full-text search and graph/vector results.
+   * Hybrid search combining full-text lexical search and vector semantic similarity
+   * using Reciprocal Rank Fusion (RRF: 1 / (k + rank)).
    */
-  async searchHybrid({ workspaceRoot, query, limit = 10 }) {
-    const ftsResults = await this.searchNotes({ workspaceRoot, query, limit });
-    const similarResults = await this.searchSimilar({ workspaceRoot, text: query, topK: limit });
+  async searchHybrid({ workspaceRoot, query, limit = 10, rrfK = 60 }) {
+    const ftsResults = await this.searchNotes({ workspaceRoot, query, limit: Math.max(limit * 2, 20) });
+    const similarResults = await this.searchSimilar({ workspaceRoot, text: query, topK: Math.max(limit * 2, 20) });
 
-    const combinedMap = new Map();
+    const scoreMap = new Map();
 
-    for (const item of ftsResults) {
-      combinedMap.set(item.path, {
+    // 1. Accumulate Lexical FTS RRF ranks
+    ftsResults.forEach((item, index) => {
+      const rank = index + 1;
+      const rrfContribution = 1.0 / (rrfK + rank);
+      scoreMap.set(item.path, {
         path: item.path,
-        compositeScore: item.score * 0.6,
-        snippet: item.snippet
+        title: item.title || path.basename(item.path),
+        compositeScore: rrfContribution,
+        ftsRank: rank,
+        semanticRank: null,
+        snippet: item.snippet || ""
       });
-    }
+    });
 
-    for (const item of similarResults) {
-      const existing = combinedMap.get(item.path);
-      if (existing) {
-        existing.compositeScore += item.similarity * 0.4;
+    // 2. Accumulate Vector Semantic RRF ranks
+    similarResults.forEach((item, index) => {
+      const rank = index + 1;
+      const rrfContribution = 1.0 / (rrfK + rank);
+      if (scoreMap.has(item.path)) {
+        const existing = scoreMap.get(item.path);
+        existing.compositeScore += rrfContribution;
+        existing.semanticRank = rank;
+        if (!existing.snippet && item.snippet) {
+          existing.snippet = item.snippet;
+        }
       } else {
-        combinedMap.set(item.path, {
+        scoreMap.set(item.path, {
           path: item.path,
-          compositeScore: item.similarity * 0.4,
-          snippet: item.snippet
+          title: item.title || path.basename(item.path),
+          compositeScore: rrfContribution,
+          ftsRank: null,
+          semanticRank: rank,
+          snippet: item.snippet || ""
         });
       }
-    }
+    });
 
-    const sorted = Array.from(combinedMap.values()).sort((a, b) => b.compositeScore - a.compositeScore);
+    const sorted = Array.from(scoreMap.values())
+      .sort((a, b) => b.compositeScore - a.compositeScore);
+
     return sorted.slice(0, Math.min(limit, 50));
   }
 

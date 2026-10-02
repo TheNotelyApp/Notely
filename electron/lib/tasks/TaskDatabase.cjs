@@ -203,11 +203,11 @@ class TaskDatabase {
         if (match) {
           matchedTaskIds.add(match.id);
           matchedParsedIndices.add(t.idx);
-          if (match.status !== t.status || match.source_line !== t.line) {
+          if (match.status !== t.status || match.source_line !== t.line || match.priority !== t.priority || match.due_date !== t.due_date) {
             const completedAt = t.status === 'done' ? now : (t.status === 'open' ? null : match.completed_at);
             this.db.prepare(
-              'UPDATE tasks SET status = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-            ).run(t.status, t.line, now, completedAt, match.id);
+              'UPDATE tasks SET status = ?, source_line = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+            ).run(t.status, t.line, t.priority ?? 0, t.due_date ?? null, now, completedAt, match.id);
             updated++;
           }
         }
@@ -224,8 +224,8 @@ class TaskDatabase {
           const newHash = this._getUniqueSourceHash(filePath, t.title, t.occ, match.id);
           const completedAt = t.status === 'done' ? now : null;
           this.db.prepare(
-            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-          ).run(t.title, t.status, newHash, t.line, now, completedAt, match.id);
+            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+          ).run(t.title, t.status, newHash, t.line, t.priority ?? 0, t.due_date ?? null, now, completedAt, match.id);
           updated++;
         }
       }
@@ -257,8 +257,8 @@ class TaskDatabase {
           const newHash = this._getUniqueSourceHash(filePath, p.title, p.occ, bestMatch.id);
           const completedAt = p.status === 'done' ? now : null;
           this.db.prepare(
-            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-          ).run(p.title, p.status, newHash, p.line, now, completedAt, bestMatch.id);
+            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+          ).run(p.title, p.status, newHash, p.line, p.priority ?? 0, p.due_date ?? null, now, completedAt, bestMatch.id);
           updated++;
         } else {
           // Insert new task safely checking if source_hash already exists
@@ -269,15 +269,15 @@ class TaskDatabase {
             matchedTaskIds.add(existingHashMatch.id);
             const completedAt = p.status === 'done' ? now : null;
             this.db.prepare(
-              'UPDATE tasks SET status = ?, source_line = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-            ).run(p.status, p.line, now, completedAt, existingHashMatch.id);
+              'UPDATE tasks SET status = ?, source_line = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+            ).run(p.status, p.line, p.priority ?? 0, p.due_date ?? null, now, completedAt, existingHashMatch.id);
             updated++;
           } else {
             this.db.prepare(`
-              INSERT INTO tasks (id, title, status, source_path, source_line, source_hash,
+              INSERT INTO tasks (id, title, status, priority, due_date, source_path, source_line, source_hash,
                                  user_managed, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
-            `).run(randomId(), p.title, p.status, filePath, p.line, hash, now, now);
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            `).run(randomId(), p.title, p.status, p.priority ?? 0, p.due_date ?? null, filePath, p.line, hash, now, now);
             inserted++;
           }
         }
@@ -306,12 +306,12 @@ class TaskDatabase {
             title: t.title,
             description: '',
             status: t.status,
-            priority: 0,
+            priority: t.priority ?? 0,
             source_path: filePath,
             source_line: t.line,
             source_hash: hash,
             user_managed: 0,
-            due_date: null,
+            due_date: t.due_date ?? null,
             scheduled_start: null,
             scheduled_end: null,
             is_all_day: 1,
@@ -323,8 +323,10 @@ class TaskDatabase {
             completed_at: t.status === 'done' ? now : null,
           });
           inserted++;
-        } else if (!existing.user_managed && existing.status !== t.status) {
+        } else if (!existing.user_managed && (existing.status !== t.status || existing.priority !== t.priority || existing.due_date !== t.due_date)) {
           existing.status = t.status;
+          existing.priority = t.priority ?? 0;
+          existing.due_date = t.due_date ?? null;
           existing.source_line = t.line;
           existing.updated_at = now;
           existing.completed_at = t.status === 'done' ? now : null;

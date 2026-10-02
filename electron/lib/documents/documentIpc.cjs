@@ -538,18 +538,39 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     return { success: true, count: changedCount };
   });
 
-  registerTrustedHandler("documents:open-in-editor", async (_event, filePath) => {
+  registerTrustedHandler("documents:open-in-editor", async (_event, payload) => {
+    const rawPath = typeof payload === "string" ? payload : payload?.filePath;
+    const lineNumber = typeof payload === "object" ? payload?.line || payload?.lineNumber : null;
     const notesRoot = getNotesRoot();
-    const resolved = path.resolve(filePath || "");
-    if (!filePathWithin(notesRoot, resolved) || path.extname(resolved).toLowerCase() !== ".md") {
-      throw new Error("Invalid document path.");
+    const resolved = path.resolve(rawPath || "");
+
+    let isAllowed = filePathWithin(notesRoot, resolved);
+    if (!isAllowed) {
+      const metaPath = path.join(notesRoot, ".notes-app", "metadata.json");
+      if (fs.existsSync(metaPath)) {
+        try {
+          const metaObj = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+          const repos = Array.isArray(metaObj.attachedRepos) ? metaObj.attachedRepos : [];
+          for (const repo of repos) {
+            if (repo.path && filePathWithin(repo.path, resolved)) {
+              isAllowed = true;
+              break;
+            }
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
+    if (!isAllowed) {
+      throw new Error("Invalid file path or target outside workspace and attached repositories.");
     }
     if (!fs.existsSync(resolved)) {
       throw new Error("Document file does not exist.");
     }
 
     try {
-      const vscodeUri = `vscode://file/${resolved.replace(/\\/g, "/")}`;
+      const lineSuffix = lineNumber ? `:${lineNumber}` : "";
+      const vscodeUri = `vscode://file/${resolved.replace(/\\/g, "/")}${lineSuffix}`;
       await shell.openExternal(encodeURI(vscodeUri));
       return { openedWith: "vscode" };
     } catch {

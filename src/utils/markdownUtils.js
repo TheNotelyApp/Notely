@@ -302,9 +302,52 @@ export function hasMarkdownExtension(pathValue) {
   return normalized.endsWith(".md") || normalized.endsWith(".markdown");
 }
 
+export function interpolateTemplateVariables(templateString, context = {}) {
+  if (typeof templateString !== "string") return "";
+  const now = context.date instanceof Date ? context.date : new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const YYYY = String(now.getFullYear());
+  const MM = pad(now.getMonth() + 1);
+  const DD = pad(now.getDate());
+  const HH = pad(now.getHours());
+  const mm = pad(now.getMinutes());
+  const ss = pad(now.getSeconds());
+
+  const dateStr = `${YYYY}-${MM}-${DD}`;
+  const timeStr = `${HH}:${mm}`;
+  const dateTimeStr = `${dateStr} ${timeStr}`;
+
+  const replacements = {
+    date: context.dateStr || dateStr,
+    time: context.timeStr || timeStr,
+    datetime: context.dateTimeStr || dateTimeStr,
+    year: YYYY,
+    month: MM,
+    day: DD,
+    hour: HH,
+    minute: mm,
+    second: ss,
+    title: context.title || "Untitled Note",
+    author: context.author || "Developer",
+    repo: context.repo || "",
+    workspace: context.workspace || "",
+    uuid: context.uuid || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)),
+  };
+
+  return templateString.replace(/\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/g, (match, key) => {
+    const lowerKey = key.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(replacements, lowerKey)) {
+      return replacements[lowerKey];
+    }
+    return match;
+  });
+}
+
 export {
   getAssetMediaType,
   getAssetPathDisplayLabel,
   decodePathForDisplay,
 } from "./mediaUtils.js";
+
 

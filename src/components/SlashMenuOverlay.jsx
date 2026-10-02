@@ -16,8 +16,11 @@ import {
   Calendar,
   Minus,
   Quote,
+  FileText,
+  Bookmark,
 } from "lucide-react";
 import "../styles/SlashMenuOverlay.css";
+import { interpolateTemplateVariables } from "../utils/markdownUtils";
 
 const SLASH_COMMANDS = [
   {
@@ -62,11 +65,60 @@ const SLASH_COMMANDS = [
   },
   {
     id: "task",
-    label: "Task List",
-    description: "Trackable checkbox task",
+    label: "Task",
+    description: "Standard checkbox task",
     icon: CheckSquare,
     snippet: "- [ ] ",
     keywords: ["task", "todo", "checkbox", "done"],
+  },
+  {
+    id: "task-p1",
+    label: "Task (High Priority)",
+    description: "Checkbox task with #p1 tag",
+    icon: CheckSquare,
+    snippet: "- [ ] #p1 ",
+    keywords: ["p1", "priority", "urgent", "high", "task", "todo"],
+  },
+  {
+    id: "task-p2",
+    label: "Task (Medium Priority)",
+    description: "Checkbox task with #p2 tag",
+    icon: CheckSquare,
+    snippet: "- [ ] #p2 ",
+    keywords: ["p2", "priority", "medium", "task", "todo"],
+  },
+  {
+    id: "task-due",
+    label: "Task with Due Date",
+    description: "Checkbox task with @due date tag",
+    icon: Calendar,
+    getSnippet: () => {
+      const today = new Date().toISOString().split("T")[0];
+      return `- [ ] @due(${today}) `;
+    },
+    keywords: ["due", "date", "deadline", "task", "schedule"],
+  },
+  {
+    id: "template-meeting",
+    label: "Template: Meeting Notes",
+    description: "Dynamic meeting notes with date and attendees",
+    icon: FileText,
+    getSnippet: () =>
+      interpolateTemplateVariables(
+        "# Meeting Notes — {{date}}\n\n## Attendees\n- \n\n## Agenda\n1. \n\n## Discussion\n- \n\n## Action Items\n- [ ] #p1 \n- [ ] \n"
+      ),
+    keywords: ["meeting", "template", "notes", "agenda", "minutes"],
+  },
+  {
+    id: "template-spec",
+    label: "Template: Engineering Spec",
+    description: "Architecture & feature specification scaffold",
+    icon: Bookmark,
+    getSnippet: () =>
+      interpolateTemplateVariables(
+        "# Engineering Spec: {{title}}\n\n**Author:** {{author}}  \n**Date:** {{date}}  \n\n## 1. Problem & Context\n\n## 2. Proposed Architecture\n\n## 3. Implementation Tasks\n- [ ] #p1 Core service implementation\n- [ ] Unit & integration tests\n\n## 4. Risks & Tradeoffs\n"
+      ),
+    keywords: ["spec", "engineering", "design", "rfc", "architecture", "template"],
   },
   {
     id: "callout-note",

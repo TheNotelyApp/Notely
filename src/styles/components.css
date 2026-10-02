@@ -453,17 +453,38 @@
 .terminal-meta-pill {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1, 2px);
+  justify-content: center;
+  vertical-align: middle;
+  gap: var(--space-1, 4px);
+  height: 20px;
   min-height: 20px;
-  padding: var(--space-1, 2px) var(--space-2, 6px);
+  max-height: 20px;
+  padding: 0 var(--space-2, 6px);
   border-radius: var(--radius-sm, 4px);
   border: 1px solid rgba(159, 214, 188, 0.35);
   background: rgba(9, 23, 25, 0.28);
   color: #d5ece2;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   white-space: nowrap;
   font-family: inherit;
+  box-sizing: border-box;
+}
+
+.terminal-meta-pill svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.terminal-meta-pill span,
+.terminal-meta-pill strong {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .terminal-meta-pill.warn {

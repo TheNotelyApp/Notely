@@ -19,7 +19,27 @@ function parseMarkdownTasks(content) {
     while ((m = re.exec(src)) !== null) {
       const line = src.slice(0, m.index).split(/\r?\n/).length;
       const lineText = m[0].trim();
-      tasks.push({ title: (m[1] || '').trim(), status, line, lineText });
+      const rawTitle = (m[1] || '').trim();
+
+      let priority = 0;
+      if (/#p1\b/i.test(rawTitle) || /#urgent\b/i.test(rawTitle)) priority = 3;
+      else if (/#p2\b/i.test(rawTitle) || /#high\b/i.test(rawTitle)) priority = 2;
+      else if (/#p3\b/i.test(rawTitle) || /#medium\b/i.test(rawTitle)) priority = 1;
+
+      let dueDate = null;
+      const dueMatch = rawTitle.match(/@due\(([^)]+)\)/i) || rawTitle.match(/\bdue:(\d{4}-\d{2}-\d{2})/i);
+      if (dueMatch) {
+        dueDate = dueMatch[1].trim();
+      }
+
+      tasks.push({
+        title: rawTitle,
+        status,
+        line,
+        lineText,
+        priority,
+        due_date: dueDate,
+      });
     }
   };
 
