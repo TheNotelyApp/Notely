@@ -124,7 +124,7 @@ export default function AppLogsPage({ onBack }) {
 
       <div className="knowledge-graph-container" style={{ display: 'flex', flexDirection: 'column', padding: '16px', gap: '16px', height: 'calc(100vh - 80px)' }}>
         {/* Controls Toolbar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: 'var(--surface-elevated)', padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border-soft)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: 'var(--surface-elevated)', padding: '10px 16px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px' }}>
             <div className="kg-search-wrapper" style={{ flex: 1, margin: 0, height: '32px', display: 'flex', alignItems: 'center' }}>
               <Search size={16} className="kg-search-icon" />
@@ -143,7 +143,7 @@ export default function AppLogsPage({ onBack }) {
               <select
                 value={subsystemFilter}
                 onChange={(e) => setSubsystemFilter(e.target.value)}
-                style={{ height: '32px', boxSizing: 'border-box', background: 'var(--surface-bg)', color: 'var(--text-strong)', border: '1px solid var(--border-default)', borderRadius: '6px', padding: '0 10px', fontSize: '12px', outline: 'none', cursor: 'pointer' }}
+                style={{ height: '32px', boxSizing: 'border-box', background: 'var(--surface-bg)', color: 'var(--text-strong)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-default)', padding: '0 10px', fontSize: '12px', outline: 'none', cursor: 'pointer' }}
               >
                 <option value="all">All Subsystems</option>
                 <option value="graph">Knowledge Graph</option>
@@ -156,7 +156,7 @@ export default function AppLogsPage({ onBack }) {
               <select
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
-                style={{ height: '32px', boxSizing: 'border-box', background: 'var(--surface-bg)', color: 'var(--text-strong)', border: '1px solid var(--border-default)', borderRadius: '6px', padding: '0 10px', fontSize: '12px', outline: 'none', cursor: 'pointer' }}
+                style={{ height: '32px', boxSizing: 'border-box', background: 'var(--surface-bg)', color: 'var(--text-strong)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-default)', padding: '0 10px', fontSize: '12px', outline: 'none', cursor: 'pointer' }}
               >
                 <option value="all">All Severity</option>
                 <option value="info">Info</option>
@@ -168,18 +168,18 @@ export default function AppLogsPage({ onBack }) {
         </div>
 
         {/* Logs Console Container */}
-        <div style={{ flex: 1, background: 'var(--surface-muted)', borderRadius: '8px', border: '1px solid var(--border-soft)', padding: '12px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ flex: 1, background: 'var(--surface-muted)', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', padding: '12px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {filteredLogs.length > 0 ? (
             filteredLogs.map((item, idx) => {
               const isErr = item.level === 'error';
               const isWarn = item.level === 'warn';
               const levelColor = isErr ? 'var(--text-danger)' : isWarn ? 'var(--text-warning)' : 'var(--status-success-text)';
               return (
-                <div key={item.id || idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: 1.4, padding: '3px 6px', borderRadius: '4px', background: isErr ? 'rgba(239,68,68,0.06)' : isWarn ? 'rgba(245,158,11,0.06)' : 'transparent' }}>
+                <div key={item.id || idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: 1.4, padding: '3px 6px', borderRadius: 'var(--radius-default)', background: isErr ? 'rgba(239,68,68,0.06)' : isWarn ? 'rgba(245,158,11,0.06)' : 'transparent' }}>
                   <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: '10px' }}>
                     [{new Date(item.timestamp).toLocaleTimeString()}]
                   </span>
-                  <span style={{ background: 'var(--surface-accent)', color: 'var(--accent-solid)', padding: '0 4px', borderRadius: '3px', fontSize: '9.5px', textTransform: 'uppercase', flexShrink: 0 }}>
+                  <span style={{ background: 'var(--surface-accent)', color: 'var(--accent-solid)', padding: '0 4px', borderRadius: 'var(--radius-default)', fontSize: '9.5px', textTransform: 'uppercase', flexShrink: 0 }}>
                     {item.subsystem || 'app'}
                   </span>
                   <span style={{ color: levelColor, fontWeight: 700, fontSize: '9.5px', textTransform: 'uppercase', flexShrink: 0, width: '42px' }}>

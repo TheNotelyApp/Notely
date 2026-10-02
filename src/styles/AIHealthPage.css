@@ -432,7 +432,7 @@
 
 .ahp-bubble {
   max-width: 88%;
-  border-radius: var(--radius-lg, 8px);
+  border-radius: var(--radius-lg);
   padding: 5px 10px;
   font-size: 11px;
   line-height: 1.35;
@@ -692,7 +692,7 @@
 .ahp-card button,
 .kg-header-actions .btn-secondary {
   border: 1px solid var(--border-soft) !important;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   color: var(--app-text);
   transition: border-color var(--motion-fast, 0.15s ease), background var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease), color var(--motion-fast, 0.15s ease);
@@ -1103,7 +1103,7 @@
 
 /* Right expandable card container */
 .atv-timeline-card {
-  border-radius: var(--radius-lg, 8px);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--surface-bg);
   margin-bottom: 8px;
@@ -1206,7 +1206,7 @@
   font-family: 'Consolas', 'Menlo', monospace;
   font-weight: 600;
   padding: 1px 6px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 

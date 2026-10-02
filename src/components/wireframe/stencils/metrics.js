@@ -8,25 +8,25 @@ export const metricStencils = [
     desc: "3 metric KPI cards with delta percentages",
     icon: BarChart3,
     content: `<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin:16px 0;box-sizing:border-box;">
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
         <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;">Monthly Revenue</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;">
           <span style="font-size:24px;font-weight:800;color:#0f172a;">$48,250</span>
-          <span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">+12.4%</span>
+          <span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius: 2px;font-size:10px;font-weight:700;">+12.4%</span>
         </div>
       </div>
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
         <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;">Active Projects</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;">
           <span style="font-size:24px;font-weight:800;color:#0f172a;">1,420</span>
-          <span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">+8.1%</span>
+          <span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius: 2px;font-size:10px;font-weight:700;">+8.1%</span>
         </div>
       </div>
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:20px;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
         <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;">Avg. Response Time</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;">
           <span style="font-size:24px;font-weight:800;color:#0f172a;">184ms</span>
-          <span style="background:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">-2.3%</span>
+          <span style="background:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius: 2px;font-size:10px;font-weight:700;">-2.3%</span>
         </div>
       </div>
     </div>`
@@ -37,7 +37,7 @@ export const metricStencils = [
     category: "metrics",
     desc: "Stat metric with vector trendline polyline",
     icon: TrendingUp,
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin:14px 0;box-shadow:0 2px 4px rgba(0,0,0,0.02);box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:18px;margin:14px 0;box-shadow:0 2px 4px rgba(0,0,0,0.02);box-sizing:border-box;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div>
           <div style="font-size:11px;font-weight:600;color:#64748b;">Daily Pageviews</div>
@@ -58,23 +58,23 @@ export const metricStencils = [
     category: "metrics",
     desc: "Histogram comparison columns",
     icon: BarChart3,
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin:14px 0;box-shadow:0 2px 4px rgba(0,0,0,0.02);box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:18px;margin:14px 0;box-shadow:0 2px 4px rgba(0,0,0,0.02);box-sizing:border-box;">
       <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px;">Quarterly Growth</div>
       <div style="display:flex;align-items:flex-end;gap:12px;height:80px;">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <div style="width:100%;height:30px;background:#e2e8f0;border-radius:4px 4px 0 0;"></div>
+          <div style="width:100%;height:30px;background:#e2e8f0;border-radius: 2px 2px 0 0;"></div>
           <span style="font-size:9px;color:#64748b;">Jan</span>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <div style="width:100%;height:50px;background:#e2e8f0;border-radius:4px 4px 0 0;"></div>
+          <div style="width:100%;height:50px;background:#e2e8f0;border-radius: 2px 2px 0 0;"></div>
           <span style="font-size:9px;color:#64748b;">Feb</span>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <div style="width:100%;height:70px;background:#2563eb;border-radius:4px 4px 0 0;"></div>
+          <div style="width:100%;height:70px;background:#2563eb;border-radius: 2px 2px 0 0;"></div>
           <span style="font-size:9px;color:#2563eb;font-weight:700;">Mar</span>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <div style="width:100%;height:40px;background:#e2e8f0;border-radius:4px 4px 0 0;"></div>
+          <div style="width:100%;height:40px;background:#e2e8f0;border-radius: 2px 2px 0 0;"></div>
           <span style="font-size:9px;color:#64748b;">Apr</span>
         </div>
       </div>
@@ -86,7 +86,7 @@ export const metricStencils = [
     category: "metrics",
     desc: "Target milestone bar with percentage indicator",
     icon: CheckSquare,
-    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:14px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:16px;margin:14px 0;box-sizing:border-box;">
       <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:6px;">
         <span style="color:#0f172a;">Sprint Goals</span>
         <span style="color:#2563eb;font-weight:700;">72%</span>

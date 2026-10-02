@@ -31,7 +31,7 @@ export function HelpConfirmationModal({ open, onClose }) {
           This will open the help documentation site in your default system web browser.
         </p>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "var(--surface-muted)", border: "1px solid var(--border-subtle)", borderRadius: "6px", padding: "8px 12px", fontSize: "0.85rem", color: "var(--accent-strong)", fontFamily: "var(--vp-font-family-mono, monospace)", marginBottom: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "var(--surface-muted)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-default)", padding: "8px 12px", fontSize: "0.85rem", color: "var(--accent-strong)", fontFamily: "var(--vp-font-family-mono, monospace)", marginBottom: "24px" }}>
           <span>{docUrl}</span>
           <ExternalLink size={14} />
         </div>
@@ -47,7 +47,7 @@ export function HelpConfirmationModal({ open, onClose }) {
               gap: "6px",
               flex: 1,
               padding: "10px 16px",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-default)",
               border: "1px solid var(--border-default)",
               background: "transparent",
               color: "var(--text-strong)",
@@ -70,7 +70,7 @@ export function HelpConfirmationModal({ open, onClose }) {
               gap: "6px",
               flex: 1,
               padding: "10px 16px",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-default)",
               border: "none",
               background: "var(--accent-solid)",
               color: "#ffffff",

@@ -204,7 +204,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
       `</button>` +
     `</span>`;
 
-    return `<span class="markdown-image-frame markdown-audio-card" data-asset-path="${safeSrc}" data-audio-src="${safeSrc}" data-audio-title="${escapeHtml(label)}" style="display:flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface-bg, rgba(255,255,255,0.05));border:1px solid var(--border-default, rgba(255,255,255,0.12));border-radius:10px;min-width:320px;max-width:520px;box-sizing:border-box;margin:8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;">` +
+    return `<span class="markdown-image-frame markdown-audio-card" data-asset-path="${safeSrc}" data-audio-src="${safeSrc}" data-audio-title="${escapeHtml(label)}" style="display:flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface-bg, rgba(255,255,255,0.05));border:1px solid var(--border-default, rgba(255,255,255,0.12));border-radius:var(--radius-default);min-width:320px;max-width:520px;box-sizing:border-box;margin:8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);position:relative;">` +
       `${actionsHtml}` +
       `<span style="display:flex;align-items:center;justify-content:space-between;gap:8px;">` +
         `<span style="display:flex;align-items:center;gap:8px;overflow:hidden;padding-right:60px;">` +
@@ -215,7 +215,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
         `</span>` +
         `<span class="markdown-audio-badge" style="font-size:10px;font-weight:700;color:#f472b6;background:rgba(236,72,153,0.12);padding:2px 8px;border-radius:999px;border:1px solid rgba(236,72,153,0.3);letter-spacing:0.04em;">AUDIO</span>` +
       `</span>` +
-      `<audio controls controlsList="nodownload" preload="metadata" src="${safeSrc}" data-asset-path="${safeSrc}" style="width:100%;height:36px;outline:none;border-radius:6px;"></audio>` +
+      `<audio controls controlsList="nodownload" preload="metadata" src="${safeSrc}" data-asset-path="${safeSrc}" style="width:100%;height:36px;outline:none;border-radius:var(--radius-default);"></audio>` +
     `</span>`;
   }
 
@@ -235,7 +235,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
         `<span>Download</span>` +
       `</button>` +
     `</span>`;
-    return `<span class="markdown-image-frame markdown-video-card" data-asset-path="${safeSrc}" data-video-src="${safeSrc}" data-video-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to play video" style="cursor:pointer;position:relative;display:inline-block;">${actionsHtml}<video src="${safeSrc}" preload="metadata" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:cover;pointer-events:none;display:block;"></video><span class="markdown-video-play-badge" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);pointer-events:none;">▶ Play Video</span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
+    return `<span class="markdown-image-frame markdown-video-card" data-asset-path="${safeSrc}" data-video-src="${safeSrc}" data-video-title="${escapeHtml(label)}" role="button" tabindex="0" title="Click to play video" style="cursor:pointer;position:relative;display:inline-block;">${actionsHtml}<video src="${safeSrc}" preload="metadata" style="max-width:100%;max-height:280px;border-radius:var(--radius-default);object-fit:cover;pointer-events:none;display:block;"></video><span class="markdown-video-play-badge" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);pointer-events:none;">▶ Play Video</span><span class="markdown-image-name" data-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</span></span>`;
   }
 
   if (src && !token.attrGet("data-asset-path") && !/^(data:|blob:)/i.test(src)) {

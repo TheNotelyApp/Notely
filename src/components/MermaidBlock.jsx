@@ -103,7 +103,7 @@ export function MermaidBlock({ code, onEdit, onNotify }) {
           color: "var(--danger-color, #ef4444)",
           background: "color-mix(in srgb, var(--danger-color, #ef4444) 8%, transparent)",
           border: "1px solid var(--danger-color, #ef4444)",
-          borderRadius: 6,
+          borderRadius: "var(--radius-default)",
           fontSize: "0.82rem",
           margin: "8px 0",
         }}

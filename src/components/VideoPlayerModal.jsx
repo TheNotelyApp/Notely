@@ -50,7 +50,7 @@ export function VideoPlayerModal({ open, src, title, onClose }) {
           alignItems: "center",
           justifyContent: "center",
           background: "#000",
-          borderRadius: "var(--radius-lg, 8px)",
+          borderRadius: "var(--radius-default)",
           overflow: "hidden",
           margin: "12px 0 16px",
         }}

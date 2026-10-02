@@ -20,7 +20,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "ThingWorx Thing asset card with live beacon, OEE & property KPIs",
     icon: Cpu,
-    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:18px;max-width:380px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:18px;max-width:380px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin:16px 0;box-sizing:border-box;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #f1f5f9;padding-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="width:10px;height:10px;border-radius:999px;background:#10b981;box-shadow:0 0 6px #10b981;display:inline-block;"></span>
@@ -29,18 +29,18 @@ export const thingworxStencils = [
             <div style="font-size:10px;color:#64748b;">ThingTemplate: GenericMachinery</div>
           </div>
         </div>
-        <span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;">CONNECTED</span>
+        <span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:2px 8px;border-radius: 2px;">CONNECTED</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-bottom:12px;">
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius: 2px;padding:8px;text-align:center;">
           <div style="font-size:9px;color:#64748b;font-weight:700;">TEMP</div>
           <div style="font-size:14px;font-weight:800;color:#0f172a;margin-top:2px;">72.4°C</div>
         </div>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius: 2px;padding:8px;text-align:center;">
           <div style="font-size:9px;color:#64748b;font-weight:700;">SPEED</div>
           <div style="font-size:14px;font-weight:800;color:#0f172a;margin-top:2px;">1,420 RPM</div>
         </div>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius: 2px;padding:8px;text-align:center;">
           <div style="font-size:9px;color:#64748b;font-weight:700;">OEE</div>
           <div style="font-size:14px;font-weight:800;color:#2563eb;margin-top:2px;">88.6%</div>
         </div>
@@ -57,7 +57,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Industrial circular gauge with safe, warning & alarm zones",
     icon: Gauge,
-    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:20px;max-width:280px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.03);margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:20px;max-width:280px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.03);margin:16px 0;box-sizing:border-box;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Hydraulic Pressure</div>
       <div style="position:relative;width:180px;height:100px;margin:0 auto 10px;">
         <svg viewBox="0 0 180 100" style="width:100%;height:100%;">
@@ -81,17 +81,17 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Industrial telemetry line chart with time window selector & live feed",
     icon: Activity,
-    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:18px;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:18px;margin:16px 0;box-sizing:border-box;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid #f1f5f9;padding-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:13px;font-weight:800;color:#0f172a;">Motor Vibration Telemetry</span>
-          <span style="font-size:9px;background:#eff6ff;color:#2563eb;padding:2px 6px;border-radius:4px;font-weight:700;">LIVE STREAM</span>
+          <span style="font-size:9px;background:#eff6ff;color:#2563eb;padding:2px 6px;border-radius: 2px;font-weight:700;">LIVE STREAM</span>
         </div>
         <div style="display:flex;gap:4px;font-size:10px;font-weight:600;">
-          <button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;cursor:pointer;">1h</button>
-          <button style="padding:3px 8px;border:none;background:#2563eb;color:#ffffff;border-radius:4px;cursor:pointer;">8h</button>
-          <button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;cursor:pointer;">24h</button>
-          <button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;cursor:pointer;">7d</button>
+          <button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;cursor:pointer;">1h</button>
+          <button style="padding:3px 8px;border:none;background:#2563eb;color:#ffffff;border-radius: 2px;cursor:pointer;">8h</button>
+          <button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;cursor:pointer;">24h</button>
+          <button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;cursor:pointer;">7d</button>
         </div>
       </div>
       <div style="height:140px;width:100%;position:relative;">
@@ -119,13 +119,13 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Active alarm console with severity, code, thing name & ack button",
     icon: AlertTriangle,
-    content: `<div style="border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="border:1px solid #cbd5e1;border-radius: 2px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
       <div style="background:#0f172a;color:#ffffff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span>🚨 Industrial Alarm Console</span>
           <span style="background:#ef4444;color:#ffffff;font-size:10px;padding:2px 6px;border-radius:999px;">3 Active</span>
         </div>
-        <button style="padding:4px 10px;border:none;background:#334155;color:#ffffff;border-radius:4px;font-size:10px;cursor:pointer;">Acknowledge All</button>
+        <button style="padding:4px 10px;border:none;background:#334155;color:#ffffff;border-radius: 2px;font-size:10px;cursor:pointer;">Acknowledge All</button>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;text-align:left;">
         <thead style="background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#64748b;">
@@ -139,25 +139,25 @@ export const thingworxStencils = [
         </thead>
         <tbody>
           <tr style="border-bottom:1px solid #f1f5f9;background:#fff5f5;">
-            <td style="padding:8px 12px;"><span style="background:#fee2e2;color:#991b1b;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9px;">CRITICAL</span></td>
+            <td style="padding:8px 12px;"><span style="background:#fee2e2;color:#991b1b;font-weight:800;padding:2px 6px;border-radius: 2px;font-size:9px;">CRITICAL</span></td>
             <td style="padding:8px 12px;color:#64748b;">11:42:08</td>
             <td style="padding:8px 12px;font-weight:700;color:#0f172a;">Extruder-Line-01</td>
             <td style="padding:8px 12px;color:#b91c1c;font-weight:600;">Barrel Temperature High High (> 280°C)</td>
-            <td style="padding:8px 12px;text-align:right;"><button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;font-size:10px;cursor:pointer;">Ack</button></td>
+            <td style="padding:8px 12px;text-align:right;"><button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;font-size:10px;cursor:pointer;">Ack</button></td>
           </tr>
           <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:8px 12px;"><span style="background:#fef3c7;color:#92400e;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9px;">WARNING</span></td>
+            <td style="padding:8px 12px;"><span style="background:#fef3c7;color:#92400e;font-weight:800;padding:2px 6px;border-radius: 2px;font-size:9px;">WARNING</span></td>
             <td style="padding:8px 12px;color:#64748b;">11:38:15</td>
             <td style="padding:8px 12px;font-weight:700;color:#0f172a;">Coolant-Pump-03</td>
             <td style="padding:8px 12px;color:#475569;">Flow Rate Deviation > 15%</td>
-            <td style="padding:8px 12px;text-align:right;"><button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;font-size:10px;cursor:pointer;">Ack</button></td>
+            <td style="padding:8px 12px;text-align:right;"><button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;font-size:10px;cursor:pointer;">Ack</button></td>
           </tr>
           <tr>
-            <td style="padding:8px 12px;"><span style="background:#e0f2fe;color:#0369a1;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9px;">INFO</span></td>
+            <td style="padding:8px 12px;"><span style="background:#e0f2fe;color:#0369a1;font-weight:800;padding:2px 6px;border-radius: 2px;font-size:9px;">INFO</span></td>
             <td style="padding:8px 12px;color:#64748b;">11:30:00</td>
             <td style="padding:8px 12px;font-weight:700;color:#0f172a;">Plant-Gateway-North</td>
             <td style="padding:8px 12px;color:#475569;">Periodic edge sync complete</td>
-            <td style="padding:8px 12px;text-align:right;"><button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;font-size:10px;cursor:pointer;">Ack</button></td>
+            <td style="padding:8px 12px;text-align:right;"><button style="padding:3px 8px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;font-size:10px;cursor:pointer;">Ack</button></td>
           </tr>
         </tbody>
       </table>
@@ -169,7 +169,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Standard ThingWorx Thing properties table with data type & quality",
     icon: BarChart3,
-    content: `<div style="border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="border:1px solid #cbd5e1;border-radius: 2px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
       <div style="background:#f8fafc;padding:10px 14px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12px;font-weight:700;color:#0f172a;">Thing Properties: PackagingUnit_02</span>
         <span style="font-size:10px;color:#64748b;">Auto-refresh: 1000ms</span>
@@ -223,10 +223,10 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Industrial tank visual with dynamic level fill %, inlet/outlet valves",
     icon: Droplets,
-    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:20px;max-width:320px;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:20px;max-width:320px;margin:16px 0;box-sizing:border-box;">
       <div style="font-size:12px;font-weight:800;color:#0f172a;text-align:center;margin-bottom:14px;">Storage Tank TK-102</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;">
-        <div style="width:100px;height:160px;border:3px solid #334155;border-radius:12px;position:relative;background:#f8fafc;overflow:hidden;box-sizing:border-box;">
+        <div style="width:100px;height:160px;border:3px solid #334155;border-radius: 2px;position:relative;background:#f8fafc;overflow:hidden;box-sizing:border-box;">
           <div style="position:absolute;bottom:0;width:100%;height:68%;background:linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);"></div>
           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);font-size:16px;font-weight:900;color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,0.4);">68%</div>
         </div>
@@ -237,11 +237,11 @@ export const thingworxStencils = [
           </div>
           <div>
             <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;">Inlet Valve V-1</div>
-            <span style="background:#dcfce7;color:#166534;font-weight:700;padding:2px 6px;border-radius:4px;font-size:10px;">OPEN (92%)</span>
+            <span style="background:#dcfce7;color:#166534;font-weight:700;padding:2px 6px;border-radius: 2px;font-size:10px;">OPEN (92%)</span>
           </div>
           <div>
             <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;">Outlet Valve V-2</div>
-            <span style="background:#fee2e2;color:#991b1b;font-weight:700;padding:2px 6px;border-radius:4px;font-size:10px;">CLOSED</span>
+            <span style="background:#fee2e2;color:#991b1b;font-weight:700;padding:2px 6px;border-radius: 2px;font-size:10px;">CLOSED</span>
           </div>
         </div>
       </div>
@@ -253,7 +253,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Machinery status beacon strip (Power, Ready, Run, Alarm, Comm)",
     icon: Disc,
-    content: `<div style="background:#1e293b;border-radius:8px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;max-width:440px;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#1e293b;border-radius: 2px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;max-width:440px;margin:16px 0;box-sizing:border-box;">
       <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
         <span style="width:12px;height:12px;border-radius:999px;background:#10b981;box-shadow:0 0 8px #10b981;display:inline-block;"></span>
         <span style="font-size:10px;font-weight:700;color:#f8fafc;">POWER</span>
@@ -282,7 +282,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Industrial 7-segment style high-visibility numeric display",
     icon: Zap,
-    content: `<div style="background:#0f172a;border-radius:8px;padding:16px 20px;max-width:240px;color:#ffffff;box-sizing:border-box;margin:16px 0;">
+    content: `<div style="background:#0f172a;border-radius: 2px;padding:16px 20px;max-width:240px;color:#ffffff;box-sizing:border-box;margin:16px 0;">
       <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Flow Rate Sensor 01</div>
       <div style="font-size:32px;font-weight:900;color:#38bdf8;font-family:monospace;letter-spacing:0.04em;">
         428.6 <span style="font-size:14px;color:#94a3b8;font-family:sans-serif;">GPM</span>
@@ -300,12 +300,12 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Industrial Enterprise / Site / Line / Machine hierarchy tree selector",
     icon: ListTree,
-    content: `<div style="border:1px solid #cbd5e1;border-radius:8px;background:#ffffff;padding:16px;max-width:280px;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="border:1px solid #cbd5e1;border-radius: 2px;background:#ffffff;padding:16px;max-width:280px;margin:16px 0;box-sizing:border-box;">
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px;">Asset Hierarchy</div>
       <div style="font-size:11px;color:#334155;display:flex;flex-direction:column;gap:6px;">
         <div style="font-weight:700;color:#0f172a;">▾ 🏭 Plant North America</div>
         <div style="padding-left:14px;font-weight:600;color:#0f172a;">▾ ⚙️ Assembly Line 01</div>
-        <div style="padding-left:28px;background:#eff6ff;color:#2563eb;font-weight:700;padding:4px 8px;border-radius:4px;">• 🤖 Robotic Arm 04 [Active]</div>
+        <div style="padding-left:28px;background:#eff6ff;color:#2563eb;font-weight:700;padding:4px 8px;border-radius: 2px;">• 🤖 Robotic Arm 04 [Active]</div>
         <div style="padding-left:28px;color:#64748b;">• 📦 Packaging Station 02</div>
         <div style="padding-left:14px;color:#64748b;">▸ ⚙️ Assembly Line 02</div>
         <div style="padding-left:14px;color:#64748b;">▸ ❄️ Utilities & HVAC</div>
@@ -318,7 +318,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Industrial physical controls with Start, Stop, and Emergency E-Stop",
     icon: Power,
-    content: `<div style="background:#f1f5f9;border:2px solid #cbd5e1;border-radius:8px;padding:18px;max-width:340px;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#f1f5f9;border:2px solid #cbd5e1;border-radius: 2px;padding:18px;max-width:340px;margin:16px 0;box-sizing:border-box;">
       <div style="font-size:11px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px;text-align:center;">Operator Control Console</div>
       <div style="display:flex;align-items:center;justify-content:space-around;">
         <button style="width:48px;height:48px;border-radius:999px;background:#16a34a;color:#ffffff;border:3px solid #15803d;font-weight:800;font-size:11px;cursor:pointer;box-shadow:0 3px 6px rgba(0,0,0,0.15);">START</button>
@@ -336,7 +336,7 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Overall Equipment Effectiveness with Availability, Performance, Quality",
     icon: Radio,
-    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:18px;max-width:440px;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:18px;max-width:440px;margin:16px 0;box-sizing:border-box;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <span style="font-size:13px;font-weight:800;color:#0f172a;">OEE Performance Scorecard</span>
         <span style="font-size:22px;font-weight:900;color:#2563eb;">84.2%</span>
@@ -378,16 +378,16 @@ export const thingworxStencils = [
     category: "thingworx",
     desc: "Shift 1, Shift 2, Night shift buttons + custom telemetry interval",
     icon: Sliders,
-    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin:16px 0;box-sizing:border-box;">
       <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;">
         <span style="color:#64748b;">Shift:</span>
-        <button style="padding:4px 8px;border:none;background:#2563eb;color:#ffffff;border-radius:4px;cursor:pointer;">Shift 1 (Day)</button>
-        <button style="padding:4px 8px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius:4px;cursor:pointer;">Shift 2 (Eve)</button>
-        <button style="padding:4px 8px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius:4px;cursor:pointer;">Shift 3 (Night)</button>
+        <button style="padding:4px 8px;border:none;background:#2563eb;color:#ffffff;border-radius: 2px;cursor:pointer;">Shift 1 (Day)</button>
+        <button style="padding:4px 8px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius: 2px;cursor:pointer;">Shift 2 (Eve)</button>
+        <button style="padding:4px 8px;border:1px solid #cbd5e1;background:#ffffff;color:#334155;border-radius: 2px;cursor:pointer;">Shift 3 (Night)</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
         <span style="color:#64748b;">Interval:</span>
-        <select style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;">
+        <select style="padding:4px 8px;border:1px solid #cbd5e1;border-radius: 2px;font-size:11px;">
           <option>5s Average</option>
           <option>1m Rollup</option>
           <option>1h Aggregated</option>

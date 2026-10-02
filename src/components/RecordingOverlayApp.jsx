@@ -107,7 +107,7 @@ export function RecordingOverlayApp() {
           pointer-events: auto !important;
           background: rgba(255, 255, 255, 0.08);
           border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 8px;
+          border-radius: var(--radius-default);
           color: #f8fafc;
           cursor: pointer;
           padding: 5px 10px;

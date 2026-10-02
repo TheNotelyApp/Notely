@@ -454,7 +454,7 @@ export function MCPSettingsContent({ notify }) {
                 padding: "8px 12px",
                 background: "var(--status-warning-bg, rgba(234, 179, 8, 0.1))",
                 border: "1px solid var(--status-warning-border, rgba(234, 179, 8, 0.3))",
-                borderRadius: "6px",
+                borderRadius: "var(--radius-default)",
                 color: "var(--status-warning-text, #eab308)",
                 fontSize: "12px"
               }}
@@ -483,7 +483,7 @@ export function MCPSettingsContent({ notify }) {
           <h4 className="mcp-card-heading" style={{ margin: 0 }}>
             <Globe size={16} /> Client Integration Snippets
           </h4>
-          <div style={{ display: "inline-flex", gap: "4px", background: "var(--surface-muted)", padding: "2px", borderRadius: "6px" }}>
+          <div style={{ display: "inline-flex", gap: "4px", background: "var(--surface-muted)", padding: "2px", borderRadius: "var(--radius-default)" }}>
             <AppButton
               variant={configTarget === "antigravity" ? "primary" : "secondary"}
               onClick={() => setConfigTarget("antigravity")}

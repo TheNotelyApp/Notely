@@ -89,7 +89,7 @@ export default function UpdateModal({
                     overflowY: "auto",
                     background: "var(--surface-muted)",
                     border: "1px solid var(--border-soft)",
-                    borderRadius: "6px",
+                    borderRadius: "var(--radius-default)",
                     padding: "10px 12px",
                     fontSize: "0.82rem",
                     color: "var(--text-default)",
@@ -118,7 +118,7 @@ export default function UpdateModal({
                 type="button"
                 style={{
                   padding: "0 16px",
-                  borderRadius: "6px",
+                  borderRadius: "var(--radius-default)",
                   border: "1px solid var(--border-default)",
                   background: "transparent",
                   color: "var(--text-strong)",

@@ -164,7 +164,7 @@ stateDiagram-v2
   position: relative;
   display: block;
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 \`\`\`

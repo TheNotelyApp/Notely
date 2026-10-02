@@ -8,7 +8,7 @@
   margin: 8px 12px 10px;
   padding: 8px 10px;
   border: 1px solid #d0dbd6;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   background: linear-gradient(135deg, #fafbfb 0%, #f3f8f6 100%);
   font-size: 11px;
   color: #45666b;
@@ -162,7 +162,7 @@
   font-size: 11px;
   background: var(--surface-bg);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   border: 1px solid var(--border-soft);
   color: var(--text-secondary);
 }
@@ -195,7 +195,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   border: 1px solid var(--status-warning-border);
   background: var(--status-warning-bg);
 }
@@ -238,7 +238,7 @@
   gap: 4px;
   padding: 4px 8px;
   border: 1px solid var(--status-warning-border);
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   background: var(--status-warning-bg);
   color: var(--status-warning-text);
   font-size: 10px;
@@ -374,7 +374,7 @@
   font-size: 11px;
   font-weight: 600;
   border: 1px solid var(--border-default, #cbdad5);
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: var(--surface-bg, #fff);
   color: var(--text-muted, #60767c);
   cursor: pointer;
@@ -527,7 +527,7 @@
 .media-toolbar .app-select-option {
   padding: 5px 8px;
   font-size: 11px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
 }
 
 .media-toolbar .app-select-group-label {
@@ -561,7 +561,7 @@
   padding: 3px 9px;
   font-size: 12px;
   border: 1px solid var(--border-default, #cbdad5);
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: var(--surface-bg, #fff);
   color: var(--app-text, #1a3a3e);
   box-sizing: border-box;
@@ -625,7 +625,7 @@
 .media-item {
   background: var(--surface-bg);
   border: 1px solid #dce8e3;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   overflow: visible;
   transition: all 0.2s ease;
   position: relative;
@@ -646,7 +646,7 @@
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-default) var(--radius-default) 0 0;
 }
 
 .media-preview:focus-visible {
@@ -699,7 +699,7 @@
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   border: none;
   background: rgba(10, 28, 32, 0.55);
   color: #ffffff;
@@ -744,7 +744,7 @@
   width: 100%;
   padding: 6px 9px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: none;
   color: var(--app-text, #1a3a3e);
   font-size: 12px;
@@ -885,7 +885,7 @@
   align-items: stretch;
   margin: 0 0 6px;
   border-left: 3px solid #8eb8a8;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   background: #f2f7f5;
   overflow: hidden;
 }
@@ -1134,7 +1134,7 @@
   gap: 12px;
   padding: 10px;
   border: 1px solid #dbe6e1;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   background: var(--surface-bg);
 }
 

@@ -484,7 +484,7 @@ export default function KnowledgeGraph({ onBack }) {
                   gap: '6px',
                   background: 'var(--surface-elevated)',
                   border: '1px solid var(--border-default)',
-                  borderRadius: '16px',
+                  borderRadius: 'var(--radius-default)',
                   padding: '4px 10px',
                   fontSize: '11px',
                   color: 'var(--text-strong)',
@@ -541,7 +541,7 @@ export default function KnowledgeGraph({ onBack }) {
               <strong style={{ color: 'var(--brand-primary)' }}>{graphStatus.progress || 0}%</strong>
             </div>
 
-            <div style={{ width: '100%', height: '8px', background: 'var(--border-soft)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '8px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
               <div style={{ width: `${graphStatus.progress || 0}%`, height: '100%', background: 'var(--accent-solid)', transition: 'width 0.2s ease' }} />
             </div>
 
@@ -549,7 +549,7 @@ export default function KnowledgeGraph({ onBack }) {
               Processed: {graphStatus.current} / {graphStatus.total} notes
             </div>
 
-            <div style={{ marginTop: '8px', maxHeight: '160px', overflowY: 'auto', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', borderRadius: '6px', padding: '8px' }}>
+            <div style={{ marginTop: '8px', maxHeight: '160px', overflowY: 'auto', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-default)', padding: '8px' }}>
               <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--text-muted)' }}>Recent Extraction Logs:</div>
               {graphLogs.slice(-6).map((logItem, idx) => (
                 <div key={idx} style={{ fontSize: '10px', color: 'var(--text-secondary)', padding: '2px 0' }}>

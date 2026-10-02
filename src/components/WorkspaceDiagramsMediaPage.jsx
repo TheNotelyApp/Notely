@@ -114,7 +114,7 @@ function VideoPlayerPreviewItem({ asset, basePath }) {
 
   return (
     <div style={{ padding: "8px", width: "100%", display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
-      <video controls src={dataUrl} style={{ width: "100%", maxHeight: "240px", borderRadius: "6px", background: "#000" }} />
+      <video controls src={dataUrl} style={{ width: "100%", maxHeight: "240px", borderRadius: "var(--radius-default)", background: "#000" }} />
     </div>
   );
 }
@@ -221,7 +221,7 @@ function TranscriptPreviewItem({ asset, basePath, isCardPreview = false, onNotif
       </div>
 
       {hasStructuredSummary ? (
-        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "6px", fontSize: "11px", lineHeight: 1.4 }}>
+        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "var(--radius-default)", fontSize: "11px", lineHeight: 1.4 }}>
           <strong style={{ color: "#38bdf8", display: "block", marginBottom: "4px" }}>Summary</strong>
           {Array.isArray(transcriptData.summary.keyPoints) && transcriptData.summary.keyPoints.length > 0 && (
             <div style={{ marginBottom: "6px" }}>
@@ -245,7 +245,7 @@ function TranscriptPreviewItem({ asset, basePath, isCardPreview = false, onNotif
           )}
         </div>
       ) : summaryText ? (
-        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "6px", fontSize: "11px", lineHeight: 1.4 }}>
+        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "var(--radius-default)", fontSize: "11px", lineHeight: 1.4 }}>
           <strong style={{ color: "#38bdf8", display: "block", marginBottom: "2px" }}>Summary</strong>
           <span>{summaryText}</span>
         </div>
@@ -1084,7 +1084,7 @@ export default function WorkspaceDiagramsMediaPage({
 
                 {/* Generate AI Transcript action card for audio and video assets */}
                 {(selectedAsset.category === "audio" || selectedAsset.category === "video") && (
-                  <div style={{ margin: "10px 0", padding: "10px 12px", background: "var(--status-info-bg)", border: "1px solid var(--status-info-border)", borderRadius: "var(--radius-md, 8px)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ margin: "10px 0", padding: "10px 12px", background: "var(--status-info-bg)", border: "1px solid var(--status-info-border)", borderRadius: "var(--radius-default)", display: "flex", flexDirection: "column", gap: "6px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--status-info-text)" }}>
                         Speech-to-Text Transcription
@@ -1176,7 +1176,7 @@ export default function WorkspaceDiagramsMediaPage({
                   </div>
 
                   {selectedAsset.referencedBy.length === 0 ? (
-                    <div style={{ padding: "12px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-md, 6px)" }}>
+                    <div style={{ padding: "12px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-default)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-warning-text)", fontWeight: "600", fontSize: "12px", marginBottom: "4px" }}>
                         <AlertCircle size={14} /> Unused Media File
                       </div>

@@ -467,7 +467,7 @@
   background: #12181a !important;
   color: #7fb6bf !important;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   border: 1px solid #263336;
 }
 

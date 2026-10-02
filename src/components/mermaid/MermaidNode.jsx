@@ -58,11 +58,11 @@ export const MermaidNode = memo(function MermaidNode({ id, data, selected }) {
 
   const getBorderRadius = () => {
     if (isCircle) return "50%";
-    if (isStadium) return "9999px";
-    if (isRounded) return "16px";
-    if (isSubroutine) return "4px";
-    if (isDiamond) return "4px";
-    return "6px";
+    if (isStadium) return "var(--radius-pill)";
+    if (isRounded) return "var(--radius-xl)";
+    if (isSubroutine) return "var(--radius-default)";
+    if (isDiamond) return "var(--radius-default)";
+    return "var(--radius-default)";
   };
 
   const nodeStyle = {
@@ -138,7 +138,7 @@ export const MermaidNode = memo(function MermaidNode({ id, data, selected }) {
                 background: "var(--surface-bg, #ffffff)",
                 color: "var(--text-strong, #0f172a)",
                 border: "1px solid var(--accent-solid, #3b82f6)",
-                borderRadius: 4,
+                borderRadius: "var(--radius-default)",
                 padding: "2px 6px",
                 fontSize: "0.82rem",
                 width: "90px",

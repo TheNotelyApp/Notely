@@ -7,7 +7,7 @@ export const tableStencils = [
     category: "tables",
     desc: "Structured data table with status pills and actions",
     icon: Layers,
-    content: `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
+    content: `<div style="border:1px solid #e2e8f0;border-radius: 2px;overflow:hidden;background:#ffffff;margin:16px 0;box-sizing:border-box;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left;">
         <thead>
           <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
@@ -47,32 +47,32 @@ export const tableStencils = [
     desc: "To Do, In Progress, and Done task board",
     icon: Columns,
     content: `<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin:16px 0;box-sizing:border-box;">
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius: 2px;padding:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <span style="font-size:11px;font-weight:700;color:#0f172a;">To Do</span>
           <span style="background:#e2e8f0;color:#475569;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;">2</span>
         </div>
-        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:10px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:10px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
           <span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;">Urgent</span>
           <div style="font-size:11px;font-weight:600;color:#0f172a;margin-top:4px;">Auth token expiry bug</div>
         </div>
       </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius: 2px;padding:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <span style="font-size:11px;font-weight:700;color:#0f172a;">In Progress</span>
           <span style="background:#e2e8f0;color:#475569;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;">1</span>
         </div>
-        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
           <span style="background:#eff6ff;color:#1e40af;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;">Feature</span>
           <div style="font-size:11px;font-weight:600;color:#0f172a;margin-top:4px;">Wireframe Stencil Library</div>
         </div>
       </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius: 2px;padding:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <span style="font-size:11px;font-weight:700;color:#0f172a;">Done</span>
           <span style="background:#dcfce7;color:#15803d;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;">3</span>
         </div>
-        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+        <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
           <span style="background:#f0fdf4;color:#166534;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;">Core</span>
           <div style="font-size:11px;font-weight:600;color:#0f172a;margin-top:4px;">Dropdown category filter</div>
         </div>
@@ -85,7 +85,7 @@ export const tableStencils = [
     category: "tables",
     desc: "Line item billing receipt with totals breakdown",
     icon: FileText,
-    content: `<div style="max-width:520px;margin:16px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;box-sizing:border-box;">
+    content: `<div style="max-width:520px;margin:16px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius: 2px;padding:20px;box-sizing:border-box;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
         <div>
           <div style="font-size:16px;font-weight:800;color:#0f172a;">Invoice #INV-2048</div>

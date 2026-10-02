@@ -273,7 +273,7 @@ export default function EmbeddingsPage({ onBack }) {
                 background: 'var(--surface-muted)',
                 border: '1px solid var(--accent-solid)',
                 padding: '0 12px',
-                borderRadius: '6px',
+                borderRadius: 'var(--radius-default)',
                 fontSize: '11px',
                 color: 'var(--text-strong)',
                 marginLeft: 'auto',
@@ -286,7 +286,7 @@ export default function EmbeddingsPage({ onBack }) {
               <RefreshCw size={12} className="spin" style={{ color: 'var(--accent-solid)' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 600 }}>Indexing vector embeddings...</span>
-                <div style={{ width: '120px', height: '3px', background: 'var(--border-soft)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: '120px', height: '3px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
                   <div style={{
                     width: `${status.queueTotal > 0 ? Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100)) : 0}%`,
                     height: '100%',
@@ -300,7 +300,7 @@ export default function EmbeddingsPage({ onBack }) {
               </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: 'var(--radius-default)', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Provider:</span>
                 <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'Local' : 'HuggingFace'}</strong>
@@ -355,7 +355,7 @@ export default function EmbeddingsPage({ onBack }) {
           <div className="kg-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
             <div className="kg-sidebar-section-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
               {/* Vector Engine Stats Card */}
-              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
                   <Cpu size={12} />
                   Engine Metadata
@@ -383,7 +383,7 @@ export default function EmbeddingsPage({ onBack }) {
               </div>
 
               {/* Indexing Event Logs */}
-              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
                     Indexing Logs
@@ -400,7 +400,7 @@ export default function EmbeddingsPage({ onBack }) {
                 </div>
                 <div style={{
                   background: 'var(--surface-muted)',
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-default)',
                   padding: '6px',
                   border: '1px solid var(--border-soft)',
                   fontFamily: 'monospace',
@@ -479,7 +479,7 @@ export default function EmbeddingsPage({ onBack }) {
                   </div>
                   <div className="kg-detail-row">
                     <span className="label">Content</span>
-                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', background: 'var(--surface-muted)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-soft)' }}>
+                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', background: 'var(--surface-muted)', padding: '8px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)' }}>
                       {selectedChunk.content}
                     </pre>
                   </div>
@@ -528,7 +528,7 @@ export default function EmbeddingsPage({ onBack }) {
                             {chunk.note_path.split(/[/\\]/).pop()}
                           </td>
                           <td style={{ padding: '8px' }}>
-                            <span className="kg-category-badge" style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)' }}>
+                            <span className="kg-category-badge" style={{ fontSize: '9px', padding: '1px 4px', borderRadius: 'var(--radius-default)', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)' }}>
                               {chunk.chunk_type || 'text'}
                             </span>
                           </td>
@@ -567,7 +567,7 @@ export default function EmbeddingsPage({ onBack }) {
               </strong>
             </div>
             
-            <div style={{ width: '100%', height: '8px', background: 'var(--border-soft)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '8px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
               <div style={{
                 width: `${status.queueTotal > 0 ? Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100)) : 0}%`,
                 height: '100%',

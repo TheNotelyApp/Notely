@@ -486,7 +486,7 @@ export default function GraphCanvasView({
           gap: 4,
           background: 'var(--surface-elevated, #1a202c)',
           border: '1px solid var(--border-default, #2d3748)',
-          borderRadius: 8,
+          borderRadius: 'var(--radius-default)',
           padding: '4px 6px',
           boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0,0,0,0.3))',
           zIndex: 10
@@ -552,7 +552,7 @@ export default function GraphCanvasView({
             right: 16,
             background: 'var(--surface-elevated, #1a202c)',
             border: '1px solid var(--border-default, #2d3748)',
-            borderRadius: 8,
+            borderRadius: 'var(--radius-default)',
             padding: '10px 14px',
             boxShadow: 'var(--shadow-lg, 0 10px 25px rgba(0,0,0,0.4))',
             zIndex: 11,

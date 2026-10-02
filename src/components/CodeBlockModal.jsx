@@ -337,7 +337,7 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
           padding: "8px 12px",
           background: "#181a1f",
           border: "1px solid #282c34",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-default)",
           fontFamily: "Consolas, Monaco, monospace",
           fontSize: "12px",
           color: "#61afef"
@@ -352,7 +352,7 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
           padding: "8px 12px",
           background: "#181a1f",
           border: "1px solid #282c34",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-default)",
           maxHeight: execResult.isHtml ? "270px" : "150px",
           overflowY: "auto",
           fontFamily: "Consolas, Monaco, monospace",
@@ -378,7 +378,7 @@ export function CodeBlockModal({ open, onClose, onSave, initialLanguage = "", in
                 height: "200px",
                 border: "none",
                 background: "#ffffff",
-                borderRadius: "4px",
+                borderRadius: "var(--radius-default)",
                 marginTop: "4px"
               }}
             />

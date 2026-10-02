@@ -55,7 +55,7 @@
 .dictionary-add-row input {
   flex: 1;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   border: 1px solid var(--border-soft);
   background: var(--surface-bg);
   color: var(--text-strong);
@@ -103,7 +103,7 @@
   font-weight: 600;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   transition: background 0.15s ease, color 0.15s ease;
 }
 

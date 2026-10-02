@@ -1310,7 +1310,7 @@ export function GitVersionControlPage({
           </div>
           <div className="overlay-dialog-body" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", padding: "var(--space-4) 0" }}>
             <p style={{ margin: 0, fontSize: "var(--font-size-body-sm)", color: "var(--text-muted)" }}>
-              Add a tag to commit <code style={{ background: "var(--surface-muted)", padding: "2px 4px", borderRadius: "4px" }}>{tagCommit.shortHash}</code>:
+              Add a tag to commit <code style={{ background: "var(--surface-muted)", padding: "2px 4px", borderRadius: "var(--radius-default)" }}>{tagCommit.shortHash}</code>:
             </p>
             <label htmlFor="git-tag-dialog-input" style={{ fontSize: "var(--font-size-label)", color: "var(--text-muted)", fontWeight: 600 }}>Tag Name</label>
             <AppInput

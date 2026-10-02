@@ -54,7 +54,7 @@
   padding: 6px 12px 6px 32px;
   background: var(--surface-bg, #1a1a1a);
   border: 1px solid var(--border-default, #333);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   color: var(--text-strong, #fff);
   font-size: 13px;
   outline: none;
@@ -76,7 +76,7 @@
   height: 32px;
   background: var(--surface-muted, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   font-size: 12px;
   color: var(--text-secondary, #aaa);
   font-weight: 500;
@@ -121,7 +121,7 @@
 .wdm-sidebar-section {
   background: var(--surface-muted, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -147,7 +147,7 @@
   font-size: 12px;
   cursor: pointer;
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   user-select: none;
   transition: background 0.15s ease, color 0.15s ease;
   white-space: nowrap;
@@ -241,7 +241,7 @@
 .wdm-card {
   background: var(--surface-elevated, #1c1c1c);
   border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -311,7 +311,7 @@
 .wdm-card-icon-frame {
   width: 52px;
   height: 52px;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -358,7 +358,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 1px 5px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   line-height: 1.4;
 }
 
@@ -368,7 +368,7 @@
   gap: 4px;
   font-size: 10px;
   padding: 2px 7px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface-subtle);
   border: 1px solid var(--border-soft);
   color: var(--text-secondary);
@@ -426,7 +426,7 @@
   border: none;
   color: var(--text-secondary, #aaa);
   padding: 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -453,7 +453,7 @@
   max-height: 240px;
   background: var(--surface-muted, rgba(0, 0, 0, 0.2));
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -498,7 +498,7 @@
   font-family: var(--font-mono, monospace);
   background: var(--surface-muted, rgba(255, 255, 255, 0.05));
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
   word-break: break-all;
 }
@@ -513,7 +513,7 @@
 .wdm-note-reference-card {
   background: var(--surface-muted, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -550,7 +550,7 @@
   font-family: var(--font-mono, monospace);
   background: var(--surface-bg, #111);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   color: var(--text-secondary, #aaa);
 }
 
@@ -560,7 +560,7 @@
   font-family: var(--font-mono, monospace);
   background: var(--surface-bg, rgba(0, 0, 0, 0.2));
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

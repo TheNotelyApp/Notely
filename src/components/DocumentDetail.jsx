@@ -1250,7 +1250,7 @@ export function DocumentDetail({
           gap: "12px",
           padding: "10px 14px",
           margin: "0 18px 12px",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-default)",
           border: "1px solid #9b2f2f",
           backgroundColor: "#fff1f0",
           color: "#7d2020",

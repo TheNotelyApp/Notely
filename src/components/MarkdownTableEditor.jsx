@@ -214,7 +214,7 @@ export function MarkdownTableEditor({ initialMarkdown, onCommit, onCancel }) {
           height: 'calc(100vh - 60px - 12px)',
           maxWidth: 'none',
           maxHeight: 'none',
-          borderRadius: 'var(--radius-md, 6px)',
+          borderRadius: 'var(--radius-default)',
           background: 'var(--surface-bg, #ffffff)',
           border: '1px solid var(--border-soft, rgba(0,0,0,0.1))',
           boxShadow: 'var(--shadow-overlay)',

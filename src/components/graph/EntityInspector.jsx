@@ -64,7 +64,7 @@ export default function EntityInspector({
               color: typeStyle.text,
               fontSize: '10px',
               padding: '2px 8px',
-              borderRadius: '4px',
+              borderRadius: 'var(--radius-default)',
               fontWeight: 700,
               flexShrink: 0
             }}
@@ -76,7 +76,7 @@ export default function EntityInspector({
         {/* Details Content */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {selectedNode.note_path && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--surface-muted)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-soft)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--surface-muted)', padding: '8px 10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)' }}>
               <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
                 Source Document
               </span>
@@ -87,7 +87,7 @@ export default function EntityInspector({
           )}
 
           {targetFilePath && targetFilePath !== selectedNode.note_path && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--surface-muted)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-soft)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--surface-muted)', padding: '8px 10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)' }}>
               <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
                 Code Location {targetLineNumber ? `(Line ${targetLineNumber})` : ''}
               </span>
@@ -132,7 +132,7 @@ export default function EntityInspector({
                         justifyContent: 'space-between',
                         background: 'var(--surface-muted)',
                         border: '1px solid var(--border-soft)',
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius-default)',
                         padding: '6px 10px',
                         fontSize: '11px',
                         cursor: 'pointer',
@@ -146,7 +146,7 @@ export default function EntityInspector({
                           {otherName}
                         </span>
                       </div>
-                      <span style={{ fontSize: '9px', fontWeight: 700, color: relColor, background: `${relColor}18`, padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap', textTransform: 'lowercase' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 700, color: relColor, background: `${relColor}18`, padding: '2px 6px', borderRadius: 'var(--radius-default)', whiteSpace: 'nowrap', textTransform: 'lowercase' }}>
                         {String(rel.type).replace(/_/g, ' ')}
                       </span>
                     </div>

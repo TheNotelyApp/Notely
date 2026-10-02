@@ -174,7 +174,7 @@ export default function KnowledgeGraphSettings() {
         </div>
 
         {activeProvider === 'gliner2-relex' && (
-          <div style={{ padding: "12px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+          <div style={{ padding: "12px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
             <h4 style={{ fontSize: "12px", fontWeight: "600", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
               <Cpu size={14} /> Offline Model Status (dx111ge/gliner2-multi-v1-onnx)
             </h4>
@@ -202,7 +202,7 @@ export default function KnowledgeGraphSettings() {
                   <span>Downloading GLiNER2-Relex ONNX weights...</span>
                   <span style={{ fontWeight: 600, color: 'var(--brand-primary)' }}>{modelStatus.progress}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'var(--border-soft)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
                   <div style={{ width: `${modelStatus.progress}%`, height: '100%', background: 'var(--accent-solid)', transition: 'width 0.2s ease' }} />
                 </div>
               </div>

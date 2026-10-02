@@ -398,7 +398,7 @@ export const AISettingsContent = ({ _onClose }) => {
           justifyContent: "space-between",
           alignItems: "center",
           padding: "12px 16px",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-default)",
           border: "1px solid var(--border-soft)",
           background: "var(--background-soft)",
           marginBottom: "16px"
@@ -438,7 +438,7 @@ export const AISettingsContent = ({ _onClose }) => {
               position: "absolute",
               top: 0, left: 0, right: 0, bottom: 0,
               background: isAIEnabled ? "var(--accent-solid)" : "var(--border-default)",
-              borderRadius: "20px",
+              borderRadius: "9999px",
               transition: "background var(--motion-standard)",
               cursor: "pointer"
             }}>
@@ -647,7 +647,7 @@ export const AISettingsContent = ({ _onClose }) => {
                 {getCapabilityWarnings().length > 0 && (
                   <div className="ai-settings-capability-warnings" style={{ marginTop: "4px", marginBottom: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
                     {getCapabilityWarnings().map((warning, idx) => (
-                      <div key={idx} style={{ display: "flex", gap: "6px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "4px", padding: "6px" }}>
+                      <div key={idx} style={{ display: "flex", gap: "6px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-default)", padding: "6px" }}>
                         <AlertCircle size={12} style={{ color: "var(--text-warning)" }} />
                         <div style={{ display: "flex", flexDirection: "column" }}>
                           <span style={{ fontSize: "10px", fontWeight: "600", color: "var(--text-strong)" }}>{warning.title}</span>
@@ -705,7 +705,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     </label>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", fontSize: "11px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", fontSize: "11px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                       <span style={{ fontWeight: "600", color: "var(--text-strong)" }}>Local AI Memory & Cache</span>
                       <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Data stored in <code>.notes-app/ai-memory.db</code></span>
@@ -794,7 +794,7 @@ export const AISettingsContent = ({ _onClose }) => {
               </div>
 
               {preferences.embeddingProvider === 'huggingface' && (
-                <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
                   <p className="ai-settings-embeddings-info" style={{ margin: "0 0 6px 0", fontSize: "10px", color: "var(--text-secondary)" }}>
                     Uses HuggingFace Inference API free tier. Get a token at huggingface.co.
                   </p>
@@ -860,7 +860,7 @@ export const AISettingsContent = ({ _onClose }) => {
               )}
 
               {((preferences.embeddingProvider || 'internal') === 'internal' || !modelStatus.downloaded) && (
-                <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
                   <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
                   {modelStatus.downloaded ? (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -899,7 +899,7 @@ export const AISettingsContent = ({ _onClose }) => {
                         <span>Downloading local weights...</span>
                         <span>{modelStatus.progress}%</span>
                       </div>
-                      <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "var(--radius-default)", overflow: "hidden" }}>
                         <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }}></div>
                       </div>
                     </div>
@@ -983,7 +983,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <div style={{
                       padding: "10px 12px",
                       background: "var(--surface-muted)",
-                      borderRadius: "6px",
+                      borderRadius: "var(--radius-default)",
                       border: "1px solid var(--border-soft)",
                       marginTop: "8px",
                       minHeight: "68px",
@@ -1028,7 +1028,7 @@ export const AISettingsContent = ({ _onClose }) => {
                             <span>{whisperModelStatus.statusText || 'Downloading ONNX model weights...'}</span>
                             <span>{whisperModelStatus.progress}%</span>
                           </div>
-                          <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                          <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "var(--radius-default)", overflow: "hidden" }}>
                             <div style={{ width: `${whisperModelStatus.progress}%`, height: "100%", background: "var(--accent-solid)", transition: "width 0.2s ease" }}></div>
                           </div>
                         </div>

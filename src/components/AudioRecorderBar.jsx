@@ -407,7 +407,7 @@ export default function AudioRecorderBar({
             padding: "4px",
             display: "flex",
             alignItems: "center",
-            borderRadius: "var(--radius-sm, 4px)",
+            borderRadius: "var(--radius-default)",
           }}
           title="Cancel"
         >

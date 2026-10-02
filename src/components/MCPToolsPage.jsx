@@ -435,7 +435,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               style={{
                 width: "42px",
                 height: "42px",
-                borderRadius: "8px",
+                borderRadius: "var(--radius-default)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -469,7 +469,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
                       padding: "2px 8px",
-                      borderRadius: "5px",
+                      borderRadius: "var(--radius-default)",
                       background: "rgba(239, 68, 68, 0.18)",
                       color: "#ef4444",
                       border: "1px solid rgba(239, 68, 68, 0.35)"
@@ -488,7 +488,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       letterSpacing: "0.04em",
                       textTransform: "uppercase",
                       padding: "2px 8px",
-                      borderRadius: "5px",
+                      borderRadius: "var(--radius-default)",
                       background: "rgba(16, 185, 129, 0.15)",
                       color: "#10b981",
                       border: "1px solid rgba(16, 185, 129, 0.3)"
@@ -599,7 +599,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   <Zap size={16} color="#eab308" /> Client Integration Config
                 </h4>
               </div>
-              <div style={{ display: "flex", gap: "4px", background: "var(--surface-bg)", padding: "2px", borderRadius: "6px" }}>
+              <div style={{ display: "flex", gap: "4px", background: "var(--surface-bg)", padding: "2px", borderRadius: "var(--radius-default)" }}>
                 <AppButton
                   variant={configTarget === "antigravity" ? "primary" : "secondary"}
                   onClick={() => setConfigTarget("antigravity")}
@@ -625,7 +625,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   style={{
                     background: "var(--surface-bg)",
                     border: "1px solid var(--border-soft)",
-                    borderRadius: "6px",
+                    borderRadius: "var(--radius-default)",
                     padding: "10px 12px",
                     fontSize: "11px",
                     fontFamily: "monospace",
@@ -703,7 +703,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   background: "var(--surface-elevated, #161b26)",
                   border: "1px solid var(--border-soft, rgba(255,255,255,0.08))",
                   borderLeft: "4px solid var(--accent-solid, #3b82f6)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-default)",
                   padding: "18px 20px",
                   marginBottom: "20px",
                   color: "var(--app-text)"
@@ -730,21 +730,21 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   </p>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px", marginTop: "12px" }}>
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         🛡️ Write Access Controls
                       </strong>
                       Tools marked <span style={{ color: "#ef4444", fontWeight: 700 }}>[W]</span> perform workspace modifications (create, update, delete, rename, commit). When <em>Allow Write Tools</em> is disabled in MCP Settings, all write tools are filtered from discovery and blocked.
                     </div>
 
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         ⚡ Interactive Test Console
                       </strong>
                       Click any tool card below to expand its JSON Schema parameters. Click <em>Auto-Fill JSON</em> to generate a valid test payload, then press <em>Run Execution</em> to test it directly from the app.
                     </div>
 
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         📡 Client Connection URLs
                       </strong>
@@ -763,7 +763,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   alignItems: "flex-start",
                   gap: "12px",
                   padding: "14px 16px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-default)",
                   background: "rgba(239, 68, 68, 0.08)",
                   border: "1px solid rgba(239, 68, 68, 0.3)",
                   borderLeft: "4px solid #ef4444",
@@ -782,7 +782,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                         fontSize: "10px",
                         fontWeight: 700,
                         padding: "1px 6px",
-                        borderRadius: "4px",
+                        borderRadius: "var(--radius-default)",
                         background: "rgba(239, 68, 68, 0.2)",
                         color: "#ef4444"
                       }}
@@ -811,7 +811,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             {loading ? (
               <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading registered tools catalog…</div>
             ) : filteredTools.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "8px" }}>
+              <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "var(--radius-default)" }}>
                 No capabilities match your query.
               </div>
             ) : (
@@ -839,7 +839,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                             style={{
                               width: "36px",
                               height: "36px",
-                              borderRadius: "8px",
+                              borderRadius: "var(--radius-default)",
                               background: isWriteBlocked
                                 ? "rgba(239, 68, 68, 0.2)"
                                 : "var(--surface-subtle, rgba(255,255,255,0.04))",
@@ -921,7 +921,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                       padding: "8px 12px",
                                       background: "var(--surface-elevated, var(--bg-card))",
                                       border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
-                                      borderRadius: "8px",
+                                      borderRadius: "var(--radius-default)",
                                       fontSize: "12px"
                                     }}
                                   >
@@ -1014,7 +1014,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                     background: "#090d16",
                                     color: "#38bdf8",
                                     padding: "10px 12px",
-                                    borderRadius: "6px",
+                                    borderRadius: "var(--radius-default)",
                                     fontSize: "11.5px",
                                     maxHeight: "220px",
                                     overflowY: "auto",

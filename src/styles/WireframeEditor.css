@@ -17,9 +17,9 @@
   --wf-accent-hover: var(--accent-strong);
   --wf-accent-glow: color-mix(in srgb, var(--accent-solid) 20%, transparent);
   --wf-green: var(--status-success-text);
-  --wf-radius: var(--radius-lg, 8px);
-  --wf-radius-sm: var(--radius-sm, 4px);
-  --wf-radius-lg: var(--radius-lg, 8px);
+  --wf-radius: var(--radius-lg);
+  --wf-radius-sm: var(--radius-sm);
+  --wf-radius-lg: var(--radius-lg);
   --wf-canvas-bg: var(--surface-muted);
   --wf-canvas-dot: color-mix(in srgb, var(--text-strong) 8%, transparent);
 
@@ -27,7 +27,7 @@
   color: var(--text-strong) !important;
   font-family: var(--app-font-family, inherit);
   border: 1px solid var(--border-soft) !important;
-  border-radius: var(--radius-md, 6px) !important;
+  border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-overlay) !important;
   width: calc(100vw - 12px) !important;
   height: calc(100vh - 60px - 12px) !important;
@@ -64,7 +64,7 @@
   width: 20px;
   height: 20px;
   background: var(--accent-solid);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,7 +95,7 @@
   box-sizing: border-box;
   background: var(--surface-elevated);
   padding: 2px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   gap: 1px;
   flex-shrink: 0;
@@ -113,7 +113,7 @@
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 500;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.12s ease;
   white-space: nowrap;
@@ -140,7 +140,7 @@
   box-sizing: border-box;
   background: var(--surface-elevated);
   padding: 2px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   gap: 1px;
   flex-shrink: 0;
@@ -155,7 +155,7 @@
   border: none;
   background: transparent;
   color: var(--text-muted);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.12s ease;
   box-sizing: border-box;
@@ -201,7 +201,7 @@
   max-height: var(--btn-height-sm, 28px);
   padding: 0 10px;
   font-size: 11px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -261,7 +261,7 @@
   height: 26px;
   padding: 0 24px;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   font-size: 11px;
   background: var(--surface-elevated);
   color: var(--text-strong);
@@ -311,7 +311,7 @@
   height: 26px;
   padding: 0 8px;
   font-size: 11px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface-elevated);
   border: 1px solid var(--border-default);
   color: var(--text-strong);
@@ -347,7 +347,7 @@
 
 .wireframe-stencil-grid::-webkit-scrollbar-thumb {
   background: var(--border-soft);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
 }
 
 .wireframe-stencil-tile {
@@ -360,7 +360,7 @@
   padding: 10px 8px;
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: grab;
   transition: all 0.12s ease;
   user-select: none;
@@ -474,7 +474,7 @@
 .wireframe-gjs-host .gjs-frame-wrapper {
   margin: 8px auto;
   box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-lg, 8px);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-soft);
   overflow: hidden;
   background: #ffffff;
@@ -509,7 +509,7 @@
   align-items: center;
   background: var(--surface-elevated);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   padding: 1px;
 }
 
@@ -522,7 +522,7 @@
   border: none;
   background: transparent;
   color: var(--text-muted);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -560,7 +560,7 @@
 .wireframe-canvas-tip kbd {
   background: var(--surface-elevated);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   padding: 0 3px;
   font-size: 9px;
   color: var(--text-muted);
@@ -603,7 +603,7 @@
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.12s ease;
-  border-radius: var(--radius-sm, 4px) var(--radius-sm, 4px) 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   margin-bottom: -1px;
   line-height: 1;
 }
@@ -634,7 +634,7 @@
 
 .wireframe-inspector-content::-webkit-scrollbar-thumb {
   background: var(--border-soft);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
 }
 
 .wireframe-inspector-empty {
@@ -703,7 +703,7 @@
 .wireframe-sm-container .gjs-field {
   background: var(--surface-elevated) !important;
   border: 1px solid var(--border-default) !important;
-  border-radius: var(--radius-sm, 4px) !important;
+  border-radius: var(--radius-sm) !important;
   color: var(--text-strong) !important;
   font-size: 11px !important;
 }

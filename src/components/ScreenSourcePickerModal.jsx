@@ -92,7 +92,7 @@ export function ScreenSourcePickerModal({ sources = [], onSelect, onClose }) {
                 flexDirection: "column",
                 alignItems: "stretch",
                 padding: "8px",
-                borderRadius: "var(--radius-lg, 8px)",
+                borderRadius: "var(--radius-default)",
                 border: isSelected
                   ? "2px solid var(--accent, #0ea5e9)"
                   : "1px solid var(--border-soft)",
@@ -111,7 +111,7 @@ export function ScreenSourcePickerModal({ sources = [], onSelect, onClose }) {
                   position: "relative",
                   width: "100%",
                   aspectRatio: "16/9",
-                  borderRadius: "var(--radius-md, 6px)",
+                  borderRadius: "var(--radius-default)",
                   overflow: "hidden",
                   background: "#000",
                   display: "flex",

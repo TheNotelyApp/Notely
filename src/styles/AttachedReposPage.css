@@ -38,7 +38,7 @@
   height: 28px;
   background: var(--surface-muted, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   color: var(--text-secondary, #aaa);
   font-weight: 500;
@@ -77,7 +77,7 @@
   align-items: center;
   background: var(--surface-bg, #1a1a1a);
   border: 1px solid var(--border-soft, #333);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
   height: 32px;
   padding: 0 8px;
@@ -124,7 +124,7 @@
   align-items: center;
   justify-content: center;
   padding: 2px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
@@ -165,7 +165,7 @@
 .arp-card {
   background: var(--surface-bg);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg, 8px);
+  border-radius: var(--radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -188,7 +188,7 @@
 .arp-card-icon-box {
   width: 36px;
   height: 36px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   background: var(--surface-muted, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
   display: flex;
@@ -238,7 +238,7 @@
   padding: 2px 6px;
   background: color-mix(in srgb, var(--accent-solid, #8b5cf6) 12%, transparent);
   color: var(--accent-solid, #8b5cf6);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--accent-solid, #8b5cf6) 25%, transparent);
   flex-shrink: 0;
 }
@@ -333,7 +333,7 @@
   gap: 4px;
   font-size: 11px;
   padding: 2px 6px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   font-weight: 500;
 }
 
@@ -405,7 +405,7 @@
 .arp-form-hint {
   background: var(--surface-muted, rgba(255, 255, 255, 0.04));
   padding: 10px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;

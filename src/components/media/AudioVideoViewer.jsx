@@ -14,7 +14,7 @@ export function AudioVideoViewer({ src, mediaType, fileName }) {
           controls
           autoPlay={false}
           src={src}
-          style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: "6px" }}
+          style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: "var(--radius-default)" }}
         >
           <source src={src} />
           Your browser does not support the video tag.

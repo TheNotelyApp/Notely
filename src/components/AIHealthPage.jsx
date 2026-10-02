@@ -278,7 +278,7 @@ export default function MCPDiagnosticsPage({ onBack }) {
       {/* Header Actions Bar — matching Knowledge Graph & Embeddings page */}
       <div className="kg-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', height: '52px', boxSizing: 'border-box' }}>
         {/* Sleek Running Status Pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', height: '32px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: 'var(--radius-default)', height: '32px', boxSizing: 'border-box' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: isRunning ? 'var(--status-success-text)' : 'var(--status-danger-text)' }}>
             <span style={{
               width: '7px',
@@ -329,7 +329,7 @@ export default function MCPDiagnosticsPage({ onBack }) {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       color: 'var(--text-muted)',
-                      borderRadius: '4px'
+                      borderRadius: 'var(--radius-default)'
                     }}
                     onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/mcp`, 'endpoint_http', 'MCP Endpoint URL')}
                     title={copiedId === 'endpoint_http' ? 'Copied to clipboard' : 'Copy MCP Endpoint URL'}
@@ -356,7 +356,7 @@ export default function MCPDiagnosticsPage({ onBack }) {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       color: 'var(--text-muted)',
-                      borderRadius: '4px'
+                      borderRadius: 'var(--radius-default)'
                     }}
                     onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/sse`, 'endpoint_sse', 'SSE Endpoint URL')}
                     title={copiedId === 'endpoint_sse' ? 'Copied to clipboard' : 'Copy SSE Endpoint URL'}

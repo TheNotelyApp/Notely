@@ -104,7 +104,7 @@ function FullpageMermaidPreview({ code }) {
           zIndex: 10,
           background: "var(--surface-elevated, #ffffff)",
           border: "1px solid var(--border-soft, #cbd5e1)",
-          borderRadius: "var(--radius-md, 6px)",
+          borderRadius: "var(--radius-default)",
           boxShadow: "var(--shadow-overlay, 0 8px 24px rgba(0,0,0,0.12))",
           padding: "4px 8px",
           display: "flex",

@@ -64,7 +64,7 @@ export default function GraphSidebar({
     >
       <div className="kg-sidebar-section-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
         {/* Entity Types Checklist */}
-        <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
               <Layers size={12} />
@@ -118,7 +118,7 @@ export default function GraphSidebar({
         </div>
 
         {/* Compact Relationship & Arrow Legend */}
-        <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '8px 10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
               Arrow & Colors
@@ -133,7 +133,7 @@ export default function GraphSidebar({
                 />
                 <span>Labels</span>
               </label>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontFamily: 'monospace', background: 'var(--surface-muted)', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--border-soft)', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontFamily: 'monospace', background: 'var(--surface-muted)', padding: '1px 6px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', color: 'var(--text-muted)' }}>
                 <span>Source</span>
                 <span style={{ color: 'var(--accent-solid)', fontWeight: 'bold' }}>──►</span>
                 <span>Target</span>
@@ -155,7 +155,7 @@ export default function GraphSidebar({
               { label: 'TAGGED', color: RELATIONSHIP_COLORS.TAGGED },
               { label: 'URL', color: RELATIONSHIP_COLORS.REFERENCES_URL }
             ].map(item => (
-              <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 600, padding: '2px 5px', borderRadius: '4px', background: `${item.color}15`, border: `1px solid ${item.color}45`, color: 'var(--text-strong)' }}>
+              <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 600, padding: '2px 5px', borderRadius: 'var(--radius-default)', background: `${item.color}15`, border: `1px solid ${item.color}45`, color: 'var(--text-strong)' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color, display: 'inline-block' }} />
                 {item.label}
               </span>
@@ -164,7 +164,7 @@ export default function GraphSidebar({
         </div>
 
         {/* Extraction Logs Panel */}
-        <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
               Extraction Logs
@@ -181,7 +181,7 @@ export default function GraphSidebar({
           </div>
           <div style={{
             background: 'var(--surface-muted)',
-            borderRadius: '4px',
+            borderRadius: 'var(--radius-default)',
             padding: '6px',
             border: '1px solid var(--border-soft)',
             fontFamily: 'monospace',

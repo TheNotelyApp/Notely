@@ -14,7 +14,7 @@
 .preview pre {
   overflow: auto;
   padding: 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   border: 1px solid #d0d7de;
   background: #f6f8fa;
 }
@@ -26,7 +26,7 @@
 .preview .markdown-code-block {
   margin: 12px 0;
   border: 1px solid #d0d7de;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #f6f8fa;
   overflow: hidden;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -70,7 +70,7 @@
   min-height: 28px;
   width: 28px;
   border: 1px solid #d0d7de;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #f6f8fa;
   color: #57606a;
   padding: 0;
@@ -224,7 +224,7 @@
   margin: 14px 0;
   padding: 10px 14px;
   border-left: 4px solid #8eb8a8;
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 var(--radius-default) var(--radius-default) 0;
   background: #f4f8f6;
   color: #35545a;
 }
@@ -242,7 +242,7 @@
   max-width: 100%;
   height: auto;
   margin: 12px 0;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
 }
 
 .preview .markdown-image-frame {
@@ -272,7 +272,7 @@
     transform 0.16s ease;
   background: var(--tooltip-bg, rgba(20, 30, 33, 0.94));
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   padding: 3px 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(8px);
@@ -313,7 +313,7 @@
   font-weight: 600;
   line-height: 1.2;
   padding: 3px 7px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -352,7 +352,7 @@
 .preview .markdown-table-wrapper {
   margin: 1.25rem 0;
   position: relative;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
   padding: 0;
   cursor: pointer;
@@ -391,7 +391,7 @@
   pointer-events: none;
   background: var(--tooltip-bg, rgba(20, 30, 33, 0.94));
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   padding: 3px 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(8px);
@@ -414,7 +414,7 @@
   font-weight: 600;
   line-height: 1.2;
   padding: 3px 7px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -459,7 +459,7 @@
   min-width: 135px;
   padding: 4px;
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.2));
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   background: var(--tooltip-bg, rgba(10, 28, 32, 0.92));
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(12px);
@@ -485,7 +485,7 @@
   font-size: 11px;
   font-weight: 500;
   padding: 6px 10px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -509,7 +509,7 @@
   z-index: 3;
   max-width: min(60%, 420px);
   padding: 6px 9px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   background: rgba(10, 23, 27, 0.72);
   color: #ffffff;
   font-size: 12px;
@@ -556,7 +556,7 @@
 .preview .inline-linked-note {
   margin: 10px 0 14px;
   border: 1px solid #d7e1dc;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   background: var(--surface-elevated);
   overflow: hidden;
 }
@@ -678,7 +678,7 @@
 
 .webview-page pre {
   overflow: auto;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   border: 1px solid #d0d7de;
   background: #f6f8fa;
   color: #24292f;
@@ -696,7 +696,7 @@
 .webview-page .markdown-code-block {
   margin: 14px 0;
   border: 1px solid #d0d7de;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #f6f8fa;
   overflow: hidden;
 }
@@ -724,7 +724,7 @@
   min-height: 28px;
   width: 28px;
   border: 1px solid #d0d7de;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #f6f8fa;
   color: #57606a;
   padding: 0;
@@ -780,7 +780,7 @@
 .webview-page img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
 }
 
 .mermaid-render {
@@ -788,7 +788,7 @@
   margin: 16px 0;
   padding: 16px;
   border: 1px solid var(--border-soft, #d9dedb);
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: var(--bg-card, #faf9f6);
   cursor: pointer;
   transition: border-color var(--motion-standard, 0.15s ease),
@@ -976,7 +976,7 @@
 .media-item {
   background: var(--surface-bg);
   border: 1px solid #dce8e3;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   overflow: hidden;
   transition: all 0.2s ease;
 }
@@ -1333,7 +1333,7 @@
 }
 .tasks-panel-empty code {
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   background: var(--surface-accent);
   font-family: monospace;
   font-size: 11px;
@@ -1712,7 +1712,7 @@
   background: #1a2326 !important;
   color: #7fb6bf !important;
   padding: 2px 5px !important;
-  border-radius: 4px !important;
+  border-radius: var(--radius-default) !important;
   border: 1px solid #2b393c !important;
 }
 
@@ -3415,7 +3415,7 @@
   border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
   color: var(--text-secondary);
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -3529,7 +3529,7 @@
   flex: none;
   padding: var(--space-6, 1.5rem);
   border: 1px dashed var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-muted);
   margin: var(--space-4, 1rem) 0;
 }
@@ -3668,7 +3668,7 @@
   padding: 0;
   margin: 0;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   overflow: hidden;
 }
@@ -3735,7 +3735,7 @@
   gap: var(--space-4, 1rem);
   padding: var(--space-4, 1rem);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
 }
 
@@ -3759,7 +3759,7 @@
   padding: 0 var(--space-2, 0.5rem);
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   color: var(--app-text);
   font-family: inherit;
   font-size: var(--font-size-body-sm, 13px);
@@ -3801,7 +3801,7 @@
   padding: 0 var(--space-3, 0.75rem);
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   color: var(--app-text);
   font-family: inherit;
   font-size: var(--font-size-body-sm, 13px);
@@ -3843,7 +3843,7 @@
   padding: 0;
   margin: 0;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   overflow: hidden;
 }
@@ -3903,7 +3903,7 @@
   gap: var(--space-4, 1rem);
   padding: var(--space-4, 1rem);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
 }
 
@@ -3964,7 +3964,7 @@
 
 .git-vc-repository__stats {
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   padding: var(--space-4, 1rem);
   display: flex;
@@ -4025,7 +4025,7 @@
 .git-vc-settings__code {
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   padding: var(--space-4, 1rem);
   font-family: monospace;
   font-size: var(--font-size-body-sm, 13px);
@@ -4078,7 +4078,7 @@
   background: var(--status-warning-bg) !important;
   color: var(--status-warning-text) !important;
   padding: 0 var(--space-2, 6px);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--status-warning-border) !important;
 }
 
@@ -4086,7 +4086,7 @@
   background: var(--status-success-bg) !important;
   color: var(--status-success-text) !important;
   padding: 0 var(--space-2, 6px);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--status-success-border) !important;
 }
 
@@ -4109,7 +4109,7 @@
   padding: 0 4px;
   height: 13px;
   min-height: 13px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   font-weight: bold;
   line-height: 1;
   display: inline-flex;
@@ -4137,7 +4137,7 @@
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   color: var(--app-text);
   font-size: var(--font-size-body, 14px);
 }
@@ -4151,7 +4151,7 @@
 
 .git-commit-item {
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   display: flex;
@@ -4197,7 +4197,7 @@
   color: var(--text-strong);
   background: var(--surface-muted);
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   flex-shrink: 0;
 }
 
@@ -4238,7 +4238,7 @@
   font-size: 10px;
   font-weight: 600;
   padding: 1px 6px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   flex-shrink: 0;
 }
 
@@ -4282,7 +4282,7 @@
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   margin: var(--space-1, 0.25rem) 0;
   background: var(--surface-muted);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -4351,7 +4351,7 @@
   flex-direction: column;
   background: var(--surface-bg);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-xl, 12px);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
@@ -4395,7 +4395,7 @@
 
 .git-commit-dialog__files {
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   padding: var(--space-3, 0.75rem);
   margin: 0;
   max-height: 200px;
@@ -4470,7 +4470,7 @@
   width: 100%;
   background: var(--surface-muted);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   color: var(--app-text);
   padding: var(--space-3, 0.75rem);
   font-family: inherit;
@@ -4499,7 +4499,7 @@
   background: var(--status-danger-bg);
   border: 1px solid var(--status-danger-border);
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   margin: 0;
 }
 
@@ -4538,7 +4538,7 @@
   background: var(--surface-accent);
   color: var(--text-strong);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   border: 1px solid var(--border-default);
 }
 
@@ -4601,7 +4601,7 @@
   font-family: inherit;
   font-size: var(--font-size-body, 14px);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--surface-bg);
   overflow: hidden;
   display: flex;
@@ -4752,7 +4752,7 @@
   max-width: 100%;
   max-height: 250px;
   object-fit: contain;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
 }
 
 .git-diff-row--empty {
@@ -4778,7 +4778,7 @@
   flex-direction: column;
   background: var(--surface-bg);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-xl, 12px);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
   position: relative;
@@ -4815,7 +4815,7 @@
   font-weight: normal;
   background: var(--surface-muted);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
 }
 
 .git-history-panel__header-meta {
@@ -4836,7 +4836,7 @@
   color: var(--status-info-text);
   border: 1px solid var(--status-info-border);
   padding: 1px 6px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
 }
 
 .git-history-panel__count {
@@ -4854,7 +4854,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   transition: background var(--motion-fast, 120ms ease), color var(--motion-fast, 120ms ease);
 }
 
@@ -4909,7 +4909,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--radius-default) var(--radius-default) 0 0;
   cursor: pointer;
   position: relative;
   transition: all 120ms ease;
@@ -4946,7 +4946,7 @@
   right: 0;
   height: 2px;
   background: var(--accent-solid);
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--radius-default) var(--radius-default) 0 0;
 }
 
 .note-tab-title-btn {
@@ -5147,7 +5147,7 @@
   background: transparent;
   border: 1px solid var(--surface-border);
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--radius-default) var(--radius-default) 0 0;
   cursor: pointer;
   color: var(--text-muted);
   font-family: inherit;

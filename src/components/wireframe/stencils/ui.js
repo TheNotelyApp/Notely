@@ -8,11 +8,11 @@ export const uiStencils = [
     desc: "Primary, secondary, outline, ghost and danger buttons",
     icon: Square,
     content: `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 0;margin:12px 0;">
-      <button style="padding:8px 16px;background:#2563eb;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Primary Action</button>
-      <button style="padding:8px 16px;background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Secondary</button>
-      <button style="padding:8px 16px;background:transparent;color:#334155;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Outline</button>
-      <button style="padding:8px 16px;background:transparent;color:#64748b;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Ghost</button>
-      <button style="padding:8px 16px;background:#ef4444;color:#ffffff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Destructive</button>
+      <button style="padding:8px 16px;background:#2563eb;color:#ffffff;border:none;border-radius: 2px;font-size:12px;font-weight:600;cursor:pointer;">Primary Action</button>
+      <button style="padding:8px 16px;background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0;border-radius: 2px;font-size:12px;font-weight:600;cursor:pointer;">Secondary</button>
+      <button style="padding:8px 16px;background:transparent;color:#334155;border:1px solid #cbd5e1;border-radius: 2px;font-size:12px;font-weight:600;cursor:pointer;">Outline</button>
+      <button style="padding:8px 16px;background:transparent;color:#64748b;border:none;border-radius: 2px;font-size:12px;font-weight:600;cursor:pointer;">Ghost</button>
+      <button style="padding:8px 16px;background:#ef4444;color:#ffffff;border:none;border-radius: 2px;font-size:12px;font-weight:600;cursor:pointer;">Destructive</button>
     </div>`
   },
   {
@@ -36,7 +36,7 @@ export const uiStencils = [
     category: "components",
     desc: "Info notification banner with icon and dismiss link",
     icon: Shield,
-    content: `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;margin:12px 0;font-size:12px;">
+    content: `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius: 2px;color:#1e40af;margin:12px 0;font-size:12px;">
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-weight:700;">Notice:</span> Your workspace was upgraded to the latest version.
       </div>
@@ -62,12 +62,12 @@ export const uiStencils = [
     category: "components",
     desc: "Floating contextual action list",
     icon: MousePointer,
-    content: `<div style="display:inline-block;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:5px;width:160px;box-shadow:0 8px 20px rgba(0,0,0,0.08);margin:10px 0;box-sizing:border-box;">
-      <div style="padding:5px 8px;font-size:11px;font-weight:500;color:#0f172a;border-radius:4px;cursor:pointer;background:#f8fafc;">Duplicate</div>
-      <div style="padding:5px 8px;font-size:11px;font-weight:500;color:#0f172a;border-radius:4px;cursor:pointer;">Rename</div>
-      <div style="padding:5px 8px;font-size:11px;font-weight:500;color:#0f172a;border-radius:4px;cursor:pointer;">Export PNG</div>
+    content: `<div style="display:inline-block;background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;padding:5px;width:160px;box-shadow:0 8px 20px rgba(0,0,0,0.08);margin:10px 0;box-sizing:border-box;">
+      <div style="padding:5px 8px;font-size:11px;font-weight:500;color:#0f172a;border-radius: 2px;cursor:pointer;background:#f8fafc;">Duplicate</div>
+      <div style="padding:5px 8px;font-size:11px;font-weight:500;color:#0f172a;border-radius: 2px;cursor:pointer;">Rename</div>
+      <div style="padding:5px 8px;font-size:11px;font-weight:500;color:#0f172a;border-radius: 2px;cursor:pointer;">Export PNG</div>
       <div style="height:1px;background:#e2e8f0;margin:3px 0;"></div>
-      <div style="padding:5px 8px;font-size:11px;font-weight:600;color:#ef4444;border-radius:4px;cursor:pointer;">Delete</div>
+      <div style="padding:5px 8px;font-size:11px;font-weight:600;color:#ef4444;border-radius: 2px;cursor:pointer;">Delete</div>
     </div>`
   },
   {
@@ -77,11 +77,11 @@ export const uiStencils = [
     desc: "Page navigation with active state",
     icon: Box,
     content: `<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin:14px 0;">
-      <button style="padding:5px 10px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;">Prev</button>
-      <button style="padding:5px 8px;border:none;background:#2563eb;color:#ffffff;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">1</button>
-      <button style="padding:5px 8px;border:1px solid #e2e8f0;background:#ffffff;color:#334155;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">2</button>
-      <button style="padding:5px 8px;border:1px solid #e2e8f0;background:#ffffff;color:#334155;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">3</button>
-      <button style="padding:5px 10px;border:1px solid #cbd5e1;background:#ffffff;border-radius:4px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;">Next</button>
+      <button style="padding:5px 10px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;">Prev</button>
+      <button style="padding:5px 8px;border:none;background:#2563eb;color:#ffffff;border-radius: 2px;font-size:11px;font-weight:700;cursor:pointer;">1</button>
+      <button style="padding:5px 8px;border:1px solid #e2e8f0;background:#ffffff;color:#334155;border-radius: 2px;font-size:11px;font-weight:600;cursor:pointer;">2</button>
+      <button style="padding:5px 8px;border:1px solid #e2e8f0;background:#ffffff;color:#334155;border-radius: 2px;font-size:11px;font-weight:600;cursor:pointer;">3</button>
+      <button style="padding:5px 10px;border:1px solid #cbd5e1;background:#ffffff;border-radius: 2px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;">Next</button>
     </div>`
   },
   {
@@ -90,11 +90,11 @@ export const uiStencils = [
     category: "components",
     desc: "Dashed border file upload placeholder",
     icon: Folder,
-    content: `<div style="border:2px dashed #cbd5e1;border-radius:8px;padding:28px 16px;text-align:center;background:#f8fafc;margin:14px 0;box-sizing:border-box;">
+    content: `<div style="border:2px dashed #cbd5e1;border-radius: 2px;padding:28px 16px;text-align:center;background:#f8fafc;margin:14px 0;box-sizing:border-box;">
       <div style="font-size:24px;margin-bottom:6px;">☁️</div>
       <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px;">Drag and drop files here</div>
       <p style="font-size:10px;color:#64748b;margin:0 0 10px;">PNG, JPG, SVG up to 25MB</p>
-      <button style="padding:5px 12px;background:#ffffff;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;font-weight:600;color:#334155;cursor:pointer;">Browse</button>
+      <button style="padding:5px 12px;background:#ffffff;border:1px solid #cbd5e1;border-radius: 2px;font-size:11px;font-weight:600;color:#334155;cursor:pointer;">Browse</button>
     </div>`
   }
 ];

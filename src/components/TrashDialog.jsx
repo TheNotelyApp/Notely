@@ -99,7 +99,7 @@ export function TrashDialog({ isOpen, onClose, onRestored }) {
 
       <div className="overlay-dialog-body" style={{ minHeight: "300px", maxHeight: "450px", overflowY: "auto", padding: "16px" }}>
         {error && (
-          <div className="validation-banner danger" style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", padding: "8px", borderRadius: "6px" }}>
+          <div className="validation-banner danger" style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", padding: "8px", borderRadius: "var(--radius-default)" }}>
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
