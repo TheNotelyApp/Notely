@@ -44,7 +44,7 @@ describe("AppSubpageViews Error Boundary and Resilience", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders subpages when their respective flags are true", async () => {
+  it("renders subpages when legacy boolean flags are used", async () => {
     await act(async () => {
       root.render(
         <AppSubpageViews
@@ -69,6 +69,21 @@ describe("AppSubpageViews Error Boundary and Resilience", () => {
     });
 
     expect(host.textContent).toContain("Downloads Content");
+  });
+
+  it("renders subpage with modern activeSubpage key routing", async () => {
+    const onCloseSubpage = vi.fn();
+    await act(async () => {
+      root.render(
+        <AppSubpageViews
+          activeSubpage="graph"
+          onCloseSubpage={onCloseSubpage}
+          notesFolderPath="/test/workspace"
+        />
+      );
+    });
+
+    expect(host.textContent).toContain("Knowledge Graph Content");
   });
 
   it("handles subpage error boundary resets", async () => {
