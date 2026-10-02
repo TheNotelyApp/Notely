@@ -13,10 +13,21 @@ export const AppButton = forwardRef(function AppButton(
   },
   ref,
 ) {
-  const baseClass = variant === "primary" ? "primary-button" : "small-button";
+  let baseClass = "small-button";
+  if (variant === "primary") {
+    baseClass = "primary-button";
+  } else if (variant === "secondary") {
+    baseClass = "secondary-button small-button";
+  } else if (variant === "ghost" || variant === "text") {
+    baseClass = "text-button ghost-button";
+  } else if (variant === "danger") {
+    baseClass = "danger-button small-button danger";
+  }
+
+  const isDanger = danger || variant === "danger";
   const classes = [
     baseClass,
-    danger ? "danger" : "",
+    isDanger ? "danger" : "",
     iconOnly ? "icon-only" : "",
     className,
   ]

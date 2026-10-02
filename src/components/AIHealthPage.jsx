@@ -27,6 +27,8 @@ import {
   onMcpStatusChanged
 } from '../services/electronService';
 import { useConfirm } from '../hooks/useConfirm';
+import AppButton from './AppButton';
+import SubpageHeader from './layout/SubpageHeader';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
 import '../styles/AIHealthPage.css';
@@ -243,20 +245,35 @@ export default function MCPDiagnosticsPage({ onBack }) {
 
   return (
     <div className="knowledge-graph-page">
-      {/* Unified topbar navigation breadcrumb */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="MCP Diagnostics location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">MCP Diagnostics</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        currentTitle="MCP Diagnostics"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={fetchData}
+              title="Refresh telemetry metrics"
+            >
+              <RefreshCw size={14} className={loading ? 'spin' : ''} />
+              <span>Refresh</span>
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handleClearLogs}
+              style={{ color: 'var(--status-danger-text)' }}
+              title="Clear telemetry logs"
+            >
+              <Trash2 size={14} />
+              <span>Clear Logs</span>
+            </AppButton>
+          </div>
+        }
+      />
 
       {/* Header Actions Bar — matching Knowledge Graph & Embeddings page */}
       <div className="kg-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', height: '52px', boxSizing: 'border-box' }}>
@@ -282,28 +299,6 @@ export default function MCPDiagnosticsPage({ onBack }) {
             <span style={{ color: 'var(--text-muted)' }}>Active Clients:</span>
             <strong style={{ color: 'var(--text-strong)' }}>{activeConnCount}</strong>
           </div>
-        </div>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={fetchData}
-            style={{ height: '32px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px', boxSizing: 'border-box' }}
-            title="Refresh telemetry metrics"
-          >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleClearLogs}
-            style={{ height: '32px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--status-danger-text)', boxSizing: 'border-box' }}
-            title="Clear telemetry logs"
-          >
-            <Trash2 size={14} />
-            <span>Clear Logs</span>
-          </button>
         </div>
       </div>
 

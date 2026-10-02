@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, X } from 'lucide-react';
 import { OverlayDialog } from '../OverlayDialog';
+import AppButton from '../AppButton';
 import { TYPE_COLORS, DEFAULT_COLOR, RELATIONSHIP_COLORS } from './graphUtils';
 
 export default function EntityInspector({
@@ -129,17 +130,20 @@ export default function EntityInspector({
 
         {/* Footer Actions */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-soft)' }}>
-          <button
-            className="btn btn-secondary btn-sm kg-inspector-footer-close-btn"
+          <AppButton
+            variant="secondary"
+            size="small"
+            className="kg-inspector-footer-close-btn"
             onClick={onClose}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <X size={14} />
             Close
-          </button>
+          </AppButton>
           {selectedNode.note_path && (
-            <button
-              className="btn btn-primary btn-sm"
+            <AppButton
+              variant="primary"
+              size="small"
               onClick={() => {
                 if (onOpenNote) onOpenNote(selectedNode.note_path);
                 if (onClose) onClose();
@@ -148,7 +152,7 @@ export default function EntityInspector({
             >
               <FileText size={14} />
               Open Note
-            </button>
+            </AppButton>
           )}
         </div>
       </div>

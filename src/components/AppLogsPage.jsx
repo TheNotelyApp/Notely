@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, Trash2, Download, Terminal, Filter } from 'lucide-react';
 import { aiGetLogs, aiClearLogs } from '../services/electronService';
 import useConfirm from '../hooks/useConfirm';
+import AppButton from './AppButton';
+import SubpageHeader from './layout/SubpageHeader';
 
 import '../styles/KnowledgeGraph.css';
 
@@ -81,16 +83,44 @@ export default function AppLogsPage({ onBack }) {
 
   return (
     <div className="knowledge-graph-page">
-      {/* Top Navigation Breadcrumb */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="System Logs location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-current">System & Application Logs</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        currentTitle="System & Application Logs"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <RefreshCw size={14} className={autoRefresh ? 'spin' : ''} />
+              <span>{autoRefresh ? 'Live Auto-Refresh' : 'Paused'}</span>
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handleExport}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Download size={14} />
+              <span>Export</span>
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handleClear}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-danger)' }}
+            >
+              <Trash2 size={14} />
+              <span>Clear</span>
+            </AppButton>
+          </div>
+        }
+      />
 
       <div className="knowledge-graph-container" style={{ display: 'flex', flexDirection: 'column', padding: '16px', gap: '16px', height: 'calc(100vh - 80px)' }}>
         {/* Controls Toolbar */}
@@ -134,35 +164,6 @@ export default function AppLogsPage({ onBack }) {
                 <option value="error">Error</option>
               </select>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '32px' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              style={{ height: '32px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '0 12px' }}
-            >
-              <RefreshCw size={14} className={autoRefresh ? 'spin' : ''} />
-              <span>{autoRefresh ? 'Live Auto-Refresh' : 'Paused'}</span>
-            </button>
-
-            <button
-              className="btn btn-secondary"
-              onClick={handleExport}
-              style={{ height: '32px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '0 12px' }}
-            >
-              <Download size={14} />
-              <span>Export</span>
-            </button>
-
-            <button
-              className="btn btn-secondary"
-              onClick={handleClear}
-              style={{ height: '32px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '0 12px', color: 'var(--text-danger)' }}
-            >
-              <Trash2 size={14} />
-              <span>Clear</span>
-            </button>
           </div>
         </div>
 

@@ -198,6 +198,7 @@ export function AppSubpageViews({
           <Suspense fallback={<div className="lazy-loading">Loading Workspace Index…</div>}>
             <WorkspaceIndexPage
               documents={documents}
+              workspacePath={notesFolderPath}
               onBack={() => setWorkspaceIndexOpen(false)}
               onSelectHeader={(docId, line) => {
                 setWorkspaceIndexOpen(false);

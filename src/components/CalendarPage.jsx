@@ -7,6 +7,7 @@ import {
   CheckCircle2, AlertTriangle, FileText, Clock,
 } from "lucide-react";
 import { getCalendarEvents } from "../services/electronService";
+import SubpageHeader from "./layout/SubpageHeader";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/CalendarPage.css";
 
@@ -229,53 +230,47 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
 
   return (
     <div className="calendar-page">
-      {/* App-Standard Topbar Navigation */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Calendar location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-current">Calendar</span>
-        </nav>
-
-        <div className="detail-topbar-actions">
-          {/* Month Navigator */}
-          <div className="cal-header-month-nav">
-            <button className="cal-nav-btn icon-button" type="button" onClick={() => setDate(d => subMonths(d, 1))} data-tooltip="Previous month" aria-label="Previous month">
-              <ChevronLeft size={14} />
-            </button>
-            <span className="cal-month-title">{format(date, "MMMM yyyy")}</span>
-            <button className="cal-nav-btn icon-button" type="button" onClick={() => setDate(d => addMonths(d, 1))} data-tooltip="Next month" aria-label="Next month">
-              <ChevronRight size={14} />
-            </button>
-            <button className="cal-nav-today" type="button" onClick={() => setDate(new Date())}>Today</button>
-          </div>
-
-          <div className="topbar-stat-pill">
-            <CalendarIcon size={12} />
-            <span>{visibleEvents.length} events</span>
-          </div>
-
-          {/* View mode toggle: Month vs Week vs Day */}
-          <div className="tab-bar cal-view-toggle-tabbar" role="tablist">
-            {["month", "week", "day"].map(v => (
-              <button
-                key={v}
-                type="button"
-                className={`tab-item${view === v ? " active" : ""}`}
-                onClick={() => setView(v)}
-                role="tab"
-                aria-selected={view === v}
-              >
-                <span>{v.charAt(0).toUpperCase() + v.slice(1)}</span>
+      <SubpageHeader
+        currentTitle="Calendar"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <>
+            {/* Month Navigator */}
+            <div className="cal-header-month-nav">
+              <button className="cal-nav-btn icon-button" type="button" onClick={() => setDate(d => subMonths(d, 1))} data-tooltip="Previous month" aria-label="Previous month">
+                <ChevronLeft size={14} />
               </button>
-            ))}
-          </div>
-        </div>
-      </div>
+              <span className="cal-month-title">{format(date, "MMMM yyyy")}</span>
+              <button className="cal-nav-btn icon-button" type="button" onClick={() => setDate(d => addMonths(d, 1))} data-tooltip="Next month" aria-label="Next month">
+                <ChevronRight size={14} />
+              </button>
+              <button className="cal-nav-today" type="button" onClick={() => setDate(new Date())}>Today</button>
+            </div>
+
+            <div className="topbar-stat-pill">
+              <CalendarIcon size={12} />
+              <span>{visibleEvents.length} events</span>
+            </div>
+
+            {/* View mode toggle: Month vs Week vs Day */}
+            <div className="tab-bar cal-view-toggle-tabbar" role="tablist">
+              {["month", "week", "day"].map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`tab-item${view === v ? " active" : ""}`}
+                  onClick={() => setView(v)}
+                  role="tab"
+                  aria-selected={view === v}
+                >
+                  <span>{v.charAt(0).toUpperCase() + v.slice(1)}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        }
+      />
 
       {/* Filter bar */}
       <div className="calendar-filters">

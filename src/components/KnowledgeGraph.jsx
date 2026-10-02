@@ -29,6 +29,8 @@ import {
 } from '../services/electronService';
 import { OverlayDialog } from './OverlayDialog';
 import { useConfirm } from '../hooks/useConfirm';
+import AppButton from './AppButton';
+import SubpageHeader from './layout/SubpageHeader';
 
 import GraphSidebar from './graph/GraphSidebar';
 import GraphCanvasView from './graph/GraphCanvasView';
@@ -284,15 +286,91 @@ export default function KnowledgeGraph({ onBack }) {
 
   return (
     <div className="knowledge-graph-page">
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Knowledge graph location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-current">Knowledge Graph</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        currentTitle="Knowledge Graph"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <div className="kg-toolbar-group">
+            <AppButton
+              variant="secondary"
+              size="small"
+              className="kg-icon-btn"
+              onClick={loadGraphData}
+              disabled={loading}
+              title="Reload Graph View"
+            >
+              <RotateCw size={14} className={loading ? 'spin' : ''} />
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              className="kg-icon-btn"
+              onClick={handlePauseResume}
+              title={graphStatus.isPaused ? 'Resume Worker' : 'Pause Worker'}
+            >
+              {graphStatus.isPaused ? <Play size={14} /> : <Pause size={14} />}
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              className="kg-icon-btn"
+              onClick={handleRebuild}
+              disabled={loading || graphStatus.isBuilding}
+              title="Rebuild Knowledge Graph"
+            >
+              <Sparkles size={14} className={graphStatus.isBuilding ? 'spin' : ''} />
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              className="kg-text-btn"
+              onClick={handleCopyMarkdown}
+              title="Copy Graph Summary (Markdown)"
+            >
+              <FileText size={14} />
+              <span>Copy MD</span>
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              className="kg-text-btn"
+              onClick={handleCopyJSON}
+              title="Copy Complete Graph (JSON)"
+            >
+              <Braces size={14} />
+              <span>Copy JSON</span>
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              className="kg-icon-btn"
+              onClick={async () => {
+                const confirmed = await confirm({
+                  title: 'Clear Knowledge Graph Cache?',
+                  message: 'Are you sure you want to clear all Knowledge Graph entities and relationships from cache?',
+                  confirmLabel: 'Clear Cache',
+                  cancelLabel: 'Cancel',
+                  variant: 'danger'
+                });
+                if (confirmed) {
+                  await aiClearGraphData();
+                  loadGraphData();
+                }
+              }}
+              style={{ color: 'var(--text-danger)' }}
+              title="Clear Data"
+            >
+              <Trash2 size={14} />
+            </AppButton>
+          </div>
+        }
+      />
 
       <div className="knowledge-graph-container">
         {/* Header Bar */}
@@ -353,75 +431,6 @@ export default function KnowledgeGraph({ onBack }) {
             <Database size={12} />
             <span>Nodes: {graphStatus.nodeCount || rawEntities.length} | Edges: {graphStatus.edgeCount || rawRelationships.length}</span>
           </div>
-
-          <div className="kg-toolbar-divider" />
-
-          <div className="kg-toolbar-group">
-            <button
-              className="btn btn-secondary btn-sm kg-icon-btn"
-              onClick={loadGraphData}
-              disabled={loading}
-              data-tooltip="Reload Graph View"
-            >
-              <RotateCw size={14} className={loading ? 'spin' : ''} />
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm kg-icon-btn"
-              onClick={handlePauseResume}
-              data-tooltip={graphStatus.isPaused ? 'Resume Worker' : 'Pause Worker'}
-            >
-              {graphStatus.isPaused ? <Play size={14} /> : <Pause size={14} />}
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm kg-icon-btn"
-              onClick={handleRebuild}
-              disabled={loading || graphStatus.isBuilding}
-              data-tooltip="Rebuild Knowledge Graph"
-            >
-              <Sparkles size={14} className={graphStatus.isBuilding ? 'spin' : ''} />
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm kg-text-btn"
-              onClick={handleCopyMarkdown}
-              data-tooltip="Copy Graph Summary (Markdown)"
-            >
-              <FileText size={14} />
-              <span>Copy MD</span>
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm kg-text-btn"
-              onClick={handleCopyJSON}
-              data-tooltip="Copy Complete Graph (JSON)"
-            >
-              <Braces size={14} />
-              <span>Copy JSON</span>
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm kg-icon-btn"
-              onClick={async () => {
-                const confirmed = await confirm({
-                  title: 'Clear Knowledge Graph Cache?',
-                  message: 'Are you sure you want to clear all Knowledge Graph entities and relationships from cache?',
-                  confirmLabel: 'Clear Cache',
-                  cancelLabel: 'Cancel',
-                  variant: 'danger'
-                });
-                if (confirmed) {
-                  await aiClearGraphData();
-                  loadGraphData();
-                }
-              }}
-              style={{ color: 'var(--text-danger)' }}
-              data-tooltip="Clear Data"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
         </div>
 
         {/* Main Body */}
@@ -440,8 +449,9 @@ export default function KnowledgeGraph({ onBack }) {
           {/* Canvas Viewport */}
           <div className="kg-canvas-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
             {/* Sidebar toggle button */}
-            <button
-              className="btn btn-secondary btn-sm"
+            <AppButton
+              variant="secondary"
+              size="small"
               onClick={() => setSidebarOpen(prev => !prev)}
               style={{
                 position: 'absolute',
@@ -459,7 +469,7 @@ export default function KnowledgeGraph({ onBack }) {
               title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
             >
               {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
-            </button>
+            </AppButton>
 
             {/* Quick search match counter pill */}
             {searchQuery.trim() && (
@@ -490,7 +500,7 @@ export default function KnowledgeGraph({ onBack }) {
               <div className="kg-error-overlay">
                 <ShieldAlert size={20} />
                 <p>{error}</p>
-                <button className="btn btn-secondary btn-sm" onClick={loadGraphData}>Retry</button>
+                <AppButton variant="secondary" size="small" onClick={loadGraphData}>Retry</AppButton>
               </div>
             )}
 
@@ -499,9 +509,9 @@ export default function KnowledgeGraph({ onBack }) {
                 <Sparkles size={20} style={{ color: 'var(--accent-solid)' }} />
                 <h3>No Knowledge Graph Data</h3>
                 <p>Scan and extract entities, wikilinks, and semantic relations from your workspace notes.</p>
-                <button className="btn btn-primary btn-sm" onClick={handleRebuild}>
+                <AppButton variant="primary" size="small" onClick={handleRebuild}>
                   Rebuild Knowledge Graph
-                </button>
+                </AppButton>
               </div>
             )}
 
@@ -549,12 +559,13 @@ export default function KnowledgeGraph({ onBack }) {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <button
-                className="btn btn-secondary"
+              <AppButton
+                variant="secondary"
+                size="small"
                 onClick={() => setShowProgressModal(false)}
               >
                 Hide Modal (Run in Background)
-              </button>
+              </AppButton>
             </div>
           </div>
         </OverlayDialog>

@@ -22,7 +22,7 @@ function collectFiles(rootDir, ext) {
 
 // ─── Suite 1: AppButton variant validity ─────────────────────────────────────
 describe("Design System - AppButton variant validity", () => {
-  const VALID_VARIANTS = new Set(["primary", "small"]);
+  const VALID_VARIANTS = new Set(["primary", "small", "secondary", "ghost", "danger"]);
 
   it("uses only valid AppButton variants across all components", () => {
     const files = collectFiles(path.resolve(process.cwd(), "src/components"), ".jsx");

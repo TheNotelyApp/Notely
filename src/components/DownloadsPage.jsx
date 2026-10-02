@@ -24,6 +24,7 @@ import {
   onExportRecordAdded,
 } from "../services/electronService.js";
 import AppButton from "./AppButton.jsx";
+import SubpageHeader from "./layout/SubpageHeader.jsx";
 import { AppCard } from "./AppCard.jsx";
 import useConfirm from "../hooks/useConfirm.js";
 import "../styles/DownloadsPage.css";
@@ -183,54 +184,47 @@ export function DownloadsPage({ onBack }) {
 
   return (
     <div className="downloads-page">
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Downloads location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">Downloads & Export History</span>
-        </nav>
+      <SubpageHeader
+        currentTitle="Downloads & Export History"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <>
+            <div className="topbar-stat-pill" data-tooltip="Exported items">
+              <Download size={12} />
+              <span>{filteredHistory.length} items</span>
+            </div>
 
-        <div className="detail-topbar-actions">
-          <div className="topbar-stat-pill" data-tooltip="Exported items">
-            <Download size={12} />
-            <span>{filteredHistory.length} items</span>
-          </div>
+            {defaultDir && (
+              <AppButton
+                variant="small"
+                onClick={handleOpenDownloadsFolder}
+                title={`Default folder: ${defaultDir}`}
+              >
+                <FolderOpen size={14} />
+                <span>Downloads Folder</span>
+              </AppButton>
+            )}
 
-          {defaultDir && (
-            <AppButton
-              variant="small"
-              onClick={handleOpenDownloadsFolder}
-              title={`Default folder: ${defaultDir}`}
-            >
-              <FolderOpen size={14} />
-              <span>Downloads Folder</span>
+            {history.length > 0 && (
+              <AppButton
+                variant="small"
+                danger
+                onClick={handleClearAll}
+                title="Clear export history records"
+              >
+                <Trash2 size={14} />
+                <span>Clear History</span>
+              </AppButton>
+            )}
+
+            <AppButton variant="small" onClick={loadHistory} title="Refresh history">
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <span>Refresh</span>
             </AppButton>
-          )}
-
-          {history.length > 0 && (
-            <AppButton
-              variant="small"
-              danger
-              onClick={handleClearAll}
-              title="Clear export history records"
-            >
-              <Trash2 size={14} />
-              <span>Clear History</span>
-            </AppButton>
-          )}
-
-          <AppButton variant="small" onClick={loadHistory} title="Refresh history">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            <span>Refresh</span>
-          </AppButton>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="downloads-body">
         <div className="downloads-controls">

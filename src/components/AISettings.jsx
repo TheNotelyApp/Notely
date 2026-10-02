@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Trash2, Zap, AlertCircle, Eye, EyeOff, Download, Database, Mic, Cpu, Network } from 'lucide-react';
 import AppInput from './AppInput';
 import AppSelect from './AppSelect';
+import AppButton from './AppButton';
 import "../styles/AISettings.css";
 import OverlayDialog from './OverlayDialog';
 import KnowledgeGraphSettings from './KnowledgeGraphSettings';
@@ -613,22 +614,20 @@ export const AISettingsContent = ({ _onClose }) => {
                           </AppSelect>
                         );
                       })()}
-                      <button
-                        className="btn btn-primary"
+                      <AppButton
+                        variant="primary"
                         onClick={handleSaveAPIKey}
                         disabled={loading || !(showPlaintext ? plaintextKey : apiKey)}
-                        type="button"
                       >
                         <Save size={12} /> Save
-                      </button>
-                      <button
-                        className="btn btn-secondary"
+                      </AppButton>
+                      <AppButton
+                        variant="secondary"
                         onClick={handleTestConnection}
                         disabled={loading || !(showPlaintext ? plaintextKey : apiKey)}
-                        type="button"
                       >
                         <Zap size={12} /> Test
-                      </button>
+                      </AppButton>
                     </div>
                     
                     {/* Provider-specific details and helper links */}
@@ -745,8 +744,8 @@ export const AISettingsContent = ({ _onClose }) => {
                     <option value="internal">Local Model (BGE ONNX)</option>
                     <option value="huggingface">HuggingFace Inference API</option>
                   </AppSelect>
-                  <button
-                    className="btn btn-primary"
+                  <AppButton
+                    variant="primary"
                     onClick={async () => {
                       try {
                         setLoading(true);
@@ -788,10 +787,9 @@ export const AISettingsContent = ({ _onClose }) => {
                       }
                     }}
                     disabled={loading}
-                    type="button"
                   >
                     <Save size={12} /> Save
-                  </button>
+                  </AppButton>
                 </div>
               </div>
 
@@ -843,22 +841,20 @@ export const AISettingsContent = ({ _onClose }) => {
                         {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
-                    <button
-                      className="btn btn-primary"
+                    <AppButton
+                      variant="primary"
                       onClick={handleSaveHfToken}
                       disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
-                      type="button"
                     >
                       <Save size={12} /> Save
-                    </button>
-                    <button
-                      className="btn btn-secondary"
+                    </AppButton>
+                    <AppButton
+                      variant="secondary"
                       onClick={handleTestHfConnection}
                       disabled={loading || !hfConfigured}
-                      type="button"
                     >
                       <Zap size={12} /> Test
-                    </button>
+                    </AppButton>
                   </div>
                 </div>
               )}
@@ -1121,9 +1117,8 @@ export const AISettingsContent = ({ _onClose }) => {
                 </div>
 
                 <div className="ai-settings-inline-actions" style={{ marginTop: "8px" }}>
-                  <button
-                    className="btn btn-primary"
-                    type="button"
+                  <AppButton
+                    variant="primary"
                     onClick={async () => {
                       try {
                         setLoading(true);
@@ -1138,7 +1133,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     disabled={loading}
                   >
                     <Save size={14} /> Save STT Settings
-                  </button>
+                  </AppButton>
                 </div>
               </section>
             </>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Database, Download, AlertCircle, Save, Trash2, Cpu, Sliders } from 'lucide-react';
 import AppSelect from './AppSelect';
+import AppButton from './AppButton';
 import {
   aiGetGraphModelStatus,
   aiDownloadGraphModel,
@@ -135,14 +136,14 @@ export default function KnowledgeGraphSettings() {
               <option value="gliner2-relex">GLiNER2-Relex ONNX Model Engine (Zero-Shot - Recommended)</option>
               <option value="text-provider">Cloud LLM Text Provider (Configured Cloud AI)</option>
             </AppSelect>
-            <button
-              className="btn btn-primary"
+            <AppButton
+              variant="primary"
               onClick={handlePreferencesSave}
               disabled={loading}
               type="button"
             >
               <Save size={12} /> Save
-            </button>
+            </AppButton>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginTop: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--border-soft)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Active Extraction Engine</span>
@@ -183,16 +184,17 @@ export default function KnowledgeGraphSettings() {
                   <Database size={12} />
                   <span>GLiNER2-Relex ONNX model weights (dx111ge/gliner2-multi-v1-onnx) downloaded and ready offline.</span>
                 </div>
-                <button
-                  className="btn btn-secondary btn-sm"
+                <AppButton
+                  variant="secondary"
+                  size="small"
                   onClick={handleDeleteModel}
                   disabled={loading}
-                  style={{ display: "flex", gap: "4px", alignItems: "center", padding: "4px 8px", fontSize: "10px", color: "var(--text-danger)" }}
+                  style={{ display: "flex", gap: "4px", alignItems: "center", color: "var(--text-danger)" }}
                   title="Remove model weights from disk to free space or redownload"
                 >
                   <Trash2 size={12} />
                   <span>Delete Model</span>
-                </button>
+                </AppButton>
               </div>
             ) : modelStatus.isDownloading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -210,15 +212,16 @@ export default function KnowledgeGraphSettings() {
                   <AlertCircle size={12} />
                   <span>GLiNER2-Relex ONNX model not downloaded. Click below to download offline model weights.</span>
                 </div>
-                <button
-                  className="btn btn-secondary btn-sm"
+                <AppButton
+                  variant="secondary"
+                  size="small"
                   onClick={handleDownloadModel}
                   disabled={loading}
-                  style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", width: "fit-content" }}
+                  style={{ display: "flex", gap: "6px", alignItems: "center", width: "fit-content" }}
                 >
                   <Download size={12} />
                   <span>Download GLiNER2-Relex Model</span>
-                </button>
+                </AppButton>
               </div>
             )}
           </div>

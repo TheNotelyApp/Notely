@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Mic, Volume2, Users, Square, Pause, Play, X, Loader2 } from "lucide-react";
+import AppButton from "./AppButton";
 import { createAudioMixer } from "../utils/audioMixer";
 import { saveAudioRecording } from "../services/electron/mediaService";
 import { transcribeAudio, getSTTPreferences } from "../services/sttService";
@@ -332,9 +333,9 @@ export default function AudioRecorderBar({
       {/* Action Buttons */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {!isRecording && !isProcessing && (
-          <button
+          <AppButton
             type="button"
-            className="btn btn-primary"
+            variant="danger"
             onClick={startRecording}
             style={{
               display: "flex",
@@ -342,24 +343,20 @@ export default function AudioRecorderBar({
               gap: "5px",
               padding: "5px 12px",
               fontSize: "12px",
-              background: "var(--accent-red, #ef4444)",
-              borderColor: "var(--accent-red, #ef4444)",
-              color: "#fff",
-              borderRadius: "var(--radius-md, 6px)",
-              cursor: "pointer",
               fontWeight: "600",
             }}
           >
             <Mic size={14} /> Start Recording
-          </button>
+          </AppButton>
         )}
 
         {isRecording && (
           <>
-            <button
+            <AppButton
               type="button"
+              variant="secondary"
+              size="small"
               onClick={pauseResumeRecording}
-              className="btn btn-secondary"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -370,11 +367,12 @@ export default function AudioRecorderBar({
             >
               {isPaused ? <Play size={12} /> : <Pause size={12} />}
               {isPaused ? "Resume" : "Pause"}
-            </button>
+            </AppButton>
 
-            <button
+            <AppButton
               type="button"
-              className="btn btn-primary"
+              variant="primary"
+              size="small"
               onClick={stopAndProcessRecording}
               style={{
                 display: "flex",
@@ -386,7 +384,7 @@ export default function AudioRecorderBar({
               }}
             >
               <Square size={12} fill="currentColor" /> Stop & Transcribe
-            </button>
+            </AppButton>
           </>
         )}
 

@@ -41,6 +41,8 @@ import { showToast } from "../utils/notificationUtils";
 import AppSelect from "./AppSelect";
 import OverlayDialog from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
+import AppButton from "./AppButton";
+import SubpageHeader from "./layout/SubpageHeader";
 import "../styles/WorkspaceDiagramsMedia.css";
 
 // Audio Preview Component
@@ -665,19 +667,10 @@ export default function WorkspaceDiagramsMediaPage({
   return (
     <div className="workspace-diagrams-media-page">
       {/* Top Breadcrumb Bar */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Media Gallery navigation">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">Media Gallery</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        breadcrumbCurrent="Media Gallery"
+        onBack={onBack}
+      />
 
       <div className="wdm-container">
         {/* Header Bar */}
@@ -1096,16 +1089,14 @@ export default function WorkspaceDiagramsMediaPage({
                       <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--status-info-text)" }}>
                         Speech-to-Text Transcription
                       </span>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        type="button"
+                      <AppButton
+                        variant="primary"
                         onClick={() => handleGenerateTranscript(selectedAsset)}
                         disabled={Boolean(transcribingAssetId)}
-                        style={{ display: "flex", alignItems: "center", gap: "5px", height: "26px", fontSize: "11px", cursor: transcribingAssetId ? "not-allowed" : "pointer" }}
                       >
                         {transcribingAssetId === selectedAsset.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
                         <span>{transcribingAssetId === selectedAsset.id ? "Transcribing..." : "Generate AI Transcript"}</span>
-                      </button>
+                      </AppButton>
                     </div>
                     {transcribingAssetId === selectedAsset.id && (
                       <span style={{ fontSize: "11px", color: "var(--status-info-text)", fontStyle: "italic" }}>
@@ -1222,26 +1213,21 @@ export default function WorkspaceDiagramsMediaPage({
                           </div>
                         )}
 
-                        <button
-                          className="btn btn-primary btn-sm"
+                        <AppButton
+                          variant="primary"
                           onClick={() => {
                             if (onOpenNote) {
                               onOpenNote(ref.notePath, ref.lineNumber);
                             }
                           }}
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "6px",
-                            height: "28px",
-                            fontSize: "11px",
+                            width: "100%",
                             marginTop: "2px",
                           }}
                         >
                           <span>Open Note</span>
                           <ArrowRight size={12} />
-                        </button>
+                        </AppButton>
                       </div>
                     ))}
                   </div>

@@ -36,6 +36,10 @@ import {
 import { listTools, executeTool } from "../services/electron/aiService";
 import { mcpGetStatus, mcpGetConfig, onMcpStatusChanged } from "../services/electronService";
 import { mcpListPrompts, mcpGetPrompt, mcpSavePrompt, mcpDeletePrompt } from "../services/electron/mcpService";
+import AppButton from "./AppButton";
+import AppInput from "./AppInput";
+import OverlayDialog from "./OverlayDialog";
+import SubpageHeader from "./layout/SubpageHeader";
 import "../styles/KnowledgeGraph.css";
 import "../styles/AISettings.css";
 import "../styles/MCPSettings.css";
@@ -381,73 +385,48 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   return (
     <div className="mcp-tools-page-wrapper">
       {/* Top Header Breadcrumb */}
-      <div className="detail-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <nav className="detail-breadcrumb" aria-label="Location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Notes
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">MCP Tools &amp; Capabilities</span>
-        </nav>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={loadData}
-            title="Reload tools and status"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
-          >
-            <RefreshCw size={14} className={loading ? "spin" : ""} /> Refresh
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowHelp(!showHelp)}
-            title="Toggle MCP Server & Client Documentation Guide"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "12px",
-              height: "26px",
-              padding: "0 10px",
-              background: showHelp ? "var(--accent-subtle, rgba(59,130,246,0.15))" : undefined,
-              borderColor: showHelp ? "var(--accent-solid, #3b82f6)" : undefined,
-              color: showHelp ? "var(--accent-solid, #3b82f6)" : undefined
-            }}
-          >
-            <BookOpen size={14} /> {showHelp ? "Hide Docs" : "Docs & Guide"}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={copyManifest}
-            title="Copy full JSON manifest of all registered MCP tools"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
-          >
-            {copiedManifest ? <Check size={14} color="#10b981" /> : <FileJson size={14} />}
-            {copiedManifest ? "Manifest Copied" : "Export Manifest"}
-          </button>
-
-          {onOpenSettings && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onOpenSettings}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
+      <SubpageHeader
+        breadcrumbCurrent="MCP Tools & Capabilities"
+        rootLabel="Notes"
+        onBack={onBack}
+        actions={
+          <>
+            <AppButton
+              variant="secondary"
+              onClick={loadData}
+              title="Reload tools and status"
             >
-              <Settings size={14} /> MCP Settings
-            </button>
-          )}
-        </div>
-      </div>
+              <RefreshCw size={14} className={loading ? "spin" : ""} /> Refresh
+            </AppButton>
+
+            <AppButton
+              variant={showHelp ? "primary" : "secondary"}
+              onClick={() => setShowHelp(!showHelp)}
+              title="Toggle MCP Server & Client Documentation Guide"
+            >
+              <BookOpen size={14} /> {showHelp ? "Hide Docs" : "Docs & Guide"}
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              onClick={copyManifest}
+              title="Copy full JSON manifest of all registered MCP tools"
+            >
+              {copiedManifest ? <Check size={14} style={{ color: "var(--status-success-text)" }} /> : <FileJson size={14} />}
+              {copiedManifest ? "Manifest Copied" : "Export Manifest"}
+            </AppButton>
+
+            {onOpenSettings && (
+              <AppButton
+                variant="secondary"
+                onClick={onOpenSettings}
+              >
+                <Settings size={14} /> MCP Settings
+              </AppButton>
+            )}
+          </>
+        }
+      />
 
       <div className="mcp-tools-scroll-content">
         {/* Status Hero Banner */}
@@ -622,22 +601,20 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                 </h4>
               </div>
               <div style={{ display: "flex", gap: "4px", background: "var(--surface-bg)", padding: "2px", borderRadius: "6px" }}>
-                <button
-                  type="button"
-                  className={`btn ${configTarget === "antigravity" ? "btn-primary" : "btn-secondary"}`}
+                <AppButton
+                  variant={configTarget === "antigravity" ? "primary" : "secondary"}
                   onClick={() => setConfigTarget("antigravity")}
                   style={{ flex: 1, fontSize: "11px", padding: "2px 6px", height: "24px" }}
                 >
                   Antigravity
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${configTarget === "claude" ? "btn-primary" : "btn-secondary"}`}
+                </AppButton>
+                <AppButton
+                  variant={configTarget === "claude" ? "primary" : "secondary"}
                   onClick={() => setConfigTarget("claude")}
                   style={{ flex: 1, fontSize: "11px", padding: "2px 6px", height: "24px" }}
                 >
                   Claude (SSE)
-                </button>
+                </AppButton>
               </div>
               <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.4 }}>
                 {configTarget === "antigravity"
@@ -971,33 +948,28 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                               </span>
                               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                 {hasProps && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-secondary"
+                                  <AppButton
+                                    variant="secondary"
                                     onClick={() => handlePrefillSample(tool)}
-                                    style={{ fontSize: "11px", padding: "3px 8px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    style={{ fontSize: "11px", padding: "3px 8px", height: "24px" }}
                                   >
                                     <Sparkles size={12} color="#fbbf24" /> Auto-Fill JSON
-                                  </button>
+                                  </AppButton>
                                 )}
-                                <button
-                                  type="button"
-                                  className="btn btn-primary"
+                                <AppButton
+                                  variant="primary"
                                   disabled={runningTest || isWriteBlocked}
                                   onClick={() => handleRunTool(tool)}
                                   style={{
                                     fontSize: "11px",
                                     padding: "3px 12px",
                                     height: "24px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
                                     opacity: isWriteBlocked ? 0.45 : 1,
                                     cursor: isWriteBlocked ? "not-allowed" : "pointer"
                                   }}
                                 >
                                   <Play size={12} /> {runningTest ? "Executing..." : isWriteBlocked ? "Write Blocked" : "Run Execution"}
-                                </button>
+                                </AppButton>
                               </div>
                             </div>
 
@@ -1075,9 +1047,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               <div style={{ position: "relative", flex: 1, maxWidth: "420px" }}>
                 <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-                <input
-                  type="text"
-                  className="input-base"
+                <AppInput
                   placeholder="Filter prompts by name, description, or source..."
                   value={promptFilterQuery}
                   onChange={(e) => setPromptFilterQuery(e.target.value)}
@@ -1085,19 +1055,17 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                 />
               </div>
 
-              <button
-                type="button"
-                className="btn btn-primary"
+              <AppButton
+                variant="primary"
                 onClick={handleOpenNewPrompt}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", height: "34px", padding: "0 14px" }}
               >
                 <Plus size={14} /> New Custom Prompt
-              </button>
+              </AppButton>
             </div>
 
             {/* Prompts Grid / List */}
             {filteredPrompts.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 20px", background: "var(--surface-bg)", border: "1px dashed var(--border-default)", borderRadius: "8px" }}>
+              <div style={{ textAlign: "center", padding: "48px 20px", background: "var(--surface-bg)", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-lg)" }}>
                 <MessageSquare size={20} style={{ color: "var(--text-muted)", marginBottom: "8px" }} />
                 <h3 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700 }}>No Prompts Found</h3>
                 <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
@@ -1115,54 +1083,48 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                     <div key={prompt.name} className="mcp-prompt-card">
                       <div className="mcp-prompt-header">
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                          <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent-solid, #3b82f6)" }}>
+                          <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent-solid)" }}>
                             {prompt.name}
                           </code>
                           <span className={isBuiltin ? "mcp-prompt-badge-builtin" : "mcp-prompt-badge-workspace"}>
                             {isBuiltin ? "Built-in Enterprise" : "Workspace Custom"}
                           </span>
                           {prompt.fileName && (
-                            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-mono, monospace)" }}>
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-family-jetbrains)" }}>
                               .notes-app/prompts/{prompt.fileName}
                             </span>
                           )}
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
+                          <AppButton
+                            variant="secondary"
                             onClick={() => setExpandedPrompt(isExpanded ? null : prompt.name)}
-                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", height: "26px", padding: "0 8px" }}
                           >
                             <Play size={12} /> {isExpanded ? "Close Tester" : "Test Prompt"}
-                          </button>
+                          </AppButton>
                           {!isBuiltin && (
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
+                            <AppButton
+                              variant="secondary"
                               onClick={() => handleEditPrompt(prompt)}
                               title="Edit custom prompt"
-                              style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", height: "26px", padding: "0 8px" }}
                             >
                               <Edit3 size={12} /> Edit
-                            </button>
+                            </AppButton>
                           )}
                           {!isBuiltin && (
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
+                            <AppButton
+                              variant="danger"
                               onClick={() => handleDeletePrompt(prompt)}
                               title="Delete custom prompt file"
-                              style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "12px", height: "26px", padding: "0 8px", color: "#ef4444" }}
                             >
                               <Trash2 size={12} /> Delete
-                            </button>
+                            </AppButton>
                           )}
                         </div>
                       </div>
 
-                      <p style={{ margin: "0 0 10px", fontSize: "13px", color: "var(--text-default, #334155)" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: "13px", color: "var(--text-strong)" }}>
                         {prompt.description}
                       </p>
 
@@ -1184,7 +1146,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
                       {/* Interactive Prompt Tester Block */}
                       {isExpanded && (
-                        <div style={{ marginTop: "12px", padding: "16px", background: "var(--surface-subtle)", borderRadius: "8px", border: "1px solid var(--border-soft)" }}>
+                        <div style={{ marginTop: "12px", padding: "16px", background: "var(--surface-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-soft)" }}>
                           <h4 style={{ margin: "0 0 12px", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
                             Test Prompt Execution (Generate Messages)
                           </h4>
@@ -1194,11 +1156,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                               {argsList.map((arg) => (
                                 <div key={arg.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                   <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)" }}>
-                                    {arg.name} {arg.required && <span style={{ color: "#ef4444" }}>*</span>}
+                                    {arg.name} {arg.required && <span style={{ color: "var(--status-danger-text)" }}>*</span>}
                                   </label>
-                                  <input
-                                    type="text"
-                                    className="input-base"
+                                  <AppInput
                                     placeholder={arg.description || arg.name}
                                     value={promptTestArgs[prompt.name]?.[arg.name] || ""}
                                     onChange={(e) => {
@@ -1216,31 +1176,27 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                           )}
 
                           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: promptTestResult?.promptName === prompt.name ? "12px" : "0" }}>
-                            <button
-                              type="button"
-                              className="btn btn-primary"
+                            <AppButton
+                              variant="primary"
                               disabled={testingPromptName === prompt.name}
                               onClick={() => handleTestPrompt(prompt)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "28px", padding: "0 12px" }}
                             >
                               <Play size={12} /> {testingPromptName === prompt.name ? "Generating..." : "Generate Messages"}
-                            </button>
+                            </AppButton>
                           </div>
 
                           {promptTestResult && promptTestResult.promptName === prompt.name && (
-                            <div style={{ marginTop: "10px", background: "#090d16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                            <div style={{ marginTop: "10px", background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-default)" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                                <span style={{ fontSize: "11px", fontWeight: 700, color: "#10b981" }}>MCP Prompt Messages Output:</span>
-                                <button
-                                  type="button"
-                                  className="btn-link"
+                                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--status-success-text)" }}>MCP Prompt Messages Output:</span>
+                                <AppButton
+                                  variant="ghost"
                                   onClick={() => copyResultOutput(promptTestResult.result)}
-                                  style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
                                 >
                                   <Copy size={12} /> Copy Output
-                                </button>
+                                </AppButton>
                               </div>
-                              <pre style={{ margin: 0, color: "#38bdf8", fontSize: "11.5px", maxHeight: "200px", overflowY: "auto", fontFamily: "var(--font-mono, monospace)" }}>
+                              <pre style={{ margin: 0, color: "var(--accent-solid)", fontSize: "11.5px", maxHeight: "200px", overflowY: "auto", fontFamily: "var(--font-family-jetbrains)" }}>
                                 {JSON.stringify(promptTestResult.result, null, 2)}
                               </pre>
                             </div>
@@ -1257,167 +1213,158 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
         {/* Prompt Editor Modal */}
         {promptEditorOpen && (
-          <div className="mcp-prompt-modal-overlay">
-            <div className="mcp-prompt-modal">
-              <div className="mcp-prompt-modal-header">
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <MessageSquare size={16} color="var(--accent-solid)" />
-                  <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>
-                    {promptFormData.name ? `Edit Prompt: ${promptFormData.name}` : "Create Custom Workspace Prompt"}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPromptEditorOpen(false)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
-                >
-                  <X size={16} />
-                </button>
+          <OverlayDialog
+            open={promptEditorOpen}
+            onClose={() => setPromptEditorOpen(false)}
+            ariaLabel="Custom Prompt Editor"
+            size="lg"
+          >
+            <div className="overlay-dialog-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <MessageSquare size={16} color="var(--accent-solid)" />
+                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>
+                  {promptFormData.name ? `Edit Prompt: ${promptFormData.name}` : "Create Custom Workspace Prompt"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPromptEditorOpen(false)}
+                className="icon-button"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="overlay-dialog-body" style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Name * (Unique Identifier)</label>
+                <AppInput
+                  placeholder="e.g. code_review_brief"
+                  value={promptFormData.name}
+                  onChange={(e) => setPromptFormData({ ...promptFormData, name: e.target.value })}
+                  style={{ fontSize: "13px" }}
+                />
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  Stored on disk as <code>.notes-app/prompts/{promptFormData.name || "name"}.md</code>
+                </span>
               </div>
 
-              <div className="mcp-prompt-modal-body">
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Name * (Unique Identifier)</label>
-                  <input
-                    type="text"
-                    className="input-base"
-                    placeholder="e.g. code_review_brief"
-                    value={promptFormData.name}
-                    onChange={(e) => setPromptFormData({ ...promptFormData, name: e.target.value })}
-                    style={{ fontSize: "13px" }}
-                  />
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                    Stored on disk as <code>.notes-app/prompts/{promptFormData.name || "name"}.md</code>
-                  </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700 }}>Description</label>
+                <AppInput
+                  placeholder="Brief summary of what this workflow accomplishes..."
+                  value={promptFormData.description}
+                  onChange={(e) => setPromptFormData({ ...promptFormData, description: e.target.value })}
+                  style={{ fontSize: "13px" }}
+                />
+              </div>
+
+              {/* Arguments List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Arguments / Parameters</label>
+                  <AppButton
+                    variant="secondary"
+                    onClick={() => {
+                      const current = Array.isArray(promptFormData.arguments) ? promptFormData.arguments : [];
+                      setPromptFormData({
+                        ...promptFormData,
+                        arguments: [...current, { name: "", description: "", required: false }]
+                      });
+                    }}
+                  >
+                    <Plus size={12} /> Add Argument
+                  </AppButton>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Description</label>
-                  <input
-                    type="text"
-                    className="input-base"
-                    placeholder="Brief summary of what this workflow accomplishes..."
-                    value={promptFormData.description}
-                    onChange={(e) => setPromptFormData({ ...promptFormData, description: e.target.value })}
-                    style={{ fontSize: "13px" }}
-                  />
-                </div>
-
-                {/* Arguments List */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <label style={{ fontSize: "12px", fontWeight: 700 }}>Arguments / Parameters</label>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => {
-                        const current = Array.isArray(promptFormData.arguments) ? promptFormData.arguments : [];
-                        setPromptFormData({
-                          ...promptFormData,
-                          arguments: [...current, { name: "", description: "", required: false }]
-                        });
-                      }}
-                      style={{ fontSize: "11px", height: "22px", padding: "0 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                    >
-                      <Plus size={12} /> Add Argument
-                    </button>
+                {(!promptFormData.arguments || promptFormData.arguments.length === 0) ? (
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>No arguments defined. Prompt will run without parameters.</span>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {promptFormData.arguments.map((arg, idx) => (
+                      <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <AppInput
+                          placeholder="argName (e.g. topic)"
+                          value={arg.name}
+                          onChange={(e) => {
+                            const next = [...promptFormData.arguments];
+                            next[idx].name = e.target.value;
+                            setPromptFormData({ ...promptFormData, arguments: next });
+                          }}
+                          style={{ flex: 1, fontSize: "12px", height: "28px" }}
+                        />
+                        <AppInput
+                          placeholder="Description..."
+                          value={arg.description}
+                          onChange={(e) => {
+                            const next = [...promptFormData.arguments];
+                            next[idx].description = e.target.value;
+                            setPromptFormData({ ...promptFormData, arguments: next });
+                          }}
+                          style={{ flex: 2, fontSize: "12px", height: "28px" }}
+                        />
+                        <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(arg.required)}
+                            onChange={(e) => {
+                              const next = [...promptFormData.arguments];
+                              next[idx].required = e.target.checked;
+                              setPromptFormData({ ...promptFormData, arguments: next });
+                            }}
+                          />
+                          Required
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = promptFormData.arguments.filter((_, i) => i !== idx);
+                            setPromptFormData({ ...promptFormData, arguments: next });
+                          }}
+                          style={{ background: "none", border: "none", color: "var(--status-danger-text)", cursor: "pointer", padding: "4px" }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-
-                  {(!promptFormData.arguments || promptFormData.arguments.length === 0) ? (
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>No arguments defined. Prompt will run without parameters.</span>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {promptFormData.arguments.map((arg, idx) => (
-                        <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <input
-                            type="text"
-                            className="input-base"
-                            placeholder="argName (e.g. topic)"
-                            value={arg.name}
-                            onChange={(e) => {
-                              const next = [...promptFormData.arguments];
-                              next[idx].name = e.target.value;
-                              setPromptFormData({ ...promptFormData, arguments: next });
-                            }}
-                            style={{ flex: 1, fontSize: "12px", height: "28px" }}
-                          />
-                          <input
-                            type="text"
-                            className="input-base"
-                            placeholder="Description..."
-                            value={arg.description}
-                            onChange={(e) => {
-                              const next = [...promptFormData.arguments];
-                              next[idx].description = e.target.value;
-                              setPromptFormData({ ...promptFormData, arguments: next });
-                            }}
-                            style={{ flex: 2, fontSize: "12px", height: "28px" }}
-                          />
-                          <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", cursor: "pointer" }}>
-                            <input
-                              type="checkbox"
-                              checked={Boolean(arg.required)}
-                              onChange={(e) => {
-                                const next = [...promptFormData.arguments];
-                                next[idx].required = e.target.checked;
-                                setPromptFormData({ ...promptFormData, arguments: next });
-                              }}
-                            />
-                            Required
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = promptFormData.arguments.filter((_, i) => i !== idx);
-                              setPromptFormData({ ...promptFormData, arguments: next });
-                            }}
-                            style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: "4px" }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Template Body */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Markdown Template Body</label>
-                  <textarea
-                    className="input-base"
-                    rows={8}
-                    placeholder="Please inspect notes related to '{{topic}}' using the search and read_note tools..."
-                    value={promptFormData.template}
-                    onChange={(e) => setPromptFormData({ ...promptFormData, template: e.target.value })}
-                    style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "12px", lineHeight: "1.5" }}
-                  />
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                    Use <code>{"{{argName}}"}</code> to substitute argument values dynamically during prompt execution.
-                  </span>
-                </div>
+                )}
               </div>
 
-              <div className="mcp-prompt-modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setPromptEditorOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={savingPrompt}
-                  onClick={handleSavePrompt}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-                >
-                  <Check size={14} /> {savingPrompt ? "Saving..." : "Save Prompt"}
-                </button>
+              {/* Template Body */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Markdown Template Body</label>
+                <textarea
+                  className="app-input"
+                  rows={8}
+                  placeholder="Please inspect notes related to '{{topic}}' using the search and read_note tools..."
+                  value={promptFormData.template}
+                  onChange={(e) => setPromptFormData({ ...promptFormData, template: e.target.value })}
+                  style={{ fontFamily: "var(--font-family-jetbrains)", fontSize: "12px", lineHeight: "1.5" }}
+                />
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  Use <code>{"{{argName}}"}</code> to substitute argument values dynamically during prompt execution.
+                </span>
               </div>
             </div>
-          </div>
+
+            <div className="overlay-dialog-actions" style={{ padding: "12px 16px", display: "flex", justifyContent: "flex-end", gap: "8px", borderTop: "1px solid var(--border-soft)" }}>
+              <AppButton
+                variant="secondary"
+                onClick={() => setPromptEditorOpen(false)}
+              >
+                Cancel
+              </AppButton>
+              <AppButton
+                variant="primary"
+                disabled={savingPrompt}
+                onClick={handleSavePrompt}
+              >
+                <Check size={14} /> {savingPrompt ? "Saving..." : "Save Prompt"}
+              </AppButton>
+            </div>
+          </OverlayDialog>
         )}
       </div>
     </div>

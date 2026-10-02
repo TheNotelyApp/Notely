@@ -20,6 +20,7 @@ import {
   mcpRestart,
   onMcpStatusChanged
 } from "../services/electronService";
+import AppButton from "./AppButton";
 import "../styles/AISettings.css";
 import "../styles/MCPSettings.css";
 
@@ -250,33 +251,30 @@ export function MCPSettingsContent({ notify }) {
           <div className="mcp-hero-actions">
             {isRunning ? (
               <>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+                <AppButton
+                  variant="secondary"
                   onClick={handleRestart}
                   title="Restart MCP Server"
                 >
                   <RotateCw size={14} /> Restart
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
+                </AppButton>
+                <AppButton
+                  variant="danger"
                   onClick={handleStop}
                   title="Stop Server"
                 >
                   <Square size={14} /> Stop
-                </button>
+                </AppButton>
               </>
             ) : (
-              <button
-                type="button"
-                className="btn btn-primary"
+              <AppButton
+                variant="primary"
                 onClick={handleStart}
                 disabled={isPortConflict}
                 title="Start Server"
               >
                 <Play size={14} /> Start Server
-              </button>
+              </AppButton>
             )}
           </div>
         </div>
@@ -469,14 +467,13 @@ export function MCPSettingsContent({ notify }) {
 
         {/* Save button */}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
+          <AppButton
             type="submit"
-            className="btn btn-primary"
+            variant="primary"
             disabled={saving}
-            style={{ padding: "6px 16px" }}
           >
             {saving ? "Saving..." : "Save & Apply"}
-          </button>
+          </AppButton>
         </div>
       </form>
 
@@ -487,22 +484,20 @@ export function MCPSettingsContent({ notify }) {
             <Globe size={16} /> Client Integration Snippets
           </h4>
           <div style={{ display: "inline-flex", gap: "4px", background: "var(--surface-muted)", padding: "2px", borderRadius: "6px" }}>
-            <button
-              type="button"
-              className={`btn ${configTarget === "antigravity" ? "btn-primary" : "btn-secondary"}`}
+            <AppButton
+              variant={configTarget === "antigravity" ? "primary" : "secondary"}
               onClick={() => setConfigTarget("antigravity")}
-              style={{ fontSize: "11px", padding: "4px 10px", height: "24px" }}
+              style={{ fontSize: "11px", padding: "2px 8px", height: "24px" }}
             >
               Google Antigravity
-            </button>
-            <button
-              type="button"
-              className={`btn ${configTarget === "claude" ? "btn-primary" : "btn-secondary"}`}
+            </AppButton>
+            <AppButton
+              variant={configTarget === "claude" ? "primary" : "secondary"}
               onClick={() => setConfigTarget("claude")}
-              style={{ fontSize: "11px", padding: "4px 10px", height: "24px" }}
+              style={{ fontSize: "11px", padding: "2px 8px", height: "24px" }}
             >
               Claude Desktop (SSE)
-            </button>
+            </AppButton>
           </div>
         </div>
 

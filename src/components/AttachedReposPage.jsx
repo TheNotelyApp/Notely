@@ -17,6 +17,7 @@ import {
   aiBuildGraph
 } from "../services/electronService";
 import AppButton from "./AppButton";
+import SubpageHeader from "./layout/SubpageHeader";
 import {
   RepoCard,
   AttachRepoModal
@@ -162,45 +163,37 @@ export function AttachedReposPage({
 
   return (
     <div className="attached-repos-page">
-      {/* Top Breadcrumb Bar */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Attached Repositories navigation">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={handleBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">Attached Code Repositories</span>
-        </nav>
+      <SubpageHeader
+        currentTitle="Attached Code Repositories"
+        breadcrumbParent="Workspace"
+        onBack={handleBack}
+        actions={
+          <>
+            <div className="topbar-stat-pill" title="Total attached repositories">
+              <GitBranch size={12} />
+              <span>{repos.length} {repos.length === 1 ? "Repo" : "Repos"}</span>
+            </div>
 
-        <div className="detail-topbar-actions">
-          <div className="topbar-stat-pill" title="Total attached repositories">
-            <GitBranch size={12} />
-            <span>{repos.length} {repos.length === 1 ? "Repo" : "Repos"}</span>
-          </div>
+            <AppButton
+              onClick={handleRescanGraph}
+              disabled={isScanning}
+              title="Rescan and rebuild Code Knowledge Graph"
+            >
+              <RefreshCw size={14} className={isScanning ? "spin arp-btn-icon-mr" : "arp-btn-icon-mr"} />
+              <span>{isScanning ? "Scanning..." : "Rescan"}</span>
+            </AppButton>
 
-          <AppButton
-            onClick={handleRescanGraph}
-            disabled={isScanning}
-            title="Rescan and rebuild Code Knowledge Graph"
-          >
-            <RefreshCw size={14} className={isScanning ? "spin arp-btn-icon-mr" : "arp-btn-icon-mr"} />
-            <span>{isScanning ? "Scanning..." : "Rescan"}</span>
-          </AppButton>
-
-          <AppButton
-            variant="primary"
-            onClick={() => setAttachModalOpen(true)}
-            title="Attach an external Git repository"
-          >
-            <Plus size={14} className="arp-btn-icon-mr" />
-            <span>Attach Repo</span>
-          </AppButton>
-        </div>
-      </div>
+            <AppButton
+              variant="primary"
+              onClick={() => setAttachModalOpen(true)}
+              title="Attach an external Git repository"
+            >
+              <Plus size={14} className="arp-btn-icon-mr" />
+              <span>Attach Repo</span>
+            </AppButton>
+          </>
+        }
+      />
 
       <div className="arp-container">
         {/* Toolbar: Search input */}

@@ -1,11 +1,14 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Search, Folder, FileText, ChevronRight, ChevronDown,
   Hash, Layers, ExternalLink, Filter, Tag, X,
   Code, ChevronsUpDown, Minimize2
 } from "lucide-react";
 import { buildWorkspaceIndex, searchMultiLevelIndex } from "../services/workspaceIndexService";
+import { listWorkspaceTaskDocuments, listDocuments } from "../services/electronService";
 import { MarkdownPreview } from "./MarkdownPreview";
+import SubpageHeader from "./layout/SubpageHeader";
+import AppButton from "./AppButton";
 
 function buildSectionMarkdown(header) {
   if (!header) return "";
@@ -24,37 +27,124 @@ function buildSectionMarkdown(header) {
   return md;
 }
 
-function getBreadcrumbSegments(activeHeader, indexData) {
-  if (!activeHeader || !indexData) return [];
-  const doc = indexData.documentsMap[activeHeader.docId];
+function getBreadcrumbSegments(activeHeader, selectedDocId, indexData) {
+  if (!indexData) return [];
+  const docId = activeHeader ? activeHeader.docId : selectedDocId;
+  if (!docId) return [];
+  const doc = indexData.documentsMap[docId];
   const segments = [];
 
   if (doc) {
-    const rawPath = doc.filePath || doc.title || "Untitled";
-    const parts = rawPath.split("/").filter(Boolean);
+    const rawPath = doc.relativePath || doc.title || (doc.filePath ? doc.filePath.split(/[/\\]/).pop() : "Untitled");
+    const parts = rawPath.split(/[/\\]/).filter(Boolean);
     parts.forEach((p) => segments.push(p));
   }
 
-  // Trace parent headers
-  const headerChain = [];
-  let curr = activeHeader;
-  while (curr) {
-    headerChain.unshift("#".repeat(curr.level) + " " + curr.text);
-    curr = curr.parentId ? (doc?.flatHeaders?.find((h) => h.id === curr.parentId) || null) : null;
+  if (activeHeader) {
+    // Trace parent headers
+    const headerChain = [];
+    let curr = activeHeader;
+    while (curr) {
+      headerChain.unshift("#".repeat(curr.level) + " " + curr.text);
+      curr = curr.parentId ? (doc?.flatHeaders?.find((h) => h.id === curr.parentId) || null) : null;
+    }
+    return [...segments, ...headerChain];
   }
 
-  return [...segments, ...headerChain];
+  return segments;
 }
 
 export function WorkspaceIndexPage({
   documents = [],
+  workspacePath = "",
   onBack,
   onSelectHeader,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState(null);
   const [maxDepth, setMaxDepth] = useState(6);
+  const [selectedDocId, setSelectedDocId] = useState(null);
   const [selectedHeaderId, setSelectedHeaderId] = useState(null);
+  const [allWorkspaceDocs, setAllWorkspaceDocs] = useState([]);
+
+  // Fetch full workspace notes across all subfolders recursively
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAllNotes() {
+      try {
+        let docs = [];
+        if (typeof listWorkspaceTaskDocuments === "function") {
+          docs = await listWorkspaceTaskDocuments();
+        }
+        if (!docs || docs.length === 0) {
+          if (typeof listDocuments === "function") {
+            const visited = new Set();
+            const seenFiles = new Set();
+            const queue = ["ROOT"];
+            const collected = [];
+
+            while (queue.length > 0) {
+              const nextFolder = queue.shift();
+              const folderArg = nextFolder === "ROOT" ? (workspacePath || undefined) : nextFolder;
+              const entries = await listDocuments(
+                typeof folderArg === "string" ? { folderPath: folderArg } : folderArg
+              );
+
+              for (const entry of entries || []) {
+                const key = String(entry?.filePath || "").toLowerCase();
+                if (!key) continue;
+                if (entry?.entryType === "folder" || entry?.isFolder || entry?.isDirectory) {
+                  if (visited.has(key)) continue;
+                  visited.add(key);
+                  queue.push(entry.filePath);
+                  collected.push(entry);
+                  continue;
+                }
+                if (seenFiles.has(key)) continue;
+                seenFiles.add(key);
+                collected.push(entry);
+              }
+            }
+            docs = collected;
+          }
+        }
+
+        if (!cancelled && Array.isArray(docs) && docs.length > 0) {
+          setAllWorkspaceDocs(docs);
+        }
+      } catch (err) {
+        console.error("Failed to load workspace documents for index:", err);
+      }
+    }
+
+    loadAllNotes();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspacePath]);
+
+  // Combine fetched recursive workspace documents with in-memory documents
+  const activeDocuments = useMemo(() => {
+    if (allWorkspaceDocs.length > 0) {
+      const map = new Map();
+      allWorkspaceDocs.forEach((d) => {
+        const key = String(d.filePath || d.id || "").toLowerCase();
+        if (key) map.set(key, d);
+      });
+      (documents || []).forEach((d) => {
+        const key = String(d.filePath || d.id || "").toLowerCase();
+        if (key) {
+          if (map.has(key)) {
+            map.set(key, { ...map.get(key), ...d });
+          } else {
+            map.set(key, d);
+          }
+        }
+      });
+      return Array.from(map.values());
+    }
+    return documents;
+  }, [allWorkspaceDocs, documents]);
 
   // Tree nodes start collapsed by default
   const [expandedFolders, setExpandedFolders] = useState({});
@@ -63,8 +153,8 @@ export function WorkspaceIndexPage({
 
   // Build full multi-level workspace index
   const indexData = useMemo(() => {
-    return buildWorkspaceIndex(documents);
-  }, [documents]);
+    return buildWorkspaceIndex(activeDocuments, { workspacePath });
+  }, [activeDocuments, workspacePath]);
 
   // Execute multi-level search
   const searchResults = useMemo(() => {
@@ -88,15 +178,22 @@ export function WorkspaceIndexPage({
 
   const activeHeader = selectedHeaderId ? flatHeaderMap[selectedHeaderId] : null;
 
-  // Assembled Markdown & Breadcrumb Trail for Section Inspector
-  const activeSectionMarkdown = useMemo(() => {
-    if (!activeHeader) return "";
-    return buildSectionMarkdown(activeHeader);
-  }, [activeHeader]);
+  const activeDoc = useMemo(() => {
+    if (activeHeader) return indexData.documentsMap[activeHeader.docId] || null;
+    if (selectedDocId) return indexData.documentsMap[selectedDocId] || null;
+    return null;
+  }, [activeHeader, selectedDocId, indexData]);
+
+  // Assembled Markdown for Section / Note Inspector
+  const activeContent = useMemo(() => {
+    if (activeHeader) return buildSectionMarkdown(activeHeader);
+    if (activeDoc) return activeDoc.content || "";
+    return "";
+  }, [activeHeader, activeDoc]);
 
   const breadcrumbSegments = useMemo(() => {
-    return getBreadcrumbSegments(activeHeader, indexData);
-  }, [activeHeader, indexData]);
+    return getBreadcrumbSegments(activeHeader, selectedDocId, indexData);
+  }, [activeHeader, selectedDocId, indexData]);
 
   const toggleFolder = (path) => {
     setExpandedFolders((prev) => ({ ...prev, [path]: !prev[path] }));
@@ -151,7 +248,11 @@ export function WorkspaceIndexPage({
       return (
         <div key={header.id} style={{ marginLeft: `${indentLevel * 10}px` }}>
           <div
-            onClick={() => setSelectedHeaderId(header.id)}
+            onClick={() => {
+              setSelectedHeaderId(header.id);
+              setSelectedDocId(header.docId);
+            }}
+            className="workspace-index-tree-item"
             style={{
               display: "flex",
               alignItems: "center",
@@ -161,37 +262,55 @@ export function WorkspaceIndexPage({
               cursor: "pointer",
               fontSize: "11px",
               background: isSelected ? "var(--surface-accent, rgba(59, 130, 246, 0.15))" : "transparent",
-              color: isSelected ? "var(--accent-strong, #3b82f6)" : "var(--app-text, #f8fafc)",
+              color: isSelected ? "var(--accent-solid)" : "var(--text-color)",
               fontWeight: header.level <= 2 ? "600" : "400",
-              borderLeft: isSelected ? "2px solid var(--accent-strong, #3b82f6)" : "2px solid transparent",
+              borderLeft: isSelected ? "2px solid var(--accent-solid)" : "2px solid transparent",
               transition: "background 0.15s ease",
             }}
           >
-            {hasChildren ? (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleHeaderNode(header.id);
-                }}
-                style={{ display: "inline-flex", cursor: "pointer", opacity: 0.7 }}
-              >
-                {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </span>
-            ) : (
-              <Hash size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
-            )}
+            <span
+              onClick={hasChildren ? (e) => {
+                e.stopPropagation();
+                toggleHeaderNode(header.id);
+              } : undefined}
+              style={{
+                width: "14px",
+                height: "14px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                cursor: hasChildren ? "pointer" : "default",
+                opacity: hasChildren ? 0.7 : 0,
+              }}
+            >
+              {hasChildren ? (isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}
+            </span>
+            <span
+              style={{
+                width: "14px",
+                height: "14px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Hash size={12} style={{ opacity: 0.5, color: isSelected ? "var(--accent-solid)" : "currentColor" }} />
+            </span>
             <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {header.text}
             </span>
-            <span style={{ fontSize: "10px", opacity: 0.4, fontVariantNumeric: "tabular-nums" }}>L{header.line}</span>
+            <span style={{ fontSize: "10px", opacity: 0.4, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>L{header.line}</span>
             {header.blocks.length > 0 && (
               <span
                 style={{
                   fontSize: "9px",
                   padding: "1px 4px",
                   borderRadius: "8px",
-                  background: "var(--surface-accent, rgba(255,255,255,0.08))",
+                  background: "var(--surface-muted)",
                   opacity: 0.6,
+                  flexShrink: 0,
                 }}
               >
                 {header.blocks.length}
@@ -199,7 +318,7 @@ export function WorkspaceIndexPage({
             )}
           </div>
           {hasChildren && isExpanded && (
-            <div style={{ borderLeft: "1px dashed var(--border-soft, rgba(255,255,255,0.1))", marginLeft: "6px" }}>
+            <div style={{ borderLeft: "1px dashed var(--border-soft)", marginLeft: "7px", paddingLeft: "2px" }}>
               {renderHeaderTree(header.children, indentLevel + 1)}
             </div>
           )}
@@ -214,42 +333,71 @@ export function WorkspaceIndexPage({
       const doc = node.indexedDoc;
       const hasHeaders = Array.isArray(doc.headers) && doc.headers.length > 0;
       const isDocExpanded = Boolean(searchQuery.trim() || selectedTag || expandedDocs[doc.docId]);
+      const isFileSelected = doc.docId === selectedDocId && !selectedHeaderId;
+
       return (
-        <div key={doc.docId} style={{ marginBottom: "2px" }}>
+        <div key={doc.docId} style={{ marginBottom: "1px" }}>
           <div
-            onClick={() => hasHeaders && toggleDoc(doc.docId)}
+            onClick={() => {
+              setSelectedDocId(doc.docId);
+              setSelectedHeaderId(null);
+              if (hasHeaders) {
+                toggleDoc(doc.docId);
+              }
+            }}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "4px",
-              padding: "3px 5px",
-              borderRadius: "var(--radius-md, 3px)",
+              padding: "3px 6px",
+              borderRadius: "var(--radius-md, 4px)",
               cursor: "pointer",
               fontSize: "11px",
-              fontWeight: "600",
-              background: "var(--surface-card, rgba(255,255,255,0.03))",
-              border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+              fontWeight: isFileSelected ? "600" : "500",
+              background: isFileSelected ? "var(--surface-accent, rgba(59, 130, 246, 0.15))" : "transparent",
+              color: isFileSelected ? "var(--accent-solid)" : "var(--text-color)",
+              borderLeft: isFileSelected ? "2px solid var(--accent-solid)" : "2px solid transparent",
+              transition: "background 0.15s ease",
             }}
+            className="workspace-index-tree-item"
           >
-            {hasHeaders ? (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleDoc(doc.docId);
-                }}
-                style={{ display: "inline-flex", cursor: "pointer", opacity: 0.7 }}
-              >
-                {isDocExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </span>
-            ) : null}
-            <FileText size={12} style={{ color: "var(--accent-strong, #3b82f6)", flexShrink: 0 }} />
+            <span
+              onClick={hasHeaders ? (e) => {
+                e.stopPropagation();
+                toggleDoc(doc.docId);
+              } : undefined}
+              style={{
+                width: "14px",
+                height: "14px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                cursor: hasHeaders ? "pointer" : "default",
+                opacity: hasHeaders ? 0.7 : 0,
+              }}
+            >
+              {hasHeaders ? (isDocExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}
+            </span>
+            <span
+              style={{
+                width: "14px",
+                height: "14px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <FileText size={12} style={{ color: "var(--accent-solid)" }} />
+            </span>
             <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {doc.title}
             </span>
-            <span style={{ fontSize: "10px", opacity: 0.5 }}>{doc.flatHeaders.length} headers</span>
+            <span style={{ fontSize: "10px", opacity: 0.45, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{doc.flatHeaders.length} headers</span>
           </div>
           {hasHeaders && isDocExpanded && (
-            <div style={{ marginTop: "2px", paddingLeft: "6px" }}>
+            <div style={{ marginTop: "1px", paddingLeft: "6px" }}>
               {renderHeaderTree(doc.headers)}
             </div>
           )}
@@ -262,7 +410,7 @@ export function WorkspaceIndexPage({
     const isFolderExpanded = Boolean(searchQuery.trim() || selectedTag || expandedFolders[node.path]);
 
     return (
-      <div key={node.path || key} style={{ marginBottom: "3px" }}>
+      <div key={node.path || key} style={{ marginBottom: "1px" }}>
         {node.name !== "Root" && (
           <div
             onClick={() => hasChildren && toggleFolder(node.path)}
@@ -270,26 +418,49 @@ export function WorkspaceIndexPage({
               display: "flex",
               alignItems: "center",
               gap: "4px",
-              padding: "3px 4px",
+              padding: "3px 6px",
+              borderRadius: "var(--radius-md, 4px)",
               cursor: "pointer",
               fontSize: "11px",
-              fontWeight: "700",
-              opacity: 0.9,
+              fontWeight: "600",
+              color: "var(--text-strong)",
+              transition: "background 0.15s ease",
             }}
+            className="workspace-index-tree-item"
           >
-            {hasChildren ? (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFolder(node.path);
-                }}
-                style={{ display: "inline-flex", cursor: "pointer", opacity: 0.7 }}
-              >
-                {isFolderExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </span>
-            ) : null}
-            <Folder size={12} style={{ color: "#f59e0b", flexShrink: 0 }} />
-            <span>{node.name}</span>
+            <span
+              onClick={hasChildren ? (e) => {
+                e.stopPropagation();
+                toggleFolder(node.path);
+              } : undefined}
+              style={{
+                width: "14px",
+                height: "14px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                cursor: hasChildren ? "pointer" : "default",
+                opacity: hasChildren ? 0.7 : 0,
+              }}
+            >
+              {hasChildren ? (isFolderExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}
+            </span>
+            <span
+              style={{
+                width: "14px",
+                height: "14px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Folder size={12} style={{ color: "#f59e0b" }} />
+            </span>
+            <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {node.name}
+            </span>
           </div>
         )}
         {(node.name === "Root" || (hasChildren && isFolderExpanded)) && (
@@ -308,55 +479,32 @@ export function WorkspaceIndexPage({
         flexDirection: "column",
         height: "100%",
         width: "100%",
-        background: "var(--app-bg, #0f172a)",
-        color: "var(--app-text, #f8fafc)",
+        background: "var(--surface-bg)",
+        color: "var(--text-color)",
         fontFamily: "var(--font-sans, system-ui, sans-serif)",
       }}
     >
-      {/* Top Breadcrumb Bar matching Knowledge Graph / Subpage system */}
-      <div className="detail-topbar" style={{ padding: "6px 14px", borderBottom: "1px solid var(--border-soft)", background: "var(--surface-bg)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <nav className="detail-breadcrumb" aria-label="Workspace Index location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-part">
-            <span
-              className={breadcrumbSegments.length > 0 ? "detail-breadcrumb-link" : "detail-breadcrumb-current"}
-              onClick={() => setSelectedHeaderId(null)}
-              style={{ cursor: breadcrumbSegments.length > 0 ? "pointer" : "default" }}
-            >
-              Index
-            </span>
-          </span>
-          {breadcrumbSegments.map((seg, i) => (
-            <span key={i} className="detail-breadcrumb-part">
-              <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-              <span className={i === breadcrumbSegments.length - 1 ? "detail-breadcrumb-current" : "detail-breadcrumb-link"}>
-                {seg}
-              </span>
-            </span>
-          ))}
-        </nav>
-
-        {/* Compact Header Stats */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "11px", opacity: 0.8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <FileText size={12} style={{ opacity: 0.6 }} />
-            <span><strong>{indexData.stats.totalDocuments}</strong> Notes</span>
+      <SubpageHeader
+        breadcrumbs={breadcrumbSegments.length > 0 ? breadcrumbSegments : ["Workspace Index"]}
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "11px", opacity: 0.8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <FileText size={12} style={{ opacity: 0.6 }} />
+              <span><strong>{indexData.stats.totalDocuments}</strong> Notes</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <Hash size={12} style={{ color: "var(--accent-solid)" }} />
+              <span><strong>{indexData.stats.totalHeaders}</strong> Headers</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <Code size={12} style={{ opacity: 0.6 }} />
+              <span><strong>{indexData.stats.totalCodeBlocks}</strong> Code Blocks</span>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <Hash size={12} style={{ color: "var(--accent-strong, #3b82f6)" }} />
-            <span><strong>{indexData.stats.totalHeaders}</strong> Headers</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <Code size={12} style={{ opacity: 0.6 }} />
-            <span><strong>{indexData.stats.totalCodeBlocks}</strong> Code Blocks</span>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Compact Top Search & Filter Bar */}
       <div
@@ -467,22 +615,22 @@ export function WorkspaceIndexPage({
             background: "var(--surface-subtle, rgba(15, 23, 42, 0.4))",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <div style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", opacity: 0.6, letterSpacing: "0.05em" }}>
-              {searchResults ? `Matches (${searchResults.length})` : "Multi-Level Hierarchy"}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
+            <div style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", opacity: 0.6, letterSpacing: "0.05em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {searchResults ? `Matches (${searchResults.length})` : "Hierarchy"}
             </div>
             {!searchResults && (
-              <div style={{ display: "flex", gap: "3px" }}>
+              <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={handleExpandAll}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "2px",
+                    gap: "3px",
                     fontSize: "10px",
-                    padding: "1px 5px",
-                    borderRadius: "3px",
+                    padding: "2px 6px",
+                    borderRadius: "var(--radius-sm, 3px)",
                     border: "1px solid var(--border-soft, rgba(255,255,255,0.15))",
                     background: "var(--surface-card, rgba(255,255,255,0.04))",
                     color: "inherit",
@@ -497,10 +645,10 @@ export function WorkspaceIndexPage({
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "2px",
+                    gap: "3px",
                     fontSize: "10px",
-                    padding: "1px 5px",
-                    borderRadius: "3px",
+                    padding: "2px 6px",
+                    borderRadius: "var(--radius-sm, 3px)",
                     border: "1px solid var(--border-soft, rgba(255,255,255,0.15))",
                     background: "var(--surface-card, rgba(255,255,255,0.04))",
                     color: "inherit",
@@ -520,18 +668,23 @@ export function WorkspaceIndexPage({
               searchResults.map((res) => (
                 <div
                   key={res.header.id}
-                  onClick={() => setSelectedHeaderId(res.header.id)}
-                  style={{
-                    padding: "5px 7px",
-                    borderRadius: "3px",
-                    cursor: "pointer",
-                    marginBottom: "3px",
-                    background: res.header.id === selectedHeaderId ? "var(--surface-accent, rgba(59, 130, 246, 0.15))" : "var(--surface-card, rgba(255,255,255,0.03))",
-                    borderLeft: res.header.id === selectedHeaderId ? "2px solid var(--accent-strong, #3b82f6)" : "2px solid transparent",
+                  onClick={() => {
+                    setSelectedHeaderId(res.header.id);
+                    setSelectedDocId(res.docId);
                   }}
+                  style={{
+                    padding: "4px 6px",
+                    borderRadius: "var(--radius-md, 4px)",
+                    cursor: "pointer",
+                    marginBottom: "2px",
+                    background: res.header.id === selectedHeaderId ? "var(--surface-accent)" : "transparent",
+                    borderLeft: res.header.id === selectedHeaderId ? "2px solid var(--accent-solid)" : "2px solid transparent",
+                    transition: "background 0.15s ease",
+                  }}
+                  className="workspace-index-tree-item"
                 >
-                  <div style={{ fontSize: "10px", opacity: 0.6 }}>{res.docTitle} • Line {res.header.line}</div>
-                  <div style={{ fontSize: "11px", fontWeight: "600", color: "var(--accent-strong, #3b82f6)" }}>
+                  <div style={{ fontSize: "10px", opacity: 0.6 }}>{res.relativePath || res.docTitle} • Line {res.header.line}</div>
+                  <div style={{ fontSize: "11px", fontWeight: "600", color: res.header.id === selectedHeaderId ? "var(--accent-solid)" : "var(--text-color)" }}>
                     {"#".repeat(res.header.level)} {res.header.text}
                   </div>
                   {res.matchedBlocks.length > 0 && (
@@ -549,7 +702,7 @@ export function WorkspaceIndexPage({
 
         {/* Center Column: Preview Engine Inspector */}
         <div style={{ flex: 1, padding: "14px 20px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-          {activeHeader ? (
+          {activeHeader || activeDoc ? (
             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
               {/* Header Action Bar */}
               <div
@@ -564,34 +717,30 @@ export function WorkspaceIndexPage({
               >
                 <div>
                   <div style={{ fontSize: "10px", opacity: 0.6, marginBottom: "2px" }}>
-                    {activeHeader.filePath || activeHeader.docTitle} • Line {activeHeader.line}
+                    {activeHeader
+                      ? `${activeHeader.relativePath || activeHeader.docTitle} • Line ${activeHeader.line}`
+                      : `${activeDoc.relativePath || activeDoc.title} • ${activeDoc.wordCount || 0} words • ${activeDoc.flatHeaders?.length || 0} headers`}
                   </div>
                   <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700" }}>
-                    {"#".repeat(activeHeader.level)} {activeHeader.text}
+                    {activeHeader ? `${"#".repeat(activeHeader.level)} ${activeHeader.text}` : activeDoc.title}
                   </h3>
                 </div>
 
                 <div style={{ display: "flex", gap: "6px" }}>
-                  <button
+                  <AppButton
                     type="button"
-                    onClick={() => onSelectHeader && onSelectHeader(activeHeader.docId, activeHeader.line)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "3px",
-                      padding: "4px 9px",
-                      borderRadius: "var(--radius-md, 3px)",
-                      background: "var(--accent-strong, #3b82f6)",
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "11px",
-                      fontWeight: "600",
+                    variant="primary"
+                    size="small"
+                    onClick={() => {
+                      if (onSelectHeader) {
+                        const targetPath = activeHeader?.filePath || activeDoc?.filePath || activeDoc?.docId;
+                        const targetLine = activeHeader ? activeHeader.line : 1;
+                        onSelectHeader(targetPath, targetLine);
+                      }
                     }}
                   >
-                    <ExternalLink size={12} /> Open in Editor (Line {activeHeader.line})
-                  </button>
-
+                    <ExternalLink size={12} /> {activeHeader ? `Open in Editor (Line ${activeHeader.line})` : "Open in Editor"}
+                  </AppButton>
                 </div>
               </div>
 
@@ -607,8 +756,8 @@ export function WorkspaceIndexPage({
                 }}
               >
                 <MarkdownPreview
-                  content={activeSectionMarkdown}
-                  basePath={activeHeader.filePath}
+                  content={activeContent}
+                  basePath={activeHeader?.filePath || activeDoc?.filePath}
                   readOnly
                 />
               </div>
@@ -627,7 +776,7 @@ export function WorkspaceIndexPage({
             >
               <Layers size={18} style={{ marginBottom: "8px", opacity: 0.7 }} />
               <div style={{ fontSize: "13px", fontWeight: "600", marginBottom: "2px" }}>Multi-Level Workspace Index</div>
-              <div style={{ fontSize: "11px" }}>Select any header node from the outline tree to inspect its section with the Markdown Preview Engine</div>
+              <div style={{ fontSize: "11px" }}>Select any note or header from the hierarchy outline to inspect its content with the Markdown Preview Engine</div>
             </div>
           )}
         </div>
