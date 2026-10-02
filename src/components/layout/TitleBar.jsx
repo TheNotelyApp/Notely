@@ -302,6 +302,7 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
 
   const containerRef = useRef(null);
   const downloadAnimTimerRef = useRef(null);
+  const downloadsHoverTimerRef = useRef(null);
 
   const loadRecentDownloads = useCallback(async () => {
     try {
@@ -313,6 +314,22 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
       console.error("Failed to fetch recent downloads", err);
     }
   }, []);
+
+  const handleDownloadsMouseEnter = () => {
+    if (downloadsHoverTimerRef.current) {
+      clearTimeout(downloadsHoverTimerRef.current);
+      downloadsHoverTimerRef.current = null;
+    }
+    loadRecentDownloads();
+    setHasUnreadDownload(false);
+    setShowDownloadsPopover(true);
+  };
+
+  const handleDownloadsMouseLeave = () => {
+    downloadsHoverTimerRef.current = setTimeout(() => {
+      setShowDownloadsPopover(false);
+    }, 250);
+  };
 
   const triggerDownloadHighlight = useCallback(() => {
     loadRecentDownloads();
@@ -605,7 +622,11 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
         {(onOpenDownloads || onOpenWebsite) && (
           <div className="titlebar-action-btns">
             {onOpenDownloads && (
-              <div className="titlebar-downloads-container">
+              <div
+                className="titlebar-downloads-container"
+                onMouseEnter={handleDownloadsMouseEnter}
+                onMouseLeave={handleDownloadsMouseLeave}
+              >
                 <button
                   className={`titlebar-btn downloads-view${hasUnreadDownload ? " has-unread" : ""}${showDownloadsPopover ? " active" : ""}${isAnimatingDownload ? " download-animating" : ""}`}
                   onClick={toggleDownloadsPopover}
