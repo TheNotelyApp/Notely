@@ -5,11 +5,9 @@ import {
   Check,
   Search,
   Sparkles,
-  ListFilter,
   Clock,
   FileDown,
   CheckCircle2,
-  ArrowRight,
 } from "lucide-react";
 import AppButton from "../AppButton";
 
@@ -69,10 +67,19 @@ export function TranscriptViewer({
 
   const summary = transcriptData?.summary;
   const rawText = transcriptData?.fullText || transcriptData?.text || "";
-  const segments = Array.isArray(transcriptData?.segments) ? transcriptData.segments : [];
 
-  const keyPoints = Array.isArray(summary?.keyPoints) ? summary.keyPoints : [];
-  const actionItems = Array.isArray(summary?.actionItems) ? summary.actionItems : [];
+  const segments = useMemo(() => {
+    return Array.isArray(transcriptData?.segments) ? transcriptData.segments : [];
+  }, [transcriptData]);
+
+  const keyPoints = useMemo(() => {
+    return Array.isArray(summary?.keyPoints) ? summary.keyPoints : [];
+  }, [summary]);
+
+  const actionItems = useMemo(() => {
+    return Array.isArray(summary?.actionItems) ? summary.actionItems : [];
+  }, [summary]);
+
   const hasSummary = Boolean(summary && (typeof summary === "string" || keyPoints.length > 0 || actionItems.length > 0));
 
   // Filter segments by search

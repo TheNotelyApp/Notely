@@ -36,11 +36,13 @@ Keep your assets tidy using the Media Health Dashboard:
 
 ---
 
-## 4. Diagrams & Media Gallery
+## 4. Diagrams & Media Asset Manager
 
-Notely provides a dedicated full-screen page under **Workspace > Diagrams & Media Gallery** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`):
-- **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`) to identify files present on disk that have zero note references, letting you clean up orphaned files with the `⚠️ Unused / Orphans` filter tab.
-- **Collapsible Category Filter**: Filter by category (Diagrams, Images, PDFs, Videos, Audio, Documents, Transcripts) and usage scope.
-- **Referenced Notes & Line Jumping**: Click any item to inspect details and see all notes referencing it, complete with line numbers and markdown snippets. Click **Open Note** to jump directly to the note and line.
-- **Audio & Media Preview**: Embedded audio player with waveform preview, video modal player, and expandable transcript drawer with action items and key points.
-- **On-Demand AI Transcript Generation (`✨`)**: Run speech-to-text directly on any existing video or audio recording in the gallery.
+Notely provides a dedicated full-screen asset manager under **Workspace > Diagrams & Media** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`):
+- **Dense Asset Table Layout**: High-density table displaying Asset Name, Type Badge, File Size, Reference Status, and Quick Action buttons.
+- **Fixed Sidebar & Category Filters**: Left sidebar (260px) with real-time counters for Diagrams, UI Prototypes, Images, PDFs, Videos, Audio, Transcripts, and Documents.
+- **Physical Disk Scanner & Orphan Detection**: Discovers assets on disk across `media/`, `assets/`, and `images/`. Unreferenced assets are highlighted with the `⚠️ Unused / Orphans` badge and filter tab.
+- **Asset Bundles**: Audio and video recordings are organized into bundle folders (`media/audio/<id>/` and `media/video/<id>/`) containing the primary recording alongside companion `transcript.json`.
+- **Integrated Full-Screen Media Viewer**: Standardized modal viewer with 100% full-width layout, subtitle/transcript side drawer, playback speed controls, and copy/download tools.
+- **Safe Asset Deletion**: Remove unwanted assets with safety confirmation modals that check note references and warn before removing actively linked files.
+- **Referenced Notes & Line Jumping**: Inspect reference pills to view note names, line numbers, and markdown context snippets, with 1-click navigation to jump directly to the editor position.

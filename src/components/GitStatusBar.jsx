@@ -3,11 +3,9 @@ import {
   GitBranch,
   GitCommit,
   ArrowUpDown,
-  RefreshCw,
   X,
   ExternalLink,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import AppButton from "./AppButton";
 

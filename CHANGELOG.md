@@ -4,7 +4,13 @@ All notable documentation and user-facing behavior changes are tracked in this f
 
 ## Unreleased
 
-- Added **Attached Code Repositories & AST Knowledge Graph Integration**:
+- Added **Diagrams & Media Asset Manager & Media Viewer Standardization**:
+  - High-density table layout with fixed 260px sidebar replacing card grid for managing workspace media, diagrams, PDFs, and recordings.
+  - Category filters with real-time counters and high-contrast badges for Diagrams, UI Prototypes, Images, PDFs, Videos, Audio, Transcripts, and Documents.
+  - Safe asset deletion workflow with reference checking to prevent accidental broken links in notes.
+  - Co-located asset bundle folders (`media/audio/<id>/` and `media/video/<id>/`) containing primary recording files alongside companion `transcript.json`.
+  - Unified full-screen `MediaPreviewPane` modal with de-duplicated header bar, 100% full-width stretch, and interactive Speech-to-Text transcript drawer.
+  - Interactive transcript card rendering (`.markdown-transcript-card`) in markdown note preview with View, Copy, and Download actions.
   - Connect external Git repositories to workspace metadata (`.notes-app/metadata.json`) with branch and commit tracking.
   - Multi-language code AST extractor (`CodeKnowledgeSource.js`) parsing JS/TS, Python, Go, Rust, Java, C/C++, Ruby, and PHP files into structured code entities (CodeModule, CodeClass, CodeInterface, CodeFunction, APIEndpoint, DBModel) and mapping `IMPORTS`/`CONTAINS`/`DOCUMENTS` graph relationships.
   - Interactive **Attached Repositories Explorer** page (`AttachedReposPage.jsx`, `AttachedReposPage.css`) accessible via dashboard card, TitleBar menu (`Workspace → Attached Repositories`), and Command Palette (`open-attached-repos`).

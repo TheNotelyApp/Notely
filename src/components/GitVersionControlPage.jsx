@@ -15,7 +15,6 @@ import {
   Download,
   FileEdit,
   FilePlus2,
-  Layers,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppInput from "./AppInput";
@@ -104,7 +103,7 @@ function NoRepoState({ onInit, initializing }) {
 
 // ── Changes & Commit Tab ──────────────────────────────────────────────────────
 
-function ChangesTab({ status, workspacePath, onRefresh, onNotify, onCommitSuccess, onSync }) {
+function ChangesTab({ status, workspacePath, onRefresh, onCommitSuccess }) {
   const { files = [], branch = "", ahead = 0, behind = 0 } = status || {};
   const [selectedPaths, setSelectedPaths] = useState([]);
   const [message, setMessage] = useState("");
@@ -120,14 +119,6 @@ function ChangesTab({ status, workspacePath, onRefresh, onNotify, onCommitSucces
     setSelectedPaths((prev) =>
       prev.includes(filePath) ? prev.filter((p) => p !== filePath) : [...prev, filePath]
     );
-  }
-
-  function selectAll() {
-    setSelectedPaths(files.map((f) => f.path));
-  }
-
-  function deselectAll() {
-    setSelectedPaths([]);
   }
 
   async function handleCommit() {
@@ -711,7 +702,6 @@ export function GitVersionControlPage({
 
   const [gitAvailable, setGitAvailable] = useState(null);
   const [isRepo, setIsRepo] = useState(null);
-  const [_repoRoot, setRepoRoot] = useState(null);
   const [initializing, setInitializing] = useState(false);
   const [status, setStatus] = useState(null);
   const [commits, setCommits] = useState([]);
@@ -780,7 +770,6 @@ export function GitVersionControlPage({
       const repoInfo = await gitGetRepoInfo(workspacePath);
       if (repoInfo?.ok) {
         setIsRepo(repoInfo.data.isRepo);
-        setRepoRoot(repoInfo.data.repoRoot);
 
         if (repoInfo.data.isRepo) {
           refreshStatus();
