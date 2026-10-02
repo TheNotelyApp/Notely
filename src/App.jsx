@@ -68,6 +68,10 @@ import {
   getOnboardingComplete,
   getNotesRootSetting,
   gitGetStatus,
+  gitFetch,
+  gitPull,
+  gitPush,
+  gitListRemotes,
   checkForUpdates,
   onExportRecordAdded,
   listProjects,
@@ -1120,16 +1124,25 @@ export default function App() {
     setDiagramsMediaOpen(false);
   }
 
-  const refreshGitWorkspaceMeta = useCallback(async function refreshGitWorkspaceMeta() {
+  const refreshGitWorkspaceMeta = useCallback(async function refreshGitWorkspaceMeta(triggerFetch = false) {
     try {
       const meta = await getGitWorkspaceMetadata();
       let pendingCount = 0;
       let files = [];
+      let ahead = 0;
+      let behind = 0;
       if (meta?.isGitRoot && notesFolderPath) {
+        if (triggerFetch) {
+          try {
+            await gitFetch({ workspacePath: notesFolderPath });
+          } catch { /* ignore background fetch errors */ }
+        }
         const statusResult = await gitGetStatus(notesFolderPath);
         if (statusResult?.ok) {
           pendingCount = statusResult.data.files?.length || 0;
           files = statusResult.data.files || [];
+          ahead = statusResult.data.ahead || 0;
+          behind = statusResult.data.behind || 0;
         }
       }
       setGitWorkspaceMeta({
@@ -1140,6 +1153,8 @@ export default function App() {
         gitignoreHasNotesApp: meta?.gitignoreHasNotesApp === true,
         pendingCount,
         files,
+        ahead,
+        behind,
       });
     } catch {
       setGitWorkspaceMeta((currentValue) => ({
@@ -1147,9 +1162,48 @@ export default function App() {
         isGitRoot: false,
         pendingCount: 0,
         files: [],
+        ahead: 0,
+        behind: 0,
       }));
     }
   }, [notesFolderPath]);
+
+  // Periodic background fetch every 60 seconds when in a git workspace
+  useEffect(() => {
+    if (!notesFolderPath || !gitWorkspaceMeta.isGitRoot) return undefined;
+    const timer = setInterval(() => {
+      void refreshGitWorkspaceMeta(true);
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [notesFolderPath, gitWorkspaceMeta.isGitRoot, refreshGitWorkspaceMeta]);
+
+  const handleQuickGitSync = useCallback(async () => {
+    if (!notesFolderPath || !gitWorkspaceMeta.isGitRoot) return;
+    try {
+      const remotesRes = await gitListRemotes(notesFolderPath);
+      const remotes = remotesRes?.ok ? remotesRes.data : [];
+      if (!remotes || remotes.length === 0) {
+        notify("No remote connected. Configure a target in Revisions & Sync.", "info");
+        setGitVCInitialTab("sync");
+        setGitVCOpen(true);
+        return;
+      }
+      const primaryRemote = remotes[0].name || "origin";
+      notify("Syncing workspace with cloud…", "info");
+      const pullRes = await gitPull({ workspacePath: notesFolderPath, remote: primaryRemote });
+      if (!pullRes?.ok) {
+        throw new Error(pullRes?.error || "Pull from cloud failed.");
+      }
+      const pushRes = await gitPush({ workspacePath: notesFolderPath, remote: primaryRemote });
+      if (!pushRes?.ok) {
+        throw new Error(pushRes?.error || "Push to cloud failed.");
+      }
+      notify("Workspace synced with cloud successfully.", "success");
+      void refreshGitWorkspaceMeta(true);
+    } catch (err) {
+      notify(err?.message || "Cloud sync failed.", "error");
+    }
+  }, [notesFolderPath, gitWorkspaceMeta.isGitRoot, notify, refreshGitWorkspaceMeta, setGitVCOpen, setGitVCInitialTab]);
 
   async function handleToggleAutoIgnoreGitMetadata() {
     try {
@@ -1171,13 +1225,15 @@ export default function App() {
     }
   }
 
-  const handleGitStateChange = useCallback(({ branch, pendingCount }) => {
+  const handleGitStateChange = useCallback(({ branch, pendingCount, ahead = 0, behind = 0 }) => {
     setGitWorkspaceMeta((meta) => {
-      if (meta.branch === branch && meta.pendingCount === pendingCount) return meta;
+      if (meta.branch === branch && meta.pendingCount === pendingCount && meta.ahead === ahead && meta.behind === behind) return meta;
       return {
         ...meta,
         branch,
         pendingCount,
+        ahead,
+        behind,
       };
     });
   }, []);
@@ -2495,7 +2551,7 @@ export default function App() {
     { id: "open-workspace-diagrams-media", label: "Open Media Gallery", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+M", aliases: "media gallery assets diagrams pdfs images video audio mermaid drawio excalidraw" },
     { id: "open-attached-repos", label: "Open Attached Code Repositories", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+G", aliases: "git repos code ast symbols attach repositories graphify" },
     { id: "open-downloads-page", label: "Open Downloads & Export History", group: "App", shortcut: "Ctrl/Cmd+J", aliases: "downloads exports export history pdf packages" },
-    { id: "open-git-version-control", label: "Open Version Control", group: "Tools", shortcut: "Ctrl/Cmd+Shift+G", aliases: "git version control vc source commit branch diff history" },
+    { id: "open-git-version-control", label: "Open Revisions & Sync", group: "Tools", shortcut: "Ctrl/Cmd+Shift+G", aliases: "git version control vc source commit branch diff history milestone sync" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
     { id: "open-p2p-status", label: "Open P2P Settings", group: "Sync", aliases: "peer status p2p sync settings" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
@@ -3348,9 +3404,20 @@ export default function App() {
                 isRepo: gitWorkspaceMeta.isGitRoot,
                 branch: gitWorkspaceMeta.branch,
                 pendingCount: gitWorkspaceMeta.pendingCount || 0,
+                ahead: gitWorkspaceMeta.ahead || 0,
+                behind: gitWorkspaceMeta.behind || 0,
                 loading: false,
               }}
               onClick={() => setGitVCOpen(true)}
+              onOpenVC={(tab) => {
+                if (tab) setGitVCInitialTab(tab);
+                setGitVCOpen(true);
+              }}
+              onSaveMilestone={() => {
+                setGitVCInitialTab("changes");
+                setGitVCOpen(true);
+              }}
+              onSync={handleQuickGitSync}
             />
             <AIStatusBar
               onClick={() => openSettings("ai")}

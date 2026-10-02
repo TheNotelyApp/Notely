@@ -184,3 +184,28 @@ describe("GitCommitDialog", () => {
     host.remove();
   });
 });
+
+describe("GitVersionControlPage", () => {
+  it("mounts and renders changes tab without errors", async () => {
+    const { GitVersionControlPage } = await import("../../components/GitVersionControlPage");
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        <GitVersionControlPage
+          workspacePath="C:/workspace"
+          initialTab="changes"
+        />
+      );
+    });
+
+    expect(host.textContent).toBeTruthy();
+
+    act(() => {
+      root.unmount();
+    });
+    host.remove();
+  });
+});

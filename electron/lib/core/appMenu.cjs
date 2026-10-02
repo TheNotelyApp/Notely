@@ -900,50 +900,28 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
       label: "Tools",
       submenu: [
         {
-          label: "Version Control",
+          label: "Revisions & Sync",
           submenu: [
             {
-              label: "Open Version Control",
+              label: "Open Revisions & Sync",
               accelerator: "CmdOrCtrl+Shift+G",
               click: () => sendMenuAction(win, "open-git-version-control")
             },
             { type: "separator" },
             {
-              label: "Commit\u2026",
+              label: "Save Milestone…",
               accelerator: "CmdOrCtrl+Alt+K",
               click: () => sendMenuAction(win, "git-commit")
             },
             {
-              label: "History",
+              label: "Note History Drawer",
               accelerator: "CmdOrCtrl+Shift+H",
               enabled: screen === "document",
               click: () => sendMenuAction(win, "git-history")
             },
             {
-              label: "Diff Current Note",
-              enabled: screen === "document",
-              click: () => sendMenuAction(win, "git-diff-current")
-            },
-            {
-              label: "Compare Versions",
-              click: () => sendMenuAction(win, "git-compare")
-            },
-            { type: "separator" },
-            {
-              label: "Push",
+              label: "Sync with Cloud",
               accelerator: "CmdOrCtrl+Shift+U",
-              click: () => sendMenuAction(win, "git-push")
-            },
-            {
-              label: "Pull",
-              click: () => sendMenuAction(win, "git-pull")
-            },
-            {
-              label: "Fetch",
-              click: () => sendMenuAction(win, "git-fetch")
-            },
-            {
-              label: "Sync (Pull then Push)",
               click: () => sendMenuAction(win, "git-sync")
             },
             { type: "separator" },

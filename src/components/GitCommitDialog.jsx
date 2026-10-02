@@ -54,6 +54,14 @@ export function GitCommitDialog({
     );
   }
 
+  function selectAll() {
+    setSelectedPaths(stagedFiles.map((f) => f.path));
+  }
+
+  function deselectAll() {
+    setSelectedPaths([]);
+  }
+
   async function handleCommit() {
     const trimmed = message.trim();
     if (!trimmed) {
@@ -94,13 +102,13 @@ export function GitCommitDialog({
     <OverlayDialog
       open={open}
       onClose={onClose}
-      ariaLabel="Commit changes"
+      ariaLabel="Save Milestone"
       cardClassName="git-commit-dialog"
     >
       <div className="git-commit-dialog__header">
         <div className="git-commit-dialog__title-row">
           <GitCommit size={16} aria-hidden="true" />
-          <h2 className="git-commit-dialog__title">Commit Changes</h2>
+          <h2 className="git-commit-dialog__title">Save Version Milestone</h2>
         </div>
         <button
           type="button"
@@ -120,7 +128,32 @@ export function GitCommitDialog({
         ) : (
           <>
             <fieldset className="git-commit-dialog__files">
-              <legend className="git-commit-dialog__files-label">Files to commit</legend>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-2)" }}>
+                <legend className="git-commit-dialog__files-label" style={{ margin: 0 }}>
+                  Notes to include ({selectedPaths.length} of {stagedFiles.length})
+                </legend>
+                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="inline-link-btn"
+                    onClick={selectAll}
+                    disabled={committing || selectedPaths.length === stagedFiles.length}
+                    style={{ fontSize: "var(--font-size-body-xs)", cursor: "pointer", background: "none", border: "none", color: "var(--color-primary, #6366f1)", padding: 0 }}
+                  >
+                    Select All
+                  </button>
+                  <span aria-hidden="true" style={{ color: "var(--text-muted)", fontSize: "var(--font-size-body-xs)" }}>·</span>
+                  <button
+                    type="button"
+                    className="inline-link-btn"
+                    onClick={deselectAll}
+                    disabled={committing || selectedPaths.length === 0}
+                    style={{ fontSize: "var(--font-size-body-xs)", cursor: "pointer", background: "none", border: "none", color: "var(--color-primary, #6366f1)", padding: 0 }}
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
               {stagedFiles.map((f) => (
                 <label key={f.path} className="git-commit-dialog__file-row">
                   <input

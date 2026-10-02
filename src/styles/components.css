@@ -1466,42 +1466,49 @@
 .app-input {
   min-height: var(--btn-height-md);
   padding: 0 10px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   background: var(--surface-bg);
   color: var(--app-text);
   font-size: var(--font-size-body-sm);
+  outline: none;
   transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .app-input:hover {
-  border-color: var(--border-soft);
+  border-color: var(--border-strong, var(--accent-solid));
 }
 
 .app-input:focus {
   outline: none;
-  border-color: var(--focus-ring-color);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
+  border-color: var(--focus-ring-color, var(--accent-solid));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color, var(--accent-solid)) 25%, transparent);
 }
 
 .app-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   padding: 8px 10px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   background: var(--surface-bg);
   color: var(--app-text);
   font-size: var(--font-size-body-sm);
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
   transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .app-textarea:hover {
-  border-color: var(--border-soft);
+  border-color: var(--border-strong, var(--accent-solid));
 }
 
 .app-textarea:focus {
   outline: none;
-  border-color: var(--focus-ring-color);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color) 35%, transparent);
+  border-color: var(--focus-ring-color, var(--accent-solid));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring-color, var(--accent-solid)) 25%, transparent);
 }
 
 .icon-button {

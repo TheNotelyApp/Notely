@@ -331,6 +331,12 @@
   border: 1px solid var(--status-danger-border) !important;
 }
 
+.cal-event-milestone {
+  background: var(--color-primary, #6366f1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
 /* Event Popup */
 
 .cal-popup-backdrop {

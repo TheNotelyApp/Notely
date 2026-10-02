@@ -3665,20 +3665,35 @@
 
 .git-vc-file-list {
   list-style: none;
-  padding: 0;
+  padding: var(--space-2, 8px);
   margin: 0;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--surface-bg);
-  overflow: hidden;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .git-vc-file-row {
   display: flex;
   align-items: center;
-  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
-  border-bottom: 1px solid var(--border-default);
-  font-size: var(--font-size-body, 14px);
+  gap: var(--space-3, 12px);
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body-sm, 13px);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  transition: background var(--motion-fast, 150ms ease);
+}
+
+.git-vc-file-row:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+}
+
+.git-vc-file-row.selected {
+  background: var(--surface-subtle, rgba(99, 102, 241, 0.06));
 }
 
 .git-vc-file-row:last-child {
@@ -3686,11 +3701,15 @@
 }
 
 .git-vc-file-row__status {
-  font-family: monospace;
-  font-weight: bold;
-  font-size: var(--font-size-label, 12px);
-  width: 24px;
-  display: inline-block;
+  font-family: var(--font-family-mono, monospace);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .git-vc-file-row--modified .git-vc-file-row__status {
@@ -4422,6 +4441,7 @@
 
 .git-commit-dialog__file-checkbox {
   cursor: pointer;
+  accent-color: var(--accent-solid, #6366f1);
 }
 
 .git-commit-dialog__file-status {

@@ -8,9 +8,9 @@ import {
 import { enUS } from "date-fns/locale";
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  CheckCircle2, AlertTriangle, FileText, Clock,
+  CheckCircle2, AlertTriangle, FileText, Clock, GitCommit,
 } from "lucide-react";
-import { getCalendarEvents } from "../services/electronService";
+import { getCalendarEvents, gitGetLog } from "../services/electronService";
 import SubpageHeader from "./layout/SubpageHeader";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/CalendarPage.css";
@@ -27,6 +27,7 @@ const EVENT_TYPE_META = {
   "task-scheduled":  { label: "Task Scheduled", className: "cal-event-task-sched",   Icon: Clock },
   "task-completed":  { label: "Task Completed", className: "cal-event-task-done",    Icon: CheckCircle2 },
   "task-overdue":    { label: "Task Overdue",   className: "cal-event-task-overdue", Icon: AlertTriangle },
+  "milestone":       { label: "Milestones",      className: "cal-event-milestone",    Icon: GitCommit },
 };
 
 function parseEventDate(val) {
@@ -50,7 +51,7 @@ function parseEventDate(val) {
   return null;
 }
 
-function buildRbcEvents(rawResult) {
+function buildRbcEvents(rawResult, commits = []) {
   const events = [];
 
   let taskList = [];
@@ -129,6 +130,23 @@ function buildRbcEvents(rawResult) {
     });
   }
 
+  if (Array.isArray(commits)) {
+    for (const commit of commits) {
+      const start = parseEventDate(commit.date || commit.timestamp || commit.created_at);
+      if (!start) continue;
+
+      events.push({
+        id: commit.hash || `milestone-${Math.random()}`,
+        title: commit.message ? `Milestone: ${commit.message}` : "Milestone",
+        start,
+        end: new Date(start.getTime() + 15 * 60000),
+        allDay: false,
+        resource: { ...commit, _eventType: "milestone" },
+        className: EVENT_TYPE_META.milestone.className,
+      });
+    }
+  }
+
   return events;
 }
 
@@ -149,12 +167,14 @@ function EventTypeToggle({ type, active, onToggle }) {
   );
 }
 
-function EventCard({ event, onOpenNote, onOpenTask, onClose }) {
+function EventCard({ event, onOpenNote, onOpenTask, onOpenVersionControl, onClose }) {
   const type = event.resource?._eventType ?? "";
   const meta = EVENT_TYPE_META[type] ?? {};
   const Icon = meta.Icon ?? CalendarIcon;
   const task = type?.startsWith("task") ? event.resource : null;
   const note = type?.startsWith("note") ? event.resource : null;
+  const isMilestone = type === "milestone";
+  const commit = isMilestone ? event.resource : null;
   const notePath = note?.filePath || note?.sourcePath;
   const taskPath = task?.source_path || task?.sourcePath;
 
@@ -179,6 +199,12 @@ function EventCard({ event, onOpenNote, onOpenTask, onClose }) {
           {task.priority ? <span style={{ marginLeft: "8px" }}>Priority: P{task.priority}</span> : null}
         </div>
       )}
+      {isMilestone && commit && (
+        <div className="cal-event-popup-meta" style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+          <span>Commit: <code style={{ background: "var(--surface-muted)", padding: "1px 4px", borderRadius: "3px" }}>{commit.shortHash || commit.hash?.slice(0, 7)}</code></span>
+          {commit.author && <span style={{ marginLeft: "8px" }}>by {commit.author}</span>}
+        </div>
+      )}
       <div className="cal-event-popup-actions">
         {task && onOpenTask && (
           <button type="button" className="app-button secondary" onClick={() => { onOpenTask(task); onClose(); }}>
@@ -195,12 +221,17 @@ function EventCard({ event, onOpenNote, onOpenTask, onClose }) {
             <FileText size={12} /> Source Note
           </button>
         )}
+        {isMilestone && onOpenVersionControl && (
+          <button type="button" className="app-button secondary" onClick={() => { onOpenVersionControl(); onClose(); }}>
+            <GitCommit size={12} /> Open Revisions Hub
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
+export function CalendarPage({ onBack, onOpenNote, onOpenTask, onOpenVersionControl, workspacePath }) {
   const [date, setDate] = useState(new Date());
   const [view, setView] = useState("month");
   const [events, setEvents] = useState([]);
@@ -219,18 +250,26 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
       // Pad a week on each side so the calendar grid edges are covered
       const padStart = new Date(start.getTime() - 7 * 24 * 60 * 60000);
       const padEnd   = new Date(end.getTime()   + 7 * 24 * 60 * 60000);
-      const result = await getCalendarEvents(
-        format(padStart, "yyyy-MM-dd"),
-        format(padEnd,   "yyyy-MM-dd")
-      );
-      const built = buildRbcEvents(result);
+
+      const [calRes, gitRes] = await Promise.allSettled([
+        getCalendarEvents(
+          format(padStart, "yyyy-MM-dd"),
+          format(padEnd,   "yyyy-MM-dd")
+        ),
+        workspacePath ? gitGetLog({ workspacePath, limit: 100 }) : Promise.resolve(null),
+      ]);
+
+      const rawResult = calRes.status === "fulfilled" ? calRes.value : [];
+      const commits = gitRes.status === "fulfilled" && gitRes.value?.ok ? gitRes.value.data : [];
+
+      const built = buildRbcEvents(rawResult, commits);
       setEvents(built);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspacePath]);
 
   useEffect(() => { void loadEvents(date); }, [date, loadEvents]);
 
@@ -373,6 +412,7 @@ export function CalendarPage({ onBack, onOpenNote, onOpenTask }) {
               event={selectedEvent}
               onOpenNote={onOpenNote}
               onOpenTask={onOpenTask}
+              onOpenVersionControl={onOpenVersionControl}
               onClose={() => setSelectedEvent(null)}
             />
           </div>

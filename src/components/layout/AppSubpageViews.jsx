@@ -133,6 +133,7 @@ export const SUBPAGE_DEFINITIONS = [
     render: (p, close) => (
       <CalendarPage
         onBack={close}
+        workspacePath={p.notesFolderPath}
         onOpenNote={(filePath) => {
           close();
           void p.handleOpenReferencedDocument?.(filePath);
@@ -142,6 +143,11 @@ export const SUBPAGE_DEFINITIONS = [
           p.setTaskWorkspaceContext?.(task?.source_path ? { noteFilter: task.source_path } : null);
           if (p.onOpenSubpage) p.onOpenSubpage("tasks");
           else p.setTaskWorkspaceOpen?.(true);
+        }}
+        onOpenVersionControl={() => {
+          close();
+          if (p.onOpenSubpage) p.onOpenSubpage("gitVC");
+          else p.setGitVCOpen?.(true);
         }}
       />
     ),
