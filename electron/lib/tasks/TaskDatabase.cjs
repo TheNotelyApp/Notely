@@ -255,29 +255,30 @@ class TaskDatabase {
           matchedTaskIds.add(bestMatch.id);
           matchedParsedIndices.add(p.idx);
           const newHash = this._getUniqueSourceHash(filePath, p.title, p.occ, bestMatch.id);
-          const completedAt = p.status === 'done' ? now : null;
+          const completedAt = p.completed_at || (p.status === 'done' ? (bestMatch.completed_at || now) : null);
           this.db.prepare(
-            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-          ).run(p.title, p.status, newHash, p.line, p.priority ?? 0, p.due_date ?? null, now, completedAt, bestMatch.id);
+            'UPDATE tasks SET title = ?, status = ?, source_hash = ?, source_line = ?, priority = ?, due_date = ?, scheduled_start = ?, scheduled_end = ?, is_all_day = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+          ).run(p.title, p.status, newHash, p.line, p.priority ?? 0, p.due_date ?? null, p.scheduled_start ?? null, p.scheduled_end ?? null, p.is_all_day ?? 1, now, completedAt, bestMatch.id);
           updated++;
         } else {
           // Insert new task safely checking if source_hash already exists
           const hash = this._getUniqueSourceHash(filePath, p.title, p.occ);
-          const existingHashMatch = this.db.prepare('SELECT id, user_managed FROM tasks WHERE source_hash = ?').get(hash);
+          const existingHashMatch = this.db.prepare('SELECT id, user_managed, completed_at FROM tasks WHERE source_hash = ?').get(hash);
 
           if (existingHashMatch && !existingHashMatch.user_managed) {
             matchedTaskIds.add(existingHashMatch.id);
-            const completedAt = p.status === 'done' ? now : null;
+            const completedAt = p.completed_at || (p.status === 'done' ? (existingHashMatch.completed_at || now) : null);
             this.db.prepare(
-              'UPDATE tasks SET status = ?, source_line = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ? WHERE id = ?'
-            ).run(p.status, p.line, p.priority ?? 0, p.due_date ?? null, now, completedAt, existingHashMatch.id);
+              'UPDATE tasks SET status = ?, source_line = ?, priority = ?, due_date = ?, scheduled_start = ?, scheduled_end = ?, is_all_day = ?, updated_at = ?, completed_at = ? WHERE id = ?'
+            ).run(p.status, p.line, p.priority ?? 0, p.due_date ?? null, p.scheduled_start ?? null, p.scheduled_end ?? null, p.is_all_day ?? 1, now, completedAt, existingHashMatch.id);
             updated++;
           } else {
+            const completedAt = p.completed_at || (p.status === 'done' ? now : null);
             this.db.prepare(`
-              INSERT INTO tasks (id, title, status, priority, due_date, source_path, source_line, source_hash,
-                                 user_managed, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-            `).run(randomId(), p.title, p.status, p.priority ?? 0, p.due_date ?? null, filePath, p.line, hash, now, now);
+              INSERT INTO tasks (id, title, status, priority, due_date, scheduled_start, scheduled_end, is_all_day,
+                                 source_path, source_line, source_hash, user_managed, created_at, updated_at, completed_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+            `).run(randomId(), p.title, p.status, p.priority ?? 0, p.due_date ?? null, p.scheduled_start ?? null, p.scheduled_end ?? null, p.is_all_day ?? 1, filePath, p.line, hash, now, now, completedAt);
             inserted++;
           }
         }
@@ -312,24 +313,33 @@ class TaskDatabase {
             source_hash: hash,
             user_managed: 0,
             due_date: t.due_date ?? null,
-            scheduled_start: null,
-            scheduled_end: null,
-            is_all_day: 1,
+            scheduled_start: t.scheduled_start ?? null,
+            scheduled_end: t.scheduled_end ?? null,
+            is_all_day: t.is_all_day ?? 1,
             reminder: null,
             person_tags: [],
             metadata: {},
             created_at: now,
             updated_at: now,
-            completed_at: t.status === 'done' ? now : null,
+            completed_at: t.completed_at || (t.status === 'done' ? now : null),
           });
           inserted++;
-        } else if (!existing.user_managed && (existing.status !== t.status || existing.priority !== t.priority || existing.due_date !== t.due_date)) {
+        } else if (!existing.user_managed && (
+          existing.status !== t.status ||
+          existing.priority !== t.priority ||
+          existing.due_date !== t.due_date ||
+          existing.scheduled_start !== t.scheduled_start ||
+          existing.scheduled_end !== t.scheduled_end
+        )) {
           existing.status = t.status;
           existing.priority = t.priority ?? 0;
           existing.due_date = t.due_date ?? null;
+          existing.scheduled_start = t.scheduled_start ?? null;
+          existing.scheduled_end = t.scheduled_end ?? null;
+          existing.is_all_day = t.is_all_day ?? 1;
           existing.source_line = t.line;
           existing.updated_at = now;
-          existing.completed_at = t.status === 'done' ? now : null;
+          existing.completed_at = t.completed_at || (t.status === 'done' ? (existing.completed_at || now) : null);
           updated++;
         } else if (existing.source_line !== t.line) {
           existing.source_line = t.line;
@@ -694,6 +704,85 @@ class TaskDatabase {
   // ── Calendar Events ───────────────────────────────────────────────────────
 
   getCalendarTaskEvents(startDate, endDate) {
+    const toLocalDate = (val) => {
+      if (!val) return '';
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return '';
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const todayStr = toLocalDate(new Date());
+    const events = [];
+
+    const processTask = (t) => {
+      const isAllDay = Boolean(t.isAllDay ?? t.is_all_day ?? 1);
+
+      // 1. Scheduled event
+      if (t.scheduled_start) {
+        const schedDate = toLocalDate(t.scheduled_start);
+        if (!startDate || !endDate || (schedDate >= startDate && schedDate <= endDate)) {
+          events.push({
+            id: `task-sched-${t.id}`,
+            taskId: t.id,
+            title: t.title,
+            start: t.scheduled_start,
+            end: t.scheduled_end || t.scheduled_start,
+            allDay: isAllDay,
+            type: 'task-scheduled',
+            _eventType: 'task-scheduled',
+            sourcePath: t.source_path,
+            priority: t.priority,
+            status: t.status,
+          });
+        }
+      }
+
+      // 2. Due event (or overdue)
+      if (t.due_date) {
+        const dueDate = t.due_date.slice(0, 10);
+        if (!startDate || !endDate || (dueDate >= startDate && dueDate <= endDate)) {
+          const isOverdue = t.status !== 'done' && dueDate < todayStr;
+          const eventType = isOverdue ? 'task-overdue' : 'task-due';
+          events.push({
+            id: `task-due-${t.id}`,
+            taskId: t.id,
+            title: t.title,
+            start: t.due_date,
+            end: t.due_date,
+            allDay: isAllDay,
+            type: eventType,
+            _eventType: eventType,
+            sourcePath: t.source_path,
+            priority: t.priority,
+            status: t.status,
+          });
+        }
+      }
+
+      // 3. Completed event
+      if (t.completed_at && t.status === 'done') {
+        const compDate = toLocalDate(t.completed_at);
+        if (!startDate || !endDate || (compDate >= startDate && compDate <= endDate)) {
+          events.push({
+            id: `task-done-${t.id}`,
+            taskId: t.id,
+            title: `Completed: ${t.title}`,
+            start: t.completed_at,
+            end: t.completed_at,
+            allDay: false,
+            type: 'task-completed',
+            _eventType: 'task-completed',
+            sourcePath: t.source_path,
+            priority: t.priority,
+            status: t.status,
+          });
+        }
+      }
+    };
+
     if (this.db) {
       const rows = this.db.prepare(`
         SELECT id, title, status, due_date, scheduled_start, scheduled_end,
@@ -706,28 +795,17 @@ class TaskDatabase {
         )
       `).all(startDate, endDate, startDate, endDate, startDate, endDate);
 
-      return rows.map(r => ({
-        ...this._deserialize(r),
-        _eventType: r.completed_at ? 'task-completed'
-          : r.scheduled_start ? 'task-scheduled'
-          : 'task-due',
-      }));
+      for (const r of rows) {
+        processTask(this._deserialize(r));
+      }
+      return events;
     }
 
     if (this.jsonState) {
-      return this.jsonState.tasks
-        .filter(t => {
-          const due = t.due_date && t.due_date >= startDate && t.due_date <= endDate;
-          const sched = t.scheduled_start && t.scheduled_start.slice(0, 10) >= startDate && t.scheduled_start.slice(0, 10) <= endDate;
-          const comp = t.completed_at && t.completed_at.slice(0, 10) >= startDate && t.completed_at.slice(0, 10) <= endDate;
-          return due || sched || comp;
-        })
-        .map(t => ({
-          ...t,
-          _eventType: t.completed_at ? 'task-completed'
-            : t.scheduled_start ? 'task-scheduled'
-            : 'task-due',
-        }));
+      for (const t of this.jsonState.tasks) {
+        processTask(t);
+      }
+      return events;
     }
 
     return [];

@@ -27,9 +27,43 @@ function parseMarkdownTasks(content) {
       else if (/#p3\b/i.test(rawTitle) || /#medium\b/i.test(rawTitle)) priority = 1;
 
       let dueDate = null;
-      const dueMatch = rawTitle.match(/@due\(([^)]+)\)/i) || rawTitle.match(/\bdue:(\d{4}-\d{2}-\d{2})/i);
+      let scheduledStart = null;
+      let scheduledEnd = null;
+      let isAllDay = 1;
+      let completedAt = null;
+
+      const dueMatch = rawTitle.match(/@due\(([^)]+)\)/i) || rawTitle.match(/\bdue:([0-9T:\- ]+)/i);
       if (dueMatch) {
-        dueDate = dueMatch[1].trim();
+        const val = dueMatch[1].trim();
+        dueDate = val.slice(0, 10);
+        if (val.length > 10) {
+          scheduledStart = val;
+          isAllDay = 0;
+        }
+      }
+
+      const schedMatch = rawTitle.match(/@sched(?:ule|uled)?\(([^)]+)\)/i) || rawTitle.match(/\bsched(?:ule|uled)?:([0-9T:\- ]+)/i);
+      if (schedMatch) {
+        const val = schedMatch[1].trim();
+        scheduledStart = val;
+        if (!dueDate) dueDate = val.slice(0, 10);
+        if (val.length > 10) isAllDay = 0;
+      }
+
+      const startMatch = rawTitle.match(/@start\(([^)]+)\)/i);
+      if (startMatch) {
+        scheduledStart = startMatch[1].trim();
+        if (scheduledStart.length > 10) isAllDay = 0;
+      }
+
+      const endMatch = rawTitle.match(/@end\(([^)]+)\)/i);
+      if (endMatch) {
+        scheduledEnd = endMatch[1].trim();
+      }
+
+      const doneMatch = rawTitle.match(/@(?:completed|done)\(([^)]+)\)/i);
+      if (doneMatch) {
+        completedAt = doneMatch[1].trim();
       }
 
       tasks.push({
@@ -39,6 +73,10 @@ function parseMarkdownTasks(content) {
         lineText,
         priority,
         due_date: dueDate,
+        scheduled_start: scheduledStart,
+        scheduled_end: scheduledEnd,
+        is_all_day: isAllDay,
+        completed_at: completedAt,
       });
     }
   };
@@ -351,7 +389,62 @@ function registerTaskIpc(ipcMain, deps) {
     return db ? db.deletePerson(id) : false;
   });
 
-  // ── Calendar ──────────────────────────────────────────────────────────────
+  // Helper to format Date or ISO string into local YYYY-MM-DD
+  function toLocalDateStr(val) {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // Extract note frontmatter and fs creation/update timestamps
+  function extractNoteDates(filePath, content, stat) {
+    let createdIso = null;
+    let updatedIso = null;
+    let createdIsAllDay = false;
+    let updatedIsAllDay = false;
+
+    if (content) {
+      const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      if (fmMatch) {
+        const fm = fmMatch[1];
+        const createdMatch = fm.match(/(?:created|createdAt|created_at|date|publishedAt):\s*["']?([^"'\r\n]+)["']?/i);
+        if (createdMatch) {
+          const raw = createdMatch[1].trim();
+          const d = new Date(raw);
+          if (!isNaN(d.getTime())) {
+            createdIso = d.toISOString();
+            if (!raw.includes(':') && !raw.includes('T')) createdIsAllDay = true;
+          }
+        }
+        const updatedMatch = fm.match(/(?:updated|updatedAt|updated_at|modified|lastModified):\s*["']?([^"'\r\n]+)["']?/i);
+        if (updatedMatch) {
+          const raw = updatedMatch[1].trim();
+          const d = new Date(raw);
+          if (!isNaN(d.getTime())) {
+            updatedIso = d.toISOString();
+            if (!raw.includes(':') && !raw.includes('T')) updatedIsAllDay = true;
+          }
+        }
+      }
+    }
+
+    if (!createdIso && stat) {
+      const btime = stat.birthtime && !isNaN(stat.birthtime.getTime()) && stat.birthtime.getTime() > 0 ? stat.birthtime : stat.ctime;
+      if (btime && !isNaN(btime.getTime())) {
+        createdIso = btime.toISOString();
+      }
+    }
+
+    if (!updatedIso && stat && stat.mtime && !isNaN(stat.mtime.getTime())) {
+      updatedIso = stat.mtime.toISOString();
+    }
+
+    return { createdIso, updatedIso, createdIsAllDay, updatedIsAllDay };
+  }
 
   trusted('calendar:get-events', (_event, { startDate, endDate, types = [] } = {}) => {
     const db = getDb();
@@ -365,16 +458,18 @@ function registerTaskIpc(ipcMain, deps) {
       // Task events
       const taskEvents = db.getCalendarTaskEvents(startDate, endDate);
       for (const t of taskEvents) {
-        if (!types.length || types.includes(t._eventType)) {
+        const eventType = t._eventType || t.type || 'task-due';
+        if (!types.length || types.includes(eventType)) {
           events.push({
-            id: `task-${t.id}`,
+            id: t.id || `task-${t.taskId || Math.random()}`,
             title: t.title,
-            start: t.scheduled_start || t.due_date || t.completed_at,
-            end: t.scheduled_end || t.due_date || t.completed_at,
-            allDay: Boolean(t.isAllDay),
-            type: t._eventType,
-            taskId: t.id,
-            sourcePath: t.source_path,
+            start: t.start || t.scheduled_start || t.due_date || t.completed_at,
+            end: t.end || t.scheduled_end || t.start || t.due_date,
+            allDay: Boolean(t.allDay ?? t.isAllDay),
+            type: eventType,
+            _eventType: eventType,
+            taskId: t.taskId || t.id,
+            sourcePath: t.source_path || t.sourcePath,
             priority: t.priority,
             status: t.status,
           });
@@ -396,36 +491,40 @@ function registerTaskIpc(ipcMain, deps) {
             } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))) {
               try {
                 const stat = fs.statSync(fullPath);
+                let content = '';
+                try { content = fs.readFileSync(fullPath, 'utf8'); } catch { /* ignore */ }
                 const title = entry.name.replace(/\.md$/i, '');
-                const createdStr = (stat.birthtime && !isNaN(stat.birthtime.getTime()) ? stat.birthtime : stat.ctime).toISOString();
-                const updatedStr = stat.mtime.toISOString();
-                const createdDate = createdStr.slice(0, 10);
-                const updatedDate = updatedStr.slice(0, 10);
+                const noteDates = extractNoteDates(fullPath, content, stat);
 
-                if (createdDate >= startDate && createdDate <= endDate) {
+                const createdDate = toLocalDateStr(noteDates.createdIso);
+                const updatedDate = toLocalDateStr(noteDates.updatedIso);
+
+                if (createdDate && (!startDate || createdDate >= startDate) && (!endDate || createdDate <= endDate)) {
                   if (!types.length || types.includes('note-created')) {
                     events.push({
                       id: `note-created-${fullPath}`,
                       title: `Created: ${title}`,
-                      start: createdStr,
-                      end: createdStr,
-                      allDay: true,
+                      start: noteDates.createdIso,
+                      end: noteDates.createdIso,
+                      allDay: noteDates.createdIsAllDay,
                       type: 'note-created',
+                      _eventType: 'note-created',
                       sourcePath: fullPath,
                       filePath: fullPath,
                     });
                   }
                 }
 
-                if (updatedDate >= startDate && updatedDate <= endDate) {
+                if (updatedDate && (!startDate || updatedDate >= startDate) && (!endDate || updatedDate <= endDate)) {
                   if (!types.length || types.includes('note-updated')) {
                     events.push({
                       id: `note-updated-${fullPath}`,
                       title: `Updated: ${title}`,
-                      start: updatedStr,
-                      end: updatedStr,
-                      allDay: true,
+                      start: noteDates.updatedIso,
+                      end: noteDates.updatedIso,
+                      allDay: noteDates.updatedIsAllDay,
                       type: 'note-updated',
+                      _eventType: 'note-updated',
                       sourcePath: fullPath,
                       filePath: fullPath,
                     });
