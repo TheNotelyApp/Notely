@@ -30,7 +30,6 @@ import {
 //   - loadDocumentsData()        refresh the document list after sync changes
 //   - syncStateRef               ref holding { doc, dirty, openDocument } for the open note
 export function useP2PSync({ notify, setError, loadDocumentsData, syncStateRef }) {
-  const [p2pStatusOpen, setP2PStatusOpen] = useState(false);
   const [p2pStatusLoading, setP2PStatusLoading] = useState(false);
   const [p2pStatus, setP2PStatus] = useState(null);
   const [workspaceActivityOpen, setWorkspaceActivityOpen] = useState(false);
@@ -58,7 +57,6 @@ export function useP2PSync({ notify, setError, loadDocumentsData, syncStateRef }
   loadDocumentsDataRef.current = loadDocumentsData;
 
   const handleOpenP2PStatus = useCallback(async () => {
-    setP2PStatusOpen(true);
     setP2PStatusLoading(true);
     try {
       const snapshot = await getP2PStatus();
@@ -382,8 +380,6 @@ export function useP2PSync({ notify, setError, loadDocumentsData, syncStateRef }
 
   return {
     // P2P status panel
-    p2pStatusOpen,
-    setP2PStatusOpen,
     p2pStatusLoading,
     p2pStatus,
     fullSyncProgressByPeer,

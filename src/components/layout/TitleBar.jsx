@@ -9,7 +9,7 @@ import {
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
   Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type,
   Calendar, FolderTree, FileCode, FileSpreadsheet, LayoutGrid, AlignJustify, AlignLeft,
-  FolderGit2
+  FolderGit2, Settings
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -175,6 +175,24 @@ const MENU_ICON_MAP = {
 
   "trash / removed items": Trash2,
   "trash removed items": Trash2,
+  "trash": Trash2,
+
+  "tools": Wrench,
+  "version control": GitBranch,
+  "p2p sync": ShieldAlert,
+  "ai & knowledge": Brain,
+  "ai knowledge": Brain,
+  "mcp": Server,
+  "notes view": Layout,
+  "tile": LayoutGrid,
+  "table": Table,
+  "tree": FolderTree,
+  "toggle full screen": Maximize2,
+
+  "settings": Settings,
+  "settings…": Settings,
+  "preferences": Settings,
+  "preferences…": Settings,
 
   "help center": HelpCircle,
   "markdown guide": Book,
@@ -253,6 +271,10 @@ function getItemIcon(item) {
       IconComponent = FolderTree;
     } else if (rawLabel.includes("density")) {
       IconComponent = AlignJustify;
+    } else if (rawLabel.includes("setting") || rawLabel.includes("preference")) {
+      IconComponent = Settings;
+    } else if (rawLabel.includes("tool")) {
+      IconComponent = Wrench;
     } else if (rawLabel.includes("close")) {
       IconComponent = X;
     } else if (rawLabel.includes("metadata")) {

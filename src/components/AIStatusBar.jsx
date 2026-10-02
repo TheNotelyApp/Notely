@@ -70,7 +70,7 @@ export function AIStatusBar({ onClick }) {
       type="button"
       className={`terminal-meta-pill ai-status-bar ${statusClass}`}
       onClick={onClick}
-      data-tooltip="Click to open AI Settings & Diagnostics"
+      data-tooltip="Click to open AI Settings"
       aria-label={label}
     >
       <Icon size={12} className={status === "indexing" ? "animate-pulse" : ""} />
