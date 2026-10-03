@@ -1,2 +1,3 @@
-export { CATEGORIES } from "./registry.js";
+import { CATEGORIES } from "./registry.js";
+export { CATEGORIES };
 export default CATEGORIES;

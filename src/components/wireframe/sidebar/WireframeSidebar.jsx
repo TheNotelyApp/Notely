@@ -9,7 +9,7 @@ export function WireframeSidebar({
   searchQuery,
   onSearchChange,
   filteredStencils,
-  customSnippets,
+  customSnippets: _customSnippets,
   onDeleteSnippet,
   onInsertStencil
 }) {

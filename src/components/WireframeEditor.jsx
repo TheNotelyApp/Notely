@@ -70,7 +70,6 @@ export function WireframeEditor({
   const [propGap, setPropGap] = useState("16px");
   const [propPadding, setPropPadding] = useState("16px");
   const [propDirection, setPropDirection] = useState("column");
-  const [propAlign, setPropAlign] = useState("stretch");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [quickAddStencilId, setQuickAddStencilId] = useState("wf-container");
 
@@ -129,7 +128,6 @@ export function WireframeEditor({
     setPropGap(style.gap || "16px");
     setPropPadding(style.padding || "16px");
     setPropDirection(style["flex-direction"] || "column");
-    setPropAlign(style["align-items"] || "stretch");
 
     // Text content extraction
     const textOnly = (comp.get("content") || "").replace(/<[^>]+>/g, "").trim();
@@ -189,6 +187,16 @@ export function WireframeEditor({
     }
     onClose?.();
   }, [hasUnsavedChanges, onClose, confirm]);
+
+  const handleCloseRef = useRef(handleClose);
+  useEffect(() => {
+    handleCloseRef.current = handleClose;
+  });
+
+  const initialDataRef = useRef(initialData);
+  useEffect(() => {
+    initialDataRef.current = initialData;
+  });
 
   // Initialize GrapesJS
   useEffect(() => {
@@ -379,13 +387,14 @@ export function WireframeEditor({
         });
 
         // Load Initial Project Data
-        if (initialData) {
+        const initData = initialDataRef.current;
+        if (initData) {
           try {
-            const parsed = typeof initialData === "string" ? JSON.parse(initialData) : initialData;
+            const parsed = typeof initData === "string" ? JSON.parse(initData) : initData;
             editor.loadProjectData?.(parsed);
           } catch {
-            if (typeof initialData === "string" && initialData.trim()) {
-              editor.setComponents?.(initialData) || editor.addComponents?.(initialData);
+            if (typeof initData === "string" && initData.trim()) {
+              editor.setComponents?.(initData) || editor.addComponents?.(initData);
             }
           }
         } else {
@@ -484,7 +493,7 @@ export function WireframeEditor({
                   handleSaveRef.current?.();
                 }
                 if (e.key === "Escape") {
-                  handleClose();
+                  handleCloseRef.current?.();
                 }
               });
             }
