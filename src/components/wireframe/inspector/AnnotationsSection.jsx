@@ -50,6 +50,7 @@ export function AnnotationsSection({
               className="wireframe-copy-spec-btn"
               onClick={onCopySpecMarkdown}
               title="Copy annotations table as Markdown"
+              aria-label="Copy annotations table as Markdown"
             >
               <Copy size={12} />
               <span>Copy Spec</span>
@@ -88,6 +89,7 @@ export function AnnotationsSection({
                           onSelectAnnotation(item);
                         }}
                         title="Locate & inspect element"
+                        aria-label="Locate & inspect element"
                       >
                         <Crosshair size={12} />
                       </button>
@@ -99,6 +101,7 @@ export function AnnotationsSection({
                           onDeleteAnnotation(item);
                         }}
                         title="Remove note & pin"
+                        aria-label="Remove note & pin"
                       >
                         <Trash2 size={12} />
                       </button>

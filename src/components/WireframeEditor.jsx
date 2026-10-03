@@ -436,6 +436,10 @@ export function WireframeEditor({
           syncInspectorFromComponent(null);
         });
 
+        editor.on("component:styleUpdate", (comp) => {
+          syncInspectorFromComponent(comp);
+        });
+
         editor.on("update", () => {
           setHasUnsavedChanges(true);
           updateAnnotations();
@@ -449,6 +453,27 @@ export function WireframeEditor({
         editor.on("component:remove", () => {
           setHasUnsavedChanges(true);
           updateAnnotations();
+        });
+
+        // Forward canvas iframe keyboard shortcuts (Ctrl+S, Escape)
+        editor.on("load", () => {
+          try {
+            const canvasDoc = editor.Canvas?.getDocument?.();
+            if (canvasDoc) {
+              canvasDoc.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === "s") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSaveRef.current?.();
+                }
+                if (e.key === "Escape") {
+                  handleClose();
+                }
+              });
+            }
+          } catch {
+            // ignore
+          }
         });
 
         // Initial scan for annotations
