@@ -39,8 +39,6 @@ import AppButton from "./AppButton";
 import AppInput from "./AppInput";
 import OverlayDialog from "./OverlayDialog";
 import SubpageHeader from "./layout/SubpageHeader";
-import "../styles/KnowledgeGraph.css";
-import "../styles/AISettings.css";
 import "../styles/MCPSettings.css";
 
 function generateSampleArgs(tool) {
@@ -440,11 +438,11 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                 alignItems: "center",
                 justifyContent: "center",
                 background: isPortConflict
-                  ? "rgba(239, 68, 68, 0.2)"
+                  ? "rgba(239, 68, 68, 0.15)"
                   : isRunning
-                  ? "rgba(16, 185, 129, 0.2)"
+                  ? "rgba(16, 185, 129, 0.15)"
                   : "var(--surface-muted)",
-                color: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)"
+                color: isPortConflict ? "var(--status-danger-text, #ef4444)" : isRunning ? "var(--status-success-text, #10b981)" : "var(--text-muted)"
               }}
             >
               <Server size={20} />
@@ -470,9 +468,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       textTransform: "uppercase",
                       padding: "2px 8px",
                       borderRadius: "var(--radius-default)",
-                      background: "rgba(239, 68, 68, 0.18)",
-                      color: "#ef4444",
-                      border: "1px solid rgba(239, 68, 68, 0.35)"
+                      background: "rgba(239, 68, 68, 0.14)",
+                      color: "var(--status-danger-text, #ef4444)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)"
                     }}
                   >
                     <ShieldAlert size={12} /> READ ONLY MODE
@@ -489,9 +487,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       textTransform: "uppercase",
                       padding: "2px 8px",
                       borderRadius: "var(--radius-default)",
-                      background: "rgba(16, 185, 129, 0.15)",
-                      color: "#10b981",
-                      border: "1px solid rgba(16, 185, 129, 0.3)"
+                      background: "rgba(16, 185, 129, 0.12)",
+                      color: "var(--status-success-text, #10b981)",
+                      border: "1px solid rgba(16, 185, 129, 0.28)"
                     }}
                   >
                     <ShieldCheck size={12} /> READ + WRITE
@@ -516,14 +514,14 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>
                 {allowWrite ? tools.length : tools.filter(t => !t.isWrite).length}
                 {!allowWrite && tools.some(t => t.isWrite) && (
-                  <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: 600, marginLeft: "6px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--status-danger-text, #ef4444)", fontWeight: 600, marginLeft: "6px" }}>
                     ({tools.filter(t => t.isWrite).length} hidden)
                   </span>
                 )}
               </div>
             </div>
 
-            <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
+            <div style={{ height: "28px", width: "1px", background: "var(--border-soft)" }} />
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
@@ -532,13 +530,13 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>{status?.activeSessions || 0}</div>
             </div>
 
-            <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
+            <div style={{ height: "28px", width: "1px", background: "var(--border-soft)" }} />
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                 Invocations
               </div>
-              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--accent-solid, #3b82f6)" }}>{status?.totalToolCalls || 0}</div>
+              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--accent-solid)" }}>{status?.totalToolCalls || 0}</div>
             </div>
           </div>
         </div>
@@ -650,9 +648,8 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   }
 }`}
                 </pre>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+                <AppButton
+                  variant="secondary"
                   onClick={() => {
                     const snippet = JSON.stringify({
                       mcpServers: {
@@ -671,10 +668,10 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       "success"
                     );
                   }}
-                  style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                  style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px" }}
                 >
                   <Copy size={14} /> Copy Config Snippet
-                </button>
+                </AppButton>
               </div>
             </div>
 
@@ -700,9 +697,9 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             {showHelp && (
               <div
                 style={{
-                  background: "var(--surface-elevated, #161b26)",
-                  border: "1px solid var(--border-soft, rgba(255,255,255,0.08))",
-                  borderLeft: "4px solid var(--accent-solid, #3b82f6)",
+                  background: "var(--surface-elevated)",
+                  border: "1px solid var(--border-soft)",
+                  borderLeft: "4px solid var(--accent-solid)",
                   borderRadius: "var(--radius-default)",
                   padding: "18px 20px",
                   marginBottom: "20px",
@@ -711,17 +708,16 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <BookOpen size={16} color="var(--accent-solid, #3b82f6)" />
+                    <BookOpen size={16} color="var(--accent-solid)" />
                     <strong style={{ fontSize: "14px", fontWeight: 700 }}>Notely Model Context Protocol (MCP) Guide</strong>
                   </div>
-                  <button
-                    type="button"
-                    className="btn-link"
+                  <AppButton
+                    variant="ghost"
                     onClick={() => setShowHelp(false)}
-                    style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px" }}
+                    style={{ fontSize: "12px" }}
                   >
                     Close Guide
-                  </button>
+                  </AppButton>
                 </div>
 
                 <div style={{ fontSize: "12.5px", lineHeight: "1.6", color: "var(--text-muted)" }}>
@@ -730,25 +726,25 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   </p>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px", marginTop: "12px" }}>
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         🛡️ Write Access Controls
                       </strong>
-                      Tools marked <span style={{ color: "#ef4444", fontWeight: 700 }}>[W]</span> perform workspace modifications (create, update, delete, rename, commit). When <em>Allow Write Tools</em> is disabled in MCP Settings, all write tools are filtered from discovery and blocked.
+                      Tools marked <span style={{ color: "var(--status-danger-text, #ef4444)", fontWeight: 700 }}>[W]</span> perform workspace modifications (create, update, delete, rename, commit). When <em>Allow Write Tools</em> is disabled in MCP Settings, all write tools are filtered from discovery and blocked.
                     </div>
 
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         ⚡ Interactive Test Console
                       </strong>
                       Click any tool card below to expand its JSON Schema parameters. Click <em>Auto-Fill JSON</em> to generate a valid test payload, then press <em>Run Execution</em> to test it directly from the app.
                     </div>
 
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         📡 Client Connection URLs
                       </strong>
-                      MCP: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code>. SSE: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>.
+                      MCP: <code style={{ color: "var(--accent-solid)" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code>. SSE: <code style={{ color: "var(--accent-solid)" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>.
                     </div>
                   </div>
                 </div>
@@ -766,15 +762,15 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   borderRadius: "var(--radius-default)",
                   background: "rgba(239, 68, 68, 0.08)",
                   border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderLeft: "4px solid #ef4444",
+                  borderLeft: "4px solid var(--status-danger-text, #ef4444)",
                   marginBottom: "16px",
                   color: "var(--app-text)"
                 }}
               >
-                <Ban size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: "2px" }} />
+                <Ban size={18} color="var(--status-danger-text, #ef4444)" style={{ flexShrink: 0, marginTop: "2px" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <strong style={{ fontSize: "13px", color: "#ef4444" }}>
+                    <strong style={{ fontSize: "13px", color: "var(--status-danger-text, #ef4444)" }}>
                       READ-ONLY MODE ACTIVE
                     </strong>
                     <span
@@ -783,26 +779,25 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                         fontWeight: 700,
                         padding: "1px 6px",
                         borderRadius: "var(--radius-default)",
-                        background: "rgba(239, 68, 68, 0.2)",
-                        color: "#ef4444"
+                        background: "rgba(239, 68, 68, 0.18)",
+                        color: "var(--status-danger-text, #ef4444)"
                       }}
                     >
                       {tools.filter(t => t.isWrite).length} TOOLS BLOCKED
                     </span>
                   </div>
                   <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                    Write operations are disabled in MCP Settings. The highlighted red tools below (<span style={{ color: "#ef4444", fontWeight: 600 }}>WRITE BLOCKED</span>) cannot modify files and are hidden from external AI clients (Claude Desktop, Cursor). Only the {tools.filter(t => !t.isWrite).length} read-only search and inspection tools remain available.
+                    Write operations are disabled in MCP Settings. The highlighted red tools below (<span style={{ color: "var(--status-danger-text, #ef4444)", fontWeight: 600 }}>WRITE BLOCKED</span>) cannot modify files and are hidden from external AI clients (Claude Desktop, Cursor). Only the {tools.filter(t => !t.isWrite).length} read-only search and inspection tools remain available.
                   </p>
                 </div>
                 {onOpenSettings && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
+                  <AppButton
+                    variant="secondary"
                     onClick={onOpenSettings}
                     style={{ fontSize: "11px", height: "26px", padding: "0 10px", flexShrink: 0, alignSelf: "center" }}
                   >
                     Enable Writes
-                  </button>
+                  </AppButton>
                 )}
               </div>
             )}
@@ -841,15 +836,15 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                               height: "36px",
                               borderRadius: "var(--radius-default)",
                               background: isWriteBlocked
-                                ? "rgba(239, 68, 68, 0.2)"
-                                : "var(--surface-subtle, rgba(255,255,255,0.04))",
+                                ? "rgba(239, 68, 68, 0.15)"
+                                : "var(--surface-subtle)",
                               border: isWriteBlocked
-                                ? "1.5px solid rgba(239, 68, 68, 0.5)"
-                                : "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                                ? "1.5px solid rgba(239, 68, 68, 0.45)"
+                                : "1px solid var(--border-soft)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              color: isWriteBlocked ? "#ef4444" : "var(--accent-solid, #3b82f6)",
+                              color: isWriteBlocked ? "var(--status-danger-text, #ef4444)" : "var(--accent-solid)",
                               flexShrink: 0
                             }}
                           >
@@ -857,19 +852,19 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                              <code style={{ fontSize: "14px", fontWeight: 700, color: isWriteBlocked ? "#ef4444" : "var(--text-strong)" }}>{tool.name}</code>
-                              <button
-                                type="button"
-                                className="btn-link"
+                              <code style={{ fontSize: "14px", fontWeight: 700, color: isWriteBlocked ? "var(--status-danger-text, #ef4444)" : "var(--text-strong)" }}>{tool.name}</code>
+                              <AppButton
+                                variant="ghost"
+                                iconOnly
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   copyToolName(tool.name);
                                 }}
                                 title="Copy tool identifier"
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "2px" }}
+                                style={{ padding: "2px", height: "auto", minHeight: "unset" }}
                               >
-                                {copiedName === tool.name ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                              </button>
+                                {copiedName === tool.name ? <Check size={14} style={{ color: "var(--status-success-text)" }} /> : <Copy size={14} />}
+                              </AppButton>
                               <span className="mcp-tool-badge-cat">
                                 {category}
                               </span>
@@ -895,7 +890,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
                       {/* Expanded Detail Pane */}
                       {isExpanded && (
-                        <div style={{ borderTop: "1px solid var(--border-soft, rgba(255,255,255,0.08))", padding: "20px", background: "var(--surface-bg)" }}>
+                        <div style={{ borderTop: "1px solid var(--border-soft)", padding: "20px", background: "var(--surface-bg)" }}>
                           {/* Parameters Schema Header */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                             <h4 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
@@ -920,15 +915,15 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                       gap: "10px",
                                       padding: "8px 12px",
                                       background: "var(--surface-elevated, var(--bg-card))",
-                                      border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                                      border: "1px solid var(--border-soft)",
                                       borderRadius: "var(--radius-default)",
                                       fontSize: "12px"
                                     }}
                                   >
-                                    <code style={{ fontWeight: 700, color: "var(--accent-solid, #3b82f6)", minWidth: "110px" }}>{k}</code>
+                                    <code style={{ fontWeight: 700, color: "var(--accent-solid)", minWidth: "110px" }}>{k}</code>
                                     <span className={`mcp-param-tag type-${pType}`}>{pType}</span>
                                     {isReq ? (
-                                      <span style={{ color: "#ef4444", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
+                                      <span style={{ color: "var(--status-danger-text, #ef4444)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
                                     ) : (
                                       <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>OPTIONAL</span>
                                     )}
@@ -942,8 +937,8 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                           {/* Interactive Console Block */}
                           <div className="mcp-console-block">
                             <div className="mcp-console-header">
-                              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#e2e8f0" }}>
-                                <Terminal size={14} color="#3b82f6" /> Interactive Tool Runner
+                              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "var(--text-strong)" }}>
+                                <Terminal size={14} color="var(--accent-solid)" /> Interactive Tool Runner
                               </span>
                               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                 {hasProps && (
@@ -952,7 +947,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                     onClick={() => handlePrefillSample(tool)}
                                     style={{ fontSize: "11px", padding: "3px 8px", height: "24px" }}
                                   >
-                                    <Sparkles size={12} color="#fbbf24" /> Auto-Fill JSON
+                                    <Sparkles size={12} color="var(--status-warning-text, #fbbf24)" /> Auto-Fill JSON
                                   </AppButton>
                                 )}
                                 <AppButton
@@ -985,42 +980,41 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                     {testResult.response?.success ? (
-                                      <span style={{ color: "#10b981", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                      <span style={{ color: "var(--status-success-text, #10b981)", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
                                         <CheckCircle2 size={14} /> SUCCESS
                                       </span>
                                     ) : (
-                                      <span style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                      <span style={{ color: "var(--status-danger-text, #ef4444)", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
                                         <XCircle size={14} /> FAILED
                                       </span>
                                     )}
-                                    <span style={{ color: "#94a3b8", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                    <span style={{ color: "var(--text-muted)", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
                                       <Clock size={12} /> {testResult.durationMs}ms
                                     </span>
                                   </div>
 
-                                  <button
-                                    type="button"
-                                    className="btn-link"
+                                  <AppButton
+                                    variant="ghost"
                                     onClick={() => copyResultOutput(testResult.response)}
-                                    style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    style={{ fontSize: "11px" }}
                                   >
-                                    {copiedOutput ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                                    {copiedOutput ? <Check size={12} style={{ color: "var(--status-success-text)" }} /> : <Copy size={12} />}
                                     {copiedOutput ? "Copied" : "Copy Output"}
-                                  </button>
+                                  </AppButton>
                                 </div>
 
                                 <pre
                                   style={{
-                                    background: "#090d16",
-                                    color: "#38bdf8",
+                                    background: "var(--surface-bg)",
+                                    color: "var(--accent-solid)",
                                     padding: "10px 12px",
                                     borderRadius: "var(--radius-default)",
                                     fontSize: "11.5px",
                                     maxHeight: "220px",
                                     overflowY: "auto",
                                     margin: 0,
-                                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                    border: "1px solid #1e293b"
+                                    fontFamily: "var(--font-family-jetbrains, monospace)",
+                                    border: "1px solid var(--border-soft)"
                                   }}
                                 >
                                   {JSON.stringify(testResult.response, null, 2)}
@@ -1315,16 +1309,18 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                           />
                           Required
                         </label>
-                        <button
-                          type="button"
+                        <AppButton
+                          variant="ghost"
+                          danger
+                          iconOnly
                           onClick={() => {
                             const next = promptFormData.arguments.filter((_, i) => i !== idx);
                             setPromptFormData({ ...promptFormData, arguments: next });
                           }}
-                          style={{ background: "none", border: "none", color: "var(--status-danger-text)", cursor: "pointer", padding: "4px" }}
+                          style={{ padding: "4px", height: "auto", minHeight: "unset" }}
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </AppButton>
                       </div>
                     ))}
                   </div>

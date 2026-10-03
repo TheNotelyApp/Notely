@@ -536,30 +536,30 @@
 
 /* Interactive Terminal Block */
 .mcp-console-block {
-  background: #0f172a;
+  background: var(--surface-bg, #0f172a);
   border-radius: var(--radius-default);
-  border: 1px solid #1e293b;
+  border: 1px solid var(--border-soft, #1e293b);
   overflow: hidden;
 }
 
 .mcp-console-header {
   padding: 8px 14px;
-  background: #1e293b;
+  background: var(--surface-elevated, #1e293b);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #334155;
-  color: #94a3b8;
+  border-bottom: 1px solid var(--border-soft, #334155);
+  color: var(--text-muted, #94a3b8);
   font-size: 11px;
-  font-family: monospace;
+  font-family: var(--font-family-jetbrains, monospace);
 }
 
 .mcp-console-textarea {
   width: 100%;
   height: 85px;
-  background: #0f172a;
-  color: #e2e8f0;
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  background: var(--surface-bg, #0f172a);
+  color: var(--app-text, #e2e8f0);
+  font-family: var(--font-family-jetbrains, monospace);
   font-size: 12px;
   padding: 10px 14px;
   border: none;
@@ -569,13 +569,13 @@
 
 .mcp-console-textarea:focus {
   outline: none;
-  background: #090d16;
+  background: var(--surface-subtle, #090d16);
 }
 
 .mcp-console-result {
   margin-top: 12px;
-  background: #020617;
-  border: 1px solid #1e293b;
+  background: var(--surface-bg, #020617);
+  border: 1px solid var(--border-soft, #1e293b);
   border-radius: var(--radius-default);
   padding: 12px;
 }
@@ -771,17 +771,19 @@
 }
 
 .mcp-prompt-card {
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  background: var(--surface-bg);
+  background: var(--surface-elevated, var(--surface-bg));
   padding: var(--space-4, 16px);
   margin-bottom: var(--space-3, 12px);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-xs, 0 1px 3px rgba(0, 0, 0, 0.04));
+  transition: border-color var(--motion-fast, 0.15s ease), background var(--motion-fast, 0.15s ease), box-shadow var(--motion-fast, 0.15s ease);
 }
 
 .mcp-prompt-card:hover {
-  border-color: var(--accent-solid, #3b82f6);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--border-default);
+  background: var(--surface-subtle);
+  box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.06));
 }
 
 .mcp-prompt-header {
@@ -825,59 +827,8 @@
 
 .mcp-prompt-arg-pill.is-required {
   border-color: rgba(245, 158, 11, 0.4);
-  color: #d97706;
+  color: var(--status-warning-text, #d97706);
   background: rgba(245, 158, 11, 0.08);
 }
 
-.mcp-prompt-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.mcp-prompt-modal {
-  background: var(--surface-bg);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-xl);
-  width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0,0,0,0.2));
-  overflow: hidden;
-}
-
-.mcp-prompt-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.mcp-prompt-modal-body {
-  padding: 20px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.mcp-prompt-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border-soft);
-  background: var(--surface-subtle);
-}
 
