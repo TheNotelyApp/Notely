@@ -23,7 +23,7 @@ export function createFallbackPng(editor, fallbackWidth = 1200, fallbackHeight =
   // Header mockup
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(20, 20, width - 40, 60);
-  ctx.fillStyle = "#2563eb";
+  ctx.fillStyle = "#2f5d62";
   ctx.fillRect(44, 40, 20, 20);
 
   ctx.fillStyle = "#0f172a";
