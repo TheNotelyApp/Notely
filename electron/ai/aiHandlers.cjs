@@ -350,6 +350,31 @@ async function handleGenerateEmbeddings(event, payload) {
   }
 }
 
+function scanMarkdownFiles(dir) {
+  let results = [];
+  const IGNORE_DIR_NAMES = new Set([
+    'node_modules', 'dist', 'build', 'out', 'assets', 'chunks', 'bundle', 'static',
+    'test', 'tests', '__tests__', '__test__', 'spec', 'specs', 'fixtures', 'mocks',
+    'cypress', 'playwright', 'e2e'
+  ]);
+  try {
+    const list = fs.readdirSync(dir);
+    for (const file of list) {
+      const lower = file.toLowerCase();
+      if (file.startsWith('.') || IGNORE_DIR_NAMES.has(lower) || /.*[-_.]dist.*/i.test(lower) || /.*[-_.]build.*/i.test(lower)) continue;
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat && stat.isDirectory()) {
+        results = results.concat(scanMarkdownFiles(fullPath));
+      } else if (file.endsWith('.md')) {
+        if (/\.(test|spec)\.md$/i.test(file)) continue;
+        results.push(fullPath);
+      }
+    }
+  } catch { /* ignore scan error */ }
+  return results;
+}
+
 async function handleRebuildEmbeddings(_event, _payload) {
   try {
     if (!aiService.isEnabled() || !aiService.agent || !aiService.agent.embeddingDb) {
@@ -366,15 +391,24 @@ async function handleRebuildEmbeddings(_event, _payload) {
     const workerManager = require('./workerManager.cjs');
     
     // Populate queue with all markdown files in workspace
-    const docs = aiService.agent.documentService.getAllDocuments();
+    let docs = [];
+    if (aiService.agent.documentService) {
+      try {
+        docs = aiService.agent.documentService.getAllDocuments() || [];
+      } catch { docs = []; }
+    }
+    let workspaceFiles = docs.map(d => d?.path || d?.filePath).filter(Boolean);
+
+    const workspaceRoot = aiService.agent.workspaceRoot;
+    if (workspaceFiles.length === 0 && workspaceRoot && fs.existsSync(workspaceRoot)) {
+      workspaceFiles = scanMarkdownFiles(workspaceRoot);
+    }
+
     let count = 0;
-    if (docs && docs.length > 0) {
-      for (const doc of docs) {
-        const filePath = doc?.path || doc?.filePath;
-        if (filePath) {
-          workerManager.enqueueNote(filePath, 0);
-          count++;
-        }
+    for (const filePath of workspaceFiles) {
+      if (filePath) {
+        workerManager.enqueueNote(filePath, 0);
+        count++;
       }
     }
 
@@ -699,30 +733,6 @@ async function handleBuildGraph(_event, _payload) {
     // Fallback: If documentService cache is empty, scan workspaceRoot directly for .md files
     const workspaceRoot = aiService.agent.workspaceRoot;
     if (workspaceFiles.length === 0 && workspaceRoot && fs.existsSync(workspaceRoot)) {
-      function scanMarkdownFiles(dir) {
-        let results = [];
-        const IGNORE_DIR_NAMES = new Set([
-          'node_modules', 'dist', 'build', 'out', 'assets', 'chunks', 'bundle', 'static',
-          'test', 'tests', '__tests__', '__test__', 'spec', 'specs', 'fixtures', 'mocks',
-          'cypress', 'playwright', 'e2e'
-        ]);
-        try {
-          const list = fs.readdirSync(dir);
-          for (const file of list) {
-            const lower = file.toLowerCase();
-            if (file.startsWith('.') || IGNORE_DIR_NAMES.has(lower) || /.*[-_.]dist.*/i.test(lower) || /.*[-_.]build.*/i.test(lower)) continue;
-            const fullPath = path.join(dir, file);
-            const stat = fs.statSync(fullPath);
-            if (stat && stat.isDirectory()) {
-              results = results.concat(scanMarkdownFiles(fullPath));
-            } else if (file.endsWith('.md')) {
-              if (/\.(test|spec)\.md$/i.test(file)) continue;
-              results.push(fullPath);
-            }
-          }
-        } catch { /* ignore scan error */ }
-        return results;
-      }
       workspaceFiles = scanMarkdownFiles(workspaceRoot);
     }
 
