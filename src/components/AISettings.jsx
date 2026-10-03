@@ -17,6 +17,7 @@ import {
   showSuccessToast,
   showErrorToast,
   showInfoToast,
+  showWarningToast,
 } from '../utils/notificationUtils';
 import {
   aiClearData,
@@ -215,9 +216,7 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleSaveAPIKey = async () => {
     const keyToSave = showPlaintext ? plaintextKey : apiKey;
     if (!keyToSave || keyToSave.includes('...')) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Please enter a complete API key.', type: 'warning' }
-      }));
+      showWarningToast('Please enter a complete API key.');
       return;
     }
 
@@ -226,20 +225,14 @@ export const AISettingsContent = ({ _onClose }) => {
       const response = await aiSetApiKey(selectedProvider, keyToSave);
 
       if (response.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `${selectedProvider} API key saved successfully.`, type: 'success' }
-        }));
+        showSuccessToast(`${selectedProvider} API key saved successfully.`);
         setApiKey(keyToSave.substring(0, 5) + '...' + keyToSave.substring(keyToSave.length - 5));
         setPlaintextKey(keyToSave);
       } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to save key: ${response.error}`, type: 'error' }
-        }));
+        showErrorToast(`Failed to save key: ${response.error}`);
       }
     } catch (error) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error saving key: ${error.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error saving key: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -248,9 +241,7 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleSaveHfToken = async () => {
     const tokenToSave = showHfPlaintext ? hfPlaintextToken : hfToken;
     if (!tokenToSave || tokenToSave.includes('...')) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Please enter a complete HuggingFace token.', type: 'warning' }
-      }));
+      showWarningToast('Please enter a complete HuggingFace token.');
       return;
     }
 
@@ -258,21 +249,15 @@ export const AISettingsContent = ({ _onClose }) => {
       setLoading(true);
       const response = await aiSetApiKey('huggingface', tokenToSave);
       if (response.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'HuggingFace token saved successfully.', type: 'success' }
-        }));
+        showSuccessToast('HuggingFace token saved successfully.');
         setHfToken(tokenToSave.substring(0, 5) + '...' + tokenToSave.substring(tokenToSave.length - 5));
         setHfPlaintextToken(tokenToSave);
         setHfConfigured(true);
       } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to save HuggingFace token: ${response.error}`, type: 'error' }
-        }));
+        showErrorToast(`Failed to save HuggingFace token: ${response.error}`);
       }
     } catch (error) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error: ${error.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -290,20 +275,14 @@ export const AISettingsContent = ({ _onClose }) => {
       setTestResult(res);
       if (res.success) {
         setStatus(`Connection to ${selectedProvider} successful!`);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Connected to ${selectedProvider} successfully!`, type: 'success' }
-        }));
+        showSuccessToast(`Connected to ${selectedProvider} successfully!`);
       } else {
         setStatus(`Connection failed: ${res.error}`);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Connection failed: ${res.error}`, type: 'error' }
-        }));
+        showErrorToast(`Connection failed: ${res.error}`);
       }
     } catch (err) {
       setStatus(`Test failed: ${err.message}`);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -316,17 +295,14 @@ export const AISettingsContent = ({ _onClose }) => {
       const res = await aiTestConnection({ provider: 'huggingface' });
       if (res.success) {
         setStatus('HuggingFace connection successful!');
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'HuggingFace embeddings connected successfully!', type: 'success' }
-        }));
+        showSuccessToast('HuggingFace embeddings connected successfully!');
       } else {
         setStatus(`HuggingFace connection failed: ${res.error}`);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `HuggingFace connection failed: ${res.error}`, type: 'error' }
-        }));
+        showErrorToast(`HuggingFace connection failed: ${res.error}`);
       }
     } catch (err) {
       setStatus(`HuggingFace test failed: ${err.message}`);
+      showErrorToast(`HuggingFace test failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -340,18 +316,12 @@ export const AISettingsContent = ({ _onClose }) => {
       setLoading(true);
       const res = await aiClearData();
       if (res.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'AI local data cleared successfully.', type: 'success' }
-        }));
+        showSuccessToast('AI local data cleared successfully.');
       } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to clear data: ${res.error}`, type: 'error' }
-        }));
+        showErrorToast(`Failed to clear data: ${res.error}`);
       }
     } catch (err) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error clearing data: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error clearing data: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -423,13 +393,9 @@ export const AISettingsContent = ({ _onClose }) => {
                     await aiDisable();
                   }
                   await aiSetPreferences(nextPrefs);
-                  window.dispatchEvent(new CustomEvent('app:toast', {
-                    detail: { message: `AI Subsystem ${checked ? 'enabled' : 'disabled'}.`, type: 'success' }
-                  }));
+                  showSuccessToast(`AI Subsystem ${checked ? 'enabled' : 'disabled'}.`);
                 } catch (err) {
-                  window.dispatchEvent(new CustomEvent('app:toast', {
-                    detail: { message: `Failed to toggle AI: ${err.message}`, type: 'error' }
-                  }));
+                  showErrorToast(`Failed to toggle AI: ${err.message}`);
                 }
               }}
               style={{ opacity: 0, width: 0, height: 0 }}
@@ -521,11 +487,10 @@ export const AISettingsContent = ({ _onClose }) => {
                       setPreferences(updatedPrefs);
                       try {
                         await aiSetPreferences(updatedPrefs);
-                        window.dispatchEvent(new CustomEvent('app:toast', {
-                          detail: { message: `Active provider set to ${val}.`, type: 'success' }
-                        }));
+                        showSuccessToast(`Active provider set to ${val}.`);
                       } catch (err) {
                         console.error('Failed to set active provider:', err);
+                        showErrorToast(`Failed to set active provider: ${err?.message || 'Unknown error'}`);
                       }
                     }}
                     disabled={loading}
@@ -770,18 +735,12 @@ export const AISettingsContent = ({ _onClose }) => {
                             await aiClearEmbeddingsData();
                             await aiRebuildEmbeddings();
                           }
-                          window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Active embedding provider set to ${nextEmb === 'internal' ? 'Local Model' : 'HuggingFace'} and saved.`, type: 'success' }
-                          }));
+                          showSuccessToast(`Active embedding provider set to ${nextEmb === 'internal' ? 'Local Model' : 'HuggingFace'} and saved.`);
                         } else {
-                          window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Failed to save embedding provider: ${response.error}`, type: 'error' }
-                          }));
+                          showErrorToast(`Failed to save embedding provider: ${response.error}`);
                         }
                       } catch (err) {
-                        window.dispatchEvent(new CustomEvent('app:toast', {
-                          detail: { message: `Error: ${err.message}`, type: 'error' }
-                        }));
+                        showErrorToast(`Error: ${err.message}`);
                       } finally {
                         setLoading(false);
                       }
@@ -876,11 +835,10 @@ export const AISettingsContent = ({ _onClose }) => {
                             setLoading(true);
                             await aiDeleteModel();
                             setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
-                            window.dispatchEvent(new CustomEvent('app:toast', {
-                              detail: { message: 'Local BGE embedding model weights deleted.', type: 'info' }
-                            }));
+                            showInfoToast('Local BGE embedding model weights deleted.');
                           } catch (err) {
                             console.error(err);
+                            showErrorToast(`Failed to delete model: ${err?.message || 'Unknown error'}`);
                           } finally {
                             setLoading(false);
                           }

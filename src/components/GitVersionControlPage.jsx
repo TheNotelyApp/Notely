@@ -801,6 +801,7 @@ export function GitVersionControlPage({
   }
 
   function handleCommitSuccess() {
+    onNotify?.("Milestone saved successfully.", "success");
     handleRefresh();
     setSyncConfirmOpen(true);
   }
@@ -808,6 +809,7 @@ export function GitVersionControlPage({
   async function handleGlobalCommit(payload) {
     const result = await gitCommit({ workspacePath, ...payload });
     if (!result?.ok) throw new Error(result?.error || "Commit failed.");
+    onNotify?.("Milestone saved successfully.", "success");
     refreshStatus();
     refreshCommits();
     setSyncConfirmOpen(true);

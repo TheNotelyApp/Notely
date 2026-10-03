@@ -30,6 +30,7 @@ import useConfirm from "../hooks/useConfirm.js";
 import "../styles/DownloadsPage.css";
 
 import { formatBytes, formatTimestamp } from "../utils/formatUtils.js";
+import { showInfoToast, showErrorToast } from "../utils/notificationUtils.js";
 
 function getIconForType(type) {
   switch (type) {
@@ -99,17 +100,32 @@ export function DownloadsPage({ onBack }) {
 
   const handleShowInFolder = async (filePath) => {
     if (!filePath) return;
-    await showInFolder(filePath);
+    try {
+      const res = await showInFolder(filePath);
+      if (res === false) {
+        showErrorToast("Unable to reveal file location. It may have been moved or deleted.");
+      }
+    } catch {
+      showErrorToast("Unable to reveal file in folder.");
+    }
   };
 
   const handleOpenFile = async (filePath) => {
     if (!filePath) return;
-    await openExportFile(filePath);
+    try {
+      const res = await openExportFile(filePath);
+      if (res === false) {
+        showErrorToast("Unable to open exported file. It may have been moved or deleted.");
+      }
+    } catch {
+      showErrorToast("Unable to open exported file.");
+    }
   };
 
   const handleRemove = async (id) => {
     await removeExportRecord(id);
     setHistory((prev) => prev.filter((item) => item.id !== id));
+    showInfoToast("Export record removed.");
   };
 
   const handleClearAll = async () => {
@@ -125,6 +141,7 @@ export function DownloadsPage({ onBack }) {
 
     await clearExportHistory();
     setHistory([]);
+    showInfoToast("Export history cleared.");
   };
 
   const handleOpenDownloadsFolder = async () => {

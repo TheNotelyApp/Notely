@@ -82,9 +82,7 @@ export function MermaidBlock({ code, onEdit, onNotify }) {
         filename: "mermaid-diagram.png",
       });
 
-      if (result?.success) {
-        onNotify?.(`Diagram exported to ${result.filename}`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Export failed", "error");
       }
     } catch (err) {

@@ -382,9 +382,7 @@ export function WireframeEditor({
         category: "diagram"
       });
 
-      if (result?.success) {
-        onNotify?.(`Wireframe exported to ${result.filename}`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Failed to export wireframe.", "error");
       }
     } catch (err) {

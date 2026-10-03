@@ -10,6 +10,7 @@ import {
   aiGetPreferences,
   aiSetPreferences
 } from '../services/electronService';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/notificationUtils';
 
 export default function KnowledgeGraphSettings() {
   const [loading, setLoading] = useState(false);
@@ -57,14 +58,10 @@ export default function KnowledgeGraphSettings() {
         graphProvider: preferences.graphProvider,
         graphConfidence: preferences.graphConfidence
       });
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Knowledge Graph preferences saved successfully.`, type: 'success' }
-      }));
+      showSuccessToast('Knowledge Graph preferences saved successfully.');
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to save preferences: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Failed to save preferences: ${err?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -79,9 +76,7 @@ export default function KnowledgeGraphSettings() {
       }
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to start download: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Failed to start download: ${err?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -93,14 +88,10 @@ export default function KnowledgeGraphSettings() {
       setLoading(true);
       await aiDeleteGraphModel();
       setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Local GLiNER2-Relex ONNX model weights deleted successfully.', type: 'info' }
-      }));
+      showInfoToast('Local GLiNER2-Relex ONNX model weights deleted successfully.');
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to delete model: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Failed to delete model: ${err?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -126,9 +117,7 @@ export default function KnowledgeGraphSettings() {
                 const updated = { ...preferences, graphProvider: newProvider };
                 setPreferences(updated);
                 await aiSetPreferences(updated);
-                window.dispatchEvent(new CustomEvent('app:toast', {
-                  detail: { message: `Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model Engine'}.`, type: 'success' }
-                }));
+                showSuccessToast(`Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model Engine'}.`);
               }}
               disabled={loading}
               style={{ flex: 1 }}

@@ -28,6 +28,7 @@ import { OverlayDialog } from './OverlayDialog';
 import { useConfirm } from '../hooks/useConfirm';
 import AppButton from './AppButton';
 import SubpageHeader from './layout/SubpageHeader';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/notificationUtils';
 
 import '../styles/KnowledgeGraph.css'; // Reuses base layout rules for unified styling
 
@@ -77,9 +78,7 @@ export default function EmbeddingsPage({ onBack }) {
           if (isRebuilding && res.data.queueSize === 0) {
             setIsRebuilding(false);
             setShowProgressModal(false);
-            window.dispatchEvent(new CustomEvent('app:toast', {
-              detail: { message: 'Embeddings DB successfully rebuilt.', type: 'success' }
-            }));
+            showSuccessToast('Embeddings DB successfully rebuilt.');
           }
         }
       } else {
@@ -136,6 +135,7 @@ export default function EmbeddingsPage({ onBack }) {
       if (status.isPaused) {
         await aiResumeWorker();
         setStatus(prev => ({ ...prev, isPaused: false }));
+        showInfoToast('Vector embeddings worker resumed.');
       } else {
         const confirmed = await confirm({
           title: 'Pause Vector Embeddings Worker?',
@@ -147,9 +147,11 @@ export default function EmbeddingsPage({ onBack }) {
         if (!confirmed) return;
         await aiPauseWorker();
         setStatus(prev => ({ ...prev, isPaused: true }));
+        showInfoToast('Vector embeddings worker paused.');
       }
     } catch (err) {
       console.error(err);
+      showErrorToast(`Failed to update worker status: ${err?.message || 'Unknown error'}`);
     }
   };
 
@@ -167,16 +169,16 @@ export default function EmbeddingsPage({ onBack }) {
       setLoading(true);
       const res = await aiRebuildEmbeddings();
       if (res.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'Embeddings rebuild triggered.', type: 'success' }
-        }));
+        showSuccessToast('Embeddings rebuild triggered.');
         setIsRebuilding(true);
         await loadEmbeddingsStatus();
       } else {
         setError(res.error || 'Failed to clear data');
+        showErrorToast(res.error || 'Failed to clear embeddings data.');
       }
     } catch (err) {
       setError(err.message);
+      showErrorToast(err.message || 'Error triggering embeddings rebuild.');
     } finally {
       setLoading(false);
     }

@@ -63,9 +63,7 @@ export function ExcalidrawBlock({ imagePath, diagramId, documentPath, originAsse
         customExportType: "diagram_excalidraw",
         category: "diagram",
       });
-      if (result?.success) {
-        onNotify?.(`Diagram exported to ${result.filename}`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Failed to export diagram.", "error");
       }
     } catch (err) {

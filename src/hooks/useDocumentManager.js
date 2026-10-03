@@ -452,18 +452,19 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
     }
   }
 
-  async function handleReloadCurrentFromDisk(targetFilePath) {
-    const filePathToReload = targetFilePath || current?.filePath;
+  async function handleReloadCurrentFromDisk(targetFilePath, options = {}) {
+    const silent = Boolean(options?.silent || (typeof targetFilePath === "object" && targetFilePath?.silent));
+    const filePathToReload = typeof targetFilePath === "string" ? targetFilePath : current?.filePath;
     if (!filePathToReload) return;
 
     const state = tabStates[filePathToReload];
-    const isTargetDirty = state
+    const isTargetDirty = !silent && (state
       ? state.savedHash !== JSON.stringify({
           header: state.doc?.header || "",
           rawNotes: state.doc?.rawNotes || "",
           cleansed: state.doc?.cleansed || "",
         })
-      : dirty;
+      : dirty);
 
     if (isTargetDirty) {
       const confirmed = await confirm({
@@ -478,9 +479,13 @@ export function useDocumentManager({ notify, onRequireWorkspaceInitialization })
 
     try {
       await reloadDocument(filePathToReload);
-      notify("Reloaded latest file from disk.", "success");
+      if (!silent) {
+        notify("Reloaded latest file from disk.", "success");
+      }
     } catch (err) {
-      notify(err?.message || "Unable to reload document.", "error");
+      if (!silent) {
+        notify(err?.message || "Unable to reload document.", "error");
+      }
     }
   }
 

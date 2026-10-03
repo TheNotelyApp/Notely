@@ -2405,7 +2405,6 @@ export default function App() {
       const result = await exportWorkspaceZip(options);
       if (!result?.canceled) {
         setWorkspaceExportProgress({ phase: "Export complete", percent: 100 });
-        notify(`Workspace exported: ${result?.filePath || "zip created"}`, "success");
         setWorkspaceExportOpen(false);
       }
     } catch (error) {

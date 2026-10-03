@@ -29,6 +29,7 @@ import {
 import { useConfirm } from '../hooks/useConfirm';
 import AppButton from './AppButton';
 import SubpageHeader from './layout/SubpageHeader';
+import { showSuccessToast, showInfoToast, showErrorToast } from '../utils/notificationUtils';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
 import '../styles/AIHealthPage.css';
@@ -45,11 +46,14 @@ function copyToClipboard(text, label) {
   try {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
       navigator.clipboard.writeText(text);
+      showSuccessToast(`${label} copied to clipboard`);
+    } else {
+      showErrorToast(`Unable to copy ${label} to clipboard`);
     }
   } catch (err) {
     console.warn('Clipboard write failed:', err);
+    showErrorToast(`Unable to copy ${label} to clipboard`);
   }
-  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `${label} copied to clipboard`, type: 'success' } }));
 }
 
 function formatJson(val) {
@@ -201,9 +205,10 @@ export default function MCPDiagnosticsPage({ onBack }) {
       try {
         await aiClearLogs();
         await fetchData();
-        window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'MCP Telemetry logs cleared', type: 'info' } }));
+        showInfoToast('MCP Telemetry logs cleared');
       } catch (err) {
         console.error('Clear logs failed:', err);
+        showErrorToast(`Clear logs failed: ${err?.message || 'Unknown error'}`);
       }
     }
   };

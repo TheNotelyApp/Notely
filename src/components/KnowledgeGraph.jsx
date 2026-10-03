@@ -36,6 +36,7 @@ import GraphSidebar from './graph/GraphSidebar';
 import GraphCanvasView from './graph/GraphCanvasView';
 import EntityInspector from './graph/EntityInspector';
 import { normalizeType } from './graph/graphUtils';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/notificationUtils';
 
 import '../styles/KnowledgeGraph.css';
 
@@ -99,12 +100,13 @@ export default function KnowledgeGraph({ onBack }) {
       const res = await aiExportGraphAsJSON();
       if (res?.data) {
         await navigator.clipboard.writeText(JSON.stringify(res.data, null, 2));
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'Knowledge Graph JSON copied to clipboard.', type: 'success' }
-        }));
+        showSuccessToast('Knowledge Graph JSON copied to clipboard.');
+      } else {
+        showErrorToast('Failed to export graph JSON.');
       }
     } catch (err) {
       console.error('Failed to copy graph JSON:', err);
+      showErrorToast(`Unable to copy graph JSON: ${err?.message || 'Unknown error'}`);
     }
   };
 
@@ -113,12 +115,13 @@ export default function KnowledgeGraph({ onBack }) {
       const res = await aiExportGraphAsMarkdown();
       if (res?.data) {
         await navigator.clipboard.writeText(res.data);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'Knowledge Graph Markdown summary copied to clipboard.', type: 'success' }
-        }));
+        showSuccessToast('Knowledge Graph Markdown summary copied to clipboard.');
+      } else {
+        showErrorToast('Failed to export graph Markdown.');
       }
     } catch (err) {
       console.error('Failed to copy graph Markdown:', err);
+      showErrorToast(`Unable to copy graph Markdown: ${err?.message || 'Unknown error'}`);
     }
   };
 
@@ -188,9 +191,7 @@ export default function KnowledgeGraph({ onBack }) {
         if (!payload.isBuilding && isRebuilding) {
           setIsRebuilding(false);
           setShowProgressModal(false);
-          window.dispatchEvent(new CustomEvent('app:toast', {
-            detail: { message: 'Knowledge Graph successfully rebuilt.', type: 'success' }
-          }));
+          showSuccessToast('Knowledge Graph successfully rebuilt.');
           loadGraphData();
         }
       }
@@ -206,6 +207,7 @@ export default function KnowledgeGraph({ onBack }) {
       if (graphStatus.isPaused) {
         await aiResumeGraphWorker();
         setGraphStatus(prev => ({ ...prev, isPaused: false }));
+        showInfoToast('Knowledge Graph extraction resumed.');
       } else {
         const confirmed = await confirm({
           title: 'Pause Knowledge Graph Worker?',
@@ -217,9 +219,11 @@ export default function KnowledgeGraph({ onBack }) {
         if (!confirmed) return;
         await aiPauseGraphWorker();
         setGraphStatus(prev => ({ ...prev, isPaused: true }));
+        showInfoToast('Knowledge Graph extraction paused.');
       }
     } catch (err) {
       console.error(err);
+      showErrorToast(`Failed to update worker status: ${err?.message || 'Unknown error'}`);
     }
   };
 

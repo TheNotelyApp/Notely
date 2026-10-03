@@ -1050,9 +1050,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           filename,
         });
 
-        if (result?.success) {
-          onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-        } else {
+        if (!result?.success) {
           onNotify?.(result?.error || "Failed to download file.", "error");
         }
       } catch (err) {
@@ -1070,9 +1068,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           customExportType: "image",
           category: "media",
         });
-        if (result?.success) {
-          onNotify?.(`Table image exported to ${result.filename}`, "success");
-        } else {
+        if (!result?.success) {
           onNotify?.(result?.error || "Export failed", "error");
         }
       } catch (err) {
@@ -1094,9 +1090,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           customExportType: "csv",
           category: "document",
         });
-        if (result?.success) {
-          onNotify?.(`Table CSV exported to ${result.filename}`, "success");
-        } else {
+        if (!result?.success) {
           onNotify?.(result?.error || "Export failed", "error");
         }
       } catch (err) {
@@ -1319,9 +1313,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
                 category: "media",
               });
 
-              if (result?.success) {
-                onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-              } else {
+              if (!result?.success) {
                 onNotify?.(result?.error || `Failed to download ${mediaTypeLabel}.`, "error");
               }
             } catch (err) {
@@ -2000,9 +1992,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         category: "media",
       });
 
-      if (result?.success) {
-        onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Failed to download media.", "error");
       }
     } catch (err) {

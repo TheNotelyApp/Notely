@@ -595,7 +595,7 @@ export function DocumentDetail({
       if (res?.ok) {
         onNotify?.(`Restored document to version ${commitLabel}`, "success");
         setIsTimeMachineOpen(false);
-        onReloadFromDisk?.(fPath);
+        onReloadFromDisk?.(fPath, { silent: true });
       } else {
         onNotify?.(res?.error || "Restore failed.", "error");
       }
@@ -1144,7 +1144,6 @@ export function DocumentDetail({
         pdfQualityPreset,
       });
       if (!result?.canceled) {
-        onNotify?.("PDF downloaded.", "success");
         setPdfOptionsOpen(false);
       }
     } catch (error) {
