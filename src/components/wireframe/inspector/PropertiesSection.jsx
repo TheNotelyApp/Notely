@@ -6,6 +6,7 @@ import {
   Box,
   ChevronDown,
   ChevronRight,
+  Columns,
   Copy,
   CornerDownRight,
   FileText,
@@ -13,6 +14,7 @@ import {
   FolderPlus,
   Lock,
   Plus,
+  Rows,
   Sliders,
   Trash2,
   Unlock
@@ -37,6 +39,9 @@ export function PropertiesSection({
   quickAddStencilId,
   onQuickAddStencilChange,
   onInsertRelative,
+  onAddColumn,
+  onAddRow,
+  onSetColumnsPreset,
   customSnippets,
   devNote,
   onDevNoteChange,
@@ -434,12 +439,14 @@ export function PropertiesSection({
               </div>
             )}
 
-            {/* Layout Controls (Containers, Rows, Columns) */}
+            {/* Layout Controls (Containers, Rows, Columns, Page) */}
             {(compMeta.name === "Container" ||
               compMeta.name === "Row" ||
               compMeta.name === "Column" ||
               compMeta.name === "Page" ||
-              compMeta.name === "Content Area") && (
+              compMeta.name === "Stack" ||
+              compMeta.name === "Content Area" ||
+              isContainer) && (
               <>
                 <div className="wireframe-prop-row">
                   <div className="wireframe-prop-group">
@@ -486,6 +493,77 @@ export function PropertiesSection({
                       Horizontal (Row)
                     </button>
                   </div>
+                </div>
+
+                {/* Multi-Column & Multi-Row Grid Management */}
+                <div className="wireframe-prop-group">
+                  <label className="wireframe-prop-label">
+                    <Columns size={12} />
+                    <span>Columns Preset</span>
+                  </label>
+                  <div className="wireframe-size-chips" style={{ marginTop: "4px" }}>
+                    <button
+                      type="button"
+                      className="wireframe-size-chip"
+                      onClick={() => onSetColumnsPreset?.(2)}
+                      disabled={isLocked}
+                      title="Split into 2 equal columns (50% / 50%)"
+                    >
+                      2 Cols
+                    </button>
+                    <button
+                      type="button"
+                      className="wireframe-size-chip"
+                      onClick={() => onSetColumnsPreset?.(3)}
+                      disabled={isLocked}
+                      title="Split into 3 equal columns (33% each)"
+                    >
+                      3 Cols
+                    </button>
+                    <button
+                      type="button"
+                      className="wireframe-size-chip"
+                      onClick={() => onSetColumnsPreset?.(4)}
+                      disabled={isLocked}
+                      title="Split into 4 equal columns (25% each)"
+                    >
+                      4 Cols
+                    </button>
+                    <button
+                      type="button"
+                      className="wireframe-size-chip"
+                      onClick={() => onSetColumnsPreset?.("split-1-2")}
+                      disabled={isLocked}
+                      title="Split 1/3 sidebar + 2/3 main area"
+                    >
+                      1/3 + 2/3
+                    </button>
+                  </div>
+                </div>
+
+                <div className="wireframe-prop-row" style={{ marginTop: "4px", gap: "6px" }}>
+                  <button
+                    type="button"
+                    className="wireframe-quick-insert-btn"
+                    onClick={onAddColumn}
+                    disabled={isLocked}
+                    title="Add another column to this row/container"
+                    style={{ flex: 1, padding: "5px 8px" }}
+                  >
+                    <Columns size={12} />
+                    <span>+ Column</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="wireframe-quick-insert-btn"
+                    onClick={onAddRow}
+                    disabled={isLocked}
+                    title="Add another row below or inside container"
+                    style={{ flex: 1, padding: "5px 8px" }}
+                  >
+                    <Rows size={12} />
+                    <span>+ Row</span>
+                  </button>
                 </div>
               </>
             )}

@@ -263,6 +263,9 @@ export function WireframeEditor({
                 background: #2f5d62;
                 color: #ffffff;
               }
+              *, *::before, *::after {
+                box-sizing: border-box;
+              }
               body {
                 margin: 0;
                 padding: 12px;
@@ -279,6 +282,16 @@ export function WireframeEditor({
               .wf-split-pane, .wf-card, .wf-toolbar, .wf-footer, .wf-data-table,
               .wf-alert, .wf-modal, .wf-confirm, .wf-empty-state, .wf-image-placeholder {
                 position: relative;
+                box-sizing: border-box;
+              }
+
+              .wf-column {
+                min-width: 0 !important;
+                max-width: 100% !important;
+              }
+
+              .wf-row, .wf-container {
+                max-width: 100% !important;
               }
 
               /* Numbered Callout Pin Badge */
@@ -423,6 +436,10 @@ export function WireframeEditor({
           `;
           editor.setComponents?.(defaultStarter) || editor.addComponents?.(defaultStarter);
         }
+
+        editor.on("component:create", (comp) => {
+          comp.set("resizable", resizeConfig);
+        });
 
         // Event bindings
         editor.on("component:selected", (comp) => {
@@ -804,6 +821,248 @@ export function WireframeEditor({
     }
   };
 
+  // Layout Columns & Rows Handlers
+  const handleAddColumn = () => {
+    if (!selectedComp || isLocked) return;
+    try {
+      let targetRow = selectedComp;
+      const type = selectedComp.getAttributes?.()?.["data-wf-type"] || "";
+      if (type === "column") {
+        targetRow = selectedComp.parent?.() || selectedComp;
+      }
+
+      targetRow.addStyle({
+        display: "flex",
+        "flex-direction": "row",
+        "align-items": "stretch",
+        "box-sizing": "border-box",
+        width: "100%",
+        "max-width": "100%",
+        gap: targetRow.getStyle?.()?.gap || "16px"
+      });
+
+      const colCount = (targetRow.components?.()?.length || 0) + 1;
+      const newCol = targetRow.append({
+        tagName: "div",
+        classes: ["wf-column"],
+        attributes: { "data-wf-type": "column", "data-dev-note": "" },
+        style: {
+          flex: "1 1 0px",
+          "min-width": "0",
+          "max-width": "100%",
+          "min-height": "44px",
+          background: "#f8fafc",
+          border: "1px solid #cbd5e1",
+          "border-radius": "3px",
+          display: "flex",
+          "align-items": "center",
+          "justify-content": "center",
+          "font-size": "11px",
+          color: "#64748b",
+          padding: "8px",
+          "box-sizing": "border-box"
+        },
+        content: `Column ${colCount}`
+      })[0];
+
+      if (newCol) {
+        editorRef.current?.select(newCol);
+      }
+      setHasUnsavedChanges(true);
+      updateAnnotations();
+    } catch (err) {
+      console.error("Failed to add column:", err);
+    }
+  };
+
+  const handleAddRow = () => {
+    if (!selectedComp || isLocked) return;
+    try {
+      let targetContainer = selectedComp;
+      const type = selectedComp.getAttributes?.()?.["data-wf-type"] || "";
+      if (type === "column" || type === "row") {
+        targetContainer = selectedComp.parent?.() || selectedComp;
+      }
+
+      const newRow = targetContainer.append({
+        tagName: "div",
+        classes: ["wf-row"],
+        attributes: { "data-wf-type": "row", "data-dev-note": "" },
+        style: {
+          width: "100%",
+          "max-width": "100%",
+          "min-height": "60px",
+          display: "flex",
+          "flex-direction": "row",
+          "align-items": "stretch",
+          gap: "16px",
+          padding: "8px",
+          border: "1px dashed #cbd5e1",
+          "border-radius": "4px",
+          "box-sizing": "border-box"
+        },
+        components: [
+          {
+            tagName: "div",
+            classes: ["wf-column"],
+            attributes: { "data-wf-type": "column", "data-dev-note": "" },
+            style: {
+              flex: "1 1 0px",
+              "min-width": "0",
+              "max-width": "100%",
+              "min-height": "44px",
+              background: "#f8fafc",
+              border: "1px solid #cbd5e1",
+              "border-radius": "3px",
+              display: "flex",
+              "align-items": "center",
+              "justify-content": "center",
+              "font-size": "11px",
+              color: "#64748b",
+              padding: "8px",
+              "box-sizing": "border-box"
+            },
+            content: "Column 1"
+          },
+          {
+            tagName: "div",
+            classes: ["wf-column"],
+            attributes: { "data-wf-type": "column", "data-dev-note": "" },
+            style: {
+              flex: "1 1 0px",
+              "min-width": "0",
+              "max-width": "100%",
+              "min-height": "44px",
+              background: "#f8fafc",
+              border: "1px solid #cbd5e1",
+              "border-radius": "3px",
+              display: "flex",
+              "align-items": "center",
+              "justify-content": "center",
+              "font-size": "11px",
+              color: "#64748b",
+              padding: "8px",
+              "box-sizing": "border-box"
+            },
+            content: "Column 2"
+          }
+        ]
+      })[0];
+
+      if (newRow) {
+        editorRef.current?.select(newRow);
+      }
+      setHasUnsavedChanges(true);
+      updateAnnotations();
+    } catch (err) {
+      console.error("Failed to add row:", err);
+    }
+  };
+
+  const handleSetColumnsPreset = (countOrPreset) => {
+    if (!selectedComp || isLocked) return;
+    try {
+      let targetRow = selectedComp;
+      const type = selectedComp.getAttributes?.()?.["data-wf-type"] || "";
+      if (type === "column") {
+        targetRow = selectedComp.parent?.() || selectedComp;
+      }
+
+      targetRow.addStyle({
+        display: "flex",
+        "flex-direction": "row",
+        "align-items": "stretch",
+        width: "100%",
+        "max-width": "100%",
+        "box-sizing": "border-box",
+        gap: targetRow.getStyle?.()?.gap || "16px"
+      });
+      targetRow.components().reset();
+
+      if (countOrPreset === "split-1-2") {
+        targetRow.append([
+          {
+            tagName: "div",
+            classes: ["wf-column"],
+            attributes: { "data-wf-type": "column", "data-dev-note": "" },
+            style: {
+              flex: "1 1 0px",
+              "min-width": "0",
+              "max-width": "100%",
+              "min-height": "44px",
+              background: "#f8fafc",
+              border: "1px solid #cbd5e1",
+              "border-radius": "3px",
+              display: "flex",
+              "align-items": "center",
+              "justify-content": "center",
+              "font-size": "11px",
+              color: "#64748b",
+              padding: "8px",
+              "box-sizing": "border-box"
+            },
+            content: "Sidebar (1/3)"
+          },
+          {
+            tagName: "div",
+            classes: ["wf-column"],
+            attributes: { "data-wf-type": "column", "data-dev-note": "" },
+            style: {
+              flex: "2 1 0px",
+              "min-width": "0",
+              "max-width": "100%",
+              "min-height": "44px",
+              background: "#f8fafc",
+              border: "1px solid #cbd5e1",
+              "border-radius": "3px",
+              display: "flex",
+              "align-items": "center",
+              "justify-content": "center",
+              "font-size": "11px",
+              color: "#64748b",
+              padding: "8px",
+              "box-sizing": "border-box"
+            },
+            content: "Main Content (2/3)"
+          }
+        ]);
+      } else {
+        const num = typeof countOrPreset === "number" ? countOrPreset : parseInt(countOrPreset, 10) || 2;
+        const cols = [];
+        for (let i = 1; i <= num; i++) {
+          cols.push({
+            tagName: "div",
+            classes: ["wf-column"],
+            attributes: { "data-wf-type": "column", "data-dev-note": "" },
+            style: {
+              flex: "1 1 0px",
+              "min-width": "0",
+              "max-width": "100%",
+              "min-height": "44px",
+              background: "#f8fafc",
+              border: "1px solid #cbd5e1",
+              "border-radius": "3px",
+              display: "flex",
+              "align-items": "center",
+              "justify-content": "center",
+              "font-size": "11px",
+              color: "#64748b",
+              padding: "8px",
+              "box-sizing": "border-box"
+            },
+            content: `Column ${i}`
+          });
+        }
+        targetRow.append(cols);
+      }
+      editorRef.current?.select(targetRow);
+      setHasUnsavedChanges(true);
+      updateAnnotations();
+    } catch (err) {
+      console.error("Failed to set columns preset:", err);
+    }
+  };
+
   // Property Change Handlers
   const handleTextChange = (val) => {
     setPropText(val);
@@ -1114,6 +1373,9 @@ export function WireframeEditor({
           quickAddStencilId={quickAddStencilId}
           onQuickAddStencilChange={setQuickAddStencilId}
           onInsertRelative={handleInsertRelative}
+          onAddColumn={handleAddColumn}
+          onAddRow={handleAddRow}
+          onSetColumnsPreset={handleSetColumnsPreset}
           customSnippets={customSnippets}
           devNote={devNote}
           onDevNoteChange={handleDevNoteChange}

@@ -86,16 +86,68 @@ export const COMPONENT_REGISTRY = [
   },
   {
     id: "wf-row",
-    name: "Row",
-    label: "Row",
+    name: "Row (2 Columns)",
+    label: "Row (2 Cols)",
     category: "layout",
     icon: Rows,
-    desc: "Horizontal flex row for side-by-side items",
+    desc: "2 equal columns flex row (50% / 50%)",
     defaults: { width: "100%", gap: "16px" },
     content: `
-      <div class="wf-row" data-wf-type="row" data-dev-note="" style="width: 100%; min-height: 60px; display: flex; flex-direction: row; align-items: center; gap: 16px; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; box-sizing: border-box;">
-        <div style="flex: 1; min-height: 44px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b;">Row Item 1</div>
-        <div style="flex: 1; min-height: 44px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b;">Row Item 2</div>
+      <div class="wf-row" data-wf-type="row" data-dev-note="" style="width: 100%; min-height: 60px; display: flex; flex-direction: row; align-items: stretch; gap: 16px; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Column 1</div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Column 2</div>
+      </div>
+    `
+  },
+  {
+    id: "wf-3-columns",
+    name: "3 Columns Row",
+    label: "3 Columns",
+    category: "layout",
+    icon: Columns,
+    desc: "3 equal columns flex row (33% each)",
+    defaults: { width: "100%", gap: "16px" },
+    content: `
+      <div class="wf-row" data-wf-type="row" data-dev-note="" style="width: 100%; min-height: 60px; display: flex; flex-direction: row; align-items: stretch; gap: 16px; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 1</div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 2</div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 3</div>
+      </div>
+    `
+  },
+  {
+    id: "wf-4-columns",
+    name: "4 Columns Row",
+    label: "4 Columns",
+    category: "layout",
+    icon: Columns,
+    desc: "4 equal columns flex row (25% each)",
+    defaults: { width: "100%", gap: "12px" },
+    content: `
+      <div class="wf-row" data-wf-type="row" data-dev-note="" style="width: 100%; min-height: 60px; display: flex; flex-direction: row; align-items: stretch; gap: 12px; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 1</div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 2</div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 3</div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 44px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; padding: 8px; box-sizing: border-box;">Col 4</div>
+      </div>
+    `
+  },
+  {
+    id: "wf-split-1-2",
+    name: "Sidebar + Content Split",
+    label: "Split (1/3 + 2/3)",
+    category: "layout",
+    icon: SplitSquareVertical,
+    desc: "Asymmetric 2-column split (1/3 sidebar and 2/3 main work area)",
+    defaults: { width: "100%", gap: "16px" },
+    content: `
+      <div class="wf-row" data-wf-type="row" data-dev-note="" style="width: 100%; min-height: 120px; display: flex; flex-direction: row; gap: 16px; box-sizing: border-box;">
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 1 1 0px; min-width: 0; max-width: 100%; min-height: 100px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px; padding: 12px; box-sizing: border-box;">
+          <span style="font-size: 11px; color: #64748b; font-weight: 600;">Sidebar (1/3)</span>
+        </div>
+        <div class="wf-column" data-wf-type="column" data-dev-note="" style="flex: 2 1 0px; min-width: 0; max-width: 100%; min-height: 100px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 16px; box-sizing: border-box;">
+          <span style="font-size: 11px; color: #64748b; font-weight: 600;">Main Content (2/3)</span>
+        </div>
       </div>
     `
   },
@@ -115,8 +167,8 @@ export const COMPONENT_REGISTRY = [
   },
   {
     id: "wf-stack",
-    name: "Stack",
-    label: "Stack",
+    name: "Stack (2 Rows)",
+    label: "Stack (2 Rows)",
     category: "layout",
     icon: Layers,
     desc: "Vertical stack with uniform spacing",
@@ -125,6 +177,22 @@ export const COMPONENT_REGISTRY = [
       <div class="wf-stack" data-wf-type="stack" data-dev-note="" style="display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box;">
         <div style="padding: 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 11px; color: #475569;">Stack Item 1</div>
         <div style="padding: 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 11px; color: #475569;">Stack Item 2</div>
+      </div>
+    `
+  },
+  {
+    id: "wf-3-rows",
+    name: "3 Rows Stack",
+    label: "3 Rows",
+    category: "layout",
+    icon: Layers,
+    desc: "Vertical stack with 3 equal row items",
+    defaults: { gap: "12px" },
+    content: `
+      <div class="wf-stack" data-wf-type="stack" data-dev-note="" style="display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box;">
+        <div style="padding: 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 11px; color: #475569;">Row Item 1</div>
+        <div style="padding: 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 11px; color: #475569;">Row Item 2</div>
+        <div style="padding: 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 11px; color: #475569;">Row Item 3</div>
       </div>
     `
   },

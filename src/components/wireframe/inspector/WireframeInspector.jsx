@@ -27,6 +27,9 @@ export function WireframeInspector({
   quickAddStencilId,
   onQuickAddStencilChange,
   onInsertRelative,
+  onAddColumn,
+  onAddRow,
+  onSetColumnsPreset,
   customSnippets,
   devNote,
   onDevNoteChange,
@@ -74,6 +77,9 @@ export function WireframeInspector({
         quickAddStencilId={quickAddStencilId}
         onQuickAddStencilChange={onQuickAddStencilChange}
         onInsertRelative={onInsertRelative}
+        onAddColumn={onAddColumn}
+        onAddRow={onAddRow}
+        onSetColumnsPreset={onSetColumnsPreset}
         customSnippets={customSnippets}
         devNote={devNote}
         onDevNoteChange={onDevNoteChange}
