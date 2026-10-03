@@ -11,9 +11,6 @@ const DocumentDetail = lazy(() =>
 const WorkspaceActivityPanel = lazy(() =>
   import("./components/WorkspaceActivityPanel").then((m) => ({ default: m.WorkspaceActivityPanel }))
 );
-const ConflictResolutionPanel = lazy(() =>
-  import("./components/ConflictResolutionPanel").then((m) => ({ default: m.ConflictResolutionPanel }))
-);
 import { AppSubpageViews } from "./components/layout/AppSubpageViews";
 import { AppModalsContainer } from "./components/modals/AppModalsContainer";
 import { SettingsModal } from "./components/SettingsModal";
@@ -79,7 +76,7 @@ import {
   batchSetMetadataInFiles,
 } from "./services/electronService";
 import { useToast } from "./hooks/useToast";
-import { useP2PSync } from "./hooks/useP2PSync";
+import { useWorkspaceActivity } from "./hooks/useWorkspaceActivity";
 import {
   aiGenerateEmbeddings,
   aiBuildGraph,
@@ -917,51 +914,13 @@ export default function App() {
     notify("Cleared spelling dictionary.", "success");
   };
 
-  const syncStateRef = useRef({ current: null, dirty: false, openDocument: null });
-  syncStateRef.current = { doc: current, dirty, openDocument };
   const {
-    p2pStatusOpen,
-    setP2PStatusOpen,
-    p2pStatusLoading,
-    p2pStatus,
-    fullSyncProgressByPeer,
-    handleOpenP2PStatus,
-    handleStartP2PDiscovery,
-    handleStopP2PDiscovery,
-    handleSetP2PDeviceName,
-    handleSetP2PKeyPolicyDays,
-    handleCreateP2PInvite,
-    handlePairP2PWithCode,
-    handleManualP2PConnect,
-    handleRemoveTrustedP2PPeer,
-    handleRotateP2PWorkspaceKeys,
     workspaceActivityOpen,
     setWorkspaceActivityOpen,
     workspaceActivityLoading,
     workspaceActivity,
     handleOpenWorkspaceActivity,
-    p2pSyncHelpOpen,
-    setP2PSyncHelpOpen,
-    syncSelfTestOpen,
-    setSyncSelfTestOpen,
-    syncSelfTestLoading,
-    syncSelfTestResult,
-    handleRunP2PSyncSelfTest,
-    conflictCenterOpen,
-    setConflictCenterOpen,
-    conflictCenterLoading,
-    conflictCenterData,
-    conflictResolutionOpen,
-    setConflictResolutionOpen,
-    conflictResolutionEntry,
-    conflictResolutionFiles,
-    conflictResolutionLoading,
-    handleOpenConflictCenter,
-    handleOpenConflictFile,
-    handleOpenConflictResolution,
-    handleResolveConflict,
-    handleOpenNextConflict,
-  } = useP2PSync({ notify, setError, loadDocumentsData, syncStateRef });
+  } = useWorkspaceActivity({ setError });
   const [mcpToolsPageOpen, setMcpToolsPageOpen] = useState(false);
 
   const closeAllFullscreenViews = useCallback(() => {
@@ -1035,12 +994,6 @@ export default function App() {
     }
   }, [notify]);
 
-  useEffect(() => {
-    if (p2pStatusOpen) {
-      openSettings("p2p");
-      setP2PStatusOpen(false);
-    }
-  }, [p2pStatusOpen, setP2PStatusOpen]);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -1773,11 +1726,6 @@ export default function App() {
         return;
       }
 
-      if (action === "open-p2p-status") {
-        openSettings("p2p");
-        return;
-      }
-
       if (action === "open-workspace-activity") {
         handleOpenWorkspaceActivity();
         return;
@@ -1910,26 +1858,6 @@ export default function App() {
         return;
       }
 
-      if (action === "open-p2p-sync-help") {
-
-        setP2PSyncHelpOpen(true);
-        return;
-      }
-
-      if (action === "run-p2p-sync-self-test") {
-        handleRunP2PSyncSelfTest();
-        return;
-      }
-
-      if (action === "rotate-p2p-workspace-keys") {
-        handleRotateP2PWorkspaceKeys();
-        return;
-      }
-
-      if (action === "open-p2p-conflicts") {
-        handleOpenConflictCenter();
-        return;
-      }
 
       if (action === "view-tile") {
         setNotesViewMode("tile");
@@ -2552,7 +2480,6 @@ export default function App() {
     { id: "open-downloads-page", label: "Open Downloads & Export History", group: "App", shortcut: "Ctrl/Cmd+J", aliases: "downloads exports export history pdf packages" },
     { id: "open-git-version-control", label: "Open Revisions & Sync", group: "Tools", shortcut: "Ctrl/Cmd+Shift+G", aliases: "git version control vc source commit branch diff history milestone sync" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
-    { id: "open-p2p-status", label: "Open P2P Settings", group: "Sync", aliases: "peer status p2p sync settings" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
     { id: "open-embeddings-page", label: "Open Embeddings Dashboard", group: "AI", aliases: "vector database indexing onnx local bge segments" },
     { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
@@ -3033,11 +2960,6 @@ export default function App() {
 
     if (resolvedCommandId === "open-workspace-activity") {
       await handleOpenWorkspaceActivity();
-      return;
-    }
-
-    if (resolvedCommandId === "open-p2p-status") {
-      openSettings("p2p");
       return;
     }
 
@@ -3749,19 +3671,6 @@ export default function App() {
           onPreviewImageModeChange={setPreviewImageMode}
           embeddedMarkdownMode={embeddedMarkdownMode}
           onEmbeddedMarkdownModeToggle={setEmbeddedMarkdownMode}
-          p2pStatus={p2pStatus}
-          p2pLoading={p2pStatusLoading}
-          fullSyncProgressByPeer={fullSyncProgressByPeer}
-          onRefreshP2P={handleOpenP2PStatus}
-          onStartP2PDiscovery={handleStartP2PDiscovery}
-          onStopP2PDiscovery={handleStopP2PDiscovery}
-          onSetP2PDeviceName={handleSetP2PDeviceName}
-          onSetP2PKeyPolicyDays={handleSetP2PKeyPolicyDays}
-          onCreateP2PInvite={handleCreateP2PInvite}
-          onPairP2PWithCode={handlePairP2PWithCode}
-          onManualP2PConnect={handleManualP2PConnect}
-          onRemoveTrustedP2PPeer={handleRemoveTrustedP2PPeer}
-          onRotateP2PWorkspaceKeys={handleRotateP2PWorkspaceKeys}
         />
       ) : null}
 
@@ -3785,185 +3694,6 @@ export default function App() {
                 onRefresh={handleOpenWorkspaceActivity}
               />
             </Suspense>
-        </OverlayDialog>
-      ) : null}
-
-      {p2pSyncHelpOpen ? (
-        <OverlayDialog open={p2pSyncHelpOpen} onClose={() => setP2PSyncHelpOpen(false)} ariaLabel="P2P sync notes">
-            <div className="overlay-dialog-header">
-              <h2>How P2P Sync Works</h2>
-              <button
-                className="icon-button"
-                onClick={() => setP2PSyncHelpOpen(false)}
-                type="button"
-                aria-label="Close P2P sync help"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p2p-sync-help-content">
-              <p><strong>Current behavior</strong></p>
-              <ol>
-                <li>Discovery: each app broadcasts a LAN hello packet and lists nearby peers.</li>
-                <li>Connect: you can manually ping a peer by address and port.</li>
-                <li>Pairing: one peer creates an invite code, the other submits the code to establish trust.</li>
-                <li>Trust state: trusted peers are saved locally on each device.</li>
-                <li>Sync: create, update, and delete note events are shared between trusted peers.</li>
-              </ol>
-              <p><strong>File sync status</strong></p>
-              <p>Automatic note sync is enabled for trusted peers using AES-256-GCM encrypted sync events.</p>
-              <p><strong>Planned next phase</strong></p>
-              <ol>
-                <li>Replace full-content updates with true section/line deltas.</li>
-                <li>Add richer conflict resolution UI (manual choose/merge).</li>
-                <li>Add delivery retry queues and offline reconciliation.</li>
-              </ol>
-            </div>
-        </OverlayDialog>
-      ) : null}
-
-      {conflictResolutionOpen && conflictResolutionEntry ? (
-        <OverlayDialog open={conflictResolutionOpen && Boolean(conflictResolutionEntry)} onClose={() => setConflictResolutionOpen(false)} ariaLabel="Resolve sync conflict" cardClassName="conflict-resolve-dialog-card">
-            <div className="overlay-dialog-header">
-              <h2>Resolve Conflict</h2>
-              <button
-                className="icon-button"
-                onClick={() => setConflictResolutionOpen(false)}
-                type="button"
-                aria-label="Close conflict resolution"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {conflictResolutionLoading && !conflictResolutionFiles ? (
-              <p className="p2p-status-table-empty">Loading files...</p>
-            ) : conflictResolutionFiles ? (
-              <Suspense fallback={<div className="lazy-loading">Loading conflict resolver…</div>}>
-                <ConflictResolutionPanel
-                  localFile={conflictResolutionFiles.local}
-                  conflictFile={conflictResolutionFiles.conflict}
-                  relativePath={conflictResolutionEntry.relativePath || conflictResolutionEntry.filePath}
-                  onResolve={handleResolveConflict}
-                  loading={conflictResolutionLoading}
-                />
-              </Suspense>
-            ) : null}
-        </OverlayDialog>
-      ) : null}
-
-      {syncSelfTestOpen ? (
-        <OverlayDialog open={syncSelfTestOpen} onClose={() => setSyncSelfTestOpen(false)} ariaLabel="P2P sync self-test">
-            <div className="overlay-dialog-header">
-              <h2>P2P Sync Self-Test</h2>
-              <button
-                className="icon-button"
-                onClick={() => setSyncSelfTestOpen(false)}
-                type="button"
-                aria-label="Close sync self-test"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p2p-sync-help-content">
-              {syncSelfTestLoading ? (
-                <p>Running self-test...</p>
-              ) : syncSelfTestResult ? (
-                <>
-                  <p>
-                    <strong>Result:</strong>{" "}
-                    <span className={syncSelfTestResult.ok ? "p2p-test-pass" : "p2p-test-fail"}>
-                      {syncSelfTestResult.ok ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
-                  <p><strong>Crypto round-trip:</strong> {syncSelfTestResult.cryptoRoundTrip || "N/A"}</p>
-                  <p><strong>Trusted peers:</strong> {syncSelfTestResult.trustedPeers ?? "N/A"}</p>
-                  <p><strong>Outbox count:</strong> {syncSelfTestResult.outboxCount ?? "N/A"}</p>
-                  {syncSelfTestResult.error ? (
-                    <p className="p2p-test-fail"><strong>Error:</strong> {syncSelfTestResult.error}</p>
-                  ) : null}
-                </>
-              ) : (
-                <p>No result yet.</p>
-              )}
-            </div>
-        </OverlayDialog>
-      ) : null}
-
-      {conflictCenterOpen ? (
-        <OverlayDialog open={conflictCenterOpen} onClose={() => setConflictCenterOpen(false)} ariaLabel="P2P conflict center" cardClassName="p2p-status-dialog-card">
-            <div className="overlay-dialog-header">
-              <h2>Conflict Center</h2>
-              <button
-                className="icon-button"
-                onClick={() => setConflictCenterOpen(false)}
-                type="button"
-                aria-label="Close conflict center"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p2p-conflict-center">
-              <div className="p2p-conflict-center-actions">
-                <button
-                  className="small-button"
-                  type="button"
-                  onClick={handleOpenNextConflict}
-                  disabled={!conflictCenterData?.conflicts?.length}
-                >
-                  Resolve Next Unresolved
-                </button>
-              </div>
-              {conflictCenterLoading ? (
-                <p className="p2p-status-table-empty">Loading conflicts...</p>
-              ) : !conflictCenterData?.conflicts?.length ? (
-                <p className="p2p-status-table-empty">No unresolved sync conflicts.</p>
-              ) : (
-                <table className="p2p-status-peer-table">
-                  <thead>
-                    <tr>
-                      <th>Note</th>
-                      <th>Conflict File</th>
-                      <th>When</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {conflictCenterData.conflicts.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="mono-cell">{entry.relativePath || entry.filePath}</td>
-                        <td className="mono-cell" data-tooltip={entry.conflictPath}>
-                          {entry.conflictPath.split(/[\\/]/).pop()}
-                        </td>
-                        <td>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "Unknown"}</td>
-                        <td className="p2p-conflict-actions">
-                          <button
-                            className="small-button"
-                            type="button"
-                            onClick={() => handleOpenConflictResolution(entry)}
-                          >
-                            Resolve
-                          </button>
-                          <button
-                            className="small-button"
-                            type="button"
-                            onClick={() => handleOpenConflictFile(entry.filePath)}
-                          >
-                            Open Local
-                          </button>
-                          <button
-                            className="small-button"
-                            type="button"
-                            onClick={() => handleOpenConflictFile(entry.conflictPath)}
-                          >
-                            Open Conflict
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
         </OverlayDialog>
       ) : null}
 

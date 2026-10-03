@@ -1,7 +1,7 @@
 ---
 title: Application Architecture
 description: Comprehensive overview of Notely's offline-first desktop application architecture, subsystems, IPC messaging, storage layers, and logging infrastructure.
-keywords: architecture, Electron, React, CodeMirror, SQLite, Git, P2P sync, IPC, LogDB
+keywords: architecture, Electron, React, CodeMirror, SQLite, Git, IPC, LogDB
 category: Developer
 ---
 
@@ -31,7 +31,6 @@ graph TD
     subgraph Main ["Main Process (Electron / Node.js)"]
         FS[Document & File System Service]
         Git[Git Version Control Subsystem]
-        Sync[P2P Sync Engine]
         Exp[Package & Export Manager]
         AI[AI Agent & Context Engine]
         Logs[Centralized LogDB]
@@ -49,7 +48,6 @@ graph TD
     CM --> IPC
     IPC --> FS
     IPC --> Git
-    IPC --> Sync
     IPC --> Exp
     IPC --> AI
     IPC --> Logs
@@ -91,13 +89,9 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 
 ### B. Git Version Control Subsystem (`gitService.cjs`)
 * **Local Git Execution**: Runs native `git` CLI commands synchronously or asynchronously without external cloud dependencies.
-* **Feature Set**: Workspace initialization, status tracking (staged/unstaged files), diff generation, commit creation, branch management, and commit history inspection.
+* **Feature Set**: Workspace initialization, status tracking (staged/unstaged files), diff generation, commit creation, branch management, remote push/pull synchronization, and commit history inspection.
 
-### C. P2P Local Sync Engine (`p2pService.cjs`)
-* **Peer Discovery**: Discovers local network peers for direct device-to-device note synchronization.
-* **Status Snapshots**: Tracks live peer connection states and sync progress.
-
-### D. Package, Import & Export Subsystem (`notePackageIpc.cjs`)
+### C. Package, Import & Export Subsystem (`notePackageIpc.cjs`)
 
 **Document Exporters**:
 * Exports individual markdown notes to **HTML** and **PDF** formats via Headless Chromium rendering (CSS theme applied, media resolved).
@@ -267,7 +261,7 @@ graph TD
 ```
 
 ### Global Configuration
-* **Global App Database (`%APPDATA%/Notely/app.sqlite`)**: Manages user preferences, API keys, active themes, window dimensions, P2P sync pairs, and recently opened workspaces.
+* **Global App Database (`%APPDATA%/Notely/app.sqlite`)**: Manages user preferences, API keys, active themes, window dimensions, and recently opened workspaces.
 
 ### Workspace File Structure
 * **Raw `.md` Files**: Notes are saved as plain-text UTF-8 Markdown files directly in workspace root and subdirectories (`{workspace}/**/*.md`). Notely imposes zero proprietary database wrapping or lock-in, enabling seamless external editing with Git, VS Code, or Obsidian.

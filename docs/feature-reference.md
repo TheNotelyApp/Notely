@@ -419,19 +419,15 @@ Configure AI services and endpoints in **AI -> AI Settings** (`Ctrl/Cmd + Shift 
 - **MCP Tools Catalog** (`Ctrl/Cmd + Shift + M`): Inspect all 7 enterprise tools (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`), run live tool test calls, and inspect JSON payloads.
 - **MCP Telemetry & Diagnostics**: View live connection status, active client sessions, request rates, execution latency, and error logs.
 
-## 10. Peer-to-Peer Sync
+## 10. Git Version Control & Sync
 
-### Discovery and pairing
+### Repository Management
 
-Pair trusted peers using invite codes from **P2P -> P2P Status**.
+Initialize repositories, manage branch checkouts, stage/unstage files, and create commits with commit message templates directly inside the workspace.
 
-### Sync status and conflicts
+### Sync & Remotes
 
-Monitor sync progress and resolve conflicts with built-in conflict tools.
-
-### Security controls
-
-Trust and access controls help keep shared workspaces safer.
+Configure remote tracking branches to pull and push notes seamlessly. Resolve conflict markers visually with the built-in diff viewer.
 
 ## 11. Help and Product Info
 

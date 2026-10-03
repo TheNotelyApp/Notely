@@ -1087,7 +1087,7 @@ async function migrateFromLegacy(workspacePath, metadataStore = null) {
       const versionPath = String(entry.versionPath || "");
 
       // Only migrate file-backed versions
-      if (!versionPath || versionPath.startsWith("p2p://") || !versionPath.endsWith(".md")) {
+      if (!versionPath || !versionPath.endsWith(".md")) {
         skipped += 1;
         continue;
       }

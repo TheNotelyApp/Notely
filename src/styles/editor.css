@@ -829,7 +829,6 @@
 
 .command-palette-empty,
 .global-search-empty,
-.p2p-status-empty,
 .activity-empty,
 .empty-state,
 .media-empty,
@@ -2484,7 +2483,6 @@
 /* â”€â”€ Empty-state inset box-shadow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .command-palette-empty,
 :root[data-theme="dark"] .global-search-empty,
-:root[data-theme="dark"] .p2p-status-empty,
 :root[data-theme="dark"] .activity-empty,
 :root[data-theme="dark"] .empty-state,
 :root[data-theme="dark"] .media-empty,
@@ -2576,24 +2574,6 @@
   color: var(--text-subtle) !important;
 }
 
-/* â”€â”€ P2P / Activity panel badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-:root[data-theme="dark"] .p2p-status-badge {
-  background: var(--surface-elevated) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-muted) !important;
-}
-
-:root[data-theme="dark"] .p2p-status-badge.connected {
-  background: var(--status-success-bg) !important;
-  border-color: var(--status-success-border) !important;
-  color: var(--status-success-text) !important;
-}
-
-:root[data-theme="dark"] .p2p-status-badge.error {
-  background: var(--status-danger-bg) !important;
-  border-color: var(--status-danger-border) !important;
-  color: var(--status-danger-text) !important;
-}
 
 /* â”€â”€ Embedded Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .terminal-toolbar {
@@ -2778,24 +2758,6 @@
   color: var(--text-subtle) !important;
 }
 
-/* â”€â”€ P2P / Activity panel badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-:root[data-theme="dark"] .p2p-status-badge {
-  background: var(--surface-elevated) !important;
-  border-color: var(--border-default) !important;
-  color: var(--text-muted) !important;
-}
-
-:root[data-theme="dark"] .p2p-status-badge.connected {
-  background: var(--status-success-bg) !important;
-  border-color: var(--status-success-border) !important;
-  color: var(--status-success-text) !important;
-}
-
-:root[data-theme="dark"] .p2p-status-badge.error {
-  background: var(--status-danger-bg) !important;
-  border-color: var(--status-danger-border) !important;
-  color: var(--status-danger-text) !important;
-}
 
 /* â”€â”€ Embedded Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root[data-theme="dark"] .terminal-toolbar {
@@ -3497,21 +3459,6 @@
   color: var(--app-text);
   font-family: inherit;
   overflow: hidden;
-}
-
-.git-vc-page .p2p-tab-shell {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  height: 100%;
-}
-
-.git-vc-page .p2p-tab-panel {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-5, 1.25rem);
-  max-height: calc(100vh - 120px);
 }
 
 .git-vc-checking,
@@ -4755,12 +4702,6 @@
 [data-theme='dark'] .git-diff-token--removed {
   background: #3a1f20;
   color: #ebb0b5;
-}
-
-.git-vc-page .p2p-tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2, 0.5rem);
 }
 
 .git-diff-viewer .markdown-image-actions,

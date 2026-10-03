@@ -22,8 +22,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     deleteFolderInProject,
     parseDocument,
     buildDocumentContent,
-    emitLocalP2PSyncEvent,
-    buildNoteDelta,
     dashboardCache,
     ensureWebPreviewServer,
     prepareDocumentPreview,
@@ -135,20 +133,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     const activeProject = getActiveProject();
     const rootDir = activeProject.rootPath;
     const created = createDocumentInProject(rootDir, payload);
-    const content = buildDocumentContent(created);
-    emitLocalP2PSyncEvent({
-      op: "create",
-      filePath: created.filePath,
-      baseHash: null,
-      newHash: hashContent(content),
-      content,
-      baseContent: null,
-      delta: {
-        header: created.header || "",
-        rawNotes: created.rawNotes || "",
-        cleansed: created.cleansed || ""
-      }
-    });
     dashboardCache?.recordSave?.(created);
     return created;
   });
@@ -220,8 +204,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
       throw new Error("Document file does not exist.");
     }
 
-    const previous = fs.readFileSync(resolved, "utf8");
-    const previousHash = hashContent(previous);
     const result = deleteDocumentFile(resolved);
 
     try {
@@ -230,15 +212,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     } catch (aiErr) {
       console.error("[documentIpc] Failed to trigger AI onNoteDelete:", aiErr.message);
     }
-
-    emitLocalP2PSyncEvent({
-      op: "delete",
-      filePath: resolved,
-      baseHash: previousHash,
-      newHash: null,
-      content: null,
-      baseContent: previous
-    });
 
     dashboardCache?.removeFile?.(resolved);
 
@@ -407,20 +380,6 @@ function registerDocumentIpcHandlers(ipcMain, deps) {
     } catch (aiErr) {
       console.error("[documentIpc] Failed to trigger AI onNoteSave:", aiErr.message);
     }
-
-    emitLocalP2PSyncEvent({
-      op: "update",
-      filePath: resolved,
-      baseHash: hashContent(previous),
-      newHash: hashContent(next),
-      content: next,
-      baseContent: previous,
-      delta: buildNoteDelta({
-        filePath: resolved,
-        previousContent: previous,
-        nextContent: next
-      })
-    });
 
     const parsed = parseDocument(next, resolved);
     dashboardCache?.recordSave?.(parsed);

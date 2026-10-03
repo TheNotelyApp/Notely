@@ -23,7 +23,6 @@ Use shortcuts to navigate and edit notes quickly across Notely.
 | Open Workspace Activity | `Ctrl/Cmd + Shift + A` | Workspace |
 | Open Workspace Graph | `Ctrl/Cmd + Shift + G` | Workspace |
 | Open Workspace Index | `Ctrl/Cmd + Alt + I` | Workspace |
-| Open P2P Status | `Ctrl/Cmd + Shift + P` | Sync |
 | Switch to Next Tab | `Ctrl + Tab` | Editor |
 | Switch to Previous Tab | `Ctrl + Shift + Tab` | Editor |
 

@@ -1,12 +1,12 @@
 ---
 layout: home
 title: Notely — Desktop Markdown Notes
-description: Notely is a desktop Markdown notes app with Git version control, AI writing assistance, and peer-to-peer sync. Works offline. Runs on Windows.
+description: Notely is a desktop Markdown notes app with Git version control, AI writing assistance, and local-first storage. Works offline. Runs on Windows.
 
 hero:
   name: Notely
   text: Write. Organize. Remember.
-  tagline: A desktop Markdown notes app with Git version control, AI assistance, and offline-first sync.
+  tagline: A desktop Markdown notes app with Git version control, AI assistance, and offline-first storage.
   image:
     src: /assets/icon.png
     alt: Notely
@@ -38,8 +38,8 @@ features:
     title: Works Offline
     details: All core features work without internet. Your notes stay on your device in plain Markdown files.
   - icon: 🔄
-    title: P2P Sync
-    details: Sync notes across devices over your local network using encrypted peer-to-peer pairing — no cloud required.
+    title: Git Sync & Backup
+    details: Pull and push your notes across devices seamlessly using Git remotes with standard SSH and HTTPS authentication.
   - icon: 📦
     title: Export / Import Note Packages
     details: Bundle notes with all linked assets into an encrypted, integrity-checked `.note` file. Share with others and import directly into any Notely workspace.

@@ -5,7 +5,7 @@ import {
   Undo2, Redo2, Scissors, Clipboard, CheckSquare, Search, Replace, Camera, BookOpen, Command,
   SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
   Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History,
-  ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
+  Sparkles, Bot, Brain, Cpu,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
   Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type,
   Calendar, FolderTree, FileCode, FileSpreadsheet, LayoutGrid, AlignJustify, AlignLeft,
@@ -153,12 +153,6 @@ const MENU_ICON_MAP = {
   "sync (pull then push)": RefreshCw,
   "ignore app data in git": GitBranch,
 
-  "p2p status": Activity,
-  "run sync self-test": CheckSquare,
-  "conflict center": ShieldAlert,
-  "rotate workspace keys": KeyRound,
-  "how sync works": HelpCircle,
-
   "open ai palette": Sparkles,
   "ai settings": Bot,
   "mcp server settings": Server,
@@ -180,7 +174,6 @@ const MENU_ICON_MAP = {
 
   "tools": Wrench,
   "version control": GitBranch,
-  "p2p sync": ShieldAlert,
   "ai & knowledge": Brain,
   "ai knowledge": Brain,
   "mcp": Server,
@@ -260,7 +253,7 @@ function getItemIcon(item) {
       IconComponent = BookOpen;
     } else if (rawLabel.includes("ai")) {
       IconComponent = Sparkles;
-    } else if (rawLabel.includes("sync") || rawLabel.includes("p2p")) {
+    } else if (rawLabel.includes("sync")) {
       IconComponent = RefreshCw;
     } else if (rawLabel.includes("help") || rawLabel.includes("about")) {
       IconComponent = HelpCircle;

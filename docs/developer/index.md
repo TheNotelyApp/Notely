@@ -75,16 +75,13 @@ npm test
 
 # Run tests in watch mode
 npm run test:watch
-
-# Run P2P network integration test harness
-npm run test:p2p
 ```
 
 ### Key Test Directories
 - `tests/ai/`: Core AI orchestration, 5-stage `AIFlow`, 4-layer planning, compaction, and facade integrity tests.
 - `tests/golden_workspace.test.js`: Workspace creation, note CRUD, task database sync, and file watcher tests.
 - `electron/lib/ipc/codeExecutorIpc.test.js`: Code execution runner tests.
-- `electron/p2p/p2pLive.test.js`: Peer-to-peer discovery and encrypted handshake tests.
+- `src/tests/`: UI component integration, accessibility, and design system tests.
 
 ## 5. Build & Packaging Scripts
 

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { X, Settings, Cpu, ShieldAlert, Sliders, Type, Server } from "lucide-react";
+import React, { useState } from "react";
+import { X, Settings, Cpu, Sliders, Type, Server } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
 import AppSelect from "./AppSelect";
 import { AISettingsContent } from "./AISettings";
-import { P2PStatusPanel } from "./P2PStatusPanel";
 import { MCPSettingsContent } from "./MCPSettings";
 
 export function SettingsModal({
@@ -30,28 +29,8 @@ export function SettingsModal({
   onPreviewImageModeChange,
   embeddedMarkdownMode,
   onEmbeddedMarkdownModeToggle,
-  // P2P bindings
-  p2pStatus,
-  p2pLoading,
-  fullSyncProgressByPeer,
-  onRefreshP2P,
-  onStartP2PDiscovery,
-  onStopP2PDiscovery,
-  onSetP2PDeviceName,
-  onSetP2PKeyPolicyDays,
-  onCreateP2PInvite,
-  onPairP2PWithCode,
-  onManualP2PConnect,
-  onRemoveTrustedP2PPeer,
-  onRotateP2PWorkspaceKeys,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
-
-  useEffect(() => {
-    if (activeTab === "p2p") {
-      onRefreshP2P?.();
-    }
-  }, [activeTab, onRefreshP2P]);
 
   if (!isOpen) return null;
 
@@ -59,7 +38,6 @@ export function SettingsModal({
     { id: "general", label: "General", icon: Sliders },
     { id: "editor", label: "Editor", icon: Type },
     { id: "ai", label: "AI & Intelligence", icon: Cpu },
-    { id: "p2p", label: "P2P Sync", icon: ShieldAlert },
     { id: "mcp", label: "MCP Server", icon: Server },
   ];
 
@@ -227,28 +205,6 @@ export function SettingsModal({
               <h3>AI &amp; Intelligence</h3>
               <p className="settings-pane-intro">Configure local embedding models, semantic search, and AI provider integrations.</p>
               <AISettingsContent onClose={onClose} />
-            </div>
-          )}
-
-          {activeTab === "p2p" && (
-            <div className="settings-tab-pane p2p-tab-pane">
-              <h3>Peer-to-Peer Synchronization</h3>
-              <p className="settings-pane-intro">Discover trusted device peers, join sync invite codes, and rotate encryption keys.</p>
-              <P2PStatusPanel
-                status={p2pStatus}
-                loading={p2pLoading}
-                fullSyncProgressByPeer={fullSyncProgressByPeer}
-                onRefresh={onRefreshP2P}
-                onStartDiscovery={onStartP2PDiscovery}
-                onStopDiscovery={onStopP2PDiscovery}
-                onSetDeviceName={onSetP2PDeviceName}
-                onSetKeyPolicyDays={onSetP2PKeyPolicyDays}
-                onCreateInvite={onCreateP2PInvite}
-                onPairWithCode={onPairP2PWithCode}
-                onManualConnect={onManualP2PConnect}
-                onRemoveTrustedPeer={onRemoveTrustedP2PPeer}
-                onRotateWorkspaceKeys={onRotateP2PWorkspaceKeys}
-              />
             </div>
           )}
 

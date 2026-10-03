@@ -1238,8 +1238,6 @@
 .overlay-dialog-field input,
 .overlay-dialog-field select,
 .overlay-dialog-field textarea,
-.p2p-control-card input,
-.p2p-control-card select,
 .landing-list-select .app-select-trigger,
 .topbar-popover-select .app-select-trigger,
 .quality-select .app-select-trigger,
@@ -1259,8 +1257,6 @@
 .overlay-dialog-field input:focus,
 .overlay-dialog-field select:focus,
 .overlay-dialog-field textarea:focus,
-.p2p-control-card input:focus,
-.p2p-control-card select:focus,
 .landing-list-select .app-select-trigger:focus-visible,
 .topbar-popover-select .app-select-trigger:focus-visible,
 .quality-select .app-select-trigger:focus-visible,
@@ -4854,15 +4850,13 @@
   accent-color: var(--accent-solid);
 }
 
-/* AI and P2P adjustments inside Settings panel */
-.settings-tab-pane.ai-tab-pane,
-.settings-tab-pane.p2p-tab-pane {
+/* AI adjustments inside Settings panel */
+.settings-tab-pane.ai-tab-pane {
   gap: 12px;
   max-width: 100%;
 }
 
-.settings-tab-pane.ai-tab-pane .ai-settings-inner-wrap,
-.settings-tab-pane.p2p-tab-pane .p2p-status-panel {
+.settings-tab-pane.ai-tab-pane .ai-settings-inner-wrap {
   width: 100%;
 }
 

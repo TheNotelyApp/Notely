@@ -6,7 +6,6 @@ function createMainHelpers(deps) {
     path,
     process,
     app,
-    projectRoot,
     userConfigPath,
     ensureDir,
     hashContent,
@@ -92,70 +91,7 @@ function createMainHelpers(deps) {
     return path.join(app.getPath("documents"), "Notely Notes");
   }
 
-  function readP2PStatusSnapshot() {
-    const harnessRoot = path.join(projectRoot, ".artifacts", "p2p-harness");
-    const summaryPath = path.join(harnessRoot, "summary.json");
-
-    if (!fs.existsSync(summaryPath)) {
-      return {
-        available: false,
-        source: summaryPath,
-        generatedAt: null,
-        sessionId: null,
-        workspaceId: null,
-        peerCount: 0,
-        trustedLinkCount: 0,
-        workspaceKeyCount: 0,
-        peers: []
-      };
-    }
-
-    let summary;
-    try {
-      summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
-    } catch {
-      return {
-        available: false,
-        source: summaryPath,
-        generatedAt: null,
-        sessionId: null,
-        workspaceId: null,
-        peerCount: 0,
-        trustedLinkCount: 0,
-        workspaceKeyCount: 0,
-        peers: []
-      };
-    }
-
-    const peers = Array.isArray(summary?.peers)
-      ? summary.peers
-        .filter((peer) => peer && typeof peer === "object")
-        .map((peer) => ({
-          name: String(peer.name || "Unknown peer"),
-          peerId: String(peer.peerId || ""),
-          trustedPeerCount: Array.isArray(peer.trustedPeers) ? peer.trustedPeers.length : 0,
-          workspaceKeyCount: Array.isArray(peer.workspaceKeys) ? peer.workspaceKeys.length : 0,
-          inboxCount: Number.isFinite(peer.inboxCount) ? peer.inboxCount : 0
-        }))
-      : [];
-
-    const trustedLinkCount = peers.reduce((total, peer) => total + peer.trustedPeerCount, 0);
-    const workspaceKeyCount = peers.reduce((total, peer) => total + peer.workspaceKeyCount, 0);
-
-    return {
-      available: true,
-      source: summaryPath,
-      generatedAt: summary?.generatedAt || null,
-      sessionId: summary?.sessionId || null,
-      workspaceId: summary?.workspaceId || null,
-      peerCount: peers.length,
-      trustedLinkCount,
-      workspaceKeyCount,
-      peers
-    };
-  }
-
-    function getSubfoldersForPath(targetDir) {
+  function getSubfoldersForPath(targetDir) {
       if (!targetDir || !fs.existsSync(targetDir)) return [];
       const result = [];
       const walk = (dir, prefix = "") => {
@@ -371,7 +307,6 @@ function createMainHelpers(deps) {
     readUserSettings,
     writeUserSettings,
     resolveInitialNotesRoot,
-    readP2PStatusSnapshot,
     listProjectsState,
     getSubfoldersForPath,
     getActiveProject,

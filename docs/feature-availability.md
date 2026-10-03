@@ -31,5 +31,5 @@ The matrix below details which features run entirely offline, which require loca
   { feature: 'Excalidraw Diagrams', available: true, setup: 'No', internet: false },
   { feature: 'Workspace Graph & Neural Extraction', available: true, setup: 'No (Local GLiNER2 ONNX)', internet: false },
   { feature: 'Semantic Hybrid Search (BGE)', available: true, setup: 'No (Local BGE ONNX)', internet: false },
-  { feature: 'Sync with other devices (P2P)', available: false, setup: 'Pair Trusted Devices', internet: 'Local network' }
+  { feature: 'Workspace Sync (Git Remotes)', available: true, setup: 'Configure Remote URL', internet: 'Remote host' }
 ]" />

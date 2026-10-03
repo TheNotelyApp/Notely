@@ -165,9 +165,12 @@ describe("Media Viewers & Standardized Header", () => {
     });
 
     // Wait for async parsing
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 200));
-    });
+    for (let i = 0; i < 20; i++) {
+      if (host.textContent.includes("Executive Summary")) break;
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+    }
 
     expect(host.textContent).toContain("Executive Summary");
     expect(host.textContent).toContain("1 / 2");

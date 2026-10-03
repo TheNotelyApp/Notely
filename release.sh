@@ -95,27 +95,22 @@ if ask_yes_no "3. Run local packaging to verify EXE builds successfully?" "y"; t
   RUN_PACKAGING=true
 fi
 
-RUN_P2P=false
-if ask_yes_no "4. Run packaged P2P tests?" "y"; then
-  RUN_P2P=true
-fi
-
 BUMP_VERSION=false
 COMMIT_CHANGES=false
 TAG_RELEASE=false
 PUSH_ORIGIN=false
 
-if ask_yes_no "5. Bump version to v${NEW_VERSION} in configuration files?" "y"; then
+if ask_yes_no "4. Bump version to v${NEW_VERSION} in configuration files?" "y"; then
   BUMP_VERSION=true
-  if ask_yes_no "6. Create a git commit for this release?" "y"; then
+  if ask_yes_no "5. Create a git commit for this release?" "y"; then
     COMMIT_CHANGES=true
   fi
 
-  if ask_yes_no "7. Tag this commit as v${NEW_VERSION}?" "y"; then
+  if ask_yes_no "6. Tag this commit as v${NEW_VERSION}?" "y"; then
     TAG_RELEASE=true
   fi
 
-  if ask_yes_no "8. Push commit and tag to origin?" "y"; then
+  if ask_yes_no "7. Push commit and tag to origin?" "y"; then
     PUSH_ORIGIN=true
   fi
 fi
@@ -125,7 +120,6 @@ echo "--- Summary of Plan ---"
 [ "$RUN_CI" = "true" ] && echo "  - Run CI checks" || echo "  - SKIP CI checks"
 [ "$RUN_DOCS" = "true" ] && echo "  - Verify documentation build" || echo "  - SKIP documentation build"
 [ "$RUN_PACKAGING" = "true" ] && echo "  - Run local packaging check" || echo "  - SKIP local packaging check"
-[ "$RUN_P2P" = "true" ] && echo "  - Run packaged P2P tests" || echo "  - SKIP packaged P2P tests"
 [ "$BUMP_VERSION" = "true" ] && echo "  - Bump version to v${NEW_VERSION}" || echo "  - KEEP current version v${CURRENT_VERSION}"
 [ "$COMMIT_CHANGES" = "true" ] && echo "  - Create git commit" || echo "  - SKIP git commit"
 [ "$TAG_RELEASE" = "true" ] && echo "  - Create git tag v${NEW_VERSION}" || echo "  - SKIP git tag"
@@ -155,11 +149,6 @@ fi
 # 3. Local Build Check
 if [ "$RUN_PACKAGING" = "true" ]; then
   run_step_with_retry "Local packaging" "./build-windows-exe.sh"
-fi
-
-# 4. Packaged P2P Tests Check
-if [ "$RUN_P2P" = "true" ]; then
-  run_step_with_retry "Packaged P2P tests" "npm run test:p2p:packaged"
 fi
 
 # 5. Version Bumping

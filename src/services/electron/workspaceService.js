@@ -201,4 +201,3 @@ export function onAttachedReposChanged(callback) {
   if (typeof api.onAttachedReposChanged !== "function") return () => {};
   return api.onAttachedReposChanged(callback);
 }
-

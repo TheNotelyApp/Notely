@@ -264,11 +264,6 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     group: "Landing",
   },
   {
-    keys: "Ctrl/Cmd+Shift+P",
-    action: "Open P2P Status",
-    group: "Sync",
-  },
-  {
     keys: "Ctrl/Cmd+Shift+,",
     action: "Open AI Settings",
     group: "AI",

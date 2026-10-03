@@ -8,7 +8,6 @@ export * from "./electron/appearanceService";
 export * from "./electron/workspaceService";
 export * from "./electron/noteService";
 export * from "./electron/gitService";
-export * from "./electron/p2pService";
 export * from "./electron/terminalService";
 export * from "./electron/mediaService";
 export * from "./electron/taskService";

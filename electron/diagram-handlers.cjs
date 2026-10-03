@@ -22,9 +22,6 @@ function isNotFoundError(err) {
 function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
   const {
     getNotesRoot = () => "",
-    filePathWithin = () => false,
-    emitLocalP2PSyncEvent = null,
-    hashContent = null,
   } = deps;
 
   function resolveWorkspaceRoot(documentPath) {
@@ -87,46 +84,6 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     return mediaExcaliDir;
   }
 
-  function emitDiagramSync(filePath, options = {}) {
-    if (typeof emitLocalP2PSyncEvent !== 'function' || typeof hashContent !== 'function') {
-      return;
-    }
-
-    const { op = 'update', baseHash = null } = options;
-    const notesRoot = getNotesRoot();
-    const resolved = path.resolve(String(filePath || ''));
-    if (!resolved || !filePathWithin(notesRoot, resolved)) {
-      return;
-    }
-
-    if (op === 'delete') {
-      emitLocalP2PSyncEvent({
-        op: 'delete',
-        filePath: resolved,
-        baseHash,
-        newHash: null,
-        content: null,
-        contentBase64: null,
-        contentEncoding: 'base64',
-      });
-      return;
-    }
-
-    if (!fsSync.existsSync(resolved)) {
-      return;
-    }
-
-    const contentBase64 = fsSync.readFileSync(resolved).toString('base64');
-    emitLocalP2PSyncEvent({
-      op,
-      filePath: resolved,
-      baseHash,
-      newHash: hashContent(contentBase64),
-      content: null,
-      contentBase64,
-      contentEncoding: 'base64',
-    });
-  }
   /**
    * Read diagram source file
    */
@@ -161,15 +118,10 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     try {
       const diagramDir = getCurrentDiagramDir(documentPath, diagramId);
       const sourceFile = path.join(diagramDir, 'diagram.excalidraw');
-      const existed = fsSync.existsSync(sourceFile);
-      const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
-      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
-      
       // Create directory if it doesn't exist
       await mkdirRecursive(diagramDir);
 
       await fs.writeFile(sourceFile, data, 'utf-8');
-      emitDiagramSync(sourceFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
         success: true,
@@ -190,20 +142,9 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
     try {
       const primaryDir = getCurrentDiagramDir(documentPath, diagramId);
       const primaryImageFile = path.join(primaryDir, 'diagram.png');
-      const existed = fsSync.existsSync(primaryImageFile);
-      const previousBase64 = existed ? fsSync.readFileSync(primaryImageFile).toString('base64') : null;
-      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
-      
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
       await mkdirRecursive(primaryDir);
-
-      let buffer;
-      if (typeof imageData === 'string') {
-        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
-        buffer = Buffer.from(base64Data, 'base64');
-      } else {
-        buffer = imageData;
-      }
-      
       await fs.writeFile(primaryImageFile, buffer);
 
       // Also mirror to legacy notes-app dir if it exists
@@ -218,8 +159,6 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       if (fsSync.existsSync(legacyFlatFile)) {
         await fs.writeFile(legacyFlatFile, buffer);
       }
-
-      emitDiagramSync(primaryImageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
         success: true,
@@ -242,25 +181,9 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
         getCurrentDiagramDir(documentPath, diagramId),
         getLegacyDiagramDir(documentPath, diagramId),
       ];
-      const sourceFileHashes = [];
-      const imageFileHashes = [];
-      for (const diagramDir of diagramDirs) {
-        const sourceFile = path.join(diagramDir, 'diagram.excalidraw');
-        const imageFile = path.join(diagramDir, 'diagram.png');
-        const sourceHash = (typeof hashContent === 'function' && fsSync.existsSync(sourceFile))
-          ? hashContent(fsSync.readFileSync(sourceFile).toString('base64'))
-          : null;
-        const imageHash = (typeof hashContent === 'function' && fsSync.existsSync(imageFile))
-          ? hashContent(fsSync.readFileSync(imageFile).toString('base64'))
-          : null;
-        sourceFileHashes.push({ filePath: sourceFile, hash: sourceHash });
-        imageFileHashes.push({ filePath: imageFile, hash: imageHash });
-      }
       for (const diagramDir of diagramDirs) {
         await rmRecursive(diagramDir);
       }
-      sourceFileHashes.forEach((entry) => emitDiagramSync(entry.filePath, { op: 'delete', baseHash: entry.hash }));
-      imageFileHashes.forEach((entry) => emitDiagramSync(entry.filePath, { op: 'delete', baseHash: entry.hash }));
       
       return {
         success: true,
@@ -399,10 +322,6 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       const root = resolveWorkspaceRoot(documentPath);
       const drawioDir = path.join(root, 'media', 'draw.io');
       const sourceFile = path.join(drawioDir, `${diagramId}.drawio`);
-      const existed = fsSync.existsSync(sourceFile);
-      const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
-      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
-      
       await mkdirRecursive(drawioDir);
       await fs.writeFile(sourceFile, data, 'utf-8');
 
@@ -411,8 +330,6 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       if (fsSync.existsSync(legacyDir)) {
         await fs.writeFile(path.join(legacyDir, `${diagramId}.drawio`), data, 'utf-8');
       }
-
-      emitDiagramSync(sourceFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
         success: true,
@@ -434,20 +351,9 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       const root = resolveWorkspaceRoot(documentPath);
       const drawioDir = path.join(root, 'media', 'draw.io');
       const imageFile = path.join(drawioDir, `${diagramId}.png`);
-      const existed = fsSync.existsSync(imageFile);
-      const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
-      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
-      
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
       await mkdirRecursive(drawioDir);
-
-      let buffer;
-      if (typeof imageData === 'string') {
-        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
-        buffer = Buffer.from(base64Data, 'base64');
-      } else {
-        buffer = imageData;
-      }
-      
       await fs.writeFile(imageFile, buffer);
 
       // Also mirror to legacy notes-app dir if it exists
@@ -455,8 +361,6 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       if (fsSync.existsSync(legacyDir)) {
         await fs.writeFile(path.join(legacyDir, `${diagramId}.png`), buffer);
       }
-
-      emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
       
       return {
         success: true,
@@ -513,11 +417,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
 
       for (const file of filesToDelete) {
         if (fsSync.existsSync(file)) {
-          const hash = (typeof hashContent === 'function')
-            ? hashContent(fsSync.readFileSync(file).toString('base64'))
-            : null;
           await fs.unlink(file);
-          emitDiagramSync(file, { op: 'delete', baseHash: hash });
         }
       }
       
@@ -603,13 +503,8 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       const root = resolveWorkspaceRoot(documentPath);
       const wireframeDir = path.join(root, 'media', 'wireframes');
       const sourceFile = path.join(wireframeDir, `${diagramId}.wireframe.json`);
-      const existed = fsSync.existsSync(sourceFile);
-      const previousBase64 = existed ? fsSync.readFileSync(sourceFile).toString('base64') : null;
-      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
-
       await mkdirRecursive(wireframeDir);
       await fs.writeFile(sourceFile, data, 'utf-8');
-      emitDiagramSync(sourceFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
 
       return { success: true };
     } catch (err) {
@@ -626,22 +521,10 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
       const root = resolveWorkspaceRoot(documentPath);
       const wireframeDir = path.join(root, 'media', 'wireframes');
       const imageFile = path.join(wireframeDir, `${diagramId}.png`);
-      const existed = fsSync.existsSync(imageFile);
-      const previousBase64 = existed ? fsSync.readFileSync(imageFile).toString('base64') : null;
-      const previousHash = previousBase64 && typeof hashContent === 'function' ? hashContent(previousBase64) : null;
-
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
       await mkdirRecursive(wireframeDir);
-
-      let buffer;
-      if (typeof imageData === 'string') {
-        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
-        buffer = Buffer.from(base64Data, 'base64');
-      } else {
-        buffer = imageData;
-      }
-
       await fs.writeFile(imageFile, buffer);
-      emitDiagramSync(imageFile, { op: existed ? 'update' : 'create', baseHash: previousHash });
 
       return { success: true };
     } catch (err) {
@@ -683,11 +566,7 @@ function setupDiagramHandlers(ipcMain, appDataPath, deps = {}) {
 
       for (const file of filesToDelete) {
         if (fsSync.existsSync(file)) {
-          const hash = (typeof hashContent === 'function')
-            ? hashContent(fsSync.readFileSync(file).toString('base64'))
-            : null;
           await fs.unlink(file);
-          emitDiagramSync(file, { op: 'delete', baseHash: hash });
         }
       }
 

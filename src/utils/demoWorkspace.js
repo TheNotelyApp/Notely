@@ -20,7 +20,7 @@ graph TD
     subgraph "Electron Main Process"
         M[Main Controller] -->|File System Ops| FS[Disk Storage]
         M -->|Metadata Store| DB[(SQLite/JSON Store)]
-        M -->|P2P Engine| P2P[P2P Live Service]
+        M -->|Git Engine| GIT[Git Version Control]
     end
 
     subgraph "Preload Context Bridge"
@@ -42,7 +42,7 @@ graph TD
 Notely is built on a few unyielding principles:
 1. **Local-First Ownership**: Your files are stored as plain text Markdown on your hard drive. No proprietary database formatting, no vendor lock-in. If you uninstall Notely, your notes remain yours.
 2. **Security & Sandboxing**: The embedded terminal and IPC channels are heavily audited. Renderer contexts are isolated, and Node integration is disabled to prevent arbitrary execution vectors.
-3. **Decentralized Team Sync**: Collaborative sync operates directly between peers over LAN/WiFi using secure pairings, eliminating the need for expensive centralized servers.
+3. **Git & Version Control**: Native version control and local activity snapshots keep your work tracked and safe without centralized server dependencies.
 
 ---
 
@@ -67,7 +67,7 @@ async function bootWorkspace(selectedPath) {
 }
 \`\`\`
 
-Explore the folders to learn more about Markdown custom formatting, assets, AI search, and P2P sync!
+Explore the folders to learn more about Markdown custom formatting, assets, AI search, and Git version control!
 
 Notely App Overview. Welcome to the Notely local-first desktop application.
 `,
@@ -211,42 +211,35 @@ AI Integration and Semantic Search. Knowledge clustering mechanics.
     });
 
     // 5. Advanced Folder - Note 2
-    const syncDoc = await createDocument("Peer-to-Peer Sync", advancedFolder.filePath);
+    const syncDoc = await createDocument("Git Version Control & Sync", advancedFolder.filePath);
     await saveDocument({
       filePath: syncDoc.filePath,
-      header: "Name: Peer-to-Peer Sync\nTags: advanced, p2p\nLocation: Network Hub\nTime: 17:00, 10 Jul 2026 to 18:00, 10 Jul 2026\n",
-      rawNotes: `# Decentralized Peer-to-Peer Sync
+      header: "Name: Git Version Control & Sync\nTags: advanced, git, version-control\nLocation: Workspace\nTime: 17:00, 10 Jul 2026 to 18:00, 10 Jul 2026\n",
+      rawNotes: `# Git Version Control & Sync
 
-Notely's sync engine lets you share notes between devices directly without cloud servers, maintaining data sovereignty and absolute privacy.
+Notely's built-in Git integration gives you snapshot history, commit tracking, diffing, and seamless remote sync directly in your note repository.
 
-### P2P Handshake and Update Propagation
+### Workflow
 
-Syncing relies on a secure pairing protocol and encrypted queue propagation:
+Syncing notes with Git is straightforward and robust:
 
 \`\`\`mermaid
 sequenceDiagram
     autonumber
-    participant Alice as "Alice (Notely Client A)"
-    participant Bob as "Bob (Notely Client B)"
+    participant App as "Notely Editor"
+    participant Git as "Embedded Git Service"
+    participant Remote as "Remote Repository"
 
-    Alice->>Alice: Generate LAN Broadcast invite code
-    Bob->>Alice: Connect and submit handshake code
-    Note over Alice,Bob: Handshake pairs keys via Noise Protocol
-    Alice->>Bob: Sync Workspace Metadata & History
-    Note over Alice,Bob: Peer-to-Peer connection established
-    
-    rect rgb(240, 248, 255)
-        Note left of Alice: Alice edits note.md
-        Alice->>Alice: Hash content & queue change in outbox
-        Alice->>Bob: Propagate Sync Event (AES-256-GCM Encrypted)
-        Bob->>Bob: Verify hash signature & apply updates
-    end
+    App->>Git: Auto-snapshot / Stage changes
+    App->>Git: Commit note milestones
+    Git->>Remote: Push to GitHub / GitLab
+    Remote->>Git: Pull latest updates
 \`\`\`
 
-### Conflict Management
-If the same document is edited on both devices while disconnected, Notely detects the fork, halts automatic overwriting, and prompts you to resolve the conflict in the **Conflict Center**. You can review the diff side-by-side and choose local, remote, or merged text.
+### Version Management
+Every save creates a local snapshot or Git commit so you can always roll back changes, inspect visual diffs, and work offline with full confidence.
 
-Decentralized Peer-to-Peer Sync. Secure key handshakes and propagation.
+Git Version Control & Sync. Snapshots, commits, and remote synchronization.
 `,
       cleansed: ""
     });

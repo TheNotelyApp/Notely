@@ -23,9 +23,7 @@ function createImageMedia(deps) {
     moveFileToRemoved,
     getUniquePath,
     getNotesRoot,
-    getAppDataDir,
-    emitLocalP2PSyncEvent,
-    hashContent
+    getAppDataDir
   } = deps;
 
   const THUMBNAIL_DIR_NAME = "thumbnails";
@@ -92,45 +90,6 @@ function moveOriginalImageBackup(fromImagePath, toImagePath) {
   removeOriginalImageBackup(fromImagePath);
 }
 
-function emitImageSyncFromDisk(filePath, options = {}) {
-  if (typeof emitLocalP2PSyncEvent !== "function" || typeof hashContent !== "function") {
-    return;
-  }
-
-  const { op = "update", baseHash = null } = options;
-  const resolved = path.resolve(String(filePath || ""));
-  if (!resolved || !filePathWithin(getNotesRoot(), resolved)) {
-    return;
-  }
-
-  if (op === "delete") {
-    emitLocalP2PSyncEvent({
-      op: "delete",
-      filePath: resolved,
-      baseHash,
-      newHash: null,
-      content: null,
-      contentBase64: null,
-      contentEncoding: "base64"
-    });
-    return;
-  }
-
-  if (!fs.existsSync(resolved)) {
-    return;
-  }
-
-  const contentBase64 = fs.readFileSync(resolved).toString("base64");
-  emitLocalP2PSyncEvent({
-    op,
-    filePath: resolved,
-    baseHash,
-    newHash: hashContent(contentBase64),
-    content: null,
-    contentBase64,
-    contentEncoding: "base64"
-  });
-}
 
 function buildPdfExportHtml({ title, markdownContent, baseHref, sourceDir, downsampleImages = false, pdfQualityPreset = "full" }) {
   const MarkdownItCtor = typeof getMarkdownIt === "function" ? getMarkdownIt() : null;
@@ -821,7 +780,6 @@ registerTrustedHandler("images:save", (_event, payload) => {
   if (isImage) {
     ensureImageThumbnail(mediaFilePath);
   }
-  emitImageSyncFromDisk(mediaFilePath, { op: "create" });
 
   return `/${relPath.replace(/\\/g, "/")}`;
 });
@@ -1191,7 +1149,6 @@ registerTrustedHandler("images:restore-original", (_event, payload) => {
   clearThumbnailCacheForImage(resolvedAssetPath);
   fs.copyFileSync(backupPath, resolvedAssetPath);
   ensureImageThumbnail(resolvedAssetPath);
-  emitImageSyncFromDisk(resolvedAssetPath, { op: "update" });
   return { restored: true };
 });
 
@@ -1208,8 +1165,6 @@ registerTrustedHandler("images:delete", (_event, payload) => {
   if (!resolvedAssetPath || !fs.existsSync(resolvedAssetPath)) {
     return { deletedFile: false, referencesRemoved: 0, documentsUpdated: [] };
   }
-  const existingBase64 = fs.readFileSync(resolvedAssetPath).toString("base64");
-  const existingHash = hashContent(existingBase64);
 
   const referenceResult = removeImageReferencesForAsset(resolvedAssetPath, {
     basePath,
@@ -1224,7 +1179,6 @@ registerTrustedHandler("images:delete", (_event, payload) => {
     delete annotations[getImageAnnotationKey(resolvedAssetPath)];
     writeImageAnnotations(annotations);
     movedPath = moveFileToRemoved(resolvedAssetPath, "images");
-    emitImageSyncFromDisk(resolvedAssetPath, { op: "delete", baseHash: existingHash });
   }
 
   return {
@@ -1264,7 +1218,6 @@ registerTrustedHandler("images:replace", (_event, payload) => {
   clearThumbnailCacheForImage(resolvedAssetPath);
   fs.writeFileSync(resolvedAssetPath, buffer);
   ensureImageThumbnail(resolvedAssetPath);
-  emitImageSyncFromDisk(resolvedAssetPath, { op: "update" });
   return true;
 });
 
@@ -1297,8 +1250,6 @@ registerTrustedHandler("images:rename", (_event, payload) => {
   const candidatePath = path.join(path.dirname(resolvedAssetPath), `${desiredBase}${desiredExt}`);
 
   const normalizedCurrent = path.resolve(resolvedAssetPath);
-  const previousBase64 = fs.readFileSync(normalizedCurrent).toString("base64");
-  const previousHash = hashContent(previousBase64);
   const normalizedCandidate = path.resolve(candidatePath);
   let finalPath = normalizedCandidate;
   if (normalizedCandidate.toLowerCase() !== normalizedCurrent.toLowerCase()) {
@@ -1316,10 +1267,6 @@ registerTrustedHandler("images:rename", (_event, payload) => {
   }
 
   moveOriginalImageBackup(normalizedCurrent, finalPath);
-  if (normalizedCandidate.toLowerCase() !== normalizedCurrent.toLowerCase()) {
-    emitImageSyncFromDisk(normalizedCurrent, { op: "delete", baseHash: previousHash });
-    emitImageSyncFromDisk(finalPath, { op: "create" });
-  }
 
   return `./images/${path.basename(finalPath)}`;
 });

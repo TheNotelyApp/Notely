@@ -33,11 +33,10 @@ For Mermaid diagrams, validate the Mermaid block syntax before retrying preview.
 
 ## 4. Sync Conflicts Keep Appearing
 
-1. Open **P2P -> P2P Status**.
-2. Confirm peers are connected and trusted.
-3. Open conflict tools and resolve each conflict.
-
-After resolving, refresh the note list and verify final content.
+1. Open **Tools -> Version Control** (`Ctrl/Cmd + Shift + G`).
+2. Pull latest commits from remote.
+3. Review conflicted files in the Git diff viewer and resolve conflicting lines.
+4. Commit the resolved changes and push to remote.
 
 ## 5. AI Features Are Disabled
 

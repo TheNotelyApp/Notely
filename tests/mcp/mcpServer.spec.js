@@ -38,7 +38,11 @@ describe('Notely MCP Server Subsystem Tests', () => {
 
   afterAll(() => {
     if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      } catch {
+        // Ignore windows file locking errors on teardown
+      }
     }
   });
 

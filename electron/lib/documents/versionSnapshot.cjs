@@ -1,4 +1,4 @@
-function createP2PSyncHistory(deps) {
+function createVersionHistoryHelpers(deps) {
   const {
     fs,
     path,
@@ -6,29 +6,10 @@ function createP2PSyncHistory(deps) {
     nowStamp,
     ensureDir,
     filePathWithin,
-    hashContent,
     getVersionsRoot,
     getMetadataStore,
-    versionHistoryLimit,
+    versionHistoryLimit = 50,
   } = deps;
-
-  function buildP2PSyncReason(baseReason, peerId) {
-    const safePeerId = String(peerId || "unknown-peer").trim() || "unknown-peer";
-    return `${baseReason}:${safePeerId}`;
-  }
-
-  function addSyncHistoryEntry({ filePath, reason, versionPath, fileHash }) {
-    const metadataStore = getMetadataStore();
-    if (!metadataStore) return;
-
-    metadataStore.addHistory({
-      filePath,
-      versionPath: String(versionPath || `p2p://${reason}`),
-      fileHash: String(fileHash || hashContent(`${reason}:${filePath}`)),
-      reason,
-      createdAt: new Date().toISOString()
-    });
-  }
 
   function createVersionSnapshot(filePath, content, tag) {
     const versionsRoot = getVersionsRoot();
@@ -88,12 +69,10 @@ function createP2PSyncHistory(deps) {
   }
 
   return {
-    buildP2PSyncReason,
-    addSyncHistoryEntry,
     createVersionSnapshot,
     pruneVersionHistory,
     hasMatchingFileBackedVersion,
   };
 }
 
-module.exports = { createP2PSyncHistory };
+module.exports = { createVersionHistoryHelpers };

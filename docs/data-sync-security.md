@@ -1,7 +1,7 @@
 ---
 title: Data & Sync Security
-description: Security, storage layout, P2P encryption, and data protection guidelines for Notely workspaces.
-keywords: data, security, sync, p2p, encryption, local storage, notes-app
+description: Security, storage layout, local encryption, and data protection guidelines for Notely workspaces.
+keywords: data, security, sync, git, local storage, notes-app
 category: Sync
 ---
 
@@ -31,19 +31,12 @@ Notely includes built-in safety features:
 
 Best practice: make sure your workspace folder is backed up regularly.
 
-## 3. Sync with Other Peers (P2P)
+## 3. Sync with Remote Repositories (Git)
 
-1. Open **P2P -> P2P Status**.
-2. Start discovery.
-3. Pair with a trusted peer using invite code.
-4. Watch sync status and resolve conflicts if prompted.
-
-Tips:
-
-- Pair only with trusted devices.
-- Rotate workspace keys when team access changes.
-
-If you do not share notes between devices, you can ignore this section.
+1. Open **Tools -> Version Control** (`Ctrl/Cmd + Shift + G`).
+2. Add your remote repository URL (GitHub, GitLab, self-hosted).
+3. Use **Sync (Pull then Push)** to synchronize note changes across devices.
+4. If merge conflicts occur, use the built-in visual diff tool to resolve them cleanly.
 
 ## 4. AI & MCP Integration for Daily Use
 

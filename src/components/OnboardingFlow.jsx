@@ -263,8 +263,8 @@ export function OnboardingFlow({
                 <div className="onboarding-feature-item">
                   <Share2 className="onboarding-feature-icon" size={20} />
                   <div className="onboarding-feature-text">
-                    <h4>P2P Note Sync</h4>
-                    <p>Discover, pair, and synchronize notes securely with peers on your local network.</p>
+                    <h4>Local-First Architecture</h4>
+                    <p>Notes are stored cleanly as plaintext Markdown files on your local filesystem.</p>
                   </div>
                 </div>
                 <div className="onboarding-feature-item">
