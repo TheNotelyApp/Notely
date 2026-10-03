@@ -9,8 +9,6 @@ import {
   RotateCw,
   FileText,
   Braces,
-  PanelLeftClose,
-  PanelLeftOpen,
   Sparkles
 } from 'lucide-react';
 import {
@@ -93,7 +91,6 @@ export default function KnowledgeGraph({ onBack }) {
   const [showProgressModal, setShowProgressModal] = useState(false);
 
   const [showEdgeLabels, setShowEdgeLabels] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleCopyJSON = async () => {
     try {
@@ -441,7 +438,7 @@ export default function KnowledgeGraph({ onBack }) {
         <div className="kg-body">
           {/* Modular Sidebar */}
           <GraphSidebar
-            sidebarOpen={sidebarOpen}
+            sidebarOpen={true}
             entities={rawEntities}
             selectedTypes={selectedTypes}
             setSelectedTypes={setSelectedTypes}
@@ -452,36 +449,13 @@ export default function KnowledgeGraph({ onBack }) {
 
           {/* Canvas Viewport */}
           <div className="kg-canvas-wrapper" style={{ flex: 1, height: '100%', position: 'relative' }}>
-            {/* Sidebar toggle button */}
-            <AppButton
-              variant="secondary"
-              size="small"
-              onClick={() => setSidebarOpen(prev => !prev)}
-              style={{
-                position: 'absolute',
-                top: 12,
-                left: 12,
-                zIndex: 5,
-                width: '32px',
-                height: '32px',
-                padding: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-              title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-            >
-              {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
-            </AppButton>
-
             {/* Quick search match counter pill */}
             {searchQuery.trim() && (
               <div
                 style={{
                   position: 'absolute',
                   top: 12,
-                  left: 52,
+                  left: 12,
                   zIndex: 5,
                   display: 'flex',
                   alignItems: 'center',

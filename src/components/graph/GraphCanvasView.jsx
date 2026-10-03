@@ -19,6 +19,7 @@ export default function GraphCanvasView({
   const [hoveredNode, setHoveredNode] = useState(null);
   const [minDegree, setMinDegree] = useState(0);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -40,8 +41,18 @@ export default function GraphCanvasView({
 
       validIds.add(n.id);
       adj.set(n.id, new Set([n.id]));
-      const x = typeof n.pos_x === 'number' ? n.pos_x : (n.position?.x || 500);
-      const y = typeof n.pos_y === 'number' ? n.pos_y : (n.position?.y || 400);
+      
+      let x = typeof n.pos_x === 'number' && !isNaN(n.pos_x) ? n.pos_x : (typeof n.position?.x === 'number' && !isNaN(n.position.x) ? n.position.x : null);
+      let y = typeof n.pos_y === 'number' && !isNaN(n.pos_y) ? n.pos_y : (typeof n.position?.y === 'number' && !isNaN(n.position.y) ? n.position.y : null);
+
+      if (x === null || y === null) {
+        // Deterministic organic phyllotaxis distribution fallback so nodes without cached coordinates don't collapse to a single point
+        const angle = i * 2.3999632;
+        const dist = 90 + Math.sqrt(i) * 70;
+        x = 500 + Math.cos(angle) * dist;
+        y = 400 + Math.sin(angle) * dist;
+      }
+
       const radius = Math.max(16, Math.min(36, 16 + deg * 2.4));
 
       pos.push({
@@ -80,41 +91,100 @@ export default function GraphCanvasView({
     };
   }, [nodes, edges, minDegree, searchQuery]);
 
+  // Track container dimensions with ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateDims = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) {
+        setDimensions(prev => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+      }
+    };
+
+    updateDims();
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDimensions({ width, height });
+        }
+      }
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Fit view helper
   const fitView = useCallback(() => {
-    if (!containerRef.current || nodePositions.length === 0) return;
-    const { clientWidth: w, clientHeight: h } = containerRef.current;
-    if (w <= 0 || h <= 0) return;
+    const el = containerRef.current;
+    if (!el || nodePositions.length === 0) return;
+    const w = el.clientWidth || dimensions.width || 800;
+    const h = el.clientHeight || dimensions.height || 600;
+    if (w <= 10 || h <= 10) return;
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const n of nodePositions) {
-      if (n.x < minX) minX = n.x;
-      if (n.x > maxX) maxX = n.x;
-      if (n.y < minY) minY = n.y;
-      if (n.y > maxY) maxY = n.y;
+    let validCount = 0;
+
+    for (let i = 0; i < nodePositions.length; i++) {
+      const n = nodePositions[i];
+      if (typeof n.x === 'number' && Number.isFinite(n.x) && typeof n.y === 'number' && Number.isFinite(n.y)) {
+        if (n.x < minX) minX = n.x;
+        if (n.x > maxX) maxX = n.x;
+        if (n.y < minY) minY = n.y;
+        if (n.y > maxY) maxY = n.y;
+        validCount++;
+      }
+    }
+
+    if (validCount === 0 || !Number.isFinite(minX) || !Number.isFinite(maxX)) {
+      setTransform({ scale: 1.0, x: 0, y: 0 });
+      return;
+    }
+
+    if (minX === maxX) {
+      minX -= 150;
+      maxX += 150;
+    }
+    if (minY === maxY) {
+      minY -= 150;
+      maxY += 150;
     }
 
     const padding = 100;
     const graphW = Math.max(100, maxX - minX + padding * 2);
     const graphH = Math.max(100, maxY - minY + padding * 2);
 
-    const scale = Math.min(1.6, Math.max(0.12, Math.min(w / graphW, h / graphH)));
+    let scale = Math.min(w / graphW, h / graphH);
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1.0;
+    scale = Math.min(1.4, Math.max(0.15, scale));
+
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
 
-    setTransform({
-      scale,
-      x: w / 2 - centerX * scale,
-      y: h / 2 - centerY * scale
-    });
-  }, [nodePositions]);
+    let tx = w / 2 - centerX * scale;
+    let ty = h / 2 - centerY * scale;
 
-  // Auto-fit view on initial load
+    if (!Number.isFinite(tx)) tx = 0;
+    if (!Number.isFinite(ty)) ty = 0;
+
+    setTransform({ scale, x: tx, y: ty });
+  }, [nodePositions, dimensions.width, dimensions.height]);
+
+  const lastFittedNodesRef = useRef(null);
+
+  // Auto-fit view when new nodes arrive or container dimensions are first resolved
   useEffect(() => {
-    if (nodePositions.length > 0) {
-      fitView();
+    if (nodes.length > 0 && dimensions.width > 0 && dimensions.height > 0) {
+      if (lastFittedNodesRef.current !== nodes) {
+        lastFittedNodesRef.current = nodes;
+        fitView();
+      }
     }
-  }, [nodePositions.length, fitView]);
+  }, [nodes, dimensions.width, dimensions.height, fitView]);
 
   // Main Canvas Rendering Loop
   useEffect(() => {
@@ -124,25 +194,27 @@ export default function GraphCanvasView({
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const w = containerRef.current.clientWidth;
-    const h = containerRef.current.clientHeight;
+    const w = containerRef.current.clientWidth || dimensions.width || 800;
+    const h = containerRef.current.clientHeight || dimensions.height || 600;
 
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
     }
 
     ctx.save();
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    const { scale, x: tx, y: ty } = transform;
+    const safeScale = Number.isFinite(transform.scale) && transform.scale > 0 ? transform.scale : 1.0;
+    const safeTx = Number.isFinite(transform.x) ? transform.x : 0;
+    const safeTy = Number.isFinite(transform.y) ? transform.y : 0;
 
     // 0. Draw subtle dynamic background grid dots
-    const gridSize = 32 * scale;
+    const gridSize = 32 * safeScale;
     if (gridSize >= 12) {
-      const offsetX = ((tx % gridSize) + gridSize) % gridSize;
-      const offsetY = ((ty % gridSize) + gridSize) % gridSize;
+      const offsetX = ((safeTx % gridSize) + gridSize) % gridSize;
+      const offsetY = ((safeTy % gridSize) + gridSize) % gridSize;
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
       for (let x = offsetX; x < w; x += gridSize) {
@@ -154,8 +226,8 @@ export default function GraphCanvasView({
       }
     }
 
-    ctx.translate(tx, ty);
-    ctx.scale(scale, scale);
+    ctx.translate(safeTx, safeTy);
+    ctx.scale(safeScale, safeScale);
 
     const activeHoverSet = hoveredNode ? adjacencyMap.get(hoveredNode.id) : null;
     const isSearching = !!searchQuery.trim();
@@ -218,7 +290,7 @@ export default function GraphCanvasView({
       ctx.fill();
 
       // Draw edge label pill when zoomed in
-      if (showEdgeLabels && scale >= 0.75 && !isMentions && edge.rawLabel) {
+      if (showEdgeLabels && safeScale >= 0.75 && !isMentions && edge.rawLabel) {
         const midX = (srcNode.x + tgtNode.x) / 2;
         const midY = (srcNode.y + tgtNode.y) / 2;
         const labelText = String(edge.rawLabel).replace(/_/g, ' ').toLowerCase();
@@ -235,7 +307,11 @@ export default function GraphCanvasView({
         const pillR = 3;
 
         ctx.beginPath();
-        ctx.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, pillR);
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, pillR);
+        } else {
+          ctx.rect(midX - pillW / 2, midY - pillH / 2, pillW, pillH);
+        }
         ctx.fill();
         ctx.stroke();
 
@@ -260,7 +336,7 @@ export default function GraphCanvasView({
       if (hoveredNode) {
         opacity = activeHoverSet?.has(node.id) ? 1.0 : 0.12;
       } else if (isSearching) {
-        const match = node.name.toLowerCase().includes(searchLower) || node.type.toLowerCase().includes(searchLower);
+        const match = node.name.toLowerCase().includes(searchLower) || String(node.type || '').toLowerCase().includes(searchLower);
         opacity = match ? 1.0 : 0.12;
       }
 
@@ -299,12 +375,12 @@ export default function GraphCanvasView({
       ctx.fill();
 
       // Label (LOD: Level of Detail)
-      const showLabel = scale >= 0.45 || isHub || isHovered || isSelected;
+      const showLabel = safeScale >= 0.45 || isHub || isHovered || isSelected;
       if (showLabel) {
         const textColor = typeStyle.border || '#2f5d62';
 
         // 1. Small uppercase category tag above node name
-        if (scale >= 0.65 || isHovered || isSelected) {
+        if (safeScale >= 0.65 || isHovered || isSelected) {
           ctx.font = '800 5.5px system-ui, -apple-system, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -321,16 +397,16 @@ export default function GraphCanvasView({
         ctx.fillStyle = textColor;
 
         // Auto truncate label
-        let displayName = node.name;
+        let displayName = String(node.name || 'Node');
         if (displayName.length > 14) {
           displayName = displayName.slice(0, 12) + '…';
         }
 
-        const textY = (scale >= 0.65 || isHovered || isSelected) ? node.y + (node.radius > 16 ? 3.5 : 2) : node.y;
+        const textY = (safeScale >= 0.65 || isHovered || isSelected) ? node.y + (node.radius > 16 ? 3.5 : 2) : node.y;
         ctx.fillText(displayName, node.x, textY);
 
         // 3. Node degree badge on hubs
-        if (node.degree > 0 && scale >= 0.55) {
+        if (node.degree > 0 && safeScale >= 0.55) {
           const badgeX = node.x + node.radius * 0.72;
           const badgeY = node.y + node.radius * 0.72;
           const badgeRadius = 6.5;
@@ -353,7 +429,7 @@ export default function GraphCanvasView({
     }
 
     ctx.restore();
-  }, [nodePositions, edgeList, transform, hoveredNode, adjacencyMap, showEdgeLabels, searchQuery, selectedNode]);
+  }, [nodePositions, edgeList, transform, hoveredNode, adjacencyMap, showEdgeLabels, searchQuery, selectedNode, dimensions]);
 
   // Mouse / Pointer Event Handlers
   const handleWheel = useCallback((e) => {

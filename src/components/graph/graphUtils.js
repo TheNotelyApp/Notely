@@ -116,6 +116,7 @@ export const normalizeType = (rawType) => {
 };
 
 export const getTypeColor = (type) => {
+  if (!type || typeof type !== 'string') return DEFAULT_COLOR;
   if (TYPE_COLORS[type]) return TYPE_COLORS[type];
   let hash = 0;
   for (let i = 0; i < type.length; i++) {

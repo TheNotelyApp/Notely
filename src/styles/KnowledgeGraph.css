@@ -219,6 +219,23 @@
   position: relative;
 }
 
+.kg-canvas-wrapper {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.kg-canvas-viewport {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--app-bg, #0f141c);
+}
+
 .kg-sidebar {
   width: 280px;
   border-right: 1px solid var(--border-default);
