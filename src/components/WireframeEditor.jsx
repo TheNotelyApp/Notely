@@ -314,6 +314,36 @@ export function WireframeEditor({
 
         editorRef.current = editor;
 
+        const resizeConfig = {
+          tl: 1,
+          tc: 1,
+          tr: 1,
+          cl: 1,
+          cr: 1,
+          bl: 1,
+          bc: 1,
+          br: 1,
+          minDim: 8,
+          step: 1
+        };
+
+        // Enable 8-point interactive resizing on default components
+        try {
+          const compManager = editor.Components || editor.DomComponents;
+          if (compManager?.addType) {
+            compManager.addType("default", {
+              extend: "default",
+              model: {
+                defaults: {
+                  resizable: resizeConfig
+                }
+              }
+            });
+          }
+        } catch {
+          // fallback to dynamic assignment
+        }
+
         // Register all block primitives
         WIREFRAME_STENCILS.forEach((stencil) => {
           editor.BlockManager.add(stencil.id, {
@@ -396,6 +426,9 @@ export function WireframeEditor({
 
         // Event bindings
         editor.on("component:selected", (comp) => {
+          if (comp && !comp.get("resizable")) {
+            comp.set("resizable", resizeConfig);
+          }
           syncInspectorFromComponent(comp);
         });
 
