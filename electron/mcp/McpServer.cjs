@@ -17,7 +17,9 @@ const {
   GetPromptRequestSchema,
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
-  ReadResourceRequestSchema
+  ReadResourceRequestSchema,
+  SubscribeRequestSchema,
+  UnsubscribeRequestSchema
 } = require('@modelcontextprotocol/sdk/types.js');
 const { applicationToolRegistry } = require('../tools/ApplicationToolRegistry.cjs');
 const { mcpPromptsRegistry } = require('./McpPrompts.cjs');
@@ -55,6 +57,7 @@ class McpServer {
     this.httpServer = null;
     this.transports = new Map(); // sessionId -> { transport, server } (legacy SSE)
     this.streamableTransports = new Map(); // sessionId -> { transport, server } (Streamable HTTP)
+    this.resourceSubscriptions = new Map(); // sessionId -> Set<uri>
     this.isRunning = false;
     this.lastError = null;
     this.errorCode = null;
@@ -78,6 +81,30 @@ class McpServer {
     return authHeader.trim() === `Bearer ${this.bearerToken.trim()}`;
   }
 
+  broadcastResourceUpdated(uri) {
+    if (!uri) return;
+    const notifySession = (sessionId, session) => {
+      const subs = this.resourceSubscriptions.get(sessionId);
+      if (subs && (subs.has(uri) || subs.has('*') || (uri.startsWith('notely://notes/') && (subs.has('notely://notes/*') || subs.has('notely://notes/{path}'))))) {
+        try {
+          if (session?.server && typeof session.server.notification === 'function') {
+            session.server.notification({
+              method: 'notifications/resources/updated',
+              params: { uri }
+            });
+          }
+        } catch { /* session closed */ }
+      }
+    };
+
+    for (const [sessionId, session] of this.streamableTransports.entries()) {
+      notifySession(sessionId, session);
+    }
+    for (const [sessionId, session] of this.transports.entries()) {
+      notifySession(sessionId, session);
+    }
+  }
+
   _createServerInstance(sessionIdOrFn) {
     const getActiveSessionId = () => {
       if (typeof sessionIdOrFn === 'function') {
@@ -88,7 +115,7 @@ class McpServer {
 
     const server = new Server(
       { name: 'notely', version: appVersion },
-      { capabilities: { tools: {}, prompts: {}, resources: {} } }
+      { capabilities: { tools: {}, prompts: {}, resources: { subscribe: true, listChanged: true } } }
     );
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -100,12 +127,33 @@ class McpServer {
     });
 
     server.setRequestHandler(ListPromptsRequestSchema, async () => {
-      return { prompts: mcpPromptsRegistry.listPrompts() };
+      const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
+      return { prompts: mcpPromptsRegistry.listPrompts(activeWorkspaceRoot) };
     });
 
     server.setRequestHandler(GetPromptRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      return mcpPromptsRegistry.getPrompt(name, args || {});
+      const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
+      return mcpPromptsRegistry.getPrompt(name, args || {}, activeWorkspaceRoot);
+    });
+
+    server.setRequestHandler(SubscribeRequestSchema, async (request) => {
+      const { uri } = request.params;
+      const sessionId = getActiveSessionId();
+      if (!this.resourceSubscriptions.has(sessionId)) {
+        this.resourceSubscriptions.set(sessionId, new Set());
+      }
+      this.resourceSubscriptions.get(sessionId).add(uri);
+      return {};
+    });
+
+    server.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+      const { uri } = request.params;
+      const sessionId = getActiveSessionId();
+      if (this.resourceSubscriptions.has(sessionId)) {
+        this.resourceSubscriptions.get(sessionId).delete(uri);
+      }
+      return {};
     });
 
     server.setRequestHandler(ListResourcesRequestSchema, async () => {
@@ -327,13 +375,14 @@ class McpServer {
           const advertisedSchemas = this.allowWriteTools
             ? allSchemas
             : allSchemas.filter(t => !t.isWrite);
+          const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
           res.end(JSON.stringify({
             status: 'ok',
             server: 'notely-mcp',
             version: '0.1.41',
             port: this.port,
             toolsCount: advertisedSchemas.length,
-            promptsCount: mcpPromptsRegistry.listPrompts().length,
+            promptsCount: mcpPromptsRegistry.listPrompts(activeWorkspaceRoot).length,
             resourcesCount: 2,
             activeSessions: (this.sessionManager ? this.sessionManager.getActiveSessions().length : 0) + this.streamableTransports.size
           }));
@@ -363,8 +412,9 @@ class McpServer {
             res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing Bearer token' }));
             return;
           }
+          const activeWorkspaceRoot = this.getWorkspaceRoot ? this.getWorkspaceRoot() : null;
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ prompts: mcpPromptsRegistry.listPrompts() }));
+          res.end(JSON.stringify({ prompts: mcpPromptsRegistry.listPrompts(activeWorkspaceRoot) }));
           return;
         }
 

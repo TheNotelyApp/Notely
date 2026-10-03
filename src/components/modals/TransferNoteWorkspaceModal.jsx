@@ -152,7 +152,7 @@ export function TransferNoteWorkspaceModal({
             style={{
               width: "36px",
               height: "36px",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-default)",
               backgroundColor: "color-mix(in srgb, var(--accent-solid) 12%, transparent)",
               color: "var(--accent-solid)",
               display: "flex",
@@ -179,7 +179,7 @@ export function TransferNoteWorkspaceModal({
             gap: "4px",
             backgroundColor: "var(--surface-muted)",
             padding: "4px",
-            borderRadius: "8px",
+            borderRadius: "var(--radius-default)",
             marginBottom: "16px",
           }}
         >
@@ -190,7 +190,7 @@ export function TransferNoteWorkspaceModal({
               flex: 1,
               padding: "7px 12px",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-default)",
               fontSize: "0.85rem",
               fontWeight: 600,
               cursor: "pointer",
@@ -215,7 +215,7 @@ export function TransferNoteWorkspaceModal({
               flex: 1,
               padding: "7px 12px",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-default)",
               fontSize: "0.85rem",
               fontWeight: 600,
               cursor: "pointer",
@@ -253,7 +253,7 @@ export function TransferNoteWorkspaceModal({
               maxHeight: "180px",
               overflowY: "auto",
               border: "1px solid var(--border-default)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-default)",
               backgroundColor: "var(--surface-bg)",
             }}
           >
@@ -325,7 +325,7 @@ export function TransferNoteWorkspaceModal({
         <div
           style={{
             padding: "10px 12px",
-            borderRadius: "6px",
+            borderRadius: "var(--radius-default)",
             backgroundColor: "var(--surface-muted)",
             fontSize: "0.8rem",
             color: "var(--text-muted)",

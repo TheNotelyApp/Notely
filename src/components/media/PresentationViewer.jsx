@@ -431,14 +431,14 @@ export function PresentationViewer({ dataUrl, fileName }) {
                     key={`img-${imgIdx}`}
                     src={imgSrc}
                     alt={`Slide ${currentSlide.slideNumber} Graphic ${imgIdx + 1}`}
-                    style={{ maxHeight: "140px", maxWidth: "100%", borderRadius: "6px", objectFit: "contain", border: "1px solid var(--border-subtle)" }}
+                    style={{ maxHeight: "140px", maxWidth: "100%", borderRadius: "var(--radius-default)", objectFit: "contain", border: "1px solid var(--border-subtle)" }}
                   />
                 ))}
               </div>
             )}
 
             {showNotes && currentSlide?.notes && (
-              <div style={{ marginTop: "16px", padding: "10px 14px", background: "var(--surface-muted)", borderRadius: "6px", borderLeft: "3px solid var(--primary-accent)" }}>
+              <div style={{ marginTop: "16px", padding: "10px 14px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", borderLeft: "3px solid var(--primary-accent)" }}>
                 <strong style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>Speaker Notes:</strong>
                 <p style={{ margin: 0, fontSize: "12px", whiteSpace: "pre-wrap" }}>{currentSlide.notes}</p>
               </div>

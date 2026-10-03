@@ -395,7 +395,7 @@ export function OnboardingFlow({
               </p>
 
               <div style={{ margin: "16px 0", display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", border: "1px solid var(--border-soft)", borderRadius: "8px", background: "var(--background-soft)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-default)", background: "var(--background-soft)" }}>
                   <span style={{ fontWeight: "700", color: "var(--text-strong)" }}>
                     Enable AI Subsystem
                   </span>
@@ -411,7 +411,7 @@ export function OnboardingFlow({
                       position: "absolute",
                       top: 0, left: 0, right: 0, bottom: 0,
                       background: aiEnabled ? "var(--accent-solid)" : "var(--border-default)",
-                      borderRadius: "20px",
+                      borderRadius: "var(--radius-pill)",
                       transition: "background var(--motion-standard)",
                       cursor: "pointer"
                     }}>
@@ -443,7 +443,7 @@ export function OnboardingFlow({
                           setApiKey("");
                           setTestSuccess(null);
                         }}
-                        style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
+                        style={{ width: "100%", padding: "8px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
                       >
                         <option value="local">Local (Qwen2.5-0.5B offline model)</option>
                         <option value="gemini">Google Gemini (Default)</option>
@@ -452,7 +452,7 @@ export function OnboardingFlow({
                     </div>
 
                     {selectedAIProvider === "local" ? (
-                      <div style={{ padding: "10px", background: "var(--surface-muted)", border: "1px solid var(--border-soft)", borderRadius: "6px", marginBottom: "4px" }}>
+                      <div style={{ padding: "10px", background: "var(--surface-muted)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-default)", marginBottom: "4px" }}>
                         <strong style={{ fontSize: "13px", display: "block", marginBottom: "4px" }}>Local Knowledge Graph Engine (GLiNER + GLiREL ONNX)</strong>
                         {graphModelStatus.downloaded ? (
                           <div style={{ color: "var(--accent-solid)", fontSize: "12px" }}>✓ GLiNER & GLiREL model weights downloaded & ready offline!</div>
@@ -462,7 +462,7 @@ export function OnboardingFlow({
                               <span>Downloading GLiNER & GLiREL weights...</span>
                               <span>{graphModelStatus.progress}%</span>
                             </div>
-                            <div style={{ width: "100%", height: "4px", background: "var(--background-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                            <div style={{ width: "100%", height: "4px", background: "var(--background-soft)", borderRadius: "var(--radius-default)", overflow: "hidden" }}>
                               <div style={{ width: `${graphModelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }} />
                             </div>
                           </div>
@@ -481,7 +481,7 @@ export function OnboardingFlow({
                                   alert("Failed to start download: " + err.message);
                                 }
                               }}
-                              style={{ padding: "4px 10px", fontSize: "11px", cursor: "pointer", background: "var(--accent-solid)", color: "#fff", border: "none", borderRadius: "6px" }}
+                              style={{ padding: "4px 10px", fontSize: "11px", cursor: "pointer", background: "var(--accent-solid)", color: "#fff", border: "none", borderRadius: "var(--radius-default)" }}
                             >
                               Download Model
                             </button>
@@ -506,7 +506,7 @@ export function OnboardingFlow({
                                 setApiKey(e.target.value);
                                 setTestSuccess(null);
                               }}
-                              style={{ flex: 1, padding: "8px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
+                              style={{ flex: 1, padding: "8px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", background: "var(--background-default)", color: "var(--text-strong)" }}
                             />
                             <button
                               type="button"
@@ -531,7 +531,7 @@ export function OnboardingFlow({
                                   setTestingConnection(false);
                                 }
                               }}
-                              style={{ padding: "0 12px", height: "35px", boxSizing: "border-box", cursor: "pointer", background: "var(--surface-header)", border: "1px solid var(--border-soft)", color: "var(--text-strong)", borderRadius: "6px" }}
+                              style={{ padding: "0 12px", height: "35px", boxSizing: "border-box", cursor: "pointer", background: "var(--surface-header)", border: "1px solid var(--border-soft)", color: "var(--text-strong)", borderRadius: "var(--radius-default)" }}
                             >
                               {testingConnection ? "Testing..." : "Test Connection"}
                             </button>
@@ -541,7 +541,7 @@ export function OnboardingFlow({
                         </div>
 
                         {/* Provider-specific details and helper links */}
-                        <div style={{ padding: "10px", borderRadius: "6px", border: "1px solid var(--border-soft)", background: "var(--background-soft)", fontSize: "11px", display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+                        <div style={{ padding: "10px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", background: "var(--background-soft)", fontSize: "11px", display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
                           {selectedAIProvider === "groq" && (
                             <>
                               <div style={{ fontWeight: "600", color: "var(--text-strong)" }}>Groq Cloud Provider Info:</div>
@@ -601,7 +601,7 @@ export function OnboardingFlow({
                                   alert("Download trigger failed: " + err.message);
                                 }
                               }}
-                              style={{ padding: "6px 12px", fontSize: "12px", cursor: "pointer", background: "var(--accent-solid)", color: "#fff", border: "none", borderRadius: "6px" }}
+                              style={{ padding: "6px 12px", fontSize: "12px", cursor: "pointer", background: "var(--accent-solid)", color: "#fff", border: "none", borderRadius: "var(--radius-default)" }}
                             >
                               Download Model (~90MB)
                             </button>
@@ -614,7 +614,7 @@ export function OnboardingFlow({
                               <span>Downloading...</span>
                               <span>{modelStatus.progress}%</span>
                             </div>
-                            <div style={{ width: "100%", height: "4px", background: "var(--background-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                            <div style={{ width: "100%", height: "4px", background: "var(--background-soft)", borderRadius: "var(--radius-default)", overflow: "hidden" }}>
                               <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }} />
                             </div>
                           </div>

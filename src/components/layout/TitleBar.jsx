@@ -4,12 +4,12 @@ import {
   FilePlus, FolderPlus, FolderOpen, Folder, Clock, Save, RefreshCw, Package, Edit2, Trash2, ArrowLeft, RotateCcw, Power,
   Undo2, Redo2, Scissors, Clipboard, CheckSquare, Search, Replace, Camera, BookOpen, Command,
   SunMoon, SpellCheck, Palette, Layout, Columns, Maximize2, ZoomIn, ZoomOut, Minimize2, Code,
-  Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History, GitCompare, ArrowUpRight,
-  ArrowDownLeft, ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
+  Activity, ExternalLink, FolderSearch, GitBranch, GitCommit, History,
+  ShieldAlert, KeyRound, Sparkles, Bot, Brain, Cpu,
   HelpCircle, Book, Keyboard, MessageSquareWarning, FileTerminal, Info, FileText, Table, Eye, Image as ImageIcon,
   Upload, Download, FolderOutput, Layers, Server, HeartPulse, Wrench, FileDown, Type,
   Calendar, FolderTree, FileCode, FileSpreadsheet, LayoutGrid, AlignJustify, AlignLeft,
-  FolderGit2
+  FolderGit2, Settings
 } from "lucide-react";
 import notelyMark from "../../assets/branding/notely-mark.png";
 import { getExportHistory } from "../../services/electronService";
@@ -140,15 +140,16 @@ const MENU_ICON_MAP = {
   "copy / move to workspace": FolderOutput,
   "transfer note": FolderOutput,
 
+  "open revisions & sync": GitBranch,
   "open version control": GitBranch,
+  "revisions & sync": GitBranch,
+  "save milestone…": GitCommit,
+  "save milestone": GitCommit,
   "commit…": GitCommit,
   "commit": GitCommit,
+  "note history drawer": History,
   "history": History,
-  "diff current note": GitCompare,
-  "compare versions": GitCompare,
-  "push": ArrowUpRight,
-  "pull": ArrowDownLeft,
-  "fetch": RefreshCw,
+  "sync with cloud": RefreshCw,
   "sync (pull then push)": RefreshCw,
   "ignore app data in git": GitBranch,
 
@@ -175,6 +176,24 @@ const MENU_ICON_MAP = {
 
   "trash / removed items": Trash2,
   "trash removed items": Trash2,
+  "trash": Trash2,
+
+  "tools": Wrench,
+  "version control": GitBranch,
+  "p2p sync": ShieldAlert,
+  "ai & knowledge": Brain,
+  "ai knowledge": Brain,
+  "mcp": Server,
+  "notes view": Layout,
+  "tile": LayoutGrid,
+  "table": Table,
+  "tree": FolderTree,
+  "toggle full screen": Maximize2,
+
+  "settings": Settings,
+  "settings…": Settings,
+  "preferences": Settings,
+  "preferences…": Settings,
 
   "help center": HelpCircle,
   "markdown guide": Book,
@@ -253,6 +272,10 @@ function getItemIcon(item) {
       IconComponent = FolderTree;
     } else if (rawLabel.includes("density")) {
       IconComponent = AlignJustify;
+    } else if (rawLabel.includes("setting") || rawLabel.includes("preference")) {
+      IconComponent = Settings;
+    } else if (rawLabel.includes("tool")) {
+      IconComponent = Wrench;
     } else if (rawLabel.includes("close")) {
       IconComponent = X;
     } else if (rawLabel.includes("metadata")) {
@@ -280,6 +303,7 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
 
   const containerRef = useRef(null);
   const downloadAnimTimerRef = useRef(null);
+  const downloadsHoverTimerRef = useRef(null);
 
   const loadRecentDownloads = useCallback(async () => {
     try {
@@ -291,6 +315,22 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
       console.error("Failed to fetch recent downloads", err);
     }
   }, []);
+
+  const handleDownloadsMouseEnter = () => {
+    if (downloadsHoverTimerRef.current) {
+      clearTimeout(downloadsHoverTimerRef.current);
+      downloadsHoverTimerRef.current = null;
+    }
+    loadRecentDownloads();
+    setHasUnreadDownload(false);
+    setShowDownloadsPopover(true);
+  };
+
+  const handleDownloadsMouseLeave = () => {
+    downloadsHoverTimerRef.current = setTimeout(() => {
+      setShowDownloadsPopover(false);
+    }, 250);
+  };
 
   const triggerDownloadHighlight = useCallback(() => {
     loadRecentDownloads();
@@ -583,7 +623,11 @@ export function TitleBar({ title = "Notely", workspaceIcon, onOpenWebsite, onOpe
         {(onOpenDownloads || onOpenWebsite) && (
           <div className="titlebar-action-btns">
             {onOpenDownloads && (
-              <div className="titlebar-downloads-container">
+              <div
+                className="titlebar-downloads-container"
+                onMouseEnter={handleDownloadsMouseEnter}
+                onMouseLeave={handleDownloadsMouseLeave}
+              >
                 <button
                   className={`titlebar-btn downloads-view${hasUnreadDownload ? " has-unread" : ""}${showDownloadsPopover ? " active" : ""}${isAnimatingDownload ? " download-animating" : ""}`}
                   onClick={toggleDownloadsPopover}

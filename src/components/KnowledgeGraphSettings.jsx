@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Database, Download, AlertCircle, Save, Trash2, Cpu, Sliders } from 'lucide-react';
 import AppSelect from './AppSelect';
+import AppButton from './AppButton';
 import {
   aiGetGraphModelStatus,
   aiDownloadGraphModel,
@@ -9,6 +10,7 @@ import {
   aiGetPreferences,
   aiSetPreferences
 } from '../services/electronService';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/notificationUtils';
 
 export default function KnowledgeGraphSettings() {
   const [loading, setLoading] = useState(false);
@@ -56,14 +58,10 @@ export default function KnowledgeGraphSettings() {
         graphProvider: preferences.graphProvider,
         graphConfidence: preferences.graphConfidence
       });
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Knowledge Graph preferences saved successfully.`, type: 'success' }
-      }));
+      showSuccessToast('Knowledge Graph preferences saved successfully.');
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to save preferences: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Failed to save preferences: ${err?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -78,9 +76,7 @@ export default function KnowledgeGraphSettings() {
       }
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to start download: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Failed to start download: ${err?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -92,14 +88,10 @@ export default function KnowledgeGraphSettings() {
       setLoading(true);
       await aiDeleteGraphModel();
       setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Local GLiNER2-Relex ONNX model weights deleted successfully.', type: 'info' }
-      }));
+      showInfoToast('Local GLiNER2-Relex ONNX model weights deleted successfully.');
     } catch (err) {
       console.error(err);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Failed to delete model: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Failed to delete model: ${err?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -125,9 +117,7 @@ export default function KnowledgeGraphSettings() {
                 const updated = { ...preferences, graphProvider: newProvider };
                 setPreferences(updated);
                 await aiSetPreferences(updated);
-                window.dispatchEvent(new CustomEvent('app:toast', {
-                  detail: { message: `Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model Engine'}.`, type: 'success' }
-                }));
+                showSuccessToast(`Graph extraction engine set to ${newProvider === 'text-provider' ? 'Cloud AI Provider' : 'GLiNER2-Relex ONNX Model Engine'}.`);
               }}
               disabled={loading}
               style={{ flex: 1 }}
@@ -135,14 +125,14 @@ export default function KnowledgeGraphSettings() {
               <option value="gliner2-relex">GLiNER2-Relex ONNX Model Engine (Zero-Shot - Recommended)</option>
               <option value="text-provider">Cloud LLM Text Provider (Configured Cloud AI)</option>
             </AppSelect>
-            <button
-              className="btn btn-primary"
+            <AppButton
+              variant="primary"
               onClick={handlePreferencesSave}
               disabled={loading}
               type="button"
             >
               <Save size={12} /> Save
-            </button>
+            </AppButton>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginTop: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--border-soft)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Active Extraction Engine</span>
@@ -173,7 +163,7 @@ export default function KnowledgeGraphSettings() {
         </div>
 
         {activeProvider === 'gliner2-relex' && (
-          <div style={{ padding: "12px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+          <div style={{ padding: "12px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
             <h4 style={{ fontSize: "12px", fontWeight: "600", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
               <Cpu size={14} /> Offline Model Status (dx111ge/gliner2-multi-v1-onnx)
             </h4>
@@ -183,16 +173,17 @@ export default function KnowledgeGraphSettings() {
                   <Database size={12} />
                   <span>GLiNER2-Relex ONNX model weights (dx111ge/gliner2-multi-v1-onnx) downloaded and ready offline.</span>
                 </div>
-                <button
-                  className="btn btn-secondary btn-sm"
+                <AppButton
+                  variant="secondary"
+                  size="small"
                   onClick={handleDeleteModel}
                   disabled={loading}
-                  style={{ display: "flex", gap: "4px", alignItems: "center", padding: "4px 8px", fontSize: "10px", color: "var(--text-danger)" }}
+                  style={{ display: "flex", gap: "4px", alignItems: "center", color: "var(--text-danger)" }}
                   title="Remove model weights from disk to free space or redownload"
                 >
                   <Trash2 size={12} />
                   <span>Delete Model</span>
-                </button>
+                </AppButton>
               </div>
             ) : modelStatus.isDownloading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -200,7 +191,7 @@ export default function KnowledgeGraphSettings() {
                   <span>Downloading GLiNER2-Relex ONNX weights...</span>
                   <span style={{ fontWeight: 600, color: 'var(--brand-primary)' }}>{modelStatus.progress}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'var(--border-soft)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
                   <div style={{ width: `${modelStatus.progress}%`, height: '100%', background: 'var(--accent-solid)', transition: 'width 0.2s ease' }} />
                 </div>
               </div>
@@ -210,15 +201,16 @@ export default function KnowledgeGraphSettings() {
                   <AlertCircle size={12} />
                   <span>GLiNER2-Relex ONNX model not downloaded. Click below to download offline model weights.</span>
                 </div>
-                <button
-                  className="btn btn-secondary btn-sm"
+                <AppButton
+                  variant="secondary"
+                  size="small"
                   onClick={handleDownloadModel}
                   disabled={loading}
-                  style={{ display: "flex", gap: "6px", alignItems: "center", padding: "6px 12px", width: "fit-content" }}
+                  style={{ display: "flex", gap: "6px", alignItems: "center", width: "fit-content" }}
                 >
                   <Download size={12} />
                   <span>Download GLiNER2-Relex Model</span>
-                </button>
+                </AppButton>
               </div>
             )}
           </div>

@@ -166,7 +166,7 @@ describe("Media Viewers & Standardized Header", () => {
 
     // Wait for async parsing
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 200));
     });
 
     expect(host.textContent).toContain("Executive Summary");

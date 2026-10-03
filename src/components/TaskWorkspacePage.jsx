@@ -11,6 +11,7 @@ import { listWorkspaceTaskDocuments } from "../services/electronService";
 import { OverlayDialog } from "./OverlayDialog";
 import AppButton from "./AppButton";
 import AppSelect from "./AppSelect";
+import SubpageHeader from "./layout/SubpageHeader";
 import useConfirm from "../hooks/useConfirm";
 
 const PRIORITY_LABELS = { 0: "None", 1: "Low", 2: "Medium", 3: "High" };
@@ -829,108 +830,103 @@ export function TaskWorkspacePage({ onBack, onOpenNote, noteFilter = null }) {
 
   return (
     <div className="knowledge-graph-page task-workspace-root">
-      {/* Unified App-Standard Topbar Navigation & Actions */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Tasks location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={handleBackGuard}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-current">Tasks</span>
-        </nav>
+      <SubpageHeader
+        currentTitle="Tasks"
+        breadcrumbParent="Workspace"
+        onBack={handleBackGuard}
+        actions={
+          <>
+            {noteFilter && (
+              <div className="task-sidebar-context">
+                <span>From: {noteFilter.split(/[/\\]/).pop()?.replace(/\.md$/i, "")}</span>
+                <button type="button" onClick={() => { /* clear filter */ }} aria-label="Clear note filter">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
 
-        {noteFilter && (
-          <div className="task-sidebar-context">
-            <span>From: {noteFilter.split(/[/\\]/).pop()?.replace(/\.md$/i, "")}</span>
-            <button type="button" onClick={() => { /* clear filter */ }} aria-label="Clear note filter">
-              <X size={12} />
-            </button>
-          </div>
-        )}
-
-        <div className="detail-topbar-actions">
-          {/* View Filter Dropdown */}
-          <AppSelect
-            className="task-header-filter-select"
-            value={ws.view}
-            onChange={e => handleViewChange(e.target.value)}
-            aria-label="Filter tasks view"
-          >
-            {ws.views.map(v => (
-              <option key={v} value={v}>
-                {VIEW_META[v]?.label ?? v}
-              </option>
-            ))}
-          </AppSelect>
-
-          {/* Kanban Group By Selector (when in Kanban mode) */}
-          {ws.layoutMode === "kanban" && (
+            {/* View Filter Dropdown */}
             <AppSelect
-              className="task-header-groupby-select"
-              value={ws.kanbanGroupBy}
-              onChange={e => ws.setKanbanGroupBy(e.target.value)}
-              aria-label="Group Kanban columns by"
+              className="task-header-filter-select"
+              value={ws.view}
+              onChange={e => handleViewChange(e.target.value)}
+              aria-label="Filter tasks view"
             >
-              <option value="status">Group: Status</option>
-              <option value="priority">Group: Priority</option>
-              <option value="category">Group: #Tags</option>
+              {ws.views.map(v => (
+                <option key={v} value={v}>
+                  {VIEW_META[v]?.label ?? v}
+                </option>
+              ))}
             </AppSelect>
-          )}
 
-          <div className="task-stats-pill">
-            <Database size={12} />
-            <span>{ws.tasks.length}</span>
-          </div>
+            {/* Kanban Group By Selector (when in Kanban mode) */}
+            {ws.layoutMode === "kanban" && (
+              <AppSelect
+                className="task-header-groupby-select"
+                value={ws.kanbanGroupBy}
+                onChange={e => ws.setKanbanGroupBy(e.target.value)}
+                aria-label="Group Kanban columns by"
+              >
+                <option value="status">Group: Status</option>
+                <option value="priority">Group: Priority</option>
+                <option value="category">Group: #Tags</option>
+              </AppSelect>
+            )}
 
-          {/* Search box */}
-          <div className="task-search-box">
-            <Search size={14} />
-            <input
-              type="search"
-              placeholder={`Search ${VIEW_META[ws.view]?.desc ?? "tasks"}…`}
-              onChange={e => handleSearchChange(e.target.value)}
-              aria-label="Search tasks"
-            />
-          </div>
+            <div className="task-stats-pill">
+              <Database size={12} />
+              <span>{ws.tasks.length}</span>
+            </div>
 
-          {/* View mode toggle using standard tab-bar pattern */}
-          <div className="tab-bar task-view-toggle-tabbar" role="tablist">
-            <button
-              type="button"
-              className={`tab-item${ws.layoutMode === "list" ? " active" : ""}`}
-              onClick={() => ws.setLayoutMode("list")}
-              title="List View"
-              role="tab"
-              aria-selected={ws.layoutMode === "list"}
+            {/* Search box */}
+            <div className="task-search-box">
+              <Search size={14} />
+              <input
+                type="search"
+                placeholder={`Search ${VIEW_META[ws.view]?.desc ?? "tasks"}…`}
+                onChange={e => handleSearchChange(e.target.value)}
+                aria-label="Search tasks"
+              />
+            </div>
+
+            {/* View mode toggle using standard tab-bar pattern */}
+            <div className="tab-bar task-view-toggle-tabbar" role="tablist">
+              <button
+                type="button"
+                className={`tab-item${ws.layoutMode === "list" ? " active" : ""}`}
+                onClick={() => ws.setLayoutMode("list")}
+                title="List View"
+                role="tab"
+                aria-selected={ws.layoutMode === "list"}
+              >
+                <List size={14} />
+                <span>List</span>
+              </button>
+              <button
+                type="button"
+                className={`tab-item${ws.layoutMode === "kanban" ? " active" : ""}`}
+                onClick={() => ws.setLayoutMode("kanban")}
+                title="Kanban Board View"
+                role="tab"
+                aria-selected={ws.layoutMode === "kanban"}
+              >
+                <Columns size={14} />
+                <span>Kanban</span>
+              </button>
+            </div>
+
+            {/* New task primary app button */}
+            <AppButton
+              variant="primary"
+              size="small"
+              className="task-header-new-btn"
+              onClick={() => handleOpenNewTaskModal("open")}
             >
-              <List size={14} />
-              <span>List</span>
-            </button>
-            <button
-              type="button"
-              className={`tab-item${ws.layoutMode === "kanban" ? " active" : ""}`}
-              onClick={() => ws.setLayoutMode("kanban")}
-              title="Kanban Board View"
-              role="tab"
-              aria-selected={ws.layoutMode === "kanban"}
-            >
-              <Columns size={14} />
-              <span>Kanban</span>
-            </button>
-          </div>
-
-          {/* New task primary app button */}
-          <AppButton
-            variant="small"
-            className="task-header-new-btn primary-button"
-            onClick={() => handleOpenNewTaskModal("open")}
-          >
-            <Plus size={14} /> New Task
-          </AppButton>
-        </div>
-      </div>
+              <Plus size={14} /> New Task
+            </AppButton>
+          </>
+        }
+      />
 
       {/* Workspace Main Body */}
       <div className="task-workspace-body">

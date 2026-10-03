@@ -22,7 +22,7 @@ function collectFiles(rootDir, ext) {
 
 // ─── Suite 1: AppButton variant validity ─────────────────────────────────────
 describe("Design System - AppButton variant validity", () => {
-  const VALID_VARIANTS = new Set(["primary", "small"]);
+  const VALID_VARIANTS = new Set(["primary", "small", "secondary", "ghost", "danger"]);
 
   it("uses only valid AppButton variants across all components", () => {
     const files = collectFiles(path.resolve(process.cwd(), "src/components"), ".jsx");
@@ -77,11 +77,73 @@ describe("Design System - Button min-height must use tokens", () => {
   });
 });
 
-// ─── Suite 3: Border-radius token scale ──────────────────────────────────────
+// ─── Suite 3: Border-radius token scale & Notely 2px Standardization ─────────
 describe("Design System - Border-radius token scale", () => {
-  const ALLOWED_RADIUS_PX = new Set([0, 4, 6, 8, 999]);
+  const APPROVED_TOKENS = new Set([
+    "var(--radius-default)",
+    "var(--radius-none)",
+    "var(--radius-xs)",
+    "var(--radius-sm)",
+    "var(--radius-md)",
+    "var(--radius-lg)",
+    "var(--radius-xl)",
+    "var(--radius-2xl)",
+    "var(--radius-pill)",
+    "var(--radius-full)",
+    "var(--tooltip-radius)",
+    "var(--detail-topbar-radius)",
+  ]);
 
-  it("all border-radius px values are within the professional token scale [0,4,6,8,999]", () => {
+  const APPROVED_LITERALS = new Set([
+    "0",
+    "0px",
+    "2px",
+    "3px",
+    "4px",
+    "50%",
+    "999px",
+    "9999px",
+    "inherit",
+    "initial",
+    "unset",
+  ]);
+
+  it("Test A: CSS radius tokens define 2px default and approved 3-4px/pill/50% values", () => {
+    const varsCss = readSource("src/styles/variables.css");
+    expect(varsCss).toMatch(/--radius-default:\s*2px;/);
+    expect(varsCss).toMatch(/--radius-xs:\s*2px;/);
+    expect(varsCss).toMatch(/--radius-sm:\s*2px;/);
+    expect(varsCss).toMatch(/--radius-md:\s*2px;/);
+    expect(varsCss).toMatch(/--radius-lg:\s*3px;/);
+    expect(varsCss).toMatch(/--radius-xl:\s*4px;/);
+    expect(varsCss).toMatch(/--tooltip-radius:\s*var\(--radius-default\);/);
+  });
+
+  it("Test B: No hardcoded SaaS radius drift (5px, 6px, 8px, 10px, 12px, 16px, 20px) in production CSS", () => {
+    const cssFiles = [
+      "src/styles.css",
+      ...collectFiles(path.resolve(process.cwd(), "src/styles"), ".css").map((f) =>
+        path.relative(process.cwd(), f).replace(/\\/g, "/")
+      ),
+    ];
+    const bannedRadii = /\b(5px|6px|8px|10px|12px|14px|16px|20px|24px)\b/;
+    const offenders = [];
+
+    for (const file of cssFiles) {
+      if (file.includes("variables.css")) continue;
+      const css = readSource(file);
+      const lines = css.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes("border-radius:") && bannedRadii.test(line)) {
+          offenders.push(`${file}:${i + 1} -> ${line.trim()}`);
+        }
+      }
+    }
+    expect(offenders, `Banned SaaS radius values found:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("Test C: All border-radius CSS declarations use approved tokens or primitives", () => {
     const cssFiles = [
       "src/styles.css",
       ...collectFiles(path.resolve(process.cwd(), "src/styles"), ".css").map((f) =>
@@ -91,25 +153,62 @@ describe("Design System - Border-radius token scale", () => {
     const offenders = [];
 
     for (const file of cssFiles) {
+      if (file.includes("variables.css")) continue;
       const css = readSource(file);
       const lines = css.split("\n");
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        const match = line.match(/border-radius:\s*(.+?);/);
-        if (!match) continue;
-        const value = match[1].trim();
-        if (/^(0|50%|var\(--radius-|var\(--detail-topbar|calc\(var\(--radius)/.test(value)) continue;
-        for (const pxMatch of [...value.matchAll(/(\d+)px/g)]) {
-          const px = Number(pxMatch[1]);
-          if (!ALLOWED_RADIUS_PX.has(px)) {
-            offenders.push(
-              `${file}:${i + 1} border-radius:${value} (${px}px not in scale [0,4,6,8,999])`
-            );
+        const line = lines[i];
+        const regex = /\bborder(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*([^;!]+)/gi;
+        let match;
+        while ((match = regex.exec(line)) !== null) {
+          const fullVal = match[1].trim();
+          const isVar = fullVal.startsWith("var(") || fullVal.startsWith("calc(");
+          const isLiteral = APPROVED_LITERALS.has(fullVal);
+          const parts = fullVal.split(/\s+/);
+          const allPartsApproved = parts.every(
+            (p) => APPROVED_LITERALS.has(p) || p.startsWith("var(") || p.startsWith("calc(")
+          );
+
+          if (!isVar && !isLiteral && !allPartsApproved) {
+            offenders.push(`${file}:${i + 1} -> ${fullVal}`);
           }
         }
       }
     }
-    expect(offenders, `Out-of-scale border-radius:\n${offenders.join("\n")}`).toEqual([]);
+    expect(offenders, `Unapproved CSS border-radius declarations:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("Test D: No rogue literal radii in JS/JSX component inline styles", () => {
+    const jsFiles = collectFiles(path.resolve(process.cwd(), "src/components"), ".jsx").concat(
+      collectFiles(path.resolve(process.cwd(), "src/components"), ".js")
+    );
+    const offenders = [];
+
+    for (const filePath of jsFiles) {
+      const rel = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      const content = fs.readFileSync(filePath, "utf8");
+      const lines = content.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        if (trimmed.startsWith("//") || trimmed.startsWith("*")) continue;
+
+        const objMatch = line.match(/\bborderRadius\s*:\s*['"]?([^,'";}]+)['"]?/);
+        if (objMatch) {
+          const val = objMatch[1].trim();
+          const parts = val.split(/\s+/);
+          const allPartsApproved = parts.every(
+            (p) => APPROVED_LITERALS.has(p) || APPROVED_LITERALS.has(`${p}px`) || p.startsWith("var(") || p === "getBorderRadius()"
+          );
+
+          if (!APPROVED_LITERALS.has(val) && !APPROVED_LITERALS.has(`${val}px`) && !val.startsWith("var(") && val !== "getBorderRadius()" && !allPartsApproved) {
+            offenders.push(`${rel}:${i + 1} -> borderRadius: ${val}`);
+          }
+        }
+      }
+    }
+    expect(offenders, `Unapproved JS inline borderRadius values:\n${offenders.join("\n")}`).toEqual([]);
   });
 });
 

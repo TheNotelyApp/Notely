@@ -87,3 +87,39 @@ export function onMcpStatusChanged(callback) {
   if (typeof api.onMcpStatusChanged !== "function") return () => {};
   return api.onMcpStatusChanged(callback);
 }
+
+/**
+ * List all MCP Prompts (Built-in + Workspace Custom).
+ */
+export async function mcpListPrompts() {
+  const api = getNotesApi();
+  if (typeof api.mcpListPrompts !== "function") return [];
+  return api.mcpListPrompts();
+}
+
+/**
+ * Get and interpolate a specific MCP Prompt with test arguments.
+ */
+export async function mcpGetPrompt(name, args = {}) {
+  const api = getNotesApi();
+  if (typeof api.mcpGetPrompt !== "function") throw new Error("MCP prompt evaluation not available");
+  return api.mcpGetPrompt(name, args);
+}
+
+/**
+ * Save or update a workspace custom prompt (.notes-app/prompts/<name>.md).
+ */
+export async function mcpSavePrompt(promptData) {
+  const api = getNotesApi();
+  if (typeof api.mcpSavePrompt !== "function") throw new Error("MCP prompt saving not available");
+  return api.mcpSavePrompt(promptData);
+}
+
+/**
+ * Delete a workspace custom prompt (.notes-app/prompts/<name>.md).
+ */
+export async function mcpDeletePrompt(name) {
+  const api = getNotesApi();
+  if (typeof api.mcpDeletePrompt !== "function") throw new Error("MCP prompt deletion not available");
+  return api.mcpDeletePrompt(name);
+}

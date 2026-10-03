@@ -42,21 +42,21 @@ export const editorTheme = EditorView.theme({
   ".cm-issue-spelling": {
     backgroundColor: "var(--status-warning-bg)",
     boxShadow: "inset 0 -2px 0 var(--status-warning-border)",
-    borderRadius: "4px",
+    borderRadius: "var(--radius-default)",
   },
   ".cm-issue-other": {
     backgroundColor: "var(--status-danger-bg)",
     boxShadow: "inset 0 -2px 0 var(--status-danger-border)",
-    borderRadius: "4px",
+    borderRadius: "var(--radius-default)",
   },
   ".cm-find-match": {
     backgroundColor: "var(--status-success-bg)",
     boxShadow: "inset 0 0 0 1px var(--status-success-border)",
-    borderRadius: "4px",
+    borderRadius: "var(--radius-default)",
   },
   ".cm-find-match-active": {
     backgroundColor: "var(--status-success-bg)",
     boxShadow: "inset 0 0 0 2px var(--status-success-text)",
-    borderRadius: "4px",
+    borderRadius: "var(--radius-default)",
   },
 });

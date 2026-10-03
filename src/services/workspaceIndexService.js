@@ -3,10 +3,42 @@
  * Hierarchy: Workspace -> Folders -> Documents -> Headers (H1-H6) -> Section Blocks (code/text/tasks)
  */
 
-export function parseDocumentMultiLevelIndex(doc) {
+export function isFolderEntry(doc) {
+  if (!doc) return false;
+  return (
+    doc.entryType === "folder" ||
+    doc.type === "folder" ||
+    doc.isFolder === true ||
+    doc.isDirectory === true
+  );
+}
+
+export function normalizeRelativePath(doc, workspacePath = "") {
+  if (doc?.relativePath) return String(doc.relativePath).replace(/\\/g, "/");
+  if (doc?.displayPath) return String(doc.displayPath).replace(/\\/g, "/");
+
+  const fullPath = String(doc?.filePath || doc?.path || "").replace(/\\/g, "/");
+  const ws = (typeof workspacePath === "string" ? workspacePath : "").replace(/\\/g, "/").replace(/\/+$/, "");
+
+  if (ws && fullPath.toLowerCase().startsWith(ws.toLowerCase())) {
+    const rel = fullPath.slice(ws.length).replace(/^\/+/, "");
+    if (rel) return rel;
+  }
+
+  // If full path is already relative (e.g. "subfolder/note.md"), retain it
+  if (fullPath && !/^[a-zA-Z]:[/\\]/.test(fullPath) && !fullPath.startsWith("/")) {
+    return fullPath;
+  }
+
+  return doc?.title || doc?.name || (fullPath ? fullPath.split("/").pop() : "") || "Untitled";
+}
+
+export function parseDocumentMultiLevelIndex(doc, options = {}) {
+  const workspacePath = typeof options === "string" ? options : (options?.workspacePath || "");
   const docId = doc?.id || doc?.filePath || "doc_" + Math.random().toString(36).substr(2, 9);
   const filePath = doc?.filePath || doc?.path || "";
-  const title = doc?.title || doc?.name || (filePath ? filePath.split("/").pop() : "Untitled");
+  const relativePath = normalizeRelativePath(doc, workspacePath);
+  const title = doc?.title || doc?.name || (relativePath ? relativePath.split(/[/\\]/).pop() : "Untitled");
   const content = String(doc?.content || doc?.searchText || "");
 
   const lines = content.split("\n");
@@ -107,6 +139,7 @@ export function parseDocumentMultiLevelIndex(doc) {
         docId,
         docTitle: title,
         filePath,
+        relativePath,
         level,
         text,
         line: lineNumber,
@@ -152,7 +185,9 @@ export function parseDocumentMultiLevelIndex(doc) {
   return {
     docId,
     filePath,
+    relativePath,
     title,
+    content,
     tags: Array.from(tagsSet),
     wordCount,
     taskCount,
@@ -163,7 +198,8 @@ export function parseDocumentMultiLevelIndex(doc) {
   };
 }
 
-export function buildWorkspaceIndex(documents = []) {
+export function buildWorkspaceIndex(documents = [], options = {}) {
+  const workspacePath = typeof options === "string" ? options : (options?.workspacePath || "");
   const documentsMap = {};
   const folderTree = { name: "Root", path: "", type: "folder", children: {} };
   const tagMap = {};
@@ -172,9 +208,33 @@ export function buildWorkspaceIndex(documents = []) {
   let totalCodeBlockCount = 0;
   let totalTaskCount = 0;
   let totalCompletedTaskCount = 0;
+  let totalNoteCount = 0;
 
-  documents.forEach((doc) => {
-    const indexedDoc = parseDocumentMultiLevelIndex(doc);
+  (documents || []).forEach((doc) => {
+    if (!doc) return;
+    const isFolder = isFolderEntry(doc);
+    const cleanPath = normalizeRelativePath(doc, workspacePath);
+    const parts = cleanPath.split(/[/\\]/).filter(Boolean);
+
+    if (isFolder) {
+      let curr = folderTree;
+      for (let i = 0; i < parts.length; i++) {
+        const folderName = parts[i];
+        if (!curr.children[folderName]) {
+          curr.children[folderName] = {
+            name: folderName,
+            path: parts.slice(0, i + 1).join("/"),
+            type: "folder",
+            children: {},
+          };
+        }
+        curr = curr.children[folderName];
+      }
+      return;
+    }
+
+    totalNoteCount++;
+    const indexedDoc = parseDocumentMultiLevelIndex(doc, { workspacePath });
     documentsMap[indexedDoc.docId] = indexedDoc;
 
     totalWordCount += indexedDoc.wordCount;
@@ -190,7 +250,6 @@ export function buildWorkspaceIndex(documents = []) {
     });
 
     // Build Folder Tree
-    const parts = (indexedDoc.filePath || indexedDoc.title).split("/").filter(Boolean);
     let curr = folderTree;
     for (let i = 0; i < parts.length - 1; i++) {
       const folderName = parts[i];
@@ -207,7 +266,7 @@ export function buildWorkspaceIndex(documents = []) {
     const fileName = parts.length > 0 ? parts[parts.length - 1] : indexedDoc.title;
     curr.children[fileName] = {
       name: fileName,
-      path: indexedDoc.filePath,
+      path: cleanPath,
       type: "file",
       docId: indexedDoc.docId,
       indexedDoc,
@@ -219,7 +278,7 @@ export function buildWorkspaceIndex(documents = []) {
     folderTree,
     tagMap,
     stats: {
-      totalDocuments: documents.length,
+      totalDocuments: totalNoteCount,
       totalHeaders: totalHeaderCount,
       totalWordCount,
       totalCodeBlocks: totalCodeBlockCount,
@@ -259,6 +318,7 @@ export function searchMultiLevelIndex(workspaceIndex, query = "", options = {}) 
           docId: docIndex.docId,
           docTitle: docIndex.title,
           filePath: docIndex.filePath,
+          relativePath: docIndex.relativePath,
           header,
           matchedBlocks: matchingBlocks,
           matchType: headerTextMatches

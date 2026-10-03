@@ -191,7 +191,7 @@
 .provider-card {
   padding: 5px 8px;
   border: 1px solid #d9e3df;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #ffffff;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -237,7 +237,7 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   background: #e8e3d8;
   color: #7a7060;
   text-transform: uppercase;
@@ -292,7 +292,7 @@
   height: 28px;
   padding: 0 8px;
   border: 1px solid #d9dedb;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   font-size: 11px;
   font-family: 'Courier New', monospace;
 }
@@ -317,7 +317,7 @@
   margin-top: 4px;
   padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   font-size: 11px;
 }
 
@@ -370,7 +370,7 @@
   margin-bottom: 4px;
   padding: 5px 7px;
   border: 1px solid #e2ebe7;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #f8fbfa;
 }
 
@@ -473,7 +473,7 @@
 
 .info-section code {
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   background: #f2f5f4;
   color: #4f6469;
   font-family: 'Courier New', monospace;
@@ -493,7 +493,7 @@
   height: 28px;
   padding: 0 9px;
   border: 1px solid #d9dedb;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: #ffffff;
   color: #1a3a3e;
   font-size: 11px;
@@ -541,7 +541,7 @@
   padding: 7px;
   background: rgba(255, 193, 7, 0.06);
   border: 1px solid rgba(255, 193, 7, 0.25);
-  border-radius: 6px;
+  border-radius: var(--radius-default);
 }
 
 .capability-warning {
@@ -577,7 +577,7 @@
   padding: 5px 10px;
   background: rgba(100, 200, 160, 0.08);
   border: 1px solid rgba(100, 200, 160, 0.2);
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   font-size: 11px;
   color: #3d6f7a;
   font-weight: 500;
@@ -871,7 +871,7 @@
   gap: 4px;
   background: var(--surface-muted, #f1f5f4);
   padding: 4px;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   border: 1px solid var(--border-soft, #dce4e1);
   margin-bottom: 14px;
 }
@@ -888,7 +888,7 @@
   color: var(--text-muted, #61767c);
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;

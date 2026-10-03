@@ -728,7 +728,7 @@ async function push(workspacePath, options = {}) {
     const repoRoot = await findRepoRoot(workspacePath);
     if (!repoRoot) return fail("Not a git repository.");
 
-    const { remote = "origin", branch, auth } = options;
+    const { remote = "origin", branch, auth, setUpstream = true } = options;
     const g = git(repoRoot);
 
     // For PAT auth, rewrite the remote URL temporarily
@@ -743,7 +743,14 @@ async function push(workspacePath, options = {}) {
       }
     }
 
-    const pushArgs = branch ? [remote, branch] : [remote];
+    const status = await g.status().catch(() => ({}));
+    const currentBranch = branch || status.current || "main";
+
+    // Use -u to establish upstream tracking so future git pull/push know which branch to track
+    const pushArgs = setUpstream || !status.tracking
+      ? ["-u", remote, currentBranch]
+      : (branch ? [remote, branch] : [remote]);
+
     const result = await g.push(pushArgs);
 
     // Restore original URL (remove embedded credentials)
@@ -781,8 +788,27 @@ async function pull(workspacePath, options = {}) {
       }
     }
 
-    const pullArgs = branch ? [remote, branch] : [remote];
-    const result = await g.pull(...pullArgs);
+    const status = await g.status().catch(() => ({}));
+    const currentBranch = branch || status.current || "main";
+
+    let result;
+    try {
+      result = await g.pull(remote, currentBranch);
+    } catch (pullErr) {
+      const errMsg = String(pullErr?.message || "");
+      // If remote branch doesn't exist yet or tracking info is not configured, don't fail sync
+      if (
+        errMsg.includes("There is no tracking information") ||
+        errMsg.includes("couldn't find remote ref") ||
+        errMsg.includes("no such ref was fetched") ||
+        errMsg.includes("fatal: couldn't find remote ref") ||
+        errMsg.includes("branch does not exist")
+      ) {
+        result = { files: [], summary: { insertions: 0, deletions: 0 } };
+      } else {
+        throw pullErr;
+      }
+    }
 
     if (remoteUrl) {
       try {

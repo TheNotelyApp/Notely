@@ -24,11 +24,13 @@ import {
   onExportRecordAdded,
 } from "../services/electronService.js";
 import AppButton from "./AppButton.jsx";
+import SubpageHeader from "./layout/SubpageHeader.jsx";
 import { AppCard } from "./AppCard.jsx";
 import useConfirm from "../hooks/useConfirm.js";
 import "../styles/DownloadsPage.css";
 
 import { formatBytes, formatTimestamp } from "../utils/formatUtils.js";
+import { showInfoToast, showErrorToast } from "../utils/notificationUtils.js";
 
 function getIconForType(type) {
   switch (type) {
@@ -98,17 +100,32 @@ export function DownloadsPage({ onBack }) {
 
   const handleShowInFolder = async (filePath) => {
     if (!filePath) return;
-    await showInFolder(filePath);
+    try {
+      const res = await showInFolder(filePath);
+      if (res === false) {
+        showErrorToast("Unable to reveal file location. It may have been moved or deleted.");
+      }
+    } catch {
+      showErrorToast("Unable to reveal file in folder.");
+    }
   };
 
   const handleOpenFile = async (filePath) => {
     if (!filePath) return;
-    await openExportFile(filePath);
+    try {
+      const res = await openExportFile(filePath);
+      if (res === false) {
+        showErrorToast("Unable to open exported file. It may have been moved or deleted.");
+      }
+    } catch {
+      showErrorToast("Unable to open exported file.");
+    }
   };
 
   const handleRemove = async (id) => {
     await removeExportRecord(id);
     setHistory((prev) => prev.filter((item) => item.id !== id));
+    showInfoToast("Export record removed.");
   };
 
   const handleClearAll = async () => {
@@ -124,6 +141,7 @@ export function DownloadsPage({ onBack }) {
 
     await clearExportHistory();
     setHistory([]);
+    showInfoToast("Export history cleared.");
   };
 
   const handleOpenDownloadsFolder = async () => {
@@ -183,54 +201,47 @@ export function DownloadsPage({ onBack }) {
 
   return (
     <div className="downloads-page">
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Downloads location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">Downloads & Export History</span>
-        </nav>
+      <SubpageHeader
+        currentTitle="Downloads & Export History"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <>
+            <div className="topbar-stat-pill" data-tooltip="Exported items">
+              <Download size={12} />
+              <span>{filteredHistory.length} items</span>
+            </div>
 
-        <div className="detail-topbar-actions">
-          <div className="topbar-stat-pill" data-tooltip="Exported items">
-            <Download size={12} />
-            <span>{filteredHistory.length} items</span>
-          </div>
+            {defaultDir && (
+              <AppButton
+                variant="small"
+                onClick={handleOpenDownloadsFolder}
+                title={`Default folder: ${defaultDir}`}
+              >
+                <FolderOpen size={14} />
+                <span>Downloads Folder</span>
+              </AppButton>
+            )}
 
-          {defaultDir && (
-            <AppButton
-              variant="small"
-              onClick={handleOpenDownloadsFolder}
-              title={`Default folder: ${defaultDir}`}
-            >
-              <FolderOpen size={14} />
-              <span>Downloads Folder</span>
+            {history.length > 0 && (
+              <AppButton
+                variant="small"
+                danger
+                onClick={handleClearAll}
+                title="Clear export history records"
+              >
+                <Trash2 size={14} />
+                <span>Clear History</span>
+              </AppButton>
+            )}
+
+            <AppButton variant="small" onClick={loadHistory} title="Refresh history">
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <span>Refresh</span>
             </AppButton>
-          )}
-
-          {history.length > 0 && (
-            <AppButton
-              variant="small"
-              danger
-              onClick={handleClearAll}
-              title="Clear export history records"
-            >
-              <Trash2 size={14} />
-              <span>Clear History</span>
-            </AppButton>
-          )}
-
-          <AppButton variant="small" onClick={loadHistory} title="Refresh history">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            <span>Refresh</span>
-          </AppButton>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="downloads-body">
         <div className="downloads-controls">

@@ -132,7 +132,7 @@ export function NotePreviewModal({
           background: "var(--surface-bg, #ffffff)",
           color: "var(--text-strong, var(--app-text, #333333))",
           border: "1px solid var(--border-soft, #e2e8f0)",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-default)",
           overflow: "hidden",
           boxShadow: "var(--shadow-overlay, 0 10px 30px rgba(0,0,0,0.3))"
         }}
@@ -167,7 +167,7 @@ export function NotePreviewModal({
                 style={{
                   fontSize: "10px",
                   padding: "1px 6px",
-                  borderRadius: "4px",
+                  borderRadius: "var(--radius-default)",
                   background: "var(--accent-muted, rgba(99,102,241,0.2))",
                   color: "var(--accent-solid, #6366f1)",
                   fontFamily: "monospace",
@@ -190,7 +190,7 @@ export function NotePreviewModal({
               padding: "4px",
               display: "flex",
               alignItems: "center",
-              borderRadius: "4px"
+              borderRadius: "var(--radius-default)"
             }}
             title="Close Preview"
             aria-label="Close Preview"
@@ -227,7 +227,7 @@ export function NotePreviewModal({
             <div
               style={{
                 padding: "16px",
-                borderRadius: "6px",
+                borderRadius: "var(--radius-default)",
                 background: "var(--surface-accent, rgba(239,68,68,0.1))",
                 color: "var(--accent-danger, #ef4444)",
                 fontSize: "12px",

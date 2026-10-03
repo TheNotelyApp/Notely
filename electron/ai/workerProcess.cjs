@@ -7,15 +7,22 @@ const fs = require('fs');
 
 function scanMarkdownFiles(dir) {
   let results = [];
+  const IGNORE_DIR_NAMES = new Set([
+    'node_modules', 'dist', 'build', 'out', 'assets', 'chunks', 'bundle', 'static',
+    'test', 'tests', '__tests__', '__test__', 'spec', 'specs', 'fixtures', 'mocks',
+    'cypress', 'playwright', 'e2e'
+  ]);
   try {
     const list = fs.readdirSync(dir);
     for (const file of list) {
-      if (file.startsWith('.') || file === 'node_modules') continue;
+      const lower = file.toLowerCase();
+      if (file.startsWith('.') || IGNORE_DIR_NAMES.has(lower) || /.*[-_.]dist.*/i.test(lower) || /.*[-_.]build.*/i.test(lower)) continue;
       const fullPath = path.join(dir, file);
       const stat = fs.statSync(fullPath);
       if (stat && stat.isDirectory()) {
         results = results.concat(scanMarkdownFiles(fullPath));
       } else if (file.endsWith('.md')) {
+        if (/\.(test|spec)\.md$/i.test(file)) continue;
         results.push(fullPath);
       }
     }
@@ -28,6 +35,7 @@ let indexWorker = null;
 let queue = null;
 let localEmbedder = null;
 
+let mockAgent = null;
 let graphDb = null;
 let graphQueue = null;
 let graphWorker = null;
@@ -66,7 +74,7 @@ if (process.parentPort) {
         graphQueue = new GraphQueue(graphDb);
         const AIConfig = require('../../ai/core/AIConfig');
         const aiConfig = new AIConfig(appDataDir);
-        const mockAgent = { appDataDir, workspaceRoot, config: aiConfig };
+        mockAgent = { appDataDir, workspaceRoot, config: aiConfig };
         graphService = new GraphService(mockAgent, graphDb);
         graphWorker = new GraphWorker(graphDb, graphQueue, graphService);
 
@@ -216,9 +224,10 @@ if (process.parentPort) {
         }
       } else if (type === 'rebuildGraph') {
         let { workspaceFiles } = payload;
+        const workspaceRoot = graphDb?.workspaceRoot || mockAgent?.workspaceRoot;
         if (!Array.isArray(workspaceFiles) || workspaceFiles.length === 0) {
-          if (graphDb && graphDb.workspaceRoot) {
-            workspaceFiles = scanMarkdownFiles(graphDb.workspaceRoot);
+          if (workspaceRoot) {
+            workspaceFiles = scanMarkdownFiles(workspaceRoot);
           } else {
             workspaceFiles = [];
           }
@@ -226,10 +235,44 @@ if (process.parentPort) {
         if (graphDb) {
           graphDb.clear();
         }
+
+        // Run comprehensive GraphBuilder to index attached repos, metadata, and diagrams
+        if (workspaceRoot && graphDb && graphService) {
+          try {
+            const GraphBuilder = require('../../ai/graph/GraphBuilder');
+            const builder = new GraphBuilder(mockAgent, graphDb, graphService);
+            await builder.rebuild();
+          } catch (bErr) {
+            console.error('[Worker Process] GraphBuilder rebuild error:', bErr);
+          }
+        }
+
         if (graphQueue) {
           graphQueue.clear();
           for (const file of workspaceFiles) {
             graphQueue.enqueue(file);
+          }
+
+          // Enqueue code files from attached repositories
+          if (workspaceRoot) {
+            try {
+              const metaPath = path.join(workspaceRoot, '.notes-app', 'metadata.json');
+              if (fs.existsSync(metaPath)) {
+                const metaObj = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                if (Array.isArray(metaObj.attachedRepos)) {
+                  const { RepositoryScanner } = require('../../ai/graph/sources/code');
+                  const scanner = new RepositoryScanner();
+                  for (const r of metaObj.attachedRepos) {
+                    if (r.path && fs.existsSync(r.path)) {
+                      const codeFiles = scanner.scan(r.path);
+                      for (const cf of codeFiles) {
+                        graphQueue.enqueue(cf);
+                      }
+                    }
+                  }
+                }
+              }
+            } catch { /* ignore */ }
           }
         }
         if (graphWorker) {

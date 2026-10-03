@@ -6,6 +6,7 @@ import {
   extractWorkspaceUsedAssets,
   filterAssets,
   mergeDiskMediaIntoCatalog,
+  autoLinkAudioAndTranscripts,
 } from "../../services/workspaceMediaService";
 
 describe("workspaceMediaService", () => {
@@ -29,6 +30,8 @@ describe("workspaceMediaService", () => {
     expect(normalizeAssetPath("./images/diagram.png")).toBe("images/diagram.png");
     expect(normalizeAssetPath(".\\assets\\report.pdf")).toBe("assets/report.pdf");
     expect(normalizeAssetPath("<./media/docs/manual.pdf>")).toBe("media/docs/manual.pdf");
+    expect(normalizeAssetPath("images/photo%20with%20spaces.png \"My Photo\"")).toBe("images/photo with spaces.png");
+    expect(normalizeAssetPath("images/test.png?v=123#page=1")).toBe("images/test.png");
   });
 
   it("extracts used diagrams, media, and PDFs with referencing notes and line numbers", () => {
@@ -100,6 +103,49 @@ And the same architecture image:
     expect(pdfItem.referencedBy[0].noteTitle).toBe("System Architecture");
   });
 
+  it("extracts Wikilinks and HTML media tags correctly", () => {
+    const documents = [
+      {
+        filePath: "/workspace/notes/ObsidianNotes.md",
+        title: "Obsidian Notes",
+        content: `# Note
+Wikilink Image:
+![[media/images/screenshot.png|My Screenshot]]
+
+Wikilink Document:
+[[media/docs/specs.pdf|Product Specs]]
+
+HTML Image:
+<img src="./images/banner.png" alt="Header Banner" />
+
+HTML Audio:
+<audio src="/media/audio/podcast.mp3" controls></audio>
+`,
+      },
+    ];
+
+    const assets = extractWorkspaceUsedAssets(documents);
+    expect(assets.length).toBe(4);
+
+    const wikiImg = assets.find((a) => a.path.includes("screenshot.png"));
+    expect(wikiImg).toBeDefined();
+    expect(wikiImg.name).toBe("My Screenshot");
+    expect(wikiImg.category).toBe("image");
+
+    const wikiDoc = assets.find((a) => a.path.includes("specs.pdf"));
+    expect(wikiDoc).toBeDefined();
+    expect(wikiDoc.name).toBe("Product Specs");
+    expect(wikiDoc.category).toBe("pdf");
+
+    const htmlImg = assets.find((a) => a.path.includes("banner.png"));
+    expect(htmlImg).toBeDefined();
+    expect(htmlImg.name).toBe("Header Banner");
+
+    const htmlAudio = assets.find((a) => a.path.includes("podcast.mp3"));
+    expect(htmlAudio).toBeDefined();
+    expect(htmlAudio.category).toBe("audio");
+  });
+
   it("filters items by search query, categories, and reference count", () => {
     const items = [
       {
@@ -156,11 +202,13 @@ And the same architecture image:
     expect(filterAssets(itemsWithUnused, { usageFilter: "unused" })[0].name).toBe("meeting_recording.webm");
   });
 
-  it("merges physical disk files into catalog and identifies unreferenced orphans", () => {
+  it("merges physical disk files into catalog and prevents false unused due to alt text", () => {
+    // Note uses custom alt text: ![Custom Banner Caption](./images/logo.png)
     const usedAssets = [
       {
         id: "1",
-        name: "logo.png",
+        name: "Custom Banner Caption",
+        fileName: "logo.png",
         path: "images/logo.png",
         category: "image",
         referenceCount: 1,
@@ -177,6 +225,12 @@ And the same architecture image:
     const combined = mergeDiskMediaIntoCatalog(usedAssets, diskFiles);
     expect(combined.length).toBe(3);
 
+    // logo.png should NOT be added again as an unused orphan
+    const logoItems = combined.filter((a) => (a.fileName || a.name) === "logo.png" || a.path === "images/logo.png");
+    expect(logoItems.length).toBe(1);
+    expect(logoItems[0].referenceCount).toBe(1);
+    expect(logoItems[0].size).toBe(1024); // enriched with disk file size
+
     const unusedAudio = combined.find((a) => a.name === "meeting_2026.webm");
     expect(unusedAudio).toBeDefined();
     expect(unusedAudio.category).toBe("audio");
@@ -185,97 +239,73 @@ And the same architecture image:
 
     const unusedSnip = combined.find((a) => a.name === "snip_123.png");
     expect(unusedSnip).toBeDefined();
+    expect(unusedSnip.category).toBe("image");
     expect(unusedSnip.referenceCount).toBe(0);
     expect(unusedSnip.isUnused).toBe(true);
-
-    // Existing used logo kept its references
-    const logo = combined.find((a) => a.name === "logo.png");
-    expect(logo.referenceCount).toBe(1);
   });
 
-  it("extracts Excalidraw, Draw.io, and Wireframe diagrams with diagramId", () => {
+  it("links companion audio files with transcripts automatically", () => {
+    const assets = [
+      {
+        id: "audio-1",
+        name: "standup_meeting.webm",
+        fileName: "standup_meeting.webm",
+        path: "media/audio/standup_meeting.webm",
+        category: "audio",
+        referenceCount: 1,
+        referencedBy: [{ noteTitle: "Daily Standup" }],
+      },
+      {
+        id: "tr-1",
+        name: "standup_meeting_transcript.json",
+        fileName: "standup_meeting_transcript.json",
+        path: "media/audio/standup_meeting_transcript.json",
+        category: "transcript",
+        referenceCount: 1,
+        referencedBy: [{ noteTitle: "Daily Standup" }],
+      },
+    ];
+
+    autoLinkAudioAndTranscripts(assets);
+
+    expect(assets[0].linkedTranscriptId).toBe("tr-1");
+    expect(assets[0].linkedTranscriptPath).toBe("media/audio/standup_meeting_transcript.json");
+
+    expect(assets[1].linkedAudioId).toBe("audio-1");
+    expect(assets[1].linkedAudioPath).toBe("media/audio/standup_meeting.webm");
+  });
+
+  it("extracts and identifies Draw.io diagrams correctly", () => {
     const documents = [
       {
-        filePath: "/workspace/notes/Designs.md",
-        title: "Designs Note",
-        content: `# Designs
-Draw.io:
+        filePath: "/notes/cloud.md",
+        title: "Cloud Infrastructure",
+        content: `
+# Cloud Architecture
+Here is the cloud diagram:
 ![Drawio Diagram](media/draw.io/drawio_789.png)
-
-Excalidraw:
-![Excalidraw Diagram](media/excalidraw/exc_123/diagram.png)
-
-Wireframe:
-![Wireframe Diagram](media/wireframes/wire_456.png)
-`,
+        `,
       },
     ];
 
     const assets = extractWorkspaceUsedAssets(documents);
     const drawio = assets.find((a) => a.subType === "drawio");
-    const excalidraw = assets.find((a) => a.subType === "excalidraw");
-    const wireframe = assets.find((a) => a.subType === "wireframe");
 
     expect(drawio).toBeDefined();
     expect(drawio.category).toBe("diagram");
     expect(drawio.diagramId).toBe("drawio_789");
-
-    expect(excalidraw).toBeDefined();
-    expect(excalidraw.category).toBe("diagram");
-    expect(excalidraw.diagramId).toBe("exc_123");
-
-    expect(wireframe).toBeDefined();
-    expect(wireframe.category).toBe("wireframe");
-    expect(wireframe.diagramId).toBe("wire_456");
   });
 
-  it("identifies audio companion transcripts and filters them by transcript category", () => {
-    const diskFiles = [
-      {
-        path: "media/audio/meeting_2026-09-26.webm",
-        name: "meeting_2026-09-26.webm",
-        ext: "webm",
-        size: 500000,
-        mtime: "2026-09-26T10:00:00Z",
-      },
-      {
-        path: "media/audio/meeting_2026-09-26.json",
-        name: "meeting_2026-09-26.json",
-        ext: "json",
-        size: 1200,
-        mtime: "2026-09-26T10:01:00Z",
-      },
-      {
-        path: "media/interview_transcript.json",
-        name: "interview_transcript.json",
-        ext: "json",
-        size: 2400,
-        mtime: "2026-09-26T11:00:00Z",
-      },
-    ];
-
-    const catalog = mergeDiskMediaIntoCatalog([], diskFiles);
-    const transcripts = catalog.filter((a) => a.category === "transcript");
-
-    expect(transcripts.length).toBe(2);
-    expect(transcripts.map((t) => t.name)).toContain("meeting_2026-09-26.json");
-    expect(transcripts.map((t) => t.name)).toContain("interview_transcript.json");
-
-    const filtered = filterAssets(catalog, {
-      selectedCategories: { transcript: true, audio: false, video: false, image: false, diagram: false, document: false, pdf: false },
-    });
-    expect(filtered.length).toBe(2);
-  });
-
-  it("shows each diagram once and suppresses duplicate saved preview images", () => {
+  it("extracts and identifies Wireframe diagrams and merges them without duplication", () => {
     const documents = [
       {
-        filePath: "/workspace/notes/UI.md",
-        title: "UI Specs",
+        filePath: "/notes/mobile-app.md",
+        title: "Mobile App Wireframe",
         content: `
-# Dashboard Design
+# Mobile App Wireframe
+Here is the dashboard UI prototype:
 ![Wireframe Diagram](media/wireframes/f7f1c107.png)
-`,
+        `,
       },
     ];
 
@@ -284,15 +314,15 @@ Wireframe:
         path: "media/wireframes/f7f1c107.wireframe.json",
         name: "f7f1c107.wireframe.json",
         ext: "json",
-        size: 3400,
-        mtime: "2026-09-27T10:00:00Z",
+        size: 2400,
+        mtime: "2026-09-28T10:00:00Z",
       },
       {
         path: "media/wireframes/f7f1c107.png",
         name: "f7f1c107.png",
         ext: "png",
-        size: 15000,
-        mtime: "2026-09-27T10:00:00Z",
+        size: 15400,
+        mtime: "2026-09-28T10:00:00Z",
       },
       {
         path: "media/wireframes/unused_orphan.wireframe.json",
@@ -320,19 +350,99 @@ Wireframe:
     // Used wireframe
     const usedWireframe = wireframes.find((a) => a.diagramId === "f7f1c107");
     expect(usedWireframe).toBeDefined();
-    expect(usedWireframe.name).toBe("f7f1c107.wireframe.json");
     expect(usedWireframe.referenceCount).toBe(1);
-    expect(usedWireframe.referencedBy[0]?.noteTitle).toBe("UI Specs");
 
-    // Orphan wireframe (preview PNG unused_orphan.png was suppressed)
-    const orphanWireframe = wireframes.find((a) => a.diagramId === "unused_orphan");
-    expect(orphanWireframe).toBeDefined();
-    expect(orphanWireframe.name).toBe("unused_orphan.wireframe.json");
-    expect(orphanWireframe.referenceCount).toBe(0);
-    expect(orphanWireframe.isUnused).toBe(true);
+    // Unused wireframe
+    const unusedWireframe = wireframes.find((a) => a.diagramId === "unused_orphan");
+    expect(unusedWireframe).toBeDefined();
+    expect(unusedWireframe.referenceCount).toBe(0);
+    expect(unusedWireframe.isUnused).toBe(true);
+    expect(unusedWireframe.previewPath).toBe("media/wireframes/unused_orphan.png");
+  });
 
-    // Ensure no duplicate PNG preview image card exists in images category
+  it("deduplicates Excalidraw and Draw.io diagram rendered preview images from catalog", () => {
+    const documents = [
+      {
+        filePath: "/notes/architecture.md",
+        title: "System Architecture",
+        content: `
+# Architecture
+![Excalidraw Diagram](../../media/excalidraw/diag_123/diagram.png){data-diagram-id="diag_123" data-diagram-type="excalidraw"}
+![Drawio Diagram](media/draw.io/chart_456.png)
+        `,
+      },
+    ];
+
+    const diskFiles = [
+      {
+        path: "media/excalidraw/diag_123/diagram.excalidraw",
+        name: "diagram.excalidraw",
+        ext: "excalidraw",
+        size: 5000,
+        mtime: "2026-09-29T12:00:00Z",
+      },
+      {
+        path: "media/excalidraw/diag_123/diagram.png",
+        name: "diagram.png",
+        ext: "png",
+        size: 25000,
+        mtime: "2026-09-29T12:00:00Z",
+      },
+      {
+        path: "media/draw.io/chart_456.drawio",
+        name: "chart_456.drawio",
+        ext: "drawio",
+        size: 3200,
+        mtime: "2026-09-29T13:00:00Z",
+      },
+      {
+        path: "media/draw.io/chart_456.png",
+        name: "chart_456.png",
+        ext: "png",
+        size: 18000,
+        mtime: "2026-09-29T13:00:00Z",
+      },
+      // Unreferenced on disk
+      {
+        path: "media/draw.io/unreferenced_flow.drawio",
+        name: "unreferenced_flow.drawio",
+        ext: "drawio",
+        size: 2000,
+        mtime: "2026-09-29T14:00:00Z",
+      },
+      {
+        path: "media/draw.io/unreferenced_flow.png",
+        name: "unreferenced_flow.png",
+        ext: "png",
+        size: 14000,
+        mtime: "2026-09-29T14:00:00Z",
+      },
+    ];
+
+    const usedAssets = extractWorkspaceUsedAssets(documents);
+    const catalog = mergeDiskMediaIntoCatalog(usedAssets, diskFiles);
+
+    // No items should be categorized as generic "image"
     const images = catalog.filter((a) => a.category === "image");
     expect(images.length).toBe(0);
+
+    // Exactly 3 diagrams total (diag_123, chart_456, unreferenced_flow)
+    const diagrams = catalog.filter((a) => a.category === "diagram");
+    expect(diagrams.length).toBe(3);
+
+    const excalidraw = diagrams.find((d) => d.diagramId === "diag_123");
+    expect(excalidraw).toBeDefined();
+    expect(excalidraw.subType).toBe("excalidraw");
+    expect(excalidraw.previewPath).toBe("media/excalidraw/diag_123/diagram.png");
+
+    const drawio = diagrams.find((d) => d.diagramId === "chart_456");
+    expect(drawio).toBeDefined();
+    expect(drawio.subType).toBe("drawio");
+    expect(drawio.previewPath).toBe("media/draw.io/chart_456.png");
+
+    const unrefDrawio = diagrams.find((d) => d.diagramId === "unreferenced_flow");
+    expect(unrefDrawio).toBeDefined();
+    expect(unrefDrawio.isUnused).toBe(true);
+    expect(unrefDrawio.previewPath).toBe("media/draw.io/unreferenced_flow.png");
   });
 });

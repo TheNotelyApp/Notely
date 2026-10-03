@@ -7,6 +7,7 @@ import {
   FileText,
   FileCode,
   Image as ImageIcon,
+  X,
 } from "lucide-react";
 import { openExportFile, showInFolder } from "../services/electronService.js";
 
@@ -65,9 +66,18 @@ export function DownloadsPopover({
     >
       <div className="downloads-popover-header">
         <div className="downloads-popover-title">
-          <Download size={14} />
-          <span>Downloads</span>
+          <Download size={12} />
+          <span>Recent Downloads</span>
         </div>
+        <button
+          type="button"
+          className="downloads-popover-close"
+          onClick={onClose}
+          aria-label="Close downloads"
+          title="Close"
+        >
+          <X size={12} />
+        </button>
       </div>
 
       <div className="downloads-popover-body">

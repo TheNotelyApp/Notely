@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Trash2, Zap, AlertCircle, Eye, EyeOff, Download, Database, Mic, Cpu, Network } from 'lucide-react';
 import AppInput from './AppInput';
 import AppSelect from './AppSelect';
+import AppButton from './AppButton';
 import "../styles/AISettings.css";
 import OverlayDialog from './OverlayDialog';
 import KnowledgeGraphSettings from './KnowledgeGraphSettings';
@@ -16,6 +17,7 @@ import {
   showSuccessToast,
   showErrorToast,
   showInfoToast,
+  showWarningToast,
 } from '../utils/notificationUtils';
 import {
   aiClearData,
@@ -214,9 +216,7 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleSaveAPIKey = async () => {
     const keyToSave = showPlaintext ? plaintextKey : apiKey;
     if (!keyToSave || keyToSave.includes('...')) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Please enter a complete API key.', type: 'warning' }
-      }));
+      showWarningToast('Please enter a complete API key.');
       return;
     }
 
@@ -225,20 +225,14 @@ export const AISettingsContent = ({ _onClose }) => {
       const response = await aiSetApiKey(selectedProvider, keyToSave);
 
       if (response.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `${selectedProvider} API key saved successfully.`, type: 'success' }
-        }));
+        showSuccessToast(`${selectedProvider} API key saved successfully.`);
         setApiKey(keyToSave.substring(0, 5) + '...' + keyToSave.substring(keyToSave.length - 5));
         setPlaintextKey(keyToSave);
       } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to save key: ${response.error}`, type: 'error' }
-        }));
+        showErrorToast(`Failed to save key: ${response.error}`);
       }
     } catch (error) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error saving key: ${error.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error saving key: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -247,9 +241,7 @@ export const AISettingsContent = ({ _onClose }) => {
   const handleSaveHfToken = async () => {
     const tokenToSave = showHfPlaintext ? hfPlaintextToken : hfToken;
     if (!tokenToSave || tokenToSave.includes('...')) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: 'Please enter a complete HuggingFace token.', type: 'warning' }
-      }));
+      showWarningToast('Please enter a complete HuggingFace token.');
       return;
     }
 
@@ -257,21 +249,15 @@ export const AISettingsContent = ({ _onClose }) => {
       setLoading(true);
       const response = await aiSetApiKey('huggingface', tokenToSave);
       if (response.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'HuggingFace token saved successfully.', type: 'success' }
-        }));
+        showSuccessToast('HuggingFace token saved successfully.');
         setHfToken(tokenToSave.substring(0, 5) + '...' + tokenToSave.substring(tokenToSave.length - 5));
         setHfPlaintextToken(tokenToSave);
         setHfConfigured(true);
       } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to save HuggingFace token: ${response.error}`, type: 'error' }
-        }));
+        showErrorToast(`Failed to save HuggingFace token: ${response.error}`);
       }
     } catch (error) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error: ${error.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -289,20 +275,14 @@ export const AISettingsContent = ({ _onClose }) => {
       setTestResult(res);
       if (res.success) {
         setStatus(`Connection to ${selectedProvider} successful!`);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Connected to ${selectedProvider} successfully!`, type: 'success' }
-        }));
+        showSuccessToast(`Connected to ${selectedProvider} successfully!`);
       } else {
         setStatus(`Connection failed: ${res.error}`);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Connection failed: ${res.error}`, type: 'error' }
-        }));
+        showErrorToast(`Connection failed: ${res.error}`);
       }
     } catch (err) {
       setStatus(`Test failed: ${err.message}`);
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -315,17 +295,14 @@ export const AISettingsContent = ({ _onClose }) => {
       const res = await aiTestConnection({ provider: 'huggingface' });
       if (res.success) {
         setStatus('HuggingFace connection successful!');
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'HuggingFace embeddings connected successfully!', type: 'success' }
-        }));
+        showSuccessToast('HuggingFace embeddings connected successfully!');
       } else {
         setStatus(`HuggingFace connection failed: ${res.error}`);
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `HuggingFace connection failed: ${res.error}`, type: 'error' }
-        }));
+        showErrorToast(`HuggingFace connection failed: ${res.error}`);
       }
     } catch (err) {
       setStatus(`HuggingFace test failed: ${err.message}`);
+      showErrorToast(`HuggingFace test failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -339,18 +316,12 @@ export const AISettingsContent = ({ _onClose }) => {
       setLoading(true);
       const res = await aiClearData();
       if (res.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'AI local data cleared successfully.', type: 'success' }
-        }));
+        showSuccessToast('AI local data cleared successfully.');
       } else {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: `Failed to clear data: ${res.error}`, type: 'error' }
-        }));
+        showErrorToast(`Failed to clear data: ${res.error}`);
       }
     } catch (err) {
-      window.dispatchEvent(new CustomEvent('app:toast', {
-        detail: { message: `Error clearing data: ${err.message}`, type: 'error' }
-      }));
+      showErrorToast(`Error clearing data: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -397,7 +368,7 @@ export const AISettingsContent = ({ _onClose }) => {
           justifyContent: "space-between",
           alignItems: "center",
           padding: "12px 16px",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-default)",
           border: "1px solid var(--border-soft)",
           background: "var(--background-soft)",
           marginBottom: "16px"
@@ -422,13 +393,9 @@ export const AISettingsContent = ({ _onClose }) => {
                     await aiDisable();
                   }
                   await aiSetPreferences(nextPrefs);
-                  window.dispatchEvent(new CustomEvent('app:toast', {
-                    detail: { message: `AI Subsystem ${checked ? 'enabled' : 'disabled'}.`, type: 'success' }
-                  }));
+                  showSuccessToast(`AI Subsystem ${checked ? 'enabled' : 'disabled'}.`);
                 } catch (err) {
-                  window.dispatchEvent(new CustomEvent('app:toast', {
-                    detail: { message: `Failed to toggle AI: ${err.message}`, type: 'error' }
-                  }));
+                  showErrorToast(`Failed to toggle AI: ${err.message}`);
                 }
               }}
               style={{ opacity: 0, width: 0, height: 0 }}
@@ -437,7 +404,7 @@ export const AISettingsContent = ({ _onClose }) => {
               position: "absolute",
               top: 0, left: 0, right: 0, bottom: 0,
               background: isAIEnabled ? "var(--accent-solid)" : "var(--border-default)",
-              borderRadius: "20px",
+              borderRadius: "9999px",
               transition: "background var(--motion-standard)",
               cursor: "pointer"
             }}>
@@ -520,11 +487,10 @@ export const AISettingsContent = ({ _onClose }) => {
                       setPreferences(updatedPrefs);
                       try {
                         await aiSetPreferences(updatedPrefs);
-                        window.dispatchEvent(new CustomEvent('app:toast', {
-                          detail: { message: `Active provider set to ${val}.`, type: 'success' }
-                        }));
+                        showSuccessToast(`Active provider set to ${val}.`);
                       } catch (err) {
                         console.error('Failed to set active provider:', err);
+                        showErrorToast(`Failed to set active provider: ${err?.message || 'Unknown error'}`);
                       }
                     }}
                     disabled={loading}
@@ -613,22 +579,20 @@ export const AISettingsContent = ({ _onClose }) => {
                           </AppSelect>
                         );
                       })()}
-                      <button
-                        className="btn btn-primary"
+                      <AppButton
+                        variant="primary"
                         onClick={handleSaveAPIKey}
                         disabled={loading || !(showPlaintext ? plaintextKey : apiKey)}
-                        type="button"
                       >
                         <Save size={12} /> Save
-                      </button>
-                      <button
-                        className="btn btn-secondary"
+                      </AppButton>
+                      <AppButton
+                        variant="secondary"
                         onClick={handleTestConnection}
                         disabled={loading || !(showPlaintext ? plaintextKey : apiKey)}
-                        type="button"
                       >
                         <Zap size={12} /> Test
-                      </button>
+                      </AppButton>
                     </div>
                     
                     {/* Provider-specific details and helper links */}
@@ -648,7 +612,7 @@ export const AISettingsContent = ({ _onClose }) => {
                 {getCapabilityWarnings().length > 0 && (
                   <div className="ai-settings-capability-warnings" style={{ marginTop: "4px", marginBottom: "8px", display: "flex", flexDirection: "column", gap: "2px" }}>
                     {getCapabilityWarnings().map((warning, idx) => (
-                      <div key={idx} style={{ display: "flex", gap: "6px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "4px", padding: "6px" }}>
+                      <div key={idx} style={{ display: "flex", gap: "6px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-default)", padding: "6px" }}>
                         <AlertCircle size={12} style={{ color: "var(--text-warning)" }} />
                         <div style={{ display: "flex", flexDirection: "column" }}>
                           <span style={{ fontSize: "10px", fontWeight: "600", color: "var(--text-strong)" }}>{warning.title}</span>
@@ -706,7 +670,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     </label>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", fontSize: "11px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", fontSize: "11px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                       <span style={{ fontWeight: "600", color: "var(--text-strong)" }}>Local AI Memory & Cache</span>
                       <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Data stored in <code>.notes-app/ai-memory.db</code></span>
@@ -745,8 +709,8 @@ export const AISettingsContent = ({ _onClose }) => {
                     <option value="internal">Local Model (BGE ONNX)</option>
                     <option value="huggingface">HuggingFace Inference API</option>
                   </AppSelect>
-                  <button
-                    className="btn btn-primary"
+                  <AppButton
+                    variant="primary"
                     onClick={async () => {
                       try {
                         setLoading(true);
@@ -771,32 +735,25 @@ export const AISettingsContent = ({ _onClose }) => {
                             await aiClearEmbeddingsData();
                             await aiRebuildEmbeddings();
                           }
-                          window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Active embedding provider set to ${nextEmb === 'internal' ? 'Local Model' : 'HuggingFace'} and saved.`, type: 'success' }
-                          }));
+                          showSuccessToast(`Active embedding provider set to ${nextEmb === 'internal' ? 'Local Model' : 'HuggingFace'} and saved.`);
                         } else {
-                          window.dispatchEvent(new CustomEvent('app:toast', {
-                            detail: { message: `Failed to save embedding provider: ${response.error}`, type: 'error' }
-                          }));
+                          showErrorToast(`Failed to save embedding provider: ${response.error}`);
                         }
                       } catch (err) {
-                        window.dispatchEvent(new CustomEvent('app:toast', {
-                          detail: { message: `Error: ${err.message}`, type: 'error' }
-                        }));
+                        showErrorToast(`Error: ${err.message}`);
                       } finally {
                         setLoading(false);
                       }
                     }}
                     disabled={loading}
-                    type="button"
                   >
                     <Save size={12} /> Save
-                  </button>
+                  </AppButton>
                 </div>
               </div>
 
               {preferences.embeddingProvider === 'huggingface' && (
-                <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                <div className="api-key-group compact" style={{ background: "var(--surface-muted)", padding: "6px 8px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
                   <p className="ai-settings-embeddings-info" style={{ margin: "0 0 6px 0", fontSize: "10px", color: "var(--text-secondary)" }}>
                     Uses HuggingFace Inference API free tier. Get a token at huggingface.co.
                   </p>
@@ -843,28 +800,26 @@ export const AISettingsContent = ({ _onClose }) => {
                         {showHfPlaintext ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
-                    <button
-                      className="btn btn-primary"
+                    <AppButton
+                      variant="primary"
                       onClick={handleSaveHfToken}
                       disabled={loading || !(showHfPlaintext ? hfPlaintextToken : hfToken)}
-                      type="button"
                     >
                       <Save size={12} /> Save
-                    </button>
-                    <button
-                      className="btn btn-secondary"
+                    </AppButton>
+                    <AppButton
+                      variant="secondary"
                       onClick={handleTestHfConnection}
                       disabled={loading || !hfConfigured}
-                      type="button"
                     >
                       <Zap size={12} /> Test
-                    </button>
+                    </AppButton>
                   </div>
                 </div>
               )}
 
               {((preferences.embeddingProvider || 'internal') === 'internal' || !modelStatus.downloaded) && (
-                <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "6px", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
+                <div style={{ padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)", marginTop: "6px" }}>
                   <h4 style={{ fontSize: "11px", fontWeight: "600", margin: "0 0 4px 0" }}>Local Model Status (BGE ONNX)</h4>
                   {modelStatus.downloaded ? (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -880,11 +835,10 @@ export const AISettingsContent = ({ _onClose }) => {
                             setLoading(true);
                             await aiDeleteModel();
                             setModelStatus({ downloaded: false, isDownloading: false, progress: 0 });
-                            window.dispatchEvent(new CustomEvent('app:toast', {
-                              detail: { message: 'Local BGE embedding model weights deleted.', type: 'info' }
-                            }));
+                            showInfoToast('Local BGE embedding model weights deleted.');
                           } catch (err) {
                             console.error(err);
+                            showErrorToast(`Failed to delete model: ${err?.message || 'Unknown error'}`);
                           } finally {
                             setLoading(false);
                           }
@@ -903,7 +857,7 @@ export const AISettingsContent = ({ _onClose }) => {
                         <span>Downloading local weights...</span>
                         <span>{modelStatus.progress}%</span>
                       </div>
-                      <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "var(--radius-default)", overflow: "hidden" }}>
                         <div style={{ width: `${modelStatus.progress}%`, height: "100%", background: "var(--accent-solid)" }}></div>
                       </div>
                     </div>
@@ -987,7 +941,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     <div style={{
                       padding: "10px 12px",
                       background: "var(--surface-muted)",
-                      borderRadius: "6px",
+                      borderRadius: "var(--radius-default)",
                       border: "1px solid var(--border-soft)",
                       marginTop: "8px",
                       minHeight: "68px",
@@ -1032,7 +986,7 @@ export const AISettingsContent = ({ _onClose }) => {
                             <span>{whisperModelStatus.statusText || 'Downloading ONNX model weights...'}</span>
                             <span>{whisperModelStatus.progress}%</span>
                           </div>
-                          <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "2px", overflow: "hidden" }}>
+                          <div style={{ width: "100%", height: "4px", background: "var(--border-soft)", borderRadius: "var(--radius-default)", overflow: "hidden" }}>
                             <div style={{ width: `${whisperModelStatus.progress}%`, height: "100%", background: "var(--accent-solid)", transition: "width 0.2s ease" }}></div>
                           </div>
                         </div>
@@ -1121,9 +1075,8 @@ export const AISettingsContent = ({ _onClose }) => {
                 </div>
 
                 <div className="ai-settings-inline-actions" style={{ marginTop: "8px" }}>
-                  <button
-                    className="btn btn-primary"
-                    type="button"
+                  <AppButton
+                    variant="primary"
                     onClick={async () => {
                       try {
                         setLoading(true);
@@ -1138,7 +1091,7 @@ export const AISettingsContent = ({ _onClose }) => {
                     disabled={loading}
                   >
                     <Save size={14} /> Save STT Settings
-                  </button>
+                  </AppButton>
                 </div>
               </section>
             </>

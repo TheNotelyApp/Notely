@@ -762,7 +762,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           }
         }
 
-        const mediaType = getMediaTypeFromExtension(ext);
+        const mediaType = getMediaTypeFromExtension(ext, resolvedLocal);
         if (mediaType && typeof onMediaClick === "function") {
           onMediaClick({ path: resolvedLocal, type: mediaType });
           return;
@@ -791,7 +791,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
       if (!src) return;
 
       const ext = src.split(".").pop()?.toLowerCase();
-      const mediaType = getMediaTypeFromExtension(ext);
+      const mediaType = getMediaTypeFromExtension(ext, src);
       if (!mediaType) return;
 
       event.preventDefault();
@@ -1002,7 +1002,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         });
         return;
       }
-      const mediaType = getMediaTypeFromExtension(ext) || "document";
+      const mediaType = getMediaTypeFromExtension(ext, resolvedPath) || "document";
 
       if (typeof onMediaClick === "function") {
         onMediaClick({ path: resolvedPath, type: mediaType });
@@ -1050,9 +1050,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           filename,
         });
 
-        if (result?.success) {
-          onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-        } else {
+        if (!result?.success) {
           onNotify?.(result?.error || "Failed to download file.", "error");
         }
       } catch (err) {
@@ -1070,9 +1068,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           customExportType: "image",
           category: "media",
         });
-        if (result?.success) {
-          onNotify?.(`Table image exported to ${result.filename}`, "success");
-        } else {
+        if (!result?.success) {
           onNotify?.(result?.error || "Export failed", "error");
         }
       } catch (err) {
@@ -1094,9 +1090,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
           customExportType: "csv",
           category: "document",
         });
-        if (result?.success) {
-          onNotify?.(`Table CSV exported to ${result.filename}`, "success");
-        } else {
+        if (!result?.success) {
           onNotify?.(result?.error || "Export failed", "error");
         }
       } catch (err) {
@@ -1319,9 +1313,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
                 category: "media",
               });
 
-              if (result?.success) {
-                onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-              } else {
+              if (!result?.success) {
                 onNotify?.(result?.error || `Failed to download ${mediaTypeLabel}.`, "error");
               }
             } catch (err) {
@@ -1371,16 +1363,38 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         return;
       }
 
-      // Handle audio/video element clicks
-      if (target.tagName === "AUDIO" || target.tagName === "VIDEO") {
-        const src = target.querySelector("source")?.getAttribute("src") || target.getAttribute("src") || "";
+      // Handle transcript card clicks
+      const transcriptCard = target.closest(".markdown-transcript-card, [data-transcript-src]");
+      if (transcriptCard) {
+        const src = transcriptCard.getAttribute("data-transcript-src") || transcriptCard.getAttribute("data-asset-path") || "";
         if (src) {
-          const ext = src.split(".").pop()?.toLowerCase();
-          const mediaType = getMediaTypeFromExtension(ext);
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof onMediaClick === "function") {
+            onMediaClick({ path: src, type: "transcript" });
+          } else if (basePath && typeof openMediaInDefaultApp === "function") {
+            openMediaInDefaultApp(basePath, src).catch(() => {});
+          }
+          return;
+        }
+      }
+
+      // Handle audio/video element clicks
+      if (target.tagName === "AUDIO" || target.tagName === "VIDEO" || target.closest("audio, video")) {
+        const mediaElem = target.tagName === "AUDIO" || target.tagName === "VIDEO" ? target : target.closest("audio, video");
+        const src = mediaElem.querySelector("source")?.getAttribute("src") || mediaElem.getAttribute("src") || mediaElem.getAttribute("data-asset-path") || "";
+        if (src) {
+          const ext = src.split(/[?#]/)[0].split(".").pop()?.toLowerCase();
+          const isAudio = mediaElem.tagName === "AUDIO";
+          const mediaType = isAudio ? "audio" : getMediaTypeFromExtension(ext, src);
           if (mediaType) {
             event.preventDefault();
             event.stopPropagation();
-            onMediaClick({ path: src, type: mediaType });
+            if (typeof onMediaClick === "function") {
+              onMediaClick({ path: src, type: mediaType });
+            } else if (basePath && typeof openMediaInDefaultApp === "function") {
+              openMediaInDefaultApp(basePath, src).catch(() => {});
+            }
           }
         }
       }
@@ -1595,7 +1609,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
     }
 
     const ext = imagePath.split(/[?#]/)[0].split(".").pop()?.toLowerCase();
-    const mediaType = getMediaTypeFromExtension(ext) || "image";
+    const mediaType = contextMenu.kind === "audio" ? "audio" : contextMenu.kind === "video" ? "video" : (getMediaTypeFromExtension(ext, imagePath) || "image");
     onMediaClick({ path: imagePath, type: mediaType });
     closeContextMenu({ restoreFocus: false });
   };
@@ -1978,9 +1992,7 @@ export const MarkdownPreview = memo(function MarkdownPreviewContent({
         category: "media",
       });
 
-      if (result?.success) {
-        onNotify?.(`Downloaded ${result.filename} to Downloads folder`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Failed to download media.", "error");
       }
     } catch (err) {

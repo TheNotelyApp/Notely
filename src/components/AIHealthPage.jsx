@@ -27,6 +27,9 @@ import {
   onMcpStatusChanged
 } from '../services/electronService';
 import { useConfirm } from '../hooks/useConfirm';
+import AppButton from './AppButton';
+import SubpageHeader from './layout/SubpageHeader';
+import { showSuccessToast, showInfoToast, showErrorToast } from '../utils/notificationUtils';
 import '../styles/KnowledgeGraph.css';
 import '../styles/AISettings.css';
 import '../styles/AIHealthPage.css';
@@ -43,11 +46,14 @@ function copyToClipboard(text, label) {
   try {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
       navigator.clipboard.writeText(text);
+      showSuccessToast(`${label} copied to clipboard`);
+    } else {
+      showErrorToast(`Unable to copy ${label} to clipboard`);
     }
   } catch (err) {
     console.warn('Clipboard write failed:', err);
+    showErrorToast(`Unable to copy ${label} to clipboard`);
   }
-  window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `${label} copied to clipboard`, type: 'success' } }));
 }
 
 function formatJson(val) {
@@ -199,9 +205,10 @@ export default function MCPDiagnosticsPage({ onBack }) {
       try {
         await aiClearLogs();
         await fetchData();
-        window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'MCP Telemetry logs cleared', type: 'info' } }));
+        showInfoToast('MCP Telemetry logs cleared');
       } catch (err) {
         console.error('Clear logs failed:', err);
+        showErrorToast(`Clear logs failed: ${err?.message || 'Unknown error'}`);
       }
     }
   };
@@ -243,25 +250,40 @@ export default function MCPDiagnosticsPage({ onBack }) {
 
   return (
     <div className="knowledge-graph-page">
-      {/* Unified topbar navigation breadcrumb */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="MCP Diagnostics location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">MCP Diagnostics</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        currentTitle="MCP Diagnostics"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={fetchData}
+              title="Refresh telemetry metrics"
+            >
+              <RefreshCw size={14} className={loading ? 'spin' : ''} />
+              <span>Refresh</span>
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handleClearLogs}
+              style={{ color: 'var(--status-danger-text)' }}
+              title="Clear telemetry logs"
+            >
+              <Trash2 size={14} />
+              <span>Clear Logs</span>
+            </AppButton>
+          </div>
+        }
+      />
 
       {/* Header Actions Bar — matching Knowledge Graph & Embeddings page */}
       <div className="kg-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', height: '52px', boxSizing: 'border-box' }}>
         {/* Sleek Running Status Pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', height: '32px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: 'var(--radius-default)', height: '32px', boxSizing: 'border-box' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: isRunning ? 'var(--status-success-text)' : 'var(--status-danger-text)' }}>
             <span style={{
               width: '7px',
@@ -282,28 +304,6 @@ export default function MCPDiagnosticsPage({ onBack }) {
             <span style={{ color: 'var(--text-muted)' }}>Active Clients:</span>
             <strong style={{ color: 'var(--text-strong)' }}>{activeConnCount}</strong>
           </div>
-        </div>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={fetchData}
-            style={{ height: '32px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px', boxSizing: 'border-box' }}
-            title="Refresh telemetry metrics"
-          >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleClearLogs}
-            style={{ height: '32px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--status-danger-text)', boxSizing: 'border-box' }}
-            title="Clear telemetry logs"
-          >
-            <Trash2 size={14} />
-            <span>Clear Logs</span>
-          </button>
         </div>
       </div>
 
@@ -334,7 +334,7 @@ export default function MCPDiagnosticsPage({ onBack }) {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       color: 'var(--text-muted)',
-                      borderRadius: '4px'
+                      borderRadius: 'var(--radius-default)'
                     }}
                     onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/mcp`, 'endpoint_http', 'MCP Endpoint URL')}
                     title={copiedId === 'endpoint_http' ? 'Copied to clipboard' : 'Copy MCP Endpoint URL'}
@@ -361,7 +361,7 @@ export default function MCPDiagnosticsPage({ onBack }) {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       color: 'var(--text-muted)',
-                      borderRadius: '4px'
+                      borderRadius: 'var(--radius-default)'
                     }}
                     onClick={() => handleCopyCode(`http://${serverHost}:${serverPort}/sse`, 'endpoint_sse', 'SSE Endpoint URL')}
                     title={copiedId === 'endpoint_sse' ? 'Copied to clipboard' : 'Copy SSE Endpoint URL'}

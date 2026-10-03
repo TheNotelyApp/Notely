@@ -1,0 +1,269 @@
+/* ─── AI Status Bar & Theme-Aware Flyout ────────────────────────────────────────── */
+
+.ai-status-bar-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  height: 20px;
+}
+
+.ai-status-bar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  gap: var(--space-1, 4px);
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  box-sizing: border-box;
+  padding: 0 var(--space-2, 6px);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.ai-status-bar svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.ai-status-bar span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+.ai-status-bar--ready {
+  background: var(--status-success-bg, rgba(16, 185, 129, 0.15)) !important;
+  color: var(--status-success-text, #34d399) !important;
+  border: 1px solid var(--status-success-border, rgba(16, 185, 129, 0.35)) !important;
+}
+
+.ai-status-bar--low-ram {
+  background: var(--status-warning-bg, rgba(245, 158, 11, 0.15)) !important;
+  color: var(--status-warning-text, #fbbf24) !important;
+  border: 1px solid var(--status-warning-border, rgba(245, 158, 11, 0.35)) !important;
+}
+
+.ai-status-bar--indexing {
+  background: var(--status-warning-bg, rgba(245, 158, 11, 0.15)) !important;
+  color: var(--status-warning-text, #fbbf24) !important;
+  border: 1px solid var(--status-warning-border, rgba(245, 158, 11, 0.35)) !important;
+}
+
+.ai-status-bar--paused {
+  background: var(--surface-muted, rgba(9, 23, 25, 0.28)) !important;
+  color: var(--text-muted, #94a3b8) !important;
+  border: 1px solid var(--border-soft, rgba(159, 214, 188, 0.25)) !important;
+}
+
+.ai-status-bar--error {
+  background: var(--status-danger-bg, rgba(239, 68, 68, 0.15)) !important;
+  color: var(--status-danger-text, #f87171) !important;
+  border: 1px solid var(--status-danger-border, rgba(239, 68, 68, 0.35)) !important;
+}
+
+/* ─── Theme-Aware Slim Flyout Popover ─────────────────────────────────────── */
+
+.vscode-status-flyout {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  width: 295px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xl, 0 -6px 24px rgba(0, 0, 0, 0.25));
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-family: inherit;
+}
+
+/* Header */
+.vscode-flyout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.vscode-flyout-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.vscode-flyout-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vscode-flyout-status-tag {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.vscode-flyout-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.vscode-flyout-close:hover {
+  color: var(--text-strong);
+  background: var(--surface-accent, rgba(0, 0, 0, 0.06));
+}
+
+/* List items */
+.vscode-flyout-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--surface-bg);
+}
+
+.vscode-flyout-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle, var(--border-default));
+  background: var(--surface-bg);
+}
+
+.vscode-flyout-item:last-child {
+  border-bottom: none;
+}
+
+.vscode-flyout-item.clickable {
+  cursor: pointer;
+}
+
+.vscode-flyout-item.clickable:hover {
+  background: var(--surface-muted);
+}
+
+.vscode-flyout-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--accent-solid);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.vscode-flyout-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.vscode-flyout-item-line1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.vscode-flyout-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.vscode-flyout-pill {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--accent-solid);
+  border: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.vscode-flyout-pill.warn {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+  border-color: var(--status-warning-border);
+}
+
+.vscode-flyout-pill.error {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-border);
+}
+
+.vscode-flyout-item-line2 {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vscode-flyout-item-line2 code {
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+}
+
+.vscode-flyout-jump {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 3px;
+  color: var(--accent-solid);
+  opacity: 0.8;
+}
+
+/* Footer link */
+.vscode-flyout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--surface-muted);
+  border: none;
+  border-top: 1px solid var(--border-default);
+  color: var(--accent-solid);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vscode-flyout-footer:hover {
+  background: var(--surface-accent);
+}

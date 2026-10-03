@@ -26,6 +26,9 @@ import {
 } from '../services/electronService';
 import { OverlayDialog } from './OverlayDialog';
 import { useConfirm } from '../hooks/useConfirm';
+import AppButton from './AppButton';
+import SubpageHeader from './layout/SubpageHeader';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/notificationUtils';
 
 import '../styles/KnowledgeGraph.css'; // Reuses base layout rules for unified styling
 
@@ -75,9 +78,7 @@ export default function EmbeddingsPage({ onBack }) {
           if (isRebuilding && res.data.queueSize === 0) {
             setIsRebuilding(false);
             setShowProgressModal(false);
-            window.dispatchEvent(new CustomEvent('app:toast', {
-              detail: { message: 'Embeddings DB successfully rebuilt.', type: 'success' }
-            }));
+            showSuccessToast('Embeddings DB successfully rebuilt.');
           }
         }
       } else {
@@ -134,6 +135,7 @@ export default function EmbeddingsPage({ onBack }) {
       if (status.isPaused) {
         await aiResumeWorker();
         setStatus(prev => ({ ...prev, isPaused: false }));
+        showInfoToast('Vector embeddings worker resumed.');
       } else {
         const confirmed = await confirm({
           title: 'Pause Vector Embeddings Worker?',
@@ -145,9 +147,11 @@ export default function EmbeddingsPage({ onBack }) {
         if (!confirmed) return;
         await aiPauseWorker();
         setStatus(prev => ({ ...prev, isPaused: true }));
+        showInfoToast('Vector embeddings worker paused.');
       }
     } catch (err) {
       console.error(err);
+      showErrorToast(`Failed to update worker status: ${err?.message || 'Unknown error'}`);
     }
   };
 
@@ -165,16 +169,16 @@ export default function EmbeddingsPage({ onBack }) {
       setLoading(true);
       const res = await aiRebuildEmbeddings();
       if (res.success) {
-        window.dispatchEvent(new CustomEvent('app:toast', {
-          detail: { message: 'Embeddings rebuild triggered.', type: 'success' }
-        }));
+        showSuccessToast('Embeddings rebuild triggered.');
         setIsRebuilding(true);
         await loadEmbeddingsStatus();
       } else {
         setError(res.error || 'Failed to clear data');
+        showErrorToast(res.error || 'Failed to clear embeddings data.');
       }
     } catch (err) {
       setError(err.message);
+      showErrorToast(err.message || 'Error triggering embeddings rebuild.');
     } finally {
       setLoading(false);
     }
@@ -182,16 +186,68 @@ export default function EmbeddingsPage({ onBack }) {
 
   return (
     <div className="knowledge-graph-page">
-      {/* Unified topbar navigation breadcrumb */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Embeddings location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-current">Vector Embeddings</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        currentTitle="Vector Embeddings"
+        breadcrumbParent="Workspace"
+        onBack={onBack}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={loadEmbeddingsStatus}
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+              title="Reload Data"
+            >
+              <RotateCw size={14} className={loading ? 'spin' : ''} />
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handlePauseResume}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+              title={status.isPaused ? 'Resume Worker' : 'Pause Worker'}
+            >
+              {status.isPaused ? <Play size={14} /> : <Pause size={14} />}
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={handleRebuild}
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+              title="Rebuild Vector Embeddings"
+            >
+              <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              size="small"
+              onClick={async () => {
+                const confirmed = await confirm({
+                  title: 'Clear Embeddings Cache?',
+                  message: 'Are you sure you want to clear all indexed vector embeddings data from cache?',
+                  confirmLabel: 'Clear Cache',
+                  cancelLabel: 'Cancel',
+                  variant: 'danger'
+                });
+                if (confirmed) {
+                  await aiClearEmbeddingsData();
+                  loadEmbeddingsStatus();
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, color: 'var(--text-danger)' }}
+              title="Clear Data"
+            >
+              <Trash2 size={14} />
+            </AppButton>
+          </div>
+        }
+      />
 
       <div className="knowledge-graph-container">
         {/* Header Actions Bar */}
@@ -219,7 +275,7 @@ export default function EmbeddingsPage({ onBack }) {
                 background: 'var(--surface-muted)',
                 border: '1px solid var(--accent-solid)',
                 padding: '0 12px',
-                borderRadius: '6px',
+                borderRadius: 'var(--radius-default)',
                 fontSize: '11px',
                 color: 'var(--text-strong)',
                 marginLeft: 'auto',
@@ -232,7 +288,7 @@ export default function EmbeddingsPage({ onBack }) {
               <RefreshCw size={12} className="spin" style={{ color: 'var(--accent-solid)' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 600 }}>Indexing vector embeddings...</span>
-                <div style={{ width: '120px', height: '3px', background: 'var(--border-soft)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: '120px', height: '3px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
                   <div style={{
                     width: `${status.queueTotal > 0 ? Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100)) : 0}%`,
                     height: '100%',
@@ -246,7 +302,7 @@ export default function EmbeddingsPage({ onBack }) {
               </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: '6px', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)', padding: '0 12px', borderRadius: 'var(--radius-default)', color: 'var(--text-secondary)', marginLeft: 'auto', height: '32px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Provider:</span>
                 <strong style={{ color: 'var(--text-strong)' }}>{preferences.embeddingProvider === 'internal' ? 'Local' : 'HuggingFace'}</strong>
@@ -270,8 +326,9 @@ export default function EmbeddingsPage({ onBack }) {
           )}
 
           {!modelStatus.downloaded && (
-            <button
-              className="btn btn-secondary btn-sm"
+            <AppButton
+              variant="secondary"
+              size="small"
               onClick={async () => {
                 try {
                   const res = await aiDownloadModel();
@@ -286,66 +343,12 @@ export default function EmbeddingsPage({ onBack }) {
               style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', height: '32px', gap: '4px', boxSizing: 'border-box' }}
             >
               <span>{modelStatus.isDownloading ? `Downloading (${modelStatus.progress}%)...` : 'Download Model (~130MB)'}</span>
-            </button>
+            </AppButton>
           )}
 
           <div className="kg-stats-pill" style={{ gap: '12px', display: 'flex', alignItems: 'center', height: '32px', boxSizing: 'border-box', margin: 0, padding: '0 12px' }}>
             <Database size={12} />
             <span>Chunks: {status.totalChunks} | Indexed Notes: {status.indexedNotes}</span>
-          </div>
-
-          <div style={{ height: '20px', width: '1px', background: 'var(--border-soft)', margin: '0 4px', flexShrink: 0 }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={loadEmbeddingsStatus}
-              disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
-              data-tooltip="Reload Data"
-            >
-              <RotateCw size={14} className={loading ? 'spin' : ''} />
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={handlePauseResume}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
-              data-tooltip={status.isPaused ? 'Resume Worker' : 'Pause Worker'}
-            >
-              {status.isPaused ? <Play size={14} /> : <Pause size={14} />}
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={handleRebuild}
-              disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
-              data-tooltip="Rebuild Vector Embeddings"
-            >
-              <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={async () => {
-                const confirmed = await confirm({
-                  title: 'Clear Embeddings Cache?',
-                  message: 'Are you sure you want to clear all indexed vector embeddings data from cache?',
-                  confirmLabel: 'Clear Cache',
-                  cancelLabel: 'Cancel',
-                  variant: 'danger'
-                });
-                if (confirmed) {
-                  await aiClearEmbeddingsData();
-                  loadEmbeddingsStatus();
-                }
-              }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, color: 'var(--text-danger)' }}
-              data-tooltip="Clear Data"
-            >
-              <Trash2 size={14} />
-            </button>
           </div>
         </div>
 
@@ -354,7 +357,7 @@ export default function EmbeddingsPage({ onBack }) {
           <div className="kg-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
             <div className="kg-sidebar-section-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
               {/* Vector Engine Stats Card */}
-              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
                   <Cpu size={12} />
                   Engine Metadata
@@ -382,7 +385,7 @@ export default function EmbeddingsPage({ onBack }) {
               </div>
 
               {/* Indexing Event Logs */}
-              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>
                     Indexing Logs
@@ -399,7 +402,7 @@ export default function EmbeddingsPage({ onBack }) {
                 </div>
                 <div style={{
                   background: 'var(--surface-muted)',
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-default)',
                   padding: '6px',
                   border: '1px solid var(--border-soft)',
                   fontFamily: 'monospace',
@@ -430,18 +433,20 @@ export default function EmbeddingsPage({ onBack }) {
 
             {/* Actions Panel - Rebuild & Clear on single row */}
             <div className="kg-sidebar-section" style={{ background: 'var(--surface-elevated)', padding: '10px', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: '6px' }}>
-              <button
-                className="btn btn-primary btn-sm"
+              <AppButton
+                variant="primary"
+                size="small"
                 onClick={handleRebuild}
                 disabled={loading}
                 style={{ flex: 1, justifyContent: 'center', height: '26px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 6px' }}
               >
                 <RefreshCw size={12} className={loading ? 'spin' : ''} />
                 <span>{loading ? 'Building...' : 'Rebuild'}</span>
-              </button>
+              </AppButton>
 
-              <button
-                className="btn btn-secondary btn-sm"
+              <AppButton
+                variant="secondary"
+                size="small"
                 onClick={async () => {
                   const confirmed = await confirm({
                     title: 'Clear Embeddings Cache?',
@@ -459,7 +464,7 @@ export default function EmbeddingsPage({ onBack }) {
               >
                 <Trash2 size={12} />
                 <span>Clear Data</span>
-              </button>
+              </AppButton>
             </div>
 
             {/* Selected Chunk Detail Card */}
@@ -476,7 +481,7 @@ export default function EmbeddingsPage({ onBack }) {
                   </div>
                   <div className="kg-detail-row">
                     <span className="label">Content</span>
-                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', background: 'var(--surface-muted)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-soft)' }}>
+                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', background: 'var(--surface-muted)', padding: '8px', borderRadius: 'var(--radius-default)', border: '1px solid var(--border-soft)' }}>
                       {selectedChunk.content}
                     </pre>
                   </div>
@@ -525,7 +530,7 @@ export default function EmbeddingsPage({ onBack }) {
                             {chunk.note_path.split(/[/\\]/).pop()}
                           </td>
                           <td style={{ padding: '8px' }}>
-                            <span className="kg-category-badge" style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)' }}>
+                            <span className="kg-category-badge" style={{ fontSize: '9px', padding: '1px 4px', borderRadius: 'var(--radius-default)', background: 'var(--surface-muted)', border: '1px solid var(--border-soft)' }}>
                               {chunk.chunk_type || 'text'}
                             </span>
                           </td>
@@ -564,7 +569,7 @@ export default function EmbeddingsPage({ onBack }) {
               </strong>
             </div>
             
-            <div style={{ width: '100%', height: '8px', background: 'var(--border-soft)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '8px', background: 'var(--border-soft)', borderRadius: 'var(--radius-default)', overflow: 'hidden' }}>
               <div style={{
                 width: `${status.queueTotal > 0 ? Math.max(0, Math.min(100, ((status.queueTotal - status.queueSize) / status.queueTotal) * 100)) : 0}%`,
                 height: '100%',
@@ -580,13 +585,13 @@ export default function EmbeddingsPage({ onBack }) {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
-            <button
-              className="btn btn-secondary"
+            <AppButton
+              variant="secondary"
+              size="small"
               onClick={() => setShowProgressModal(false)}
-              style={{ padding: "6px 12px", fontSize: "12px" }}
             >
               Run in Background
-            </button>
+            </AppButton>
           </div>
         </div>
       </OverlayDialog>

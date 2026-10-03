@@ -85,7 +85,7 @@ class GraphDB {
       }
 
       // Versioned database schema migrations (Gap 3)
-      const TARGET_SCHEMA_VERSION = 4;
+      const TARGET_SCHEMA_VERSION = 5;
       let currentVersion = 0;
       try {
         const vRow = this.db.prepare('PRAGMA user_version').get();
@@ -157,6 +157,12 @@ class GraphDB {
         const { CREATE_ENTITY_EMBEDDINGS_TABLE } = require('./GraphSchema');
         this.db.exec(CREATE_ENTITY_EMBEDDINGS_TABLE);
       } catch { /* ignore */ }
+    }
+    if (fromVersion < 5) {
+      // Version 5: Add layout coordinates and node degree cache
+      try { this.db.exec('ALTER TABLE entities ADD COLUMN pos_x REAL;'); } catch { /* ignore */ }
+      try { this.db.exec('ALTER TABLE entities ADD COLUMN pos_y REAL;'); } catch { /* ignore */ }
+      try { this.db.exec('ALTER TABLE entities ADD COLUMN degree INTEGER DEFAULT 0;'); } catch { /* ignore */ }
     }
   }
 
@@ -376,8 +382,13 @@ class GraphDB {
         } catch { /* ignore junction insert error */ }
       }
     } catch (err) {
-      if (err.message?.includes('FOREIGN KEY') && evidence_id) {
-        stmt.run(source_id, target_id, type, weight, clampedConfidence, extractor, metadataJson, null);
+      if (err.message?.includes('FOREIGN KEY')) {
+        try {
+          const now = new Date().toISOString();
+          this.db.prepare('INSERT OR IGNORE INTO entities (id, name, canonical_name, type, updated_at) VALUES (?, ?, ?, ?, ?)').run(source_id, source_id, source_id, 'Entity', now);
+          this.db.prepare('INSERT OR IGNORE INTO entities (id, name, canonical_name, type, updated_at) VALUES (?, ?, ?, ?, ?)').run(target_id, target_id, target_id, 'Entity', now);
+          stmt.run(source_id, target_id, type, weight, clampedConfidence, extractor, metadataJson, null);
+        } catch { /* ignore fallback error */ }
       } else {
         throw err;
       }
@@ -443,7 +454,14 @@ class GraphDB {
       .map(e => {
         const props = typeof e.properties === 'string' ? JSON.parse(e.properties || '{}') : (e.properties || {});
         const conf = typeof e.confidence === 'number' ? e.confidence : (typeof props.confidence === 'number' ? props.confidence : 1.0);
-        return { ...e, confidence: conf, properties: props };
+        return {
+          ...e,
+          confidence: conf,
+          properties: props,
+          pos_x: typeof e.pos_x === 'number' && !isNaN(e.pos_x) ? e.pos_x : null,
+          pos_y: typeof e.pos_y === 'number' && !isNaN(e.pos_y) ? e.pos_y : null,
+          degree: typeof e.degree === 'number' ? e.degree : 0
+        };
       })
       .filter(e => e.confidence >= minConfidence);
 
@@ -465,6 +483,61 @@ class GraphDB {
       }));
 
     return { entities, relationships };
+  }
+
+  /**
+   * Batch update entity coordinates and connectivity degrees
+   * @param {Map<string, {x: number, y: number, degree: number}>|Array<{id: string, pos_x: number, pos_y: number, degree: number}>} positions
+   */
+  updateNodePositions(positions) {
+    if (!this.db || !positions) return 0;
+    try {
+      const updateStmt = this.db.prepare('UPDATE entities SET pos_x = ?, pos_y = ?, degree = ? WHERE id = ?');
+      let count = 0;
+
+      if (positions instanceof Map) {
+        for (const [id, pos] of positions.entries()) {
+          try {
+            updateStmt.run(pos.x, pos.y, pos.degree || 0, id);
+            count++;
+          } catch { /* continue on single node error */ }
+        }
+      } else if (Array.isArray(positions)) {
+        for (const pos of positions) {
+          try {
+            updateStmt.run(pos.pos_x ?? pos.x, pos.pos_y ?? pos.y, pos.degree || 0, pos.id);
+            count++;
+          } catch { /* continue */ }
+        }
+      }
+
+      return count;
+    } catch (err) {
+      log.warn('Failed to update node positions in SQLite:', err.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Recompute full graph layout and cache coordinates to SQLite
+   * @param {Object} options
+   */
+  recomputeLayout(options = {}) {
+    if (!this.db) return null;
+    try {
+      const GraphLayoutEngine = require('./layout/GraphLayoutEngine');
+      const { entities, relationships } = this.getAll(0.0);
+      if (!entities.length) return { nodes: [], positions: new Map() };
+
+      const layoutResult = GraphLayoutEngine.computeLayout(entities, relationships, options);
+      if (layoutResult?.positions) {
+        this.updateNodePositions(layoutResult.positions);
+      }
+      return layoutResult;
+    } catch (err) {
+      log.warn('Failed to recompute and cache graph layout:', err.message);
+      return null;
+    }
   }
 
   /**

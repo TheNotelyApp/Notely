@@ -367,20 +367,24 @@ function collectImageUsage(basePath) {
   const markdownFiles = walkFiles(scopeRoot, { excludeDirs: Array.from(WALK_EXCLUDE_DIRS) })
     .filter((item) => path.extname(item).toLowerCase() === ".md");
   const markdownMediaPattern = /(?:!\[[^\]]*\]|\[[^\]]*\])\((<[^>]+>|[^)]+)\)/g;
+  const wikilinkPattern = /(?:!\[\[|\[\[)([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+  const htmlMediaPattern = /<(?:img|audio|video|source)\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
   const usageByAssetPath = {};
 
   for (const markdownFile of markdownFiles) {
     const content = fs.readFileSync(markdownFile, "utf8");
     const seenInDocument = new Set();
-    let match;
 
-    while ((match = markdownMediaPattern.exec(content))) {
-      const rawPath = String(match[1] || "").trim();
-      const assetPath = rawPath.startsWith("<") && rawPath.endsWith(">")
-        ? rawPath.slice(1, -1)
-        : rawPath;
-      const resolvedAssetPath = resolveImageAssetPath(markdownFile, assetPath);
-      if (!resolvedAssetPath) continue;
+    const processCandidatePath = (rawCandidate) => {
+      let rawPath = String(rawCandidate || "").trim();
+      if (!rawPath || /^(https?:|data:|blob:|mailto:|#)/i.test(rawPath)) return;
+      if (rawPath.startsWith("<") && rawPath.endsWith(">")) {
+        rawPath = rawPath.slice(1, -1);
+      }
+      rawPath = rawPath.replace(/\s+["'][^"']*["']\s*$/, "").split("?")[0].split("#")[0].trim();
+
+      const resolvedAssetPath = resolveImageAssetPath(markdownFile, rawPath);
+      if (!resolvedAssetPath) return;
 
       const resolved = path.resolve(resolvedAssetPath);
       const baseDir = path.dirname(resolvedBasePath);
@@ -407,20 +411,48 @@ function collectImageUsage(basePath) {
         relativeAssetPath = normalizeToPosix(path.relative(baseDir, resolved));
       }
 
-      if (seenInDocument.has(relativeAssetPath)) continue;
-      seenInDocument.add(relativeAssetPath);
+      if (seenInDocument.has(resolved.toLowerCase())) return;
+      seenInDocument.add(resolved.toLowerCase());
 
-      const entry = usageByAssetPath[relativeAssetPath] || {
-        referenceCount: 0,
-        documents: [],
-      };
-      entry.referenceCount += 1;
-      entry.documents.push({
+      const aliases = new Set([
+        relativeAssetPath,
+        `./images/${fileName}`,
+        `images/${fileName}`,
+        `/images/${fileName}`,
+        `media/images/${fileName}`,
+        `/media/images/${fileName}`,
+        `./media/images/${fileName}`,
+        `media/docs/${fileName}`,
+        `/media/docs/${fileName}`,
+        fileName,
+      ]);
+
+      const docRef = {
         filePath: markdownFile,
         fileName: path.basename(markdownFile),
         title: path.basename(markdownFile, ".md"),
-      });
-      usageByAssetPath[relativeAssetPath] = entry;
+      };
+
+      for (const alias of aliases) {
+        const entry = usageByAssetPath[alias] || {
+          referenceCount: 0,
+          documents: [],
+        };
+        entry.referenceCount += 1;
+        entry.documents.push(docRef);
+        usageByAssetPath[alias] = entry;
+      }
+    };
+
+    let match;
+    while ((match = markdownMediaPattern.exec(content))) {
+      processCandidatePath(match[1]);
+    }
+    while ((match = wikilinkPattern.exec(content))) {
+      processCandidatePath(match[1]);
+    }
+    while ((match = htmlMediaPattern.exec(content))) {
+      processCandidatePath(match[1]);
     }
   }
 
@@ -742,33 +774,56 @@ registerTrustedHandler("images:save", (_event, payload) => {
   const finalExt = ext || ".bin";
 
   const imageExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".bmp", ".ico", ".gif", ".svg"]);
+  const audioExtensions = new Set([".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"]);
+  const videoExtensions = new Set([".mp4", ".mov", ".mkv", ".avi"]);
+
   const isImage = imageExtensions.has(finalExt);
-  
-  const subFolder = isImage ? "images" : "docs";
-  const mediaDir = path.join(getNotesRoot(), "media", subFolder);
-  ensureDir(mediaDir);
+  const isAudio = audioExtensions.has(finalExt);
+  const isVideo = videoExtensions.has(finalExt);
 
-  let finalName = `${baseName}${finalExt}`;
-  let counter = 1;
+  let relPath = "";
+  let mediaFilePath = "";
 
-  while (fs.existsSync(path.join(mediaDir, finalName))) {
-    finalName = `${baseName}-${counter}${finalExt}`;
-    counter++;
+  if (isAudio) {
+    const bundleDirName = `${baseName}_${Date.now().toString(36)}`;
+    const bundleDir = path.join(getNotesRoot(), "media", "audio", bundleDirName);
+    ensureDir(bundleDir);
+    mediaFilePath = path.join(bundleDir, `${baseName}${finalExt}`);
+    relPath = `media/audio/${bundleDirName}/${baseName}${finalExt}`;
+  } else if (isVideo) {
+    const bundleDirName = `${baseName}_${Date.now().toString(36)}`;
+    const bundleDir = path.join(getNotesRoot(), "media", "video", bundleDirName);
+    ensureDir(bundleDir);
+    mediaFilePath = path.join(bundleDir, `${baseName}${finalExt}`);
+    relPath = `media/video/${bundleDirName}/${baseName}${finalExt}`;
+  } else {
+    const subFolder = isImage ? "images" : "docs";
+    const mediaDir = path.join(getNotesRoot(), "media", subFolder);
+    ensureDir(mediaDir);
+
+    let finalName = `${baseName}${finalExt}`;
+    let counter = 1;
+    while (fs.existsSync(path.join(mediaDir, finalName))) {
+      finalName = `${baseName}-${counter}${finalExt}`;
+      counter++;
+    }
+
+    mediaFilePath = path.join(mediaDir, finalName);
+    relPath = `media/${subFolder}/${finalName}`;
   }
 
-  const mediaFilePath = path.join(mediaDir, finalName);
   const buffer = Buffer.from(base64Data.split(",")[1], "base64");
   if (!buffer.length) {
     throw new Error("File data is empty.");
   }
   fs.writeFileSync(mediaFilePath, buffer);
-  
+
   if (isImage) {
     ensureImageThumbnail(mediaFilePath);
   }
   emitImageSyncFromDisk(mediaFilePath, { op: "create" });
 
-  return `/media/${subFolder}/${finalName}`;
+  return `/${relPath.replace(/\\/g, "/")}`;
 });
 
 registerTrustedHandler("video:save", (_event, payload) => {
@@ -781,10 +836,14 @@ registerTrustedHandler("video:save", (_event, payload) => {
   }
 
   const safeFileName = path.basename(fileName).replace(/[<>:"/\\|?*]+/g, "-");
-  const recordingsDir = path.join(getNotesRoot(), "media", "recordings");
-  ensureDir(recordingsDir);
+  const ext = path.extname(safeFileName) || ".webm";
+  const baseName = path.basename(safeFileName, ext) || "recording";
 
-  const targetPath = path.join(recordingsDir, safeFileName);
+  const bundleDirName = `${baseName}_${Date.now().toString(36)}`;
+  const bundleDir = path.join(getNotesRoot(), "media", "video", bundleDirName);
+  ensureDir(bundleDir);
+
+  const targetPath = path.join(bundleDir, `${baseName}${ext}`);
   if (!filePathWithin(getNotesRoot(), targetPath)) {
     throw new Error("Invalid recording path.");
   }
@@ -794,25 +853,45 @@ registerTrustedHandler("video:save", (_event, payload) => {
     throw new Error("Video data is empty.");
   }
   fs.writeFileSync(targetPath, buffer);
-  return `media/recordings/${safeFileName}`;
+  return `media/video/${bundleDirName}/${baseName}${ext}`;
 });
 
 registerTrustedHandler("audio:save", (_event, payload) => {
   const { fileName, base64Data, transcript } = payload || {};
-  const safeFileName = path.basename(fileName || "transcript.json").replace(/[<>:"/\\|?*]+/g, "-");
-  const audioDir = path.join(getNotesRoot(), "media", "audio");
-  ensureDir(audioDir);
+  const rawFileName = String(fileName || "recording.webm");
+  const safeFileName = path.basename(rawFileName).replace(/[<>:"/\\|?*]+/g, "-");
 
   // Handle standalone companion transcript saving
   if (transcript && !base64Data) {
-    const transcriptFileName = safeFileName.endsWith(".json") ? safeFileName : safeFileName.replace(/\.[^.]+$/, "") + ".json";
-    const transcriptPath = path.join(audioDir, transcriptFileName);
+    let transcriptPath = "";
+    let transcriptRelPath = "";
+
+    if (transcript.sourceMedia && typeof transcript.sourceMedia === "string") {
+      const sourceNorm = transcript.sourceMedia.replace(/^[/\\]+/, "").replace(/\\/g, "/");
+      const parentDir = path.dirname(sourceNorm);
+      const targetDir = path.join(getNotesRoot(), parentDir);
+      ensureDir(targetDir);
+      transcriptPath = path.join(targetDir, "transcript.json");
+      transcriptRelPath = `${parentDir}/transcript.json`.replace(/\\/g, "/");
+    } else if (rawFileName.includes("/") || rawFileName.includes("\\")) {
+      const relNorm = rawFileName.replace(/^[/\\]+/, "").replace(/\\/g, "/");
+      transcriptPath = path.join(getNotesRoot(), relNorm);
+      ensureDir(path.dirname(transcriptPath));
+      transcriptRelPath = relNorm;
+    } else {
+      const baseName = safeFileName.replace(/\.[^.]+$/, "");
+      const bundleDir = path.join(getNotesRoot(), "media", "audio", baseName);
+      ensureDir(bundleDir);
+      transcriptPath = path.join(bundleDir, "transcript.json");
+      transcriptRelPath = `media/audio/${baseName}/transcript.json`;
+    }
+
     const content = typeof transcript === "string" ? transcript : JSON.stringify(transcript, null, 2);
     fs.writeFileSync(transcriptPath, content, "utf8");
     return {
       audioPath: null,
-      transcriptPath: `media/audio/${transcriptFileName}`,
-      fileName: transcriptFileName,
+      transcriptPath: transcriptRelPath,
+      fileName: path.basename(transcriptPath),
     };
   }
 
@@ -820,7 +899,13 @@ registerTrustedHandler("audio:save", (_event, payload) => {
     throw new Error("Invalid audio payload.");
   }
 
-  const targetPath = path.join(audioDir, safeFileName);
+  const ext = path.extname(safeFileName) || ".webm";
+  const baseName = path.basename(safeFileName, ext) || "recording";
+  const bundleDirName = `${baseName}_${Date.now().toString(36)}`;
+  const bundleDir = path.join(getNotesRoot(), "media", "audio", bundleDirName);
+  ensureDir(bundleDir);
+
+  const targetPath = path.join(bundleDir, `${baseName}${ext}`);
   if (!filePathWithin(getNotesRoot(), targetPath)) {
     throw new Error("Invalid audio path.");
   }
@@ -833,17 +918,16 @@ registerTrustedHandler("audio:save", (_event, payload) => {
 
   let transcriptRelPath = null;
   if (transcript) {
-    const transcriptFileName = safeFileName.replace(/\.[^.]+$/, "") + ".json";
-    const transcriptPath = path.join(audioDir, transcriptFileName);
+    const transcriptPath = path.join(bundleDir, "transcript.json");
     const content = typeof transcript === "string" ? transcript : JSON.stringify(transcript, null, 2);
     fs.writeFileSync(transcriptPath, content, "utf8");
-    transcriptRelPath = `media/audio/${transcriptFileName}`;
+    transcriptRelPath = `media/audio/${bundleDirName}/transcript.json`;
   }
 
   return {
-    audioPath: `media/audio/${safeFileName}`,
+    audioPath: `media/audio/${bundleDirName}/${baseName}${ext}`,
     transcriptPath: transcriptRelPath,
-    fileName: safeFileName,
+    fileName: `${baseName}${ext}`,
   };
 });
 

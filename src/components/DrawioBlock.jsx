@@ -62,9 +62,7 @@ export function DrawioBlock({ imagePath, diagramId, documentPath, onUpdate, onNo
         customExportType: "diagram_drawio",
         category: "diagram",
       });
-      if (result?.success) {
-        onNotify?.(`Diagram exported to ${result.filename}`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Failed to export diagram.", "error");
       }
     } catch (err) {

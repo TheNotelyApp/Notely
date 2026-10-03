@@ -295,8 +295,8 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
   },
   {
     keys: "Ctrl/Cmd+Alt+K",
-    action: "Commit Changes",
-    group: "Version Control",
+    action: "Save Milestone",
+    group: "Revisions & Sync",
   },
   {
     keys: "Ctrl/Cmd+=",

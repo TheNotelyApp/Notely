@@ -1241,7 +1241,7 @@
 .confirmation-modal-card {
   width: min(400px, calc(100vw - 32px)) !important;
   padding: 0 !important;
-  border-radius: var(--radius-xl, 12px);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--border-subtle);
   background: var(--surface-bg);
   box-shadow: var(--shadow-overlay);
@@ -1773,7 +1773,7 @@
   margin-top: 14px;
   padding: 10px 12px;
   border: 1px solid #d9dedb;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   background: var(--surface-elevated);
 }
 
@@ -3075,7 +3075,7 @@
   height: 28px;
   padding: 0;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-default);
 }
 
 .dashboard-panels.rail .dashboard-continue-card {
@@ -3115,7 +3115,7 @@
   padding: 0 6px;
   min-height: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius-default);
   border: none;
   background: transparent;
   box-shadow: none;
@@ -3265,7 +3265,7 @@
 .dashboard-recent-list button {
   width: 100%;
   border: 1px solid #d5e0dc;
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   background: var(--surface-bg);
   min-height: 34px;
   padding: 0 9px;

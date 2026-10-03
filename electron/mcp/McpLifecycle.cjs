@@ -6,6 +6,7 @@
 const { McpConfig } = require('./McpConfig.cjs');
 const { McpSessionManager } = require('./McpSessionManager.cjs');
 const { McpServer } = require('./McpServer.cjs');
+const { mcpPromptsRegistry } = require('./McpPrompts.cjs');
 
 class McpLifecycle {
   constructor() {
@@ -202,6 +203,12 @@ class McpLifecycle {
     };
   }
 
+  broadcastResourceUpdated(uri) {
+    if (this.server && typeof this.server.broadcastResourceUpdated === 'function') {
+      this.server.broadcastResourceUpdated(uri);
+    }
+  }
+
   registerIpcHandlers(ipcMain) {
     ipcMain.handle('mcp:get-status', async () => {
       return this.getStatus();
@@ -232,6 +239,26 @@ class McpLifecycle {
         active: this.sessionManager.getActiveSessions(),
         stats: this.sessionManager.getStats()
       };
+    });
+
+    ipcMain.handle('mcp:list-prompts', async () => {
+      const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
+      return mcpPromptsRegistry.listPrompts(root);
+    });
+
+    ipcMain.handle('mcp:get-prompt', async (_event, name, args) => {
+      const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
+      return mcpPromptsRegistry.getPrompt(name, args || {}, root);
+    });
+
+    ipcMain.handle('mcp:save-prompt', async (_event, promptData) => {
+      const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
+      return mcpPromptsRegistry.saveCustomPrompt(root, promptData);
+    });
+
+    ipcMain.handle('mcp:delete-prompt', async (_event, name) => {
+      const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
+      return mcpPromptsRegistry.deleteCustomPrompt(root, name);
     });
   }
 

@@ -69,9 +69,7 @@ export function WireframeBlock({ imagePath, diagramId, documentPath, onUpdate, o
         customExportType: "diagram_wireframe",
         category: "diagram",
       });
-      if (result?.success) {
-        onNotify?.(`Wireframe exported to ${result.filename}`, "success");
-      } else {
+      if (!result?.success) {
         onNotify?.(result?.error || "Failed to export wireframe.", "error");
       }
     } catch (err) {

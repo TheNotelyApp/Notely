@@ -358,6 +358,30 @@ export function DocumentDetail({
   const MAX_EDITOR_HISTORY = 200;
   const textareaRef = useRef(null);
   const content = document?.rawNotes || "";
+  const derivedBreadcrumbs = useMemo(() => {
+    if (Array.isArray(breadcrumbs) && breadcrumbs.length > 0) {
+      return breadcrumbs;
+    }
+    if (!document?.filePath || !workspacePath) {
+      return [];
+    }
+    const normDoc = String(document.filePath).replace(/\\/g, "/");
+    const normWs = String(workspacePath).replace(/\\/g, "/");
+    if (!normDoc.startsWith(normWs)) {
+      return [];
+    }
+    const rel = normDoc.slice(normWs.length).replace(/^\/+/, "");
+    const parts = rel.split("/").filter(Boolean);
+    parts.pop(); // Note file name is current
+    const result = [{ label: "Notes", path: workspacePath }];
+    let cur = normWs;
+    for (const seg of parts) {
+      cur = `${cur}/${seg}`;
+      result.push({ label: seg, path: cur });
+    }
+    return result;
+  }, [breadcrumbs, document?.filePath, workspacePath]);
+
   const fullWorkingCopyContent = useMemo(() => {
     const parts = [];
     if (document?.header?.trim()) parts.push(document.header.trim());
@@ -571,7 +595,7 @@ export function DocumentDetail({
       if (res?.ok) {
         onNotify?.(`Restored document to version ${commitLabel}`, "success");
         setIsTimeMachineOpen(false);
-        onReloadFromDisk?.(fPath);
+        onReloadFromDisk?.(fPath, { silent: true });
       } else {
         onNotify?.(res?.error || "Restore failed.", "error");
       }
@@ -1120,7 +1144,6 @@ export function DocumentDetail({
         pdfQualityPreset,
       });
       if (!result?.canceled) {
-        onNotify?.("PDF downloaded.", "success");
         setPdfOptionsOpen(false);
       }
     } catch (error) {
@@ -1168,7 +1191,7 @@ export function DocumentDetail({
       {!isTimeMachineOpen && (
         <DocumentDetailHeader
           isFocusMode={isFocusMode}
-          breadcrumbs={breadcrumbs}
+          breadcrumbs={derivedBreadcrumbs}
           onNavigateBreadcrumb={onNavigateBreadcrumb}
           onBack={onBack}
           document={document}
@@ -1226,7 +1249,7 @@ export function DocumentDetail({
           gap: "12px",
           padding: "10px 14px",
           margin: "0 18px 12px",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-default)",
           border: "1px solid #9b2f2f",
           backgroundColor: "#fff1f0",
           color: "#7d2020",

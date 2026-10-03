@@ -116,7 +116,7 @@ export function ScreenRecordingBar({ mediaRecorder, audioTrack, onStop, onCancel
         #screen-recording-bar button {
           background: transparent;
           border: 1px solid rgba(255,255,255,0.15);
-          border-radius: 6px;
+          border-radius: var(--radius-default);
           color: #e2e8f0;
           cursor: pointer;
           padding: 4px 10px;

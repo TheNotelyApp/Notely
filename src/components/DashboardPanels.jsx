@@ -223,7 +223,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
                   className="dashboard-task-badge dashboard-task-overdue"
                   onClick={() => onAction("tasks-overdue")}
                   data-tooltip={`${overdueCount} task${overdueCount > 1 ? "s" : ""} past deadline!`}
-                  style={{ cursor: "pointer", background: "var(--surface-danger)", color: "var(--status-danger-text)", border: "1px solid var(--status-danger-border)", padding: "1px 6px", borderRadius: "100px", fontSize: "10px", fontWeight: "bold", display: "inline-flex", alignItems: "center", gap: "3px" }}
+                  style={{ cursor: "pointer", background: "var(--surface-danger)", color: "var(--status-danger-text)", border: "1px solid var(--status-danger-border)", padding: "1px 6px", borderRadius: "9999px", fontSize: "10px", fontWeight: "bold", display: "inline-flex", alignItems: "center", gap: "3px" }}
                 >
                   <AlertTriangle size={12} />
                   <span>{overdueCount} overdue</span>
@@ -319,7 +319,7 @@ export function DashboardPanels({ documents, taskDocuments = documents, loading,
               <Trash2 size={14} style={{ color: isDragOverTrash ? "var(--danger, #ef4444)" : "inherit" }} />
               <span style={{ fontSize: "12px", fontWeight: "600" }}>Recycle Bin</span>
             </div>
-            <span style={{ fontSize: "11px", opacity: 0.7, background: "var(--surface-bg)", padding: "1px 6px", borderRadius: "10px", fontWeight: "600" }}>
+            <span style={{ fontSize: "11px", opacity: 0.7, background: "var(--surface-bg)", padding: "1px 6px", borderRadius: "var(--radius-default)", fontWeight: "600" }}>
               {trashCount}
             </span>
           </div>

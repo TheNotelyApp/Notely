@@ -2,28 +2,27 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   GitBranch,
   GitCommit,
-  GitCompare,
-  Tag,
   Cloud,
-  Settings,
+  ArrowUpDown,
   RefreshCw,
   Plus,
   Trash2,
   Check,
+  CheckCircle2,
   AlertTriangle,
   ExternalLink,
-  RotateCcw,
   Upload,
   Download,
-  CornerDownLeft,
-  Layers,
+  FileEdit,
+  FilePlus2,
 } from "lucide-react";
 import AppButton from "./AppButton";
 import AppInput from "./AppInput";
+import AppTextarea from "./AppTextarea";
+import SubpageHeader from "./layout/SubpageHeader";
+import { OverlayDialog } from "./OverlayDialog";
 import { GitCommitTimeline } from "./GitCommitTimeline";
-import { GitDiffViewer } from "./GitDiffViewer";
 import { GitCommitDialog } from "./GitCommitDialog";
-import OverlayDialog from "./OverlayDialog";
 import {
   gitDetect,
   gitGetRepoInfo,
@@ -31,18 +30,6 @@ import {
   gitGetStatus,
   gitGetLog,
   gitCommit,
-  gitGetFileAtCommit,
-  gitListBranches,
-  gitCreateBranch,
-  gitDeleteBranch,
-  gitSwitchBranch,
-  gitListTags,
-  gitCreateTag,
-  gitDeleteTag,
-  gitStashList,
-  gitStashPush,
-  gitStashPop,
-  gitStashDrop,
   gitListRemotes,
   gitAddRemote,
   gitRemoveRemote,
@@ -52,20 +39,23 @@ import {
   gitGetCommitFiles,
 } from "../services/electronService";
 
-// ── Tab IDs ──────────────────────────────────────────────────────────────────
+// ── Tab Config ────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "status", label: "Status", icon: Check },
-  { id: "history", label: "History", icon: GitCommit },
-  { id: "compare", label: "Compare", icon: GitCompare },
-  { id: "branches", label: "Branches", icon: GitBranch },
-  { id: "tags", label: "Tags", icon: Tag },
-  { id: "stashes", label: "Stashes", icon: Layers },
-  { id: "remotes", label: "Remotes", icon: Cloud },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "changes", label: "Pending Changes", icon: FileEdit },
+  { id: "history", label: "Milestones Log", icon: GitCommit },
+  { id: "sync", label: "Cloud Sync & Backup", icon: Cloud },
 ];
 
-// ── Empty states ──────────────────────────────────────────────────────────────
+function normalizeTabId(tabId) {
+  if (!tabId) return "changes";
+  if (tabId === "status" || tabId === "commit") return "changes";
+  if (tabId === "remotes") return "sync";
+  if (tabId === "compare" || tabId === "branches" || tabId === "tags" || tabId === "stashes") return "history";
+  return tabId;
+}
+
+// ── Empty States ──────────────────────────────────────────────────────────────
 
 function NoGitState() {
   return (
@@ -74,7 +64,7 @@ function NoGitState() {
       <h2 className="git-vc-empty__title">Git not detected</h2>
       <p className="git-vc-empty__desc">
         Git is not installed or not found on your system PATH.
-        Version control requires Git to be installed.
+        Install Git to enable version history, milestones, and cloud sync.
       </p>
       <AppButton
         variant="primary"
@@ -92,10 +82,10 @@ function NoRepoState({ onInit, initializing }) {
   return (
     <div className="git-vc-empty">
       <GitBranch size={20} className="git-vc-empty__icon" aria-hidden="true" />
-      <h2 className="git-vc-empty__title">Not a Git repository</h2>
+      <h2 className="git-vc-empty__title">Workspace not initialized</h2>
       <p className="git-vc-empty__desc">
-        This workspace is not initialized as a Git repository.
-        Initialize it to start tracking changes with version control.
+        This workspace is not tracking revision history yet.
+        Initialize version control to create milestones and sync notes to the cloud.
       </p>
       <AppButton
         variant="primary"
@@ -105,662 +95,344 @@ function NoRepoState({ onInit, initializing }) {
         aria-busy={initializing}
       >
         <GitCommit size={14} />
-        {initializing ? "Initializing…" : "Initialize Repository"}
+        {initializing ? "Initializing…" : "Enable Version Tracking"}
       </AppButton>
     </div>
   );
 }
 
-// ── Status Tab ────────────────────────────────────────────────────────────────
+// ── Changes & Commit Tab ──────────────────────────────────────────────────────
 
-function StatusTab({ status, workspacePath, onRefresh, onNotify, onCommitSuccess }) {
-  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
+function ChangesTab({ status, workspacePath, onRefresh, onCommitSuccess }) {
   const { files = [], branch = "", ahead = 0, behind = 0 } = status || {};
+  const [selectedPaths, setSelectedPaths] = useState([]);
+  const [message, setMessage] = useState("");
+  const [committing, setCommitting] = useState(false);
+  const [error, setError] = useState(null);
 
-  const getStatusLetter = (statusStr) => {
-    if (!statusStr) return "M";
-    const s = statusStr.toLowerCase();
-    if (s.startsWith("mod")) return "M";
-    if (s.startsWith("add")) return "A";
-    if (s.startsWith("del")) return "D";
-    if (s.startsWith("ren")) return "R";
-    return statusStr.charAt(0).toUpperCase();
-  };
+  // Auto-select all changed files when status updates
+  useEffect(() => {
+    setSelectedPaths(files.map((f) => f.path));
+  }, [files]);
 
-  const modified = files.filter((f) => f.status !== "untracked");
-  const untracked = files.filter((f) => f.status === "untracked");
+  function togglePath(filePath) {
+    setSelectedPaths((prev) =>
+      prev.includes(filePath) ? prev.filter((p) => p !== filePath) : [...prev, filePath]
+    );
+  }
 
-  async function handleCommit(payload) {
-    const result = await gitCommit({ workspacePath, ...payload });
-    if (!result?.ok) throw new Error(result?.error || "Commit failed.");
-    onNotify?.("Committed successfully.", "success");
-    onCommitSuccess?.();
-    onRefresh?.();
+  async function handleCommit() {
+    const trimmed = message.trim();
+    if (!trimmed) {
+      setError("Please provide a milestone description.");
+      return;
+    }
+    if (selectedPaths.length === 0) {
+      setError("Select at least one note to include in this milestone.");
+      return;
+    }
+
+    setCommitting(true);
+    setError(null);
+
+    try {
+      const result = await gitCommit({
+        workspacePath,
+        message: trimmed,
+        filePaths: selectedPaths,
+      });
+      if (!result?.ok) throw new Error(result?.error || "Commit failed.");
+
+      setMessage("");
+      onCommitSuccess?.();
+      onRefresh?.();
+    } catch (err) {
+      setError(err?.message || "Failed to save milestone.");
+    } finally {
+      setCommitting(false);
+    }
+  }
+
+  const canCommit = message.trim().length > 0 && selectedPaths.length > 0 && !committing;
+
+  const [filterText, setFilterText] = useState("");
+
+  const filteredFiles = useMemo(() => {
+    if (!filterText.trim()) return files;
+    const q = filterText.toLowerCase();
+    return files.filter((f) => f.path.toLowerCase().includes(q));
+  }, [files, filterText]);
+
+  const allFilteredSelected = filteredFiles.length > 0 && filteredFiles.every((f) => selectedPaths.includes(f.path));
+  const someFilteredSelected = filteredFiles.some((f) => selectedPaths.includes(f.path)) && !allFilteredSelected;
+
+  function toggleSelectAllFiltered() {
+    if (allFilteredSelected) {
+      const filteredPathSet = new Set(filteredFiles.map((f) => f.path));
+      setSelectedPaths((prev) => prev.filter((p) => !filteredPathSet.has(p)));
+    } else {
+      const newSelected = new Set([...selectedPaths, ...filteredFiles.map((f) => f.path)]);
+      setSelectedPaths(Array.from(newSelected));
+    }
+  }
+
+  function splitPath(filePath) {
+    const normalized = (filePath || "").replace(/\\/g, "/");
+    const lastSlash = normalized.lastIndexOf("/");
+    if (lastSlash === -1) return { dir: "", file: normalized };
+    return {
+      dir: normalized.slice(0, lastSlash + 1),
+      file: normalized.slice(lastSlash + 1),
+    };
   }
 
   return (
-    <div className="git-vc-status">
-      <div className="git-vc-status__header">
+    <div className="git-vc-status" style={{ width: "100%" }}>
+      {/* Branch & Sync Status Banner */}
+      <div className="git-vc-status__header" style={{ padding: "var(--space-2) 0", borderBottom: "1px solid var(--border-soft)", marginBottom: "var(--space-4)" }}>
         <div className="git-vc-status__branch">
           <GitBranch size={16} aria-hidden="true" />
-          <strong>{branch || "unknown"}</strong>
+          <span>Branch: <strong>{branch || "main"}</strong></span>
           {(ahead > 0 || behind > 0) && (
-            <span className="git-vc-status__sync">
-              {ahead > 0 && <span className="git-vc-status__ahead">{ahead}↑</span>}
-              {behind > 0 && <span className="git-vc-status__behind">{behind}↓</span>}
+            <span className="git-vc-status__sync" style={{ marginLeft: "var(--space-2)" }}>
+              {ahead > 0 && <span className="git-vc-status__ahead">↑ {ahead} to push</span>}
+              {behind > 0 && <span className="git-vc-status__behind">↓ {behind} to pull</span>}
             </span>
           )}
         </div>
-        <AppButton variant="small" onClick={onRefresh} data-tooltip="Refresh status">
-          <RefreshCw size={14} />
-          Refresh
-        </AppButton>
       </div>
 
       {files.length === 0 ? (
-        <div className="git-vc-empty git-vc-empty--inline">
-          <Check size={20} className="git-vc-empty__icon git-vc-empty__icon--success" />
-          <p>Working tree is clean. No changes to commit.</p>
+        <div className="git-vc-empty git-vc-empty--inline" style={{ textAlign: "center", padding: "var(--space-8) var(--space-4)" }}>
+          <Check size={20} className="git-vc-empty__icon git-vc-empty__icon--success" style={{ margin: "0 auto var(--space-3)" }} />
+          <h3 style={{ margin: "0 0 var(--space-2)", color: "var(--text-strong)", fontSize: "var(--font-size-heading-md)" }}>All notes up to date</h3>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "var(--font-size-body-sm)" }}>No uncommitted note modifications found in this workspace.</p>
         </div>
       ) : (
-        <div className="git-vc-status__body">
-          {modified.length > 0 && (
-            <div className="git-vc-status__group">
-              <h3 className="git-vc-status__group-title">Changes ({modified.length})</h3>
-              <ul className="git-vc-file-list" aria-label="Changed files">
-                {modified.map((f) => (
-                  <li key={f.path} className={`git-vc-file-row git-vc-file-row--${(f.status || "M").toLowerCase()}`}>
-                    <span className="git-vc-file-row__status" aria-label={`Status: ${f.status}`}>{getStatusLetter(f.status)}</span>
-                    <span className="git-vc-file-row__path">{f.path}</span>
-                  </li>
-                ))}
-              </ul>
+        <div className="git-vc-status__body" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          {/* Milestone Composer Card */}
+          <div
+            className="panel-card"
+            style={{
+              background: "var(--surface-bg)",
+              border: "1px solid var(--border-soft)",
+              borderRadius: "var(--radius-lg)",
+              padding: "var(--space-4)",
+              boxShadow: "var(--shadow-sm)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-2)" }}>
+              <span style={{ fontWeight: 600, fontSize: "var(--font-size-body)", color: "var(--text-strong)" }}>
+                Save Milestone Checkpoint
+              </span>
+              <span style={{ fontSize: "var(--font-size-caption)", color: "var(--text-muted)" }}>
+                {selectedPaths.length} of {files.length} notes selected
+              </span>
             </div>
-          )}
 
-          {untracked.length > 0 && (
-            <div className="git-vc-status__group">
-              <h3 className="git-vc-status__group-title">Untracked ({untracked.length})</h3>
-              <ul className="git-vc-file-list" aria-label="Untracked files">
-                {untracked.map((f) => (
-                  <li key={f.path} className="git-vc-file-row git-vc-file-row--untracked">
-                    <span className="git-vc-file-row__status" aria-label="Untracked">?</span>
-                    <span className="git-vc-file-row__path">{f.path}</span>
-                  </li>
-                ))}
-              </ul>
+            <AppTextarea
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="Describe your milestone (e.g. Completed docs restructure, updated getting started guide)…"
+              rows={3}
+              disabled={committing}
+              style={{ width: "100%", minHeight: "68px", boxSizing: "border-box" }}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  handleCommit();
+                }
+              }}
+            />
+
+            {error && (
+              <p style={{ color: "var(--status-danger-text, #ef4444)", fontSize: "var(--font-size-caption)", marginTop: "var(--space-2)", marginBottom: 0 }}>
+                {error}
+              </p>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "var(--space-3)" }}>
+              <span style={{ fontSize: "var(--font-size-caption)", color: "var(--text-muted)" }}>
+                Press <strong>Ctrl+Enter</strong> to save
+              </span>
+              <AppButton
+                variant="primary"
+                onClick={handleCommit}
+                disabled={!canCommit}
+                aria-busy={committing}
+              >
+                <GitCommit size={14} />
+                {committing ? "Saving…" : "Save Milestone"}
+              </AppButton>
             </div>
-          )}
+          </div>
 
+          {/* Structured Notes Activity Card */}
+          <div
+            className="panel-card"
+            style={{
+              background: "var(--surface-bg)",
+              border: "1px solid var(--border-soft)",
+              borderRadius: "var(--radius-lg)",
+              padding: "var(--space-3)",
+              boxShadow: "var(--shadow-sm)",
+            }}
+          >
+            {/* Header / Filter Toolbar */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "var(--space-2) var(--space-3)",
+                gap: "var(--space-3)",
+                flexWrap: "wrap",
+                marginBottom: "var(--space-2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", cursor: "pointer", fontSize: "var(--font-size-body-sm)", fontWeight: 600, color: "var(--text-strong)", userSelect: "none" }}>
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someFilteredSelected;
+                    }}
+                    onChange={toggleSelectAllFiltered}
+                    disabled={committing || filteredFiles.length === 0}
+                    style={{ cursor: "pointer", accentColor: "var(--accent-solid, #6366f1)" }}
+                  />
+                  <span>Modified Notes</span>
+                </label>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: "var(--radius-pill)",
+                    background: "var(--surface-accent)",
+                    color: "var(--accent-strong, #6366f1)",
+                  }}
+                >
+                  {selectedPaths.length} / {files.length}
+                </span>
+              </div>
+
+              {/* Quick Filter Search */}
+              <div style={{ width: "220px" }}>
+                <AppInput
+                  type="text"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="Filter modified notes…"
+                  aria-label="Filter modified notes"
+                  style={{ height: "28px", fontSize: "var(--font-size-caption)" }}
+                />
+              </div>
+            </div>
+
+            {/* Note List */}
+            <div style={{ minHeight: "120px" }}>
+              {filteredFiles.length === 0 ? (
+                <div style={{ padding: "var(--space-6) var(--space-4)", textAlign: "center", color: "var(--text-muted)", fontSize: "var(--font-size-body-sm)" }}>
+                  No modified notes matching &ldquo;{filterText}&rdquo;
+                </div>
+              ) : (
+                <ul
+                  className="git-vc-file-list"
+                  aria-label="Changed notes"
+                  style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "2px" }}
+                >
+                  {filteredFiles.map((f) => {
+                    const isSelected = selectedPaths.includes(f.path);
+                    const isUntracked = f.status === "untracked";
+                    const { dir, file } = splitPath(f.path);
+
+                    return (
+                      <li
+                        key={f.path}
+                        onClick={() => togglePath(f.path)}
+                        className={`git-vc-file-row ${isSelected ? "selected" : ""}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "var(--space-3)",
+                          padding: "6px 10px",
+                          borderRadius: "var(--radius-md)",
+                          cursor: "pointer",
+                          userSelect: "none",
+                          background: isSelected ? "var(--surface-subtle)" : "transparent",
+                          transition: "background var(--motion-fast)",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => togglePath(f.path)}
+                          disabled={committing}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select ${f.path}`}
+                          style={{ cursor: "pointer", accentColor: "var(--accent-solid, #6366f1)" }}
+                        />
+                        {isUntracked ? (
+                          <FilePlus2 size={14} style={{ color: "var(--status-success-text, #22c55e)", minWidth: "14px", flexShrink: 0 }} />
+                        ) : (
+                          <FileEdit size={14} style={{ color: "var(--accent-solid, #6366f1)", minWidth: "14px", flexShrink: 0 }} />
+                        )}
+                        <div style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--font-size-body-sm)" }} title={f.path}>
+                          {dir && <span style={{ color: "var(--text-muted)", fontSize: "var(--font-size-caption)", marginRight: "4px" }}>{dir}</span>}
+                          <strong style={{ color: "var(--text-strong)", fontWeight: 500 }}>{file}</strong>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            letterSpacing: "0.03em",
+                            textTransform: "uppercase",
+                            padding: "2px 7px",
+                            borderRadius: "var(--radius-pill)",
+                            background: isUntracked ? "var(--status-success-bg, rgba(34, 197, 94, 0.15))" : "var(--surface-accent)",
+                            color: isUntracked ? "var(--status-success-text, #22c55e)" : "var(--accent-strong, #6366f1)",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isUntracked ? "NEW" : "MODIFIED"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
-
-      <GitCommitDialog
-        open={commitDialogOpen}
-        onClose={() => setCommitDialogOpen(false)}
-        onCommit={handleCommit}
-        stagedFiles={files}
-        workspacePath={workspacePath}
-      />
     </div>
   );
 }
 
-// ── History Tab ───────────────────────────────────────────────────────────────
+// ── Milestones / History Tab ──────────────────────────────────────────────────
 
-function HistoryTab({ commits, loading, error, onNotify, onCreateTag }) {
-  async function handleCompare() {
-    onNotify?.("Switch to the Compare tab to compare commits.", "info");
-  }
-
+function HistoryTab({ commits, loading, error }) {
   return (
-    <div className="git-vc-history">
+    <div className="git-vc-history" style={{ width: "100%" }}>
       <GitCommitTimeline
         commits={commits}
         loading={loading}
         error={error}
-        onCompare={handleCompare}
-        onCreateTag={onCreateTag}
         searchable
-        emptyMessage="No commits yet. Use the Status tab to make your first commit."
+        emptyMessage="No milestones saved yet. Use the Pending Changes tab to save your first milestone."
       />
     </div>
   );
 }
 
-// ── Compare Tab ───────────────────────────────────────────────────────────────
+// ── Cloud Sync & Backup Tab ───────────────────────────────────────────────────
 
-function CompareTab({ _commits, workspacePath, currentFilePath, documents = [], repoRoot }) {
-  const [hashA, setHashA] = useState("");
-  const [hashB, setHashB] = useState("");
-  const [filePathFilter, setFilePathFilter] = useState("");
-  const [fileCommits, setFileCommits] = useState([]);
-  const [loadingCommits, setLoadingCommits] = useState(false);
-  const [contentA, setContentA] = useState("");
-  const [contentB, setContentB] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [compared, setCompared] = useState(false);
-
-  // List of workspace markdown documents relative to repoRoot
-  const workspaceFiles = useMemo(() => {
-    const root = (repoRoot || workspacePath).replace(/\\/g, "/").replace(/\/$/, "");
-    return documents
-      .filter((doc) => doc.entryType === "file" && doc.filePath?.endsWith(".md"))
-      .map((doc) => {
-        const target = doc.filePath.replace(/\\/g, "/");
-        const rel = target.startsWith(root)
-          ? target.slice(root.length).replace(/^\//, "")
-          : target;
-        return {
-          absolutePath: doc.filePath,
-          relativePath: rel,
-        };
-      })
-      .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-  }, [documents, repoRoot, workspacePath]);
-
-  // Set initial selected file if currentFilePath is provided
-  useEffect(() => {
-    if (currentFilePath && workspaceFiles.length > 0) {
-      const found = workspaceFiles.find(
-        (f) => f.absolutePath.toLowerCase() === currentFilePath.toLowerCase()
-      );
-      if (found) {
-        setFilePathFilter(found.absolutePath);
-      } else {
-        setFilePathFilter(workspaceFiles[0].absolutePath);
-      }
-    } else if (workspaceFiles.length > 0 && !filePathFilter) {
-      setFilePathFilter(workspaceFiles[0].absolutePath);
-    }
-  }, [currentFilePath, workspaceFiles, filePathFilter]);
-
-  // Load commits when selected file changes
-  useEffect(() => {
-    if (!filePathFilter) {
-      setFileCommits([]);
-      return;
-    }
-
-    let active = true;
-    setLoadingCommits(true);
-    setError(null);
-    setCompared(false);
-
-    gitGetLog({ workspacePath, filePath: filePathFilter, limit: 100 })
-      .then((res) => {
-        if (!active) return;
-        if (res?.ok) {
-          const list = res.data || [];
-          setFileCommits(list);
-          if (list.length > 0) {
-            setHashA(list[0]?.hash || "");
-            setHashB("WORKING");
-          } else {
-            setHashA("");
-            setHashB("");
-          }
-        } else {
-          setFileCommits([]);
-          setHashA("");
-          setHashB("");
-        }
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(err?.message || "Failed to load file history.");
-      })
-      .finally(() => {
-        if (active) setLoadingCommits(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [filePathFilter, workspacePath]);
-
-  async function handleCompare() {
-    if (!hashA || !hashB || !filePathFilter.trim()) return;
-    setLoading(true);
-    setError(null);
-    setCompared(false);
-
-    try {
-      const fp = filePathFilter.trim();
-      const [rA, rB] = await Promise.all([
-        gitGetFileAtCommit({ workspacePath, commitHash: hashA, filePath: fp }),
-        gitGetFileAtCommit({ workspacePath, commitHash: hashB, filePath: fp }),
-      ]);
-
-      if (!rA?.ok) throw new Error(rA?.error || "Failed to load version A.");
-      if (!rB?.ok) throw new Error(rB?.error || "Failed to load version B.");
-
-      setContentA(rA.data);
-      setContentB(rB.data);
-      setCompared(true);
-    } catch (err) {
-      setError(err?.message || "Failed to compare.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="git-vc-compare">
-      <div className="git-vc-compare__controls">
-        <div className="git-vc-compare__file-filter" style={{ flex: 1.2 }}>
-          <label className="git-vc-compare__label" htmlFor="compare-file">Note</label>
-          <select
-            id="compare-file"
-            className="git-vc-compare__input"
-            value={filePathFilter}
-            onChange={(e) => setFilePathFilter(e.target.value)}
-          >
-            {workspaceFiles.map((file) => (
-              <option key={file.absolutePath} value={file.absolutePath}>
-                {file.relativePath}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="git-vc-compare__picker">
-          <label className="git-vc-compare__label" htmlFor="compare-hash-a">From (older)</label>
-          <select
-            id="compare-hash-a"
-            className="git-vc-compare__input"
-            value={hashA}
-            onChange={(e) => setHashA(e.target.value)}
-            disabled={loadingCommits || fileCommits.length === 0}
-          >
-            {loadingCommits ? (
-              <option value="">Loading history...</option>
-            ) : fileCommits.length === 0 ? (
-              <option value="">No history for this file</option>
-            ) : (
-              <>
-                <option value="WORKING">Working Directory (Uncommitted changes)</option>
-                {fileCommits.map((c) => (
-                  <option key={c.hash} value={c.hash}>
-                    {c.shortHash} — {c.message?.slice(0, 50)}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
-        </div>
-
-        <span className="git-vc-compare__arrow" aria-hidden="true">→</span>
-
-        <div className="git-vc-compare__picker">
-          <label className="git-vc-compare__label" htmlFor="compare-hash-b">To (newer)</label>
-          <select
-            id="compare-hash-b"
-            className="git-vc-compare__input"
-            value={hashB}
-            onChange={(e) => setHashB(e.target.value)}
-            disabled={loadingCommits || fileCommits.length === 0}
-          >
-            {loadingCommits ? (
-              <option value="">Loading history...</option>
-            ) : fileCommits.length === 0 ? (
-              <option value="">No history for this file</option>
-            ) : (
-              <>
-                <option value="WORKING">Working Directory (Uncommitted changes)</option>
-                {fileCommits.map((c) => (
-                  <option key={c.hash} value={c.hash}>
-                    {c.shortHash} — {c.message?.slice(0, 50)}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
-        </div>
-
-        <AppButton
-          variant="primary"
-          onClick={handleCompare}
-          disabled={!hashA || !hashB || !filePathFilter.trim() || loading || loadingCommits}
-          aria-busy={loading}
-          style={{ height: "32px" }}
-        >
-          <GitCompare size={14} />
-          {loading ? "Comparing…" : "Compare"}
-        </AppButton>
-
-        {error && <p className="git-vc-error" role="alert" style={{ color: "var(--status-danger-text)", margin: "8px 0 0", width: "100%" }}>{error}</p>}
-      </div>
-
-      {compared && (
-        <GitDiffViewer
-          latestContent={contentB}
-          previousContent={contentA}
-          fromLabel={hashA}
-          toLabel={hashB}
-          loading={loading}
-          error={error}
-          basePath={repoRoot}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Branches Tab ──────────────────────────────────────────────────────────────
-
-function BranchesTab({ workspacePath, onNotify, onRefresh, _currentBranch }) {
-  const [branches, setBranches] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [, setError] = useState(null);
-
-  const loadBranches = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await gitListBranches(workspacePath);
-      if (result?.ok) setBranches(result.data?.branches || []);
-      else setError(result?.error);
-    } catch (err) {
-      setError(err?.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspacePath]);
-
-  useEffect(() => { loadBranches(); }, [loadBranches]);
-
-  async function handleCreate() {
-    if (!newName.trim()) return;
-    setCreating(true);
-    const result = await gitCreateBranch({ workspacePath, name: newName.trim() });
-    setCreating(false);
-    if (result?.ok) {
-      onNotify?.(`Branch "${newName.trim()}" created.`, "success");
-      setNewName("");
-      loadBranches();
-    } else {
-      onNotify?.(result?.error || "Failed to create branch.", "error");
-    }
-  }
-
-  async function handleSwitch(name) {
-    const result = await gitSwitchBranch({ workspacePath, name });
-    if (result?.ok) {
-      onNotify?.(`Switched to branch "${name}".`, "success");
-      onRefresh?.();
-      loadBranches();
-    } else {
-      onNotify?.(result?.error || "Failed to switch branch.", "error");
-    }
-  }
-
-  async function handleDelete(name) {
-    if (!window.confirm(`Delete branch "${name}"? This cannot be undone.`)) return;
-    const result = await gitDeleteBranch({ workspacePath, name });
-    if (result?.ok) {
-      onNotify?.(`Branch "${name}" deleted.`, "success");
-      loadBranches();
-    } else {
-      onNotify?.(result?.error || "Failed to delete branch.", "error");
-    }
-  }
-
-  return (
-    <div className="git-vc-branches">
-      <div className="git-vc-branches__create">
-        <h3 className="git-vc-section-title">Create branch</h3>
-        <div className="git-vc-branches__create-row">
-          <AppInput
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
-            placeholder="New branch name"
-            aria-label="New branch name"
-          />
-          <AppButton variant="primary" onClick={handleCreate} disabled={!newName.trim() || creating} aria-busy={creating}>
-            <Plus size={14} />
-            {creating ? "Creating…" : "Create"}
-          </AppButton>
-        </div>
-      </div>
-
-      <div className="git-vc-branches__list">
-        <h3 className="git-vc-section-title">Branches</h3>
-        {loading ? (
-          <div className="git-vc-loading">Loading branches…</div>
-        ) : (
-          <ul className="git-vc-list" aria-label="Branches">
-            {branches.filter((b) => !b.remote).map((b) => (
-              <li key={b.name} className={`git-vc-list-item${b.current ? " git-vc-list-item--current" : ""}`}>
-                <GitBranch size={14} aria-hidden="true" />
-                <span className="git-vc-list-item__name">{b.name}</span>
-                {b.current && <span className="git-vc-list-item__badge">current</span>}
-                <div className="git-vc-list-item__actions">
-                  {!b.current && (
-                    <AppButton variant="small" onClick={() => handleSwitch(b.name)} data-tooltip={`Switch to ${b.name}`}>
-                      <CornerDownLeft size={12} />
-                      Switch
-                    </AppButton>
-                  )}
-                  {!b.current && (
-                    <AppButton variant="small" danger onClick={() => handleDelete(b.name)} data-tooltip={`Delete ${b.name}`}>
-                      <Trash2 size={12} />
-                    </AppButton>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Tags Tab ──────────────────────────────────────────────────────────────────
-
-function TagsTab({ workspacePath, onNotify }) {
-  const [tags, setTags] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [creating, setCreating] = useState(false);
-
-  const loadTags = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await gitListTags(workspacePath);
-      if (result?.ok) setTags(result.data || []);
-    } catch { /* ignore */ } finally {
-      setLoading(false);
-    }
-  }, [workspacePath]);
-
-  useEffect(() => { loadTags(); }, [loadTags]);
-
-  async function handleCreate() {
-    if (!newTagName.trim()) return;
-    setCreating(true);
-    const result = await gitCreateTag({ workspacePath, name: newTagName.trim() });
-    setCreating(false);
-    if (result?.ok) {
-      onNotify?.(`Tag "${newTagName.trim()}" created.`, "success");
-      setNewTagName("");
-      loadTags();
-    } else {
-      onNotify?.(result?.error || "Failed to create tag.", "error");
-    }
-  }
-
-  async function handleDelete(name) {
-    if (!window.confirm(`Delete tag "${name}"?`)) return;
-    const result = await gitDeleteTag({ workspacePath, name });
-    if (result?.ok) {
-      onNotify?.(`Tag "${name}" deleted.`, "success");
-      loadTags();
-    } else {
-      onNotify?.(result?.error || "Failed to delete tag.", "error");
-    }
-  }
-
-  return (
-    <div className="git-vc-tags">
-      <div className="git-vc-tags__create">
-        <h3 className="git-vc-section-title">Create tag</h3>
-        <div className="git-vc-tags__create-row">
-          <AppInput
-            type="text"
-            value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
-            placeholder="Tag name (e.g. v1.0)"
-            aria-label="New tag name"
-          />
-          <AppButton variant="primary" onClick={handleCreate} disabled={!newTagName.trim() || creating} aria-busy={creating}>
-            <Plus size={14} />
-            {creating ? "Creating…" : "Tag HEAD"}
-          </AppButton>
-        </div>
-      </div>
-
-      <div className="git-vc-tags__list">
-        <h3 className="git-vc-section-title">Tags ({tags.length})</h3>
-        {loading ? (
-          <div className="git-vc-loading">Loading tags…</div>
-        ) : tags.length === 0 ? (
-          <p className="git-vc-empty-inline">No tags yet.</p>
-        ) : (
-          <ul className="git-vc-list" aria-label="Tags">
-            {tags.map((t) => (
-              <li key={t.name} className="git-vc-list-item">
-                <Tag size={14} aria-hidden="true" />
-                <span className="git-vc-list-item__name">{t.name}</span>
-                {t.hash && <span className="git-vc-list-item__meta">{t.hash.slice(0, 7)}</span>}
-                {t.date && <span className="git-vc-list-item__meta">{new Date(t.date).toLocaleDateString()}</span>}
-                <div className="git-vc-list-item__actions">
-                  <AppButton variant="small" danger onClick={() => handleDelete(t.name)}>
-                    <Trash2 size={12} />
-                  </AppButton>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Stashes Tab ───────────────────────────────────────────────────────────────
-
-function StashesTab({ workspacePath, onNotify }) {
-  const [stashes, setStashes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [stashMsg, setStashMsg] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const loadStashes = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await gitStashList(workspacePath);
-      if (result?.ok) setStashes(result.data || []);
-    } catch { /* ignore */ } finally {
-      setLoading(false);
-    }
-  }, [workspacePath]);
-
-  useEffect(() => { loadStashes(); }, [loadStashes]);
-
-  async function handlePush() {
-    setSaving(true);
-    const result = await gitStashPush({ workspacePath, message: stashMsg.trim() || null });
-    setSaving(false);
-    if (result?.ok) {
-      onNotify?.("Changes stashed.", "success");
-      setStashMsg("");
-      loadStashes();
-    } else {
-      onNotify?.(result?.error || "Stash failed.", "error");
-    }
-  }
-
-  async function handlePop(index) {
-    const result = await gitStashPop({ workspacePath, index });
-    if (result?.ok) {
-      onNotify?.("Stash applied.", "success");
-      loadStashes();
-    } else {
-      onNotify?.(result?.error || "Failed to apply stash.", "error");
-    }
-  }
-
-  async function handleDrop(index, message) {
-    if (!window.confirm(`Drop stash: "${message}"?`)) return;
-    const result = await gitStashDrop({ workspacePath, index });
-    if (result?.ok) {
-      onNotify?.("Stash dropped.", "success");
-      loadStashes();
-    } else {
-      onNotify?.(result?.error || "Failed to drop stash.", "error");
-    }
-  }
-
-  return (
-    <div className="git-vc-stashes">
-      <div className="git-vc-stashes__push">
-        <h3 className="git-vc-section-title">Stash changes</h3>
-        <div className="git-vc-stashes__push-row">
-          <AppInput
-            type="text"
-            value={stashMsg}
-            onChange={(e) => setStashMsg(e.target.value)}
-            placeholder="Stash message (optional)"
-            aria-label="Stash message"
-          />
-          <AppButton variant="primary" onClick={handlePush} disabled={saving} aria-busy={saving}>
-            <Layers size={14} />
-            {saving ? "Stashing…" : "Stash"}
-          </AppButton>
-        </div>
-      </div>
-
-      <div className="git-vc-stashes__list">
-        <h3 className="git-vc-section-title">Stashes ({stashes.length})</h3>
-        {loading ? (
-          <div className="git-vc-loading">Loading stashes…</div>
-        ) : stashes.length === 0 ? (
-          <p className="git-vc-empty-inline">No stashes.</p>
-        ) : (
-          <ul className="git-vc-list" aria-label="Stashes">
-            {stashes.map((s) => (
-              <li key={s.ref} className="git-vc-list-item">
-                <Layers size={14} aria-hidden="true" />
-                <span className="git-vc-list-item__name">{s.message}</span>
-                {s.date && <span className="git-vc-list-item__meta">{new Date(s.date).toLocaleDateString()}</span>}
-                <div className="git-vc-list-item__actions">
-                  <AppButton variant="small" onClick={() => handlePop(s.index)} data-tooltip="Apply and remove stash">
-                    <RotateCcw size={12} />
-                    Pop
-                  </AppButton>
-                  <AppButton variant="small" danger onClick={() => handleDrop(s.index, s.message)}>
-                    <Trash2 size={12} />
-                  </AppButton>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Remotes Tab ───────────────────────────────────────────────────────────────
-
-function RemotesTab({ workspacePath, onNotify, status }) {
+function SyncTab({ workspacePath, onNotify, status, onRefresh }) {
   const [remotes, setRemotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState("origin");
@@ -779,7 +451,9 @@ function RemotesTab({ workspacePath, onNotify, status }) {
     }
   }, [workspacePath]);
 
-  useEffect(() => { loadRemotes(); }, [loadRemotes]);
+  useEffect(() => {
+    loadRemotes();
+  }, [loadRemotes]);
 
   async function handleAdd() {
     if (!newName.trim() || !newUrl.trim()) return;
@@ -787,28 +461,53 @@ function RemotesTab({ workspacePath, onNotify, status }) {
     const result = await gitAddRemote({ workspacePath, name: newName.trim(), url: newUrl.trim() });
     setAdding(false);
     if (result?.ok) {
-      onNotify?.(`Remote "${newName}" added.`, "success");
+      onNotify?.(`Cloud target "${newName}" configured.`, "success");
       setNewName("origin");
       setNewUrl("");
       setNewToken("");
       loadRemotes();
+      onRefresh?.();
     } else {
       onNotify?.(result?.error || "Failed to add remote.", "error");
     }
   }
 
   async function handleRemove(name) {
-    if (!window.confirm(`Remove remote "${name}"?`)) return;
+    if (!window.confirm(`Remove remote target "${name}"?`)) return;
     const result = await gitRemoveRemote({ workspacePath, name });
     if (result?.ok) {
       onNotify?.(`Remote "${name}" removed.`, "success");
       loadRemotes();
+      onRefresh?.();
     } else {
       onNotify?.(result?.error || "Failed to remove remote.", "error");
     }
   }
 
-  async function handleSync(remote, action) {
+  async function handleFullSync(remote) {
+    setSyncBusy(true);
+    const auth = newToken.trim() ? { type: "pat", token: newToken.trim() } : { type: "ssh" };
+    try {
+      const pullRes = await gitPull({ workspacePath, remote: remote.name, auth });
+      if (!pullRes?.ok) {
+        throw new Error(pullRes?.error || "Pull from cloud failed.");
+      }
+
+      const pushRes = await gitPush({ workspacePath, remote: remote.name, auth });
+      if (!pushRes?.ok) {
+        throw new Error(pushRes?.error || "Push to cloud failed.");
+      }
+
+      onNotify?.("Workspace synced with cloud successfully.", "success");
+      onRefresh?.();
+    } catch (err) {
+      onNotify?.(err?.message || "Sync failed.", "error");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function handleIndividualAction(remote, action) {
     setSyncBusy(true);
     const auth = newToken.trim() ? { type: "pat", token: newToken.trim() } : { type: "ssh" };
     try {
@@ -820,8 +519,10 @@ function RemotesTab({ workspacePath, onNotify, status }) {
       } else {
         result = await gitFetch({ workspacePath, remote: remote.name, auth });
       }
+
       if (result?.ok) {
-        onNotify?.(`${action.charAt(0).toUpperCase() + action.slice(1)} to "${remote.name}" succeeded.`, "success");
+        onNotify?.(`${action.toUpperCase()} with "${remote.name}" succeeded.`, "success");
+        onRefresh?.();
       } else {
         onNotify?.(result?.error || `${action} failed.`, "error");
       }
@@ -835,19 +536,37 @@ function RemotesTab({ workspacePath, onNotify, status }) {
   const { ahead = 0, behind = 0 } = status || {};
 
   return (
-    <div className="git-vc-remotes">
-      {remotes.length > 0 && (
-        <div className="git-vc-remotes__sync">
-          <h3 className="git-vc-section-title">Sync</h3>
-          {(ahead > 0 || behind > 0) && (
-            <p className="git-vc-remotes__sync-status">
-              {ahead > 0 && <span className="git-vc-status__ahead">{ahead} commit{ahead === 1 ? "" : "s"} to push</span>}
-              {behind > 0 && <span className="git- vc-status__behind">{behind} commit{behind === 1 ? "" : "s"} to pull</span>}
-            </p>
-          )}
+    <div className="git-vc-remotes" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      {/* Cloud Sync Status Card */}
+      {remotes.length > 0 ? (
+        <div
+          className="panel-card"
+          style={{
+            background: "var(--surface-bg)",
+            border: "1px solid var(--border-soft)",
+            borderRadius: "var(--radius-lg)",
+            padding: "var(--space-4)",
+            boxShadow: "var(--shadow-sm)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+            <h3 style={{ margin: 0, fontSize: "var(--font-size-body)", fontWeight: 600, color: "var(--text-strong)" }}>
+              Cloud Backup & Sync
+            </h3>
+            {(ahead > 0 || behind > 0) ? (
+              <p style={{ margin: 0, fontSize: "var(--font-size-caption)" }}>
+                {ahead > 0 && <span style={{ color: "var(--status-success-text, #22c55e)", marginRight: "var(--space-2)" }}>↑ {ahead} to push</span>}
+                {behind > 0 && <span style={{ color: "var(--status-warning-text, #f59e0b)" }}>↓ {behind} to pull</span>}
+              </p>
+            ) : (
+              <span style={{ fontSize: "var(--font-size-caption)", color: "var(--status-success-text, #22c55e)", fontWeight: 600 }}>
+                ✓ Up to date with cloud
+              </span>
+            )}
+          </div>
 
-          <div className="git-vc-remotes__pat-row">
-            <label className="git-vc-remotes__pat-label" htmlFor="remote-pat">
+          <div style={{ marginBottom: "var(--space-3)" }}>
+            <label htmlFor="remote-pat" style={{ fontSize: "var(--font-size-caption)", color: "var(--text-muted)", display: "block", marginBottom: "var(--space-1)" }}>
               Personal Access Token (HTTPS, optional)
             </label>
             <AppInput
@@ -855,80 +574,111 @@ function RemotesTab({ workspacePath, onNotify, status }) {
               type="password"
               value={newToken}
               onChange={(e) => setNewToken(e.target.value)}
-              placeholder="Leave blank for SSH or public repos"
+              placeholder="Leave blank for SSH authentication"
               aria-label="Personal Access Token"
             />
-            <span className="git-vc-remotes__pat-hint">
-              Token is used only for this session and not stored.
-            </span>
           </div>
 
-          <div className="git-vc-remotes__sync-actions">
+          <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
             {remotes.map((r) => (
-              <div key={r.name} className="git-vc-remotes__sync-group">
-                <span className="git-vc-remotes__sync-remote">{r.name}</span>
-                <AppButton variant="primary" onClick={() => handleSync(r, "push")} disabled={syncBusy}>
+              <div key={r.name} style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                <AppButton variant="primary" onClick={() => handleFullSync(r)} disabled={syncBusy} aria-busy={syncBusy}>
+                  <RefreshCw size={14} className={syncBusy ? "animate-spin" : ""} />
+                  {syncBusy ? "Syncing…" : `Sync with ${r.name}`}
+                </AppButton>
+                <AppButton variant="small" onClick={() => handleIndividualAction(r, "push")} disabled={syncBusy}>
                   <Upload size={14} />
                   Push
                 </AppButton>
-                <AppButton variant="small" onClick={() => handleSync(r, "pull")} disabled={syncBusy}>
+                <AppButton variant="small" onClick={() => handleIndividualAction(r, "pull")} disabled={syncBusy}>
                   <Download size={14} />
                   Pull
-                </AppButton>
-                <AppButton variant="small" onClick={() => handleSync(r, "fetch")} disabled={syncBusy}>
-                  <RefreshCw size={14} />
-                  Fetch
                 </AppButton>
               </div>
             ))}
           </div>
         </div>
+      ) : (
+        <div className="git-vc-empty git-vc-empty--inline" style={{ textAlign: "center", padding: "var(--space-6)" }}>
+          <Cloud size={20} className="git-vc-empty__icon" style={{ margin: "0 auto var(--space-2)" }} />
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "var(--font-size-body-sm)" }}>
+            No remote repository connected. Add a GitHub or GitLab target below to enable cloud backup.
+          </p>
+        </div>
       )}
 
-      <div className="git-vc-remotes__list">
-        <h3 className="git-vc-section-title">Remotes</h3>
+      {/* Configured Targets List */}
+      <div
+        className="panel-card"
+        style={{
+          background: "var(--surface-bg)",
+          border: "1px solid var(--border-soft)",
+          borderRadius: "var(--radius-lg)",
+          padding: "var(--space-4)",
+          boxShadow: "var(--shadow-sm)",
+        }}
+      >
+        <h3 style={{ margin: "0 0 var(--space-3)", fontSize: "var(--font-size-body)", fontWeight: 600, color: "var(--text-strong)" }}>
+          Connected Backup Targets
+        </h3>
         {loading ? (
-          <div className="git-vc-loading">Loading remotes…</div>
+          <div style={{ fontSize: "var(--font-size-body-sm)", color: "var(--text-muted)" }}>Loading remotes…</div>
         ) : remotes.length === 0 ? (
-          <p className="git-vc-empty-inline">No remotes configured.</p>
+          <p style={{ fontSize: "var(--font-size-body-sm)", color: "var(--text-muted)", margin: 0 }}>None</p>
         ) : (
-          <ul className="git-vc-list" aria-label="Remotes">
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }} aria-label="Remotes">
             {remotes.map((r) => (
-              <li key={r.name} className="git-vc-list-item">
-                <Cloud size={14} aria-hidden="true" />
-                <span className="git-vc-list-item__name">{r.name}</span>
-                <span className="git-vc-list-item__meta">{r.fetchUrl}</span>
-                <div className="git-vc-list-item__actions">
-                  <AppButton variant="small" danger onClick={() => handleRemove(r.name)}>
-                    <Trash2 size={12} />
-                  </AppButton>
+              <li key={r.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-2) var(--space-3)", borderRadius: "var(--radius-default)", background: "var(--surface-muted)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", overflow: "hidden" }}>
+                  <Cloud size={14} aria-hidden="true" />
+                  <strong>{r.name}</strong>
+                  <span style={{ fontSize: "var(--font-size-caption)", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                    {r.fetchUrl}
+                  </span>
                 </div>
+                <AppButton variant="small" danger onClick={() => handleRemove(r.name)} data-tooltip="Remove remote">
+                  <Trash2 size={12} />
+                </AppButton>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <div className="git-vc-remotes__add">
-        <h3 className="git-vc-section-title">Add remote</h3>
-        <div className="git-vc-remotes__add-fields">
+      {/* Add Remote Card */}
+      <div
+        className="panel-card"
+        style={{
+          background: "var(--surface-bg)",
+          border: "1px solid var(--border-soft)",
+          borderRadius: "var(--radius-lg)",
+          padding: "var(--space-4)",
+          boxShadow: "var(--shadow-sm)",
+        }}
+      >
+        <h3 style={{ margin: "0 0 var(--space-3)", fontSize: "var(--font-size-body)", fontWeight: 600, color: "var(--text-strong)" }}>
+          Connect Remote Target
+        </h3>
+        <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
           <AppInput
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Remote name (e.g. origin)"
+            placeholder="Name (e.g. origin)"
             aria-label="Remote name"
+            style={{ width: "130px" }}
           />
           <AppInput
             type="text"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
-            placeholder="Remote URL (HTTPS or SSH)"
+            placeholder="Git URL (e.g. https://github.com/user/notes.git)"
             aria-label="Remote URL"
+            style={{ flex: 1, minWidth: "220px" }}
           />
           <AppButton variant="primary" onClick={handleAdd} disabled={!newName.trim() || !newUrl.trim() || adding} aria-busy={adding}>
             <Plus size={14} />
-            {adding ? "Adding…" : "Add Remote"}
+            {adding ? "Adding…" : "Add Target"}
           </AppButton>
         </div>
       </div>
@@ -936,101 +686,46 @@ function RemotesTab({ workspacePath, onNotify, status }) {
   );
 }
 
+// ── Main Page Component ───────────────────────────────────────────────────────
 
-
-// ── Settings Tab ──────────────────────────────────────────────────────────────
-
-function SettingsTab({ _workspacePath }) {
-
-  return (
-    <div className="git-vc-settings">
-      <h3 className="git-vc-section-title">Commit Identity</h3>
-      <p className="git-vc-settings__desc">
-        Git identity is read from your global git config (<code>~/.gitconfig</code>).
-        Use the integrated terminal to set it:
-      </p>
-      <pre className="git-vc-settings__code">
-        {`git config --global user.name "Your Name"
-git config --global user.email "you@example.com"`}
-      </pre>
-
-      <h3 className="git-vc-section-title" style={{ marginTop: "var(--space-7)" }}>
-        Gitignore
-      </h3>
-      <p className="git-vc-settings__desc">
-        The &ldquo;Ignore App Data in Git&rdquo; toggle is in the <strong>Version Control</strong> menu bar.
-        It controls whether <code>.notes-app/</code> is automatically excluded from your repository.
-      </p>
-    </div>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
-/**
- * GitVersionControlPage — full-page version control interface.
- *
- * Props:
- *  workspacePath   — string
- *  onBack          — () => void
- *  onNotify        — (message, type) => void
- *  initialTab      — string (optional, defaults to "status")
- *  onGitStateChange — ({ branch, pendingCount }) => void — called on refresh for GitStatusBar
- */
 export function GitVersionControlPage({
   workspacePath,
   onBack,
   onNotify,
-  initialTab = "status",
+  initialTab = "changes",
   onGitStateChange,
-  currentFilePath = null,
-  documents = [],
 }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState(() => normalizeTabId(initialTab));
   useEffect(() => {
-    setActiveTab(initialTab);
+    setActiveTab(normalizeTabId(initialTab));
   }, [initialTab]);
-  const [gitAvailable, setGitAvailable] = useState(null); // null = checking
+
+  const [gitAvailable, setGitAvailable] = useState(null);
   const [isRepo, setIsRepo] = useState(null);
-  const [repoRoot, setRepoRoot] = useState(null);
   const [initializing, setInitializing] = useState(false);
   const [status, setStatus] = useState(null);
   const [commits, setCommits] = useState([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [commitsError, setCommitsError] = useState(null);
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
-  const [tagDialogOpen, setTagDialogOpen] = useState(false);
-  const [tagCommit, setTagCommit] = useState(null);
-  const [tagName, setTagName] = useState("");
+  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
 
-  async function handleConfirmTag() {
-    if (!tagCommit || !tagName.trim()) return;
-    const targetPath = repoRoot || workspacePath;
-    const result = await gitCreateTag({
-      workspacePath: targetPath,
-      name: tagName.trim(),
-      commitHash: tagCommit.hash,
-    });
-    if (result?.ok) {
-      onNotify?.(`Tag "${tagName.trim()}" created successfully.`, "success");
-      setTagDialogOpen(false);
-      setTagName("");
-      setTagCommit(null);
-      refreshCommits();
-    } else {
-      onNotify?.(result?.error || "Failed to create tag.", "error");
-    }
-  }
-
-  const refreshStatus = useCallback(async () => {
+  const refreshStatus = useCallback(async (triggerFetch = false) => {
     if (!workspacePath) return;
     try {
+      if (triggerFetch) {
+        try {
+          await gitFetch({ workspacePath });
+        } catch { /* ignore fetch errors in background */ }
+      }
       const result = await gitGetStatus(workspacePath);
       if (result?.ok) {
         setStatus(result.data);
         onGitStateChange?.({
           branch: result.data.branch,
           pendingCount: result.data.files.length,
+          ahead: result.data.ahead || 0,
+          behind: result.data.behind || 0,
           repoRoot: result.data.repoRoot,
         });
       }
@@ -1054,7 +749,7 @@ export function GitVersionControlPage({
         );
         setCommits(enriched);
       } else {
-        setCommitsError(result?.error || "Failed to load commits.");
+        setCommitsError(result?.error || "Failed to load milestones.");
       }
     } catch (err) {
       setCommitsError(err?.message);
@@ -1075,7 +770,6 @@ export function GitVersionControlPage({
       const repoInfo = await gitGetRepoInfo(workspacePath);
       if (repoInfo?.ok) {
         setIsRepo(repoInfo.data.isRepo);
-        setRepoRoot(repoInfo.data.repoRoot);
 
         if (repoInfo.data.isRepo) {
           refreshStatus();
@@ -1094,7 +788,7 @@ export function GitVersionControlPage({
     try {
       const result = await gitInitRepo(workspacePath);
       if (result?.ok) {
-        onNotify?.("Git repository initialized successfully.", "success");
+        onNotify?.("Version tracking enabled for this workspace.", "success");
         checkGitAndRepo();
       } else {
         onNotify?.(result?.error || "Initialization failed.", "error");
@@ -1106,12 +800,50 @@ export function GitVersionControlPage({
     }
   }
 
+  function handleCommitSuccess() {
+    onNotify?.("Milestone saved successfully.", "success");
+    handleRefresh();
+    setSyncConfirmOpen(true);
+  }
+
   async function handleGlobalCommit(payload) {
     const result = await gitCommit({ workspacePath, ...payload });
     if (!result?.ok) throw new Error(result?.error || "Commit failed.");
-    onNotify?.("Committed successfully.", "success");
+    onNotify?.("Milestone saved successfully.", "success");
     refreshStatus();
     refreshCommits();
+    setSyncConfirmOpen(true);
+  }
+
+  const [globalSyncing, setGlobalSyncing] = useState(false);
+
+  async function handleQuickSync() {
+    if (!workspacePath) return;
+    setGlobalSyncing(true);
+    try {
+      const remotesRes = await gitListRemotes(workspacePath);
+      const remotesList = remotesRes?.ok ? remotesRes.data : [];
+      if (!remotesList || remotesList.length === 0) {
+        onNotify?.("No remote connected. Configure a target in Cloud Sync.", "info");
+        setActiveTab("sync");
+        return;
+      }
+      const primaryRemote = remotesList[0].name || "origin";
+      const pullRes = await gitPull({ workspacePath, remote: primaryRemote });
+      if (!pullRes?.ok) {
+        throw new Error(pullRes?.error || "Pull from cloud failed.");
+      }
+      const pushRes = await gitPush({ workspacePath, remote: primaryRemote });
+      if (!pushRes?.ok) {
+        throw new Error(pushRes?.error || "Push to cloud failed.");
+      }
+      onNotify?.("Workspace synced with cloud successfully.", "success");
+      handleRefresh();
+    } catch (err) {
+      onNotify?.(err?.message || "Cloud sync failed.", "error");
+    } finally {
+      setGlobalSyncing(false);
+    }
   }
 
   function handleRefresh() {
@@ -1119,121 +851,118 @@ export function GitVersionControlPage({
     refreshCommits();
   }
 
-  // Checking state
   if (gitAvailable === null) {
     return (
-      <div className="git-vc-page" aria-label="Version Control">
-        <div className="detail-topbar">
-          <nav className="detail-breadcrumb" aria-label="Version control location">
-            <span className="detail-breadcrumb-part">
-              <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
-              <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-            </span>
-            <span className="detail-breadcrumb-current">Version Control</span>
-          </nav>
-        </div>
+      <div className="git-vc-page" aria-label="Revisions and Sync">
+        <SubpageHeader currentTitle="Revisions & Sync" onBack={onBack} />
         <div className="git-vc-checking" aria-live="polite">
           <span className="git-timeline-spinner" aria-label="Checking Git" />
-          Checking for Git…
+          Checking version tracking…
         </div>
       </div>
     );
   }
 
   return (
-    <div className="git-vc-page" aria-label="Version Control">
-      {/* Breadcrumb / Header — matched with DocumentDetail page header */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Version control location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>Workspace</button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">/</span>
-          </span>
-          <span className="detail-breadcrumb-current">Version Control</span>
-        </nav>
-
-        {isRepo && status?.branch && (
-          <div className="panel-header__meta" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginRight: "var(--space-4)", fontSize: "var(--font-size-body-sm)" }}>
-            <GitBranch size={14} aria-hidden="true" />
-            <strong>{status.branch}</strong>
-            {status.files?.length > 0 && (
-              <span className="git-status-bar__badge">{status.files.length}</span>
-            )}
-          </div>
-        )}
-
-        <div className="detail-topbar-actions" style={{ display: "flex", gap: "var(--space-2)" }}>
-          {isRepo && (
+    <div className="git-vc-page" aria-label="Revisions and Sync">
+      {/* Standard Unified Header */}
+      <SubpageHeader
+        currentTitle="Revisions & Sync"
+        onBack={onBack}
+        actions={
+          isRepo ? (
             <>
+              {status?.branch && (
+                <div className="topbar-stat-pill" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
+                    <GitBranch size={12} />
+                    <span>{status.branch}</span>
+                    {status.files?.length > 0 && (
+                      <span className="git-status-bar__badge" style={{ marginLeft: "2px" }}>{status.files.length}</span>
+                    )}
+                  </div>
+                  {(status.ahead > 0 || status.behind > 0) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                      {status.ahead > 0 && (
+                        <span style={{ color: "var(--status-success-text, #22c55e)" }}>↑ {status.ahead} push</span>
+                      )}
+                      {status.behind > 0 && (
+                        <span style={{ color: "var(--status-warning-text, #f59e0b)" }}>↓ {status.behind} pull</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <AppButton
                 variant="small"
-                onClick={() => setCommitDialogOpen(true)}
-                data-tooltip="Commit changes (Ctrl+Shift+K)"
-                aria-label="Commit"
+                onClick={handleQuickSync}
+                disabled={globalSyncing}
+                aria-busy={globalSyncing}
+                data-tooltip="Sync changes (pull & push) with cloud"
+                aria-label="Sync"
               >
-                <GitCommit size={14} />
-                Commit
+                <ArrowUpDown size={14} className={globalSyncing ? "animate-spin" : ""} />
+                {globalSyncing ? "Syncing…" : "Sync"}
               </AppButton>
               <AppButton
                 variant="small"
                 onClick={handleRefresh}
-                data-tooltip="Refresh"
+                data-tooltip="Refresh changes"
                 aria-label="Refresh"
               >
                 <RefreshCw size={14} />
               </AppButton>
             </>
-          )}
-        </div>
-      </div>
+          ) : null
+        }
+      />
 
       {/* Empty states */}
       {!gitAvailable && <NoGitState />}
       {gitAvailable && isRepo === false && (
         <NoRepoState
-          workspacePath={workspacePath}
           onInit={handleInit}
           initializing={initializing}
         />
       )}
 
-      {/* Full UI when repo exists */}
+      {/* Main 3-Tab Interface */}
       {gitAvailable && isRepo && (
         <div className="git-vc-content">
-          <div className="p2p-tab-shell">
-            {/* Tab strip */}
-            <div className="p2p-tab-bar" role="tablist" aria-label="Version control sections">
-              {TABS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`git-tab-${id}`}
-                  aria-controls={`git-panel-${id}`}
-                  aria-selected={activeTab === id}
-                  className={`p2p-tab-btn${activeTab === id ? " active" : ""}`}
-                  onClick={() => setActiveTab(id)}
-                >
-                  <Icon size={14} aria-hidden="true" />
-                  {label}
-                </button>
-              ))}
-            </div>
+          {/* Tab Navigation Strip */}
+          <div className="git-vc-tabs" role="tablist" aria-label="Revisions and sync views">
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`git-tab-${id}`}
+                aria-controls={`git-panel-${id}`}
+                aria-selected={activeTab === id}
+                className={`git-vc-tab${activeTab === id ? " git-vc-tab--active" : ""}`}
+                onClick={() => setActiveTab(id)}
+              >
+                <Icon size={14} aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
 
-            {/* Tab panels */}
-            <div
-              className="p2p-tab-panel"
-              id={`git-panel-${activeTab}`}
-              role="tabpanel"
-              aria-labelledby={`git-tab-${activeTab}`}
-            >
-            {activeTab === "status" && (
-              <StatusTab
+          {/* Panel Container */}
+          <div
+            className="git-vc-panel"
+            id={`git-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`git-tab-${activeTab}`}
+          >
+            {activeTab === "changes" && (
+              <ChangesTab
                 status={status}
                 workspacePath={workspacePath}
                 onRefresh={handleRefresh}
                 onNotify={onNotify}
-                onCommitSuccess={handleRefresh}
+                onCommitSuccess={handleCommitSuccess}
+                onSync={handleQuickSync}
               />
             )}
             {activeTab === "history" && (
@@ -1241,50 +970,21 @@ export function GitVersionControlPage({
                 commits={commits}
                 loading={commitsLoading}
                 error={commitsError}
-                workspacePath={repoRoot}
-                onNotify={onNotify}
-                onRefresh={handleRefresh}
-                onCreateTag={(commit) => {
-                  setTagCommit(commit);
-                  setTagName("");
-                  setTagDialogOpen(true);
-                }}
               />
             )}
-            {activeTab === "compare" && (
-              <CompareTab commits={commits} workspacePath={workspacePath} currentFilePath={currentFilePath} documents={documents} repoRoot={repoRoot} />
-            )}
-            {activeTab === "branches" && (
-              <BranchesTab
-                workspacePath={workspacePath}
-                onNotify={onNotify}
-                onRefresh={handleRefresh}
-                currentBranch={status?.branch}
-              />
-            )}
-            {activeTab === "tags" && (
-              <TagsTab workspacePath={workspacePath} onNotify={onNotify} />
-            )}
-            {activeTab === "stashes" && (
-              <StashesTab workspacePath={workspacePath} onNotify={onNotify} />
-            )}
-            {activeTab === "remotes" && (
-              <RemotesTab
+            {activeTab === "sync" && (
+              <SyncTab
                 workspacePath={workspacePath}
                 onNotify={onNotify}
                 status={status}
+                onRefresh={handleRefresh}
               />
-            )}
-
-            {activeTab === "settings" && (
-              <SettingsTab workspacePath={workspacePath} />
             )}
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-      {/* Global commit dialog (from header button or keyboard shortcut) */}
+      {/* Global Milestone Dialog */}
       {isRepo && (
         <GitCommitDialog
           open={commitDialogOpen}
@@ -1295,45 +995,62 @@ export function GitVersionControlPage({
         />
       )}
 
-      {/* Tag creation dialog */}
-      {tagDialogOpen && tagCommit && (
+      {/* Post-Commit Remote Sync Confirmation Dialog */}
+      {syncConfirmOpen && (
         <OverlayDialog
-          open={tagDialogOpen}
-          onClose={() => {
-            setTagDialogOpen(false);
-            setTagCommit(null);
-          }}
-          ariaLabel="Tag Commit"
+          open={syncConfirmOpen}
+          onClose={() => setSyncConfirmOpen(false)}
+          ariaLabel="Remote Sync Confirmation"
+          size="sm"
         >
-          <div className="overlay-dialog-header">
-            <h2>Tag Commit</h2>
-          </div>
-          <div className="overlay-dialog-body" style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", padding: "var(--space-4) 0" }}>
-            <p style={{ margin: 0, fontSize: "var(--font-size-body-sm)", color: "var(--text-muted)" }}>
-              Add a tag to commit <code style={{ background: "var(--surface-muted)", padding: "2px 4px", borderRadius: "4px" }}>{tagCommit.shortHash}</code>:
+          <div style={{ padding: "var(--space-4)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "var(--status-success-bg, rgba(34, 197, 94, 0.15))",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <CheckCircle2 size={20} style={{ color: "var(--status-success-text, #22c55e)" }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "var(--font-size-heading-sm)", fontWeight: 600, color: "var(--text-strong)" }}>
+                  Milestone Saved
+                </h3>
+                <p style={{ margin: 0, fontSize: "var(--font-size-caption)", color: "var(--text-muted)" }}>
+                  Branch: <strong>{status?.branch || "main"}</strong>
+                </p>
+              </div>
+            </div>
+
+            <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--font-size-body-sm)", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              Your milestone checkpoint was saved to local history. Would you like to perform a remote sync now?
             </p>
-            <label htmlFor="git-tag-dialog-input" style={{ fontSize: "var(--font-size-label)", color: "var(--text-muted)", fontWeight: 600 }}>Tag Name</label>
-            <AppInput
-              id="git-tag-dialog-input"
-              value={tagName}
-              onChange={(e) => setTagName(e.target.value)}
-              placeholder="e.g. v1.0.0"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleConfirmTag();
-                }
-              }}
-            />
-          </div>
-          <div className="overlay-dialog-actions">
-            <AppButton variant="small" onClick={() => {
-              setTagDialogOpen(false);
-              setTagCommit(null);
-            }}>Cancel</AppButton>
-            <AppButton variant="primary" onClick={handleConfirmTag} disabled={!tagName.trim()}>
-              Create Tag
-            </AppButton>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-2)" }}>
+              <AppButton
+                variant="secondary"
+                onClick={() => setSyncConfirmOpen(false)}
+              >
+                Not Now
+              </AppButton>
+              <AppButton
+                variant="primary"
+                onClick={() => {
+                  setSyncConfirmOpen(false);
+                  handleQuickSync();
+                }}
+              >
+                <ArrowUpDown size={14} />
+                Remote Sync
+              </AppButton>
+            </div>
           </div>
         </OverlayDialog>
       )}

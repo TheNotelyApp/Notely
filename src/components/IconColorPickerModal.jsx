@@ -4,6 +4,7 @@ import { X, Check, RotateCcw } from "lucide-react";
 import { OverlayDialog } from "./OverlayDialog";
 import { getContrastColor } from "../utils/colorUtils";
 import * as LucideIcons from "lucide-react";
+import { showSuccessToast, showInfoToast } from "../utils/notificationUtils";
 import "../styles/IconColorPickerModal.css";
 
 const COMMON_ICONS = [
@@ -59,14 +60,14 @@ export function IconColorPickerModal({ isOpen, onClose, initialIcon, initialColo
       icon: selectedIcon || null,
       color: hexColor !== "#888888" || alpha < 1 ? finalColor : null
     });
-    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: "Customization saved successfully", type: "success" } }));
+    showSuccessToast("Customization saved successfully");
     onClose();
   };
 
   const handleClear = () => {
     if (window.confirm("Are you sure you want to clear the icon and color customization?")) {
       onSave({ icon: null, color: null });
-      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: "Customization cleared", type: "info" } }));
+      showInfoToast("Customization cleared");
       onClose();
     }
   };

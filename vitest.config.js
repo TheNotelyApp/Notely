@@ -12,11 +12,7 @@ export default defineConfig({
     hookTimeout: 30000,
     teardownTimeout: 30000,
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    isolate: true,
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },

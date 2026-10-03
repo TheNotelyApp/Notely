@@ -8,7 +8,7 @@
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-soft);
-  border-radius: 4px;
+  border-radius: var(--radius-default);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
@@ -38,6 +38,12 @@ option {
 }
 
 button {
+  cursor: pointer;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent-solid, #6366f1);
   cursor: pointer;
 }
 

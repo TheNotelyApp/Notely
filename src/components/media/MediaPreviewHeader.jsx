@@ -21,8 +21,9 @@ export function MediaPreviewHeader({
   onClose,
   children,
 }) {
-  const kind = getDocumentKind(fileExtension);
-  const extBadge = (fileExtension || mediaType || "").toUpperCase();
+  const kind = getDocumentKind(fileExtension, fileName);
+  const isTranscript = kind.type === "transcript" || mediaType === "transcript" || fileExtension === "vtt" || fileExtension === "srt";
+  const extBadge = isTranscript ? "TRANSCRIPT" : (fileExtension || mediaType || "").toUpperCase();
 
   return (
     <header className="media-preview-header" role="toolbar" aria-label="Media controls">

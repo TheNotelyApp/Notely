@@ -13,6 +13,7 @@ import { TextViewer } from "./media/TextViewer";
 import { PdfViewer } from "./media/PdfViewer";
 import { ImageViewer } from "./media/ImageViewer";
 import { AudioVideoViewer } from "./media/AudioVideoViewer";
+import { TranscriptViewer } from "./media/TranscriptViewer";
 import { getDocumentKind, dataUrlToUint8Array } from "./media/mediaUtils";
 
 import {
@@ -63,7 +64,9 @@ export function MediaPreviewPane({
 
   const fileName = (mediaPath || "").split(/[\\/]/).pop() || mediaPath;
   const fileExtension = String(fileName || "").split(".").pop()?.toLowerCase() || "";
-  const docKind = getDocumentKind(fileExtension);
+  const docKind = getDocumentKind(fileExtension, fileName);
+
+  const [companionTranscript, setCompanionTranscript] = useState(null);
 
   // 1. Resolve media source
   useEffect(() => {
@@ -98,6 +101,58 @@ export function MediaPreviewPane({
       cancelled = true;
     };
   }, [basePath, mediaPath, mediaType, showOriginalImages]);
+
+  // Load companion transcript for audio/video if available
+  useEffect(() => {
+    let cancelled = false;
+    setCompanionTranscript(null);
+
+    const isAV = mediaType === "video" || mediaType === "audio" || docKind.type === "audio" || docKind.type === "video";
+    if (!isAV || !mediaPath || !basePath) return;
+
+    async function loadTranscript() {
+      const normPath = String(mediaPath).replace(/\\/g, "/");
+      const dir = normPath.substring(0, normPath.lastIndexOf("/"));
+      const baseName = (normPath.split("/").pop() || "").replace(/\.[^/.]+$/, "");
+
+      const candidatePaths = [
+        dir ? `${dir}/transcript.json` : `transcript.json`,
+        dir ? `${dir}/${baseName}_transcript.json` : `${baseName}_transcript.json`,
+        dir ? `${dir}/${baseName}.transcript.json` : `${baseName}.transcript.json`,
+        dir ? `${dir}/${baseName}.json` : `${baseName}.json`,
+      ];
+
+      for (const cand of candidatePaths) {
+        if (cancelled) break;
+        try {
+          const res = await readImage(basePath, cand);
+          if (res && typeof res === "string") {
+            let jsonText = "";
+            if (res.startsWith("data:")) {
+              const base64Str = res.slice(res.indexOf(",") + 1);
+              jsonText = decodeURIComponent(escape(atob(base64Str)));
+            } else {
+              jsonText = res;
+            }
+            const parsed = typeof jsonText === "string" ? JSON.parse(jsonText) : jsonText;
+            if (parsed && (parsed.text || parsed.segments || parsed.summary)) {
+              if (!cancelled) {
+                setCompanionTranscript(parsed);
+              }
+              break;
+            }
+          }
+        } catch {
+          // try next candidate
+        }
+      }
+    }
+
+    loadTranscript();
+    return () => {
+      cancelled = true;
+    };
+  }, [basePath, mediaPath, mediaType, docKind.type]);
 
   // 2. Handle blob URL for video/audio if needed
   useEffect(() => {
@@ -360,6 +415,7 @@ export function MediaPreviewPane({
   const isSpreadsheet = docKind.type === "spreadsheet";
   const isPresentation = docKind.type === "presentation";
   const isText = docKind.type === "text";
+  const isTranscript = docKind.type === "transcript";
   const isAudioVideo = mediaType === "video" || mediaType === "audio" || docKind.type === "video" || docKind.type === "audio";
 
   return (
@@ -382,7 +438,7 @@ export function MediaPreviewPane({
         onClose={onClose}
       />
 
-      <div className={`media-preview-content ${isPdf ? "pdf-mode" : ""}`}>
+      <div className={`media-preview-content ${isPdf ? "pdf-mode full-mode" : ""} ${isTranscript ? "transcript-mode full-mode" : ""} ${isAudioVideo ? "av-mode full-mode" : ""} ${isText ? "text-mode full-mode" : ""} ${isSpreadsheet || isPresentation ? "full-mode" : ""}`}>
         {error && <div className="media-preview-error">{error}</div>}
 
         {isImage && !error && (
@@ -415,15 +471,24 @@ export function MediaPreviewPane({
           <TextViewer dataUrl={resolvedPath} />
         )}
 
+        {isTranscript && !error && (
+          <TranscriptViewer
+            dataUrl={resolvedPath}
+            fileName={fileName}
+            onNotify={null}
+          />
+        )}
+
         {isAudioVideo && !error && (
           <AudioVideoViewer
             src={mediaBlobUrl || resolvedPath}
             mediaType={mediaType || docKind.type}
             fileName={fileName}
+            transcriptData={companionTranscript}
           />
         )}
 
-        {!isImage && !isPdf && !isSpreadsheet && !isPresentation && !isText && !isAudioVideo && !error && (
+        {!isImage && !isPdf && !isSpreadsheet && !isPresentation && !isText && !isTranscript && !isAudioVideo && !error && (
           <div className="media-preview-document-container">
             <div className="document-icon">{docKind.icon}</div>
             <p className="document-family">{docKind.family}</p>

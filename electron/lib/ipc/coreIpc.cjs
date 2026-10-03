@@ -752,7 +752,36 @@ function registerCoreIpcHandlers(ipcMain, deps) {
   registerTrustedHandler("workspace-metadata:get-attached-repos", () => {
     if (typeof getWorkspaceMetadataStore === "function") {
       const store = getWorkspaceMetadataStore();
-      if (store) return store.getAttachedRepos();
+      if (store) {
+        const repos = store.getAttachedRepos() || [];
+        const notesRoot = typeof getNotesRoot === "function" ? getNotesRoot() : null;
+        if (notesRoot) {
+          try {
+            const dbPath = path.join(notesRoot, ".notes-app", "ai-graph.db");
+            if (fs.existsSync(dbPath)) {
+              const { DatabaseSync } = require("node:sqlite");
+              const gdb = new DatabaseSync(dbPath);
+              gdb.exec("PRAGMA busy_timeout = 5000;");
+              try {
+                for (const r of repos) {
+                  if (r.status === "unindexed" || !r.symbolCount) {
+                    const row = gdb.prepare("SELECT COUNT(*) as count FROM entities WHERE properties LIKE ?").get(`%"repoId":"${r.id}"%`);
+                    if (row && row.count > 0) {
+                      r.status = "indexed";
+                      r.symbolCount = row.count;
+                      r.lastScannedAt = r.lastScannedAt || new Date().toISOString();
+                      store.updateAttachedRepo(r.id, r);
+                    }
+                  }
+                }
+              } finally {
+                try { gdb.close(); } catch { /* ignore */ }
+              }
+            }
+          } catch { /* ignore sync error */ }
+        }
+        return repos;
+      }
     }
     return [];
   });
@@ -774,11 +803,123 @@ function registerCoreIpcHandlers(ipcMain, deps) {
             }
           } catch { /* ignore git info failure */ }
         }
+
+        // Initialize repo record and upsert repo entity immediately
+        repoData.status = 'indexing';
+        repoData.symbolCount = 1;
+        repoData.lastScannedAt = new Date().toISOString();
+
+        const notesRoot = typeof getNotesRoot === "function" ? getNotesRoot() : null;
+        if (notesRoot) {
+          const dbPath = path.join(notesRoot, ".notes-app", "ai-graph.db");
+          if (fs.existsSync(dbPath)) {
+            try {
+              const { DatabaseSync } = require("node:sqlite");
+              const gdb = new DatabaseSync(dbPath);
+              const repoId = `ent-code-${String(repoData.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+              gdb.prepare(`
+                INSERT INTO entities (id, name, canonical_name, type, properties, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                  name = excluded.name,
+                  canonical_name = excluded.canonical_name,
+                  type = excluded.type,
+                  properties = excluded.properties,
+                  updated_at = excluded.updated_at
+              `).run(repoId, repoData.name, repoData.name, 'Repo', JSON.stringify({ repoId: repoData.id, path: repoData.path }), new Date().toISOString());
+              gdb.close();
+            } catch { /* ignore initial repo node insert */ }
+          }
+        }
+
         const added = store.addAttachedRepo(repoData);
         const allRepos = store.getAttachedRepos();
         for (const win of BrowserWindow.getAllWindows()) {
           if (!win || win.isDestroyed()) continue;
           win.webContents.send("workspace-metadata:attached-repos-changed", allRepos);
+        }
+
+        // Run detailed AST code extraction in non-blocking background queue
+        if (repoData.path && fs.existsSync(repoData.path)) {
+          setImmediate(async () => {
+            try {
+              const { CodeKnowledgeSource, RepositoryScanner } = require("../../../ai/graph/sources/code");
+              const codeSource = new CodeKnowledgeSource([repoData]);
+              const scanner = new RepositoryScanner();
+              const files = scanner.scan(repoData.path);
+
+              let symbolCount = 1;
+              if (notesRoot) {
+                const dbPath = path.join(notesRoot, ".notes-app", "ai-graph.db");
+                if (fs.existsSync(dbPath)) {
+                  const { DatabaseSync } = require("node:sqlite");
+                  const gdb = new DatabaseSync(dbPath);
+                  gdb.exec("PRAGMA busy_timeout = 5000;");
+                  try {
+                    // Process files in non-blocking chunks of 8
+                    const CHUNK_SIZE = 8;
+                    for (let i = 0; i < files.length && i < 200; i += CHUNK_SIZE) {
+                      const chunk = files.slice(i, i + CHUNK_SIZE);
+                      gdb.exec("BEGIN");
+                      for (const filePath of chunk) {
+                        try {
+                          const fileEntities = await codeSource.extractEntities(filePath);
+                          const fileRelationships = await codeSource.extractRelationships(filePath);
+
+                          for (const ent of fileEntities) {
+                            const entId = `ent-code-${String(ent.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                            gdb.prepare(`
+                              INSERT INTO entities (id, name, canonical_name, type, properties, updated_at)
+                              VALUES (?, ?, ?, ?, ?, ?)
+                              ON CONFLICT(id) DO UPDATE SET
+                                name = excluded.name,
+                                canonical_name = excluded.canonical_name,
+                                type = excluded.type,
+                                properties = excluded.properties,
+                                updated_at = excluded.updated_at
+                            `).run(entId, ent.name, ent.canonical_name || ent.name, ent.type || 'CodeModule', JSON.stringify(ent.properties || {}), new Date().toISOString());
+                            symbolCount++;
+                          }
+
+                          for (const rel of fileRelationships) {
+                            const srcId = `ent-code-${String(rel.source_name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                            const tgtId = `ent-code-${String(rel.target_name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                            if (srcId !== tgtId) {
+                              gdb.prepare(`
+                                INSERT OR IGNORE INTO relationships (source_id, target_id, type, weight, confidence, metadata)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                              `).run(srcId, tgtId, rel.type, rel.weight || 1.0, rel.confidence || 0.95, JSON.stringify(rel.metadata || {}));
+                            }
+                          }
+                        } catch { /* ignore individual file error */ }
+                      }
+                      gdb.exec("COMMIT");
+                      // Yield to event loop between chunks
+                      await new Promise(resolve => setImmediate(resolve));
+                    }
+                  } catch {
+                    try { gdb.exec("ROLLBACK"); } catch { /* ignore */ }
+                  } finally {
+                    try { gdb.close(); } catch { /* ignore */ }
+                  }
+                }
+              }
+
+              store.updateAttachedRepo(repoData.id, {
+                status: 'indexed',
+                symbolCount,
+                lastScannedAt: new Date().toISOString()
+              });
+              const updatedRepos = store.getAttachedRepos();
+              for (const win of BrowserWindow.getAllWindows()) {
+                if (!win || win.isDestroyed()) continue;
+                win.webContents.send("workspace-metadata:attached-repos-changed", updatedRepos);
+              }
+            } catch (bgErr) {
+              console.warn("[Background Repo Scanner] Error:", bgErr.message);
+              store.updateAttachedRepo(repoData.id, { status: 'indexed' });
+            }
+          });
         }
         return { success: true, repo: added, all: allRepos };
       }
@@ -791,7 +932,36 @@ function registerCoreIpcHandlers(ipcMain, deps) {
     if (typeof getWorkspaceMetadataStore === "function") {
       const store = getWorkspaceMetadataStore();
       if (store) {
+        const repo = (store.getAttachedRepos() || []).find((r) => r.id === repoId || r.path === repoId);
         const removed = store.removeAttachedRepo(repoId);
+
+        // Purge repo entities from ai-graph.db if workspace db exists
+        try {
+          const notesRoot = typeof getNotesRoot === "function" ? getNotesRoot() : null;
+          if (notesRoot) {
+            const dbPath = path.join(notesRoot, ".notes-app", "ai-graph.db");
+            if (fs.existsSync(dbPath)) {
+              const { DatabaseSync } = require("node:sqlite");
+              const gdb = new DatabaseSync(dbPath);
+              gdb.exec("PRAGMA busy_timeout = 5000;");
+              try {
+                gdb.exec("BEGIN");
+                if (repo && repo.id) {
+                  gdb.prepare("DELETE FROM entities WHERE properties LIKE ?").run(`%"repoId":"${repo.id}"%`);
+                }
+                if (repo && repo.path) {
+                  gdb.prepare("DELETE FROM entities WHERE properties LIKE ?").run(`%"absolutePath":"${repo.path.replace(/\\/g, '\\\\')}%`);
+                }
+                gdb.exec("COMMIT");
+              } catch {
+                try { gdb.exec("ROLLBACK"); } catch { /* ignore */ }
+              } finally {
+                try { gdb.close(); } catch { /* ignore */ }
+              }
+            }
+          }
+        } catch { /* ignore graph purge errors */ }
+
         const allRepos = store.getAttachedRepos();
         for (const win of BrowserWindow.getAllWindows()) {
           if (!win || win.isDestroyed()) continue;

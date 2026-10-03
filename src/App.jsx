@@ -36,7 +36,6 @@ const KeyboardShortcutsModal = lazy(() =>
 
 import { GitStatusBar } from "./components/GitStatusBar";
 import { AIStatusBar } from "./components/AIStatusBar";
-import { MCPStatusBar } from "./components/MCPStatusBar";
 
 const NoteListPanel = lazy(() =>
   import("./components/NoteListPanel").then((m) => ({ default: m.NoteListPanel }))
@@ -69,6 +68,10 @@ import {
   getOnboardingComplete,
   getNotesRootSetting,
   gitGetStatus,
+  gitFetch,
+  gitPull,
+  gitPush,
+  gitListRemotes,
   checkForUpdates,
   onExportRecordAdded,
   listProjects,
@@ -959,8 +962,35 @@ export default function App() {
     handleResolveConflict,
     handleOpenNextConflict,
   } = useP2PSync({ notify, setError, loadDocumentsData, syncStateRef });
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [mcpToolsPageOpen, setMcpToolsPageOpen] = useState(false);
+
+  const closeAllFullscreenViews = useCallback(() => {
+    setGraphPanelOpen(false);
+    setEmbeddingsPageOpen(false);
+    setHealthPageOpen(false);
+    setAppLogsOpen(false);
+    setGitVCOpen(false);
+    setTaskWorkspaceOpen(false);
+    setCalendarPageOpen(false);
+    setDownloadsPageOpen(false);
+    setWorkspaceIndexOpen(false);
+    setDiagramsMediaOpen(false);
+    setAttachedReposPageOpen(false);
+    setMcpToolsPageOpen(false);
+  }, [
+    setGraphPanelOpen,
+    setEmbeddingsPageOpen,
+    setHealthPageOpen,
+    setAppLogsOpen,
+    setGitVCOpen,
+    setTaskWorkspaceOpen,
+    setCalendarPageOpen,
+    setDownloadsPageOpen,
+    setWorkspaceIndexOpen,
+    setDiagramsMediaOpen,
+    setAttachedReposPageOpen,
+    setMcpToolsPageOpen,
+  ]);
 
   const handleAIEmbeddings = useCallback(async () => {
     notify("Generating embeddings...", "info");
@@ -1007,19 +1037,10 @@ export default function App() {
 
   useEffect(() => {
     if (p2pStatusOpen) {
-      setSettingsTab("p2p");
-      setSettingsOpen(true);
+      openSettings("p2p");
       setP2PStatusOpen(false);
     }
   }, [p2pStatusOpen, setP2PStatusOpen]);
-
-  useEffect(() => {
-    if (aiSettingsOpen) {
-      setSettingsTab("ai");
-      setSettingsOpen(true);
-      setAiSettingsOpen(false);
-    }
-  }, [aiSettingsOpen, setAiSettingsOpen]);
 
   const terminalCwd = current?.filePath
     ? current.filePath.replace(/[\\/][^\\/]+$/, "")
@@ -1103,16 +1124,25 @@ export default function App() {
     setDiagramsMediaOpen(false);
   }
 
-  const refreshGitWorkspaceMeta = useCallback(async function refreshGitWorkspaceMeta() {
+  const refreshGitWorkspaceMeta = useCallback(async function refreshGitWorkspaceMeta(triggerFetch = false) {
     try {
       const meta = await getGitWorkspaceMetadata();
       let pendingCount = 0;
       let files = [];
+      let ahead = 0;
+      let behind = 0;
       if (meta?.isGitRoot && notesFolderPath) {
+        if (triggerFetch) {
+          try {
+            await gitFetch({ workspacePath: notesFolderPath });
+          } catch { /* ignore background fetch errors */ }
+        }
         const statusResult = await gitGetStatus(notesFolderPath);
         if (statusResult?.ok) {
           pendingCount = statusResult.data.files?.length || 0;
           files = statusResult.data.files || [];
+          ahead = statusResult.data.ahead || 0;
+          behind = statusResult.data.behind || 0;
         }
       }
       setGitWorkspaceMeta({
@@ -1123,6 +1153,8 @@ export default function App() {
         gitignoreHasNotesApp: meta?.gitignoreHasNotesApp === true,
         pendingCount,
         files,
+        ahead,
+        behind,
       });
     } catch {
       setGitWorkspaceMeta((currentValue) => ({
@@ -1130,9 +1162,48 @@ export default function App() {
         isGitRoot: false,
         pendingCount: 0,
         files: [],
+        ahead: 0,
+        behind: 0,
       }));
     }
   }, [notesFolderPath]);
+
+  // Periodic background fetch every 60 seconds when in a git workspace
+  useEffect(() => {
+    if (!notesFolderPath || !gitWorkspaceMeta.isGitRoot) return undefined;
+    const timer = setInterval(() => {
+      void refreshGitWorkspaceMeta(true);
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [notesFolderPath, gitWorkspaceMeta.isGitRoot, refreshGitWorkspaceMeta]);
+
+  const handleQuickGitSync = useCallback(async () => {
+    if (!notesFolderPath || !gitWorkspaceMeta.isGitRoot) return;
+    try {
+      const remotesRes = await gitListRemotes(notesFolderPath);
+      const remotes = remotesRes?.ok ? remotesRes.data : [];
+      if (!remotes || remotes.length === 0) {
+        notify("No remote connected. Configure a target in Revisions & Sync.", "info");
+        setGitVCInitialTab("sync");
+        setGitVCOpen(true);
+        return;
+      }
+      const primaryRemote = remotes[0].name || "origin";
+      notify("Syncing workspace with cloud…", "info");
+      const pullRes = await gitPull({ workspacePath: notesFolderPath, remote: primaryRemote });
+      if (!pullRes?.ok) {
+        throw new Error(pullRes?.error || "Pull from cloud failed.");
+      }
+      const pushRes = await gitPush({ workspacePath: notesFolderPath, remote: primaryRemote });
+      if (!pushRes?.ok) {
+        throw new Error(pushRes?.error || "Push to cloud failed.");
+      }
+      notify("Workspace synced with cloud successfully.", "success");
+      void refreshGitWorkspaceMeta(true);
+    } catch (err) {
+      notify(err?.message || "Cloud sync failed.", "error");
+    }
+  }, [notesFolderPath, gitWorkspaceMeta.isGitRoot, notify, refreshGitWorkspaceMeta, setGitVCOpen, setGitVCInitialTab]);
 
   async function handleToggleAutoIgnoreGitMetadata() {
     try {
@@ -1154,13 +1225,15 @@ export default function App() {
     }
   }
 
-  const handleGitStateChange = useCallback(({ branch, pendingCount }) => {
+  const handleGitStateChange = useCallback(({ branch, pendingCount, ahead = 0, behind = 0 }) => {
     setGitWorkspaceMeta((meta) => {
-      if (meta.branch === branch && meta.pendingCount === pendingCount) return meta;
+      if (meta.branch === branch && meta.pendingCount === pendingCount && meta.ahead === ahead && meta.behind === behind) return meta;
       return {
         ...meta,
         branch,
         pendingCount,
+        ahead,
+        behind,
       };
     });
   }, []);
@@ -1701,7 +1774,7 @@ export default function App() {
       }
 
       if (action === "open-p2p-status") {
-        handleOpenP2PStatus();
+        openSettings("p2p");
         return;
       }
 
@@ -1710,16 +1783,6 @@ export default function App() {
         return;
       }
 
-
-      const closeAllFullscreenViews = () => {
-        setGraphPanelOpen(false);
-        setEmbeddingsPageOpen(false);
-        setHealthPageOpen(false);
-        setAppLogsOpen(false);
-        setGitVCOpen(false);
-        setTaskWorkspaceOpen(false);
-        setCalendarPageOpen(false);
-      };
 
       if (action === "open-tasks-workspace") {
         closeAllFullscreenViews();
@@ -1734,7 +1797,7 @@ export default function App() {
         return;
       }
 
-      if (action === "open-workspace-graph") {
+      if (action === "open-knowledge-graph" || action === "open-workspace-graph") {
         closeAllFullscreenViews();
         setGraphPanelOpen(true);
         return;
@@ -1745,8 +1808,6 @@ export default function App() {
         setEmbeddingsPageOpen(true);
         return;
       }
-
-
 
       if (action === "open-app-logs") {
         closeAllFullscreenViews();
@@ -1761,7 +1822,7 @@ export default function App() {
         return;
       }
 
-      if (action === "open-ai-health") {
+      if (action === "open-diagnostics" || action === "open-health-page" || action === "open-ai-health" || action === "open-mcp-diagnostics") {
         closeAllFullscreenViews();
         setHealthPageOpen(true);
         return;
@@ -2168,13 +2229,12 @@ export default function App() {
       }
 
       if (action === "open-ai-settings") {
-        setAiSettingsOpen(true);
+        openSettings("ai");
         return;
       }
 
       if (action === "open-mcp-settings") {
-        setSettingsTab("mcp");
-        setSettingsOpen(true);
+        openSettings("mcp");
         return;
       }
 
@@ -2198,23 +2258,49 @@ export default function App() {
 
 
 
-      if (action === "open-health-page") {
+      if (action === "open-settings") {
+        openSettings("general");
+        return;
+      }
+
+      if (action === "open-health-page" || action === "open-diagnostics" || action === "open-mcp-diagnostics") {
+        closeAllFullscreenViews();
         setHealthPageOpen(true);
         return;
       }
 
+      if (action === "open-trash") {
+        setTrashDialogOpen(true);
+        return;
+      }
+
       if (action === "open-mcp-tools") {
+        closeAllFullscreenViews();
         setMcpToolsPageOpen(true);
         return;
       }
 
       if (action === "open-workspace-index" || action === "workspace-index") {
+        closeAllFullscreenViews();
         setWorkspaceIndexOpen(true);
         return;
       }
 
       if (action === "open-workspace-diagrams-media" || action === "workspace-diagrams-media") {
+        closeAllFullscreenViews();
         setDiagramsMediaOpen(true);
+        return;
+      }
+
+      if (action === "open-attached-repos" || action === "attached-repos") {
+        closeAllFullscreenViews();
+        setAttachedReposPageOpen(true);
+        return;
+      }
+
+      if (action === "open-downloads-page" || action === "open-downloads") {
+        closeAllFullscreenViews();
+        setDownloadsPageOpen(true);
         return;
       }
 
@@ -2319,7 +2405,6 @@ export default function App() {
       const result = await exportWorkspaceZip(options);
       if (!result?.canceled) {
         setWorkspaceExportProgress({ phase: "Export complete", percent: 100 });
-        notify(`Workspace exported: ${result?.filePath || "zip created"}`, "success");
         setWorkspaceExportOpen(false);
       }
     } catch (error) {
@@ -2436,13 +2521,12 @@ export default function App() {
 
   const paletteCommandsBase = [
     { id: "restart-app", label: "Restart Notely", group: "App", aliases: "restart relaunch reboot app application" },
+    { id: "open-settings", label: "Open Settings", group: "App", shortcut: "Ctrl/Cmd+,", aliases: "settings preferences general theme font zoom" },
     { id: "new-note", label: "Create New Note", group: "Notes", shortcut: "Ctrl/Cmd+N", aliases: "add note new document write jot capture" },
-    { id: "open-mcp-tools", label: "Open MCP Tools & Capabilities", group: "AI", shortcut: "Ctrl/Cmd+Shift+M", aliases: "mcp tools agent external server api" },
-
+    { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory organize" },
     { id: "open-help-center", label: "Open Help Center", group: "Help", shortcut: "F1", aliases: "help docs guide manual about" },
     { id: "open-feedback", label: "Report Bug / Feedback", group: "Help", aliases: "feedback bug report issue feature request" },
     { id: "open-about", label: "Open About Notely", group: "Help", aliases: "about version build" },
-    { id: "new-folder", label: "Create New Folder", group: "Notes", aliases: "add folder create directory organize" },
     { id: "open-global-search", label: "Open Global Search", group: "Search", shortcut: "Ctrl/Cmd+Shift+F", aliases: "find everywhere search all notes quick open jump" },
     { id: "open-shortcuts", label: "Open Keyboard Shortcuts", group: "Help", shortcut: "Ctrl/Cmd+/", aliases: "hotkeys keymap shortcuts" },
     { id: "open-workspace", label: "Open Workspace", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+N", aliases: "open workspace folder notes root path" },
@@ -2452,9 +2536,10 @@ export default function App() {
     { id: "export-workspace-zip", label: "Export Workspace as Zip", group: "Workspace", aliases: "export backup archive zip workspace" },
     { id: "open-export-package", label: "Export Note Package...", group: "Package", aliases: "export note package nly note package backup share" },
     { id: "open-import-package", label: "Import Note Package...", group: "Package", aliases: "import note package nly note package restore open" },
-    { id: "open-workspace-graph", label: "Open Workspace Graph", group: "Navigation", aliases: "graph map relationships links topology" },
-    { id: "open-tasks-panel", label: "Open Tasks Panel", group: "Navigation", aliases: "tasks todos checkboxes unchecked open items" },
-    { id: "open-all-tasks", label: "Open All Tasks", group: "Navigation", aliases: "all tasks completed closed open task list workspace tasks" },
+    { id: "open-tasks-workspace", label: "Open Tasks", group: "Workspace", shortcut: "Ctrl/Cmd+Shift+T", aliases: "tasks todos checkboxes unchecked open items task workspace" },
+    { id: "open-calendar", label: "Open Calendar", group: "Workspace", aliases: "calendar schedule dates" },
+    { id: "open-trash", label: "Open Trash", group: "Workspace", aliases: "trash deleted removed notes bin" },
+    { id: "open-workspace-index", label: "Open Workspace Index", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+I", aliases: "workspace index outline headings tags notes list" },
     {
       id: "open-recent-workspaces",
       label: "Open Recent Workspace",
@@ -2462,15 +2547,19 @@ export default function App() {
       disabled: recentWorkspacePaths.length === 0,
       aliases: "recent workspaces recently opened folders",
     },
-    { id: "open-workspace-diagrams-media", label: "Open Media Gallery", group: "Workspace", aliases: "media gallery assets diagrams pdfs images video audio mermaid drawio excalidraw" },
-    { id: "open-attached-repos", label: "Open Attached Code Repositories", group: "Workspace", aliases: "git repos code ast symbols attach repositories graphify" },
+    { id: "open-workspace-diagrams-media", label: "Open Media Gallery", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+M", aliases: "media gallery assets diagrams pdfs images video audio mermaid drawio excalidraw" },
+    { id: "open-attached-repos", label: "Open Attached Code Repositories", group: "Workspace", shortcut: "Ctrl/Cmd+Alt+G", aliases: "git repos code ast symbols attach repositories graphify" },
+    { id: "open-downloads-page", label: "Open Downloads & Export History", group: "App", shortcut: "Ctrl/Cmd+J", aliases: "downloads exports export history pdf packages" },
+    { id: "open-git-version-control", label: "Open Revisions & Sync", group: "Tools", shortcut: "Ctrl/Cmd+Shift+G", aliases: "git version control vc source commit branch diff history milestone sync" },
     { id: "open-workspace-activity", label: "Open Workspace Activity", group: "Sync", aliases: "activity timeline sync events" },
-    { id: "open-p2p-status", label: "Open P2P Status", group: "Sync", aliases: "peer status p2p" },
+    { id: "open-p2p-status", label: "Open P2P Settings", group: "Sync", aliases: "peer status p2p sync settings" },
     { id: "open-knowledge-graph", label: "Open Knowledge Graph", group: "AI", aliases: "workspace graph mind map network relations nodes" },
     { id: "open-embeddings-page", label: "Open Embeddings Dashboard", group: "AI", aliases: "vector database indexing onnx local bge segments" },
     { id: "open-ai-settings", label: "Open AI Settings", group: "AI", aliases: "llm ai config" },
     { id: "open-mcp-settings", label: "Open MCP Server Settings", group: "AI", aliases: "mcp server tools model context protocol" },
-    { id: "open-mcp-diagnostics", label: "Open MCP Diagnostics", group: "AI", aliases: "mcp health telemetry diagnostics status" },
+    { id: "open-diagnostics", label: "Open Diagnostics", group: "AI", aliases: "mcp health telemetry diagnostics status ai health logs" },
+    { id: "open-app-logs", label: "Open System & Application Logs", group: "Help", aliases: "logs system application telemetry console error debug" },
+    { id: "open-mcp-tools", label: "Open MCP Tools & Capabilities", group: "AI", aliases: "mcp tools agent external server api" },
     { id: "toggle-terminal", label: showTerminal ? "Hide Terminal" : "Show Terminal", group: "View", aliases: "console shell" },
     {
       id: "toggle-view-mode",
@@ -2849,7 +2938,33 @@ export default function App() {
     }
 
     if (resolvedCommandId === "open-downloads-page" || resolvedCommandId === "open-downloads") {
+      closeAllFullscreenViews();
       setDownloadsPageOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-git-version-control") {
+      closeAllFullscreenViews();
+      setGitVCInitialTab("status");
+      setGitVCOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-workspace-index" || resolvedCommandId === "workspace-index") {
+      closeAllFullscreenViews();
+      setWorkspaceIndexOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-app-logs") {
+      closeAllFullscreenViews();
+      setAppLogsOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-mcp-tools") {
+      closeAllFullscreenViews();
+      setMcpToolsPageOpen(true);
       return;
     }
 
@@ -2858,22 +2973,38 @@ export default function App() {
       return;
     }
 
+    if (resolvedCommandId === "open-settings") {
+      openSettings("general");
+      return;
+    }
 
-    if (resolvedCommandId === "open-workspace-graph") {
+    if (resolvedCommandId === "open-knowledge-graph" || resolvedCommandId === "open-workspace-graph") {
+      closeAllFullscreenViews();
       setGraphPanelOpen(true);
       return;
     }
 
     if (resolvedCommandId === "open-embeddings-page") {
+      closeAllFullscreenViews();
       setEmbeddingsPageOpen(true);
       return;
     }
 
-
-
-    if (resolvedCommandId === "open-tasks-panel" || resolvedCommandId === "open-all-tasks") {
+    if (resolvedCommandId === "open-tasks-workspace" || resolvedCommandId === "open-tasks-panel" || resolvedCommandId === "open-all-tasks") {
+      closeAllFullscreenViews();
       setTaskWorkspaceContext(null);
       setTaskWorkspaceOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-calendar") {
+      closeAllFullscreenViews();
+      setCalendarPageOpen(true);
+      return;
+    }
+
+    if (resolvedCommandId === "open-trash") {
+      setTrashDialogOpen(true);
       return;
     }
 
@@ -2889,11 +3020,13 @@ export default function App() {
     }
 
     if (resolvedCommandId === "open-workspace-diagrams-media" || resolvedCommandId === "open-assets") {
+      closeAllFullscreenViews();
       setDiagramsMediaOpen(true);
       return;
     }
 
     if (resolvedCommandId === "open-attached-repos" || resolvedCommandId === "open-git-repos") {
+      closeAllFullscreenViews();
       setAttachedReposPageOpen(true);
       return;
     }
@@ -2904,27 +3037,22 @@ export default function App() {
     }
 
     if (resolvedCommandId === "open-p2p-status") {
-      await handleOpenP2PStatus();
-      return;
-    }
-
-    if (resolvedCommandId === "open-knowledge-graph") {
-      setGraphPanelOpen(true);
+      openSettings("p2p");
       return;
     }
 
     if (resolvedCommandId === "open-ai-settings") {
-      setAiSettingsOpen(true);
+      openSettings("ai");
       return;
     }
 
     if (resolvedCommandId === "open-mcp-settings") {
-      setSettingsTab("mcp");
-      setSettingsOpen(true);
+      openSettings("mcp");
       return;
     }
 
-    if (resolvedCommandId === "open-mcp-diagnostics") {
+    if (resolvedCommandId === "open-diagnostics" || resolvedCommandId === "open-mcp-diagnostics" || resolvedCommandId === "open-ai-health") {
+      closeAllFullscreenViews();
       setHealthPageOpen(true);
       return;
     }
@@ -3046,23 +3174,33 @@ export default function App() {
 
   function handleDashboardAction(action) {
     if (action === "tasks-workspace" || action === "tasks-overdue") {
+      closeAllFullscreenViews();
       setTaskWorkspaceContext(null);
       setTaskWorkspaceOpen(true);
       return;
     }
 
     if (action === "calendar") {
+      closeAllFullscreenViews();
       setCalendarPageOpen(true);
       return;
     }
 
     if (action === "workspace-index" || action === "open-workspace-index") {
+      closeAllFullscreenViews();
       setWorkspaceIndexOpen(true);
       return;
     }
 
-    if (action === "workspace-diagrams-media" || action === "open-workspace-diagrams-media") {
+    if (action === "workspace-diagrams-media" || action === "open-workspace-diagrams-media" || action === "assets") {
+      closeAllFullscreenViews();
       setDiagramsMediaOpen(true);
+      return;
+    }
+
+    if (action === "attached-repos" || action === "open-attached-repos") {
+      closeAllFullscreenViews();
+      setAttachedReposPageOpen(true);
       return;
     }
 
@@ -3084,16 +3222,6 @@ export default function App() {
     if (action === "search") {
       setGlobalSearchQuery("");
       setGlobalSearchOpen(true);
-      return;
-    }
-
-    if (action === "assets") {
-      setDiagramsMediaOpen(true);
-      return;
-    }
-
-    if (action === "attached-repos" || action === "open-attached-repos") {
-      setAttachedReposPageOpen(true);
       return;
     }
 
@@ -3275,15 +3403,25 @@ export default function App() {
                 isRepo: gitWorkspaceMeta.isGitRoot,
                 branch: gitWorkspaceMeta.branch,
                 pendingCount: gitWorkspaceMeta.pendingCount || 0,
+                ahead: gitWorkspaceMeta.ahead || 0,
+                behind: gitWorkspaceMeta.behind || 0,
                 loading: false,
               }}
               onClick={() => setGitVCOpen(true)}
+              onOpenVC={(tab) => {
+                if (tab) setGitVCInitialTab(tab);
+                setGitVCOpen(true);
+              }}
+              onSaveMilestone={() => {
+                setGitVCInitialTab("changes");
+                setGitVCOpen(true);
+              }}
+              onSync={handleQuickGitSync}
             />
-            <AIStatusBar onClick={() => setAiSettingsOpen(true)} />
-            <MCPStatusBar onClick={() => {
-              setSettingsTab("mcp");
-              setSettingsOpen(true);
-            }} />
+            <AIStatusBar
+              onClick={() => openSettings("ai")}
+              onOpenMcpSettings={() => openSettings("mcp")}
+            />
             {current && !(graphPanelOpen || embeddingsPageOpen || healthPageOpen || appLogsOpen || gitVCOpen) ? (
               <>
                 {documentStats ? (
@@ -3418,7 +3556,7 @@ export default function App() {
               await handleLandingNavigateTo(targetPath);
             }}
 
-            onOpenAISettings={() => setAiSettingsOpen(true)}
+            onOpenAISettings={() => openSettings("ai")}
             onOpenDocument={handleOpenReferencedDocumentFromUI}
             initialLine={initialLine}
             onLineJumped={() => setInitialLine(null)}

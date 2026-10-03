@@ -278,6 +278,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           checked: Boolean(context?.autosaveEnabled),
           click: () => sendMenuAction(win, "toggle-autosave")
         },
+        { type: "separator" },
         {
           label: "Export PDF",
           accelerator: "CmdOrCtrl+Shift+E",
@@ -323,6 +324,12 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
+          label: "Settings\u2026",
+          accelerator: "CmdOrCtrl+,",
+          click: () => sendMenuAction(win, "open-settings")
+        },
+        { type: "separator" },
+        {
           label: "Restart Notely",
           click: () => sendMenuAction(win, "restart-app")
         },
@@ -359,11 +366,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
-          label: "Reload Workspace from Disk",
-          accelerator: "CmdOrCtrl+Alt+R",
-          click: () => sendMenuAction(win, "reload-workspace")
-        },
-        {
           label: "Export Note Package",
           click: () => sendMenuAction(win, "open-export-package")
         },
@@ -373,10 +375,16 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
-          label: `Move ${currentFolderLabel} to Removed`,
+          label: `Move ${currentFolderLabel} to Trash`,
           accelerator: "CmdOrCtrl+Shift+Delete",
           enabled: canRemoveFolder,
           click: () => sendMenuAction(win, "remove-folder")
+        },
+        { type: "separator" },
+        {
+          label: "Settings\u2026",
+          accelerator: "CmdOrCtrl+,",
+          click: () => sendMenuAction(win, "open-settings")
         },
         { type: "separator" },
         {
@@ -436,10 +444,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
 
   const viewSubmenu = screen === "document"
     ? [
-        {
-          label: "Open Command Palette",
-          click: () => sendMenuAction(win, "open-command-palette")
-        },
         { type: "separator" },
         {
           label: "Theme",
@@ -606,7 +610,7 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
-          label: "Toggle Full Screen (Focus Mode)",
+          label: "Toggle Full Screen",
           accelerator: "F11",
           click: () => sendMenuAction(win, "toggle-focus-mode")
         },
@@ -648,10 +652,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           : [])
       ]
     : [
-        {
-          label: "Open Command Palette",
-          click: () => sendMenuAction(win, "open-command-palette")
-        },
         { type: "separator" },
         {
           label: "Theme",
@@ -718,24 +718,24 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         },
         { type: "separator" },
         {
-          label: "Dashboard View",
+          label: "Notes View",
           submenu: [
             {
-              label: "Tile Notes",
+              label: "Tile",
               accelerator: "CmdOrCtrl+1",
               type: "checkbox",
               checked: viewMode === "tile",
               click: () => sendMenuAction(win, "view-tile")
             },
             {
-              label: "Table Notes",
+              label: "Table",
               accelerator: "CmdOrCtrl+2",
               type: "checkbox",
               checked: viewMode === "table",
               click: () => sendMenuAction(win, "view-table")
             },
             {
-              label: "Tree Notes",
+              label: "Tree",
               accelerator: "CmdOrCtrl+3",
               type: "checkbox",
               checked: viewMode === "tree",
@@ -821,6 +821,10 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           label: "Calendar",
           click: () => sendMenuAction(win, "open-calendar")
         },
+        {
+          label: "Knowledge Graph",
+          click: () => sendMenuAction(win, "open-knowledge-graph")
+        },
         { type: "separator" },
         {
           label: "Workspace Information",
@@ -861,13 +865,13 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
           click: () => sendMenuAction(win, "open-attached-repos")
         },
         {
+          label: "Trash",
+          click: () => sendMenuAction(win, "open-trash")
+        },
+        {
           label: "Workspace Activity",
           accelerator: "CmdOrCtrl+Shift+A",
           click: () => sendMenuAction(win, "open-workspace-activity")
-        },
-        {
-          label: "Trash / Removed Items",
-          click: () => sendMenuAction(win, "open-trash")
         },
         {
           label: "Reload Workspace",
@@ -893,116 +897,93 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
       ]
     },
     {
-      label: "Version Control",
+      label: "Tools",
       submenu: [
         {
-          label: "Open Version Control",
-          accelerator: "CmdOrCtrl+Shift+G",
-          click: () => sendMenuAction(win, "open-git-version-control")
+          label: "Revisions & Sync",
+          submenu: [
+            {
+              label: "Open Revisions & Sync",
+              accelerator: "CmdOrCtrl+Shift+G",
+              click: () => sendMenuAction(win, "open-git-version-control")
+            },
+            { type: "separator" },
+            {
+              label: "Save Milestone…",
+              accelerator: "CmdOrCtrl+Alt+K",
+              click: () => sendMenuAction(win, "git-commit")
+            },
+            {
+              label: "Note History Drawer",
+              accelerator: "CmdOrCtrl+Shift+H",
+              enabled: screen === "document",
+              click: () => sendMenuAction(win, "git-history")
+            },
+            {
+              label: "Sync with Cloud",
+              accelerator: "CmdOrCtrl+Shift+U",
+              click: () => sendMenuAction(win, "git-sync")
+            },
+            { type: "separator" },
+            {
+              label: "Ignore App Data in Git",
+              type: "checkbox",
+              checked: Boolean(context?.autoIgnoreMetadataInGit !== false),
+              click: () => sendMenuAction(win, "toggle-auto-ignore-git-metadata")
+            }
+          ]
         },
         { type: "separator" },
         {
-          label: "Commit\u2026",
-          accelerator: "CmdOrCtrl+Alt+K",
-          click: () => sendMenuAction(win, "git-commit")
-        },
-        {
-          label: "History",
-          accelerator: "CmdOrCtrl+Shift+H",
-          enabled: screen === "document",
-          click: () => sendMenuAction(win, "git-history")
-        },
-        {
-          label: "Diff Current Note",
-          enabled: screen === "document",
-          click: () => sendMenuAction(win, "git-diff-current")
-        },
-        {
-          label: "Compare Versions",
-          click: () => sendMenuAction(win, "git-compare")
-        },
-        { type: "separator" },
-        {
-          label: "Push",
-          accelerator: "CmdOrCtrl+Shift+U",
-          click: () => sendMenuAction(win, "git-push")
-        },
-        {
-          label: "Pull",
-          click: () => sendMenuAction(win, "git-pull")
-        },
-        {
-          label: "Fetch",
-          click: () => sendMenuAction(win, "git-fetch")
-        },
-        {
-          label: "Sync (Pull then Push)",
-          click: () => sendMenuAction(win, "git-sync")
+          label: "P2P Sync",
+          submenu: [
+            {
+              label: "Run Sync Self-Test",
+              click: () => sendMenuAction(win, "run-p2p-sync-self-test")
+            },
+            {
+              label: "Conflict Center",
+              click: () => sendMenuAction(win, "open-p2p-conflicts")
+            },
+            { type: "separator" },
+            {
+              label: "Rotate Workspace Keys",
+              click: () => sendMenuAction(win, "rotate-p2p-workspace-keys")
+            },
+            { type: "separator" },
+            {
+              label: "How Sync Works",
+              click: () => sendMenuAction(win, "open-p2p-sync-help")
+            }
+          ]
         },
         { type: "separator" },
         {
-          label: "Ignore App Data in Git",
-          type: "checkbox",
-          checked: Boolean(context?.autoIgnoreMetadataInGit !== false),
-          click: () => sendMenuAction(win, "toggle-auto-ignore-git-metadata")
-        },
-
-      ]
-    },
-    {
-      label: "P2P",
-      submenu: [
-        {
-          label: "P2P Status",
-          accelerator: "CmdOrCtrl+Shift+P",
-          click: () => sendMenuAction(win, "open-p2p-status")
-        },
-        { type: "separator" },
-        {
-          label: "Run Sync Self-Test",
-          click: () => sendMenuAction(win, "run-p2p-sync-self-test")
+          label: "AI & Knowledge",
+          submenu: [
+            {
+              label: "Knowledge Graph",
+              click: () => sendMenuAction(win, "open-knowledge-graph")
+            },
+            {
+              label: "Embeddings",
+              click: () => sendMenuAction(win, "open-embeddings-page")
+            }
+          ]
         },
         {
-          label: "Conflict Center",
-          click: () => sendMenuAction(win, "open-p2p-conflicts")
-        },
-        { type: "separator" },
-        {
-          label: "Rotate Workspace Keys",
-          click: () => sendMenuAction(win, "rotate-p2p-workspace-keys")
-        },
-        { type: "separator" },
-        {
-          label: "How Sync Works",
-          click: () => sendMenuAction(win, "open-p2p-sync-help")
-        }
-      ]
-    },
-    {
-      label: "AI",
-      submenu: [
-        {
-          label: "AI Settings",
-          accelerator: "CmdOrCtrl+Shift+,",
-          click: () => sendMenuAction(win, "open-ai-settings")
-        },
-        {
-          label: "MCP Server Settings",
-          click: () => sendMenuAction(win, "open-mcp-settings")
-        },
-        { type: "separator" },
-        {
-          label: "Knowledge Graph",
-          click: () => sendMenuAction(win, "open-knowledge-graph")
-        },
-        {
-          label: "Embeddings",
-          click: () => sendMenuAction(win, "open-embeddings-page")
-        },
-        { type: "separator" },
-        {
-          label: "MCP Diagnostics & Health",
-          click: () => sendMenuAction(win, "open-health-page")
+          label: "MCP",
+          submenu: [
+            {
+              label: "MCP Tools & Capabilities",
+              click: () => sendMenuAction(win, "open-mcp-tools")
+            },
+            { type: "separator" },
+            {
+              label: "Diagnostics",
+              click: () => sendMenuAction(win, "open-diagnostics")
+            }
+          ]
         }
       ]
     },
@@ -1032,10 +1013,6 @@ function buildAppMenuTemplate(win, context = {}, deps = {}) {
         {
           label: "System & Application Logs",
           click: () => sendMenuAction(win, "open-app-logs")
-        },
-        {
-          label: "MCP Tools & Capabilities",
-          click: () => sendMenuAction(win, "open-mcp-tools")
         },
         { type: "separator" },
         {

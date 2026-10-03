@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const ModelAdapter = require('../ModelAdapter');
 const { Entity, Relationship, Evidence, ExtractionResult } = require('../schemas/ExtractionResult');
 const { createLogger } = require('../../../core/logger');
@@ -192,6 +193,11 @@ class GLiNER2RelexAdapter extends ModelAdapter {
     if (!fs.existsSync(filePath) || fs.statSync(filePath).size < 100) return null;
 
     try {
+      if (typeof os.freemem === "function" && os.freemem() < 400 * 1024 * 1024) {
+        log.info(`System free memory is low (${Math.round(os.freemem() / 1024 / 1024)}MB); deferring heavy ONNX session load for ${fileName}.`);
+        return null;
+      }
+
       if (this.isWebRuntime) {
         const fileBuf = fs.readFileSync(filePath);
         const uint8 = new Uint8Array(fileBuf.buffer, fileBuf.byteOffset, fileBuf.byteLength);
@@ -211,7 +217,11 @@ class GLiNER2RelexAdapter extends ModelAdapter {
         return await this.ort.InferenceSession.create(filePath, opts);
       }
     } catch (err) {
-      log.warn(`Failed to create ONNX session for ${fileName}:`, err.message);
+      if (err.message && (err.message.includes("bad_alloc") || err.message.includes("ERROR_CODE: 6"))) {
+        log.info(`ONNX allocation unavailable for ${fileName} due to memory constraints; using standby extraction.`);
+      } else {
+        log.warn(`Failed to create ONNX session for ${fileName}:`, err.message);
+      }
       return null;
     }
   }

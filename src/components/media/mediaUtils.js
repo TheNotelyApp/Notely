@@ -24,8 +24,34 @@ export function dataUrlToArrayBuffer(dataUrl) {
   return bytes ? bytes.buffer : null;
 }
 
-export function getDocumentKind(extension) {
+export function getDocumentKind(extension, filePathOrName = "") {
   const ext = String(extension || "").toLowerCase();
+  const name = String(filePathOrName || "").toLowerCase();
+
+  // Transcripts
+  if (
+    name.endsWith("_transcript.json") ||
+    name.endsWith(".transcript.json") ||
+    name === "transcript.json" ||
+    name.endsWith("/transcript.json") ||
+    name.endsWith("\\transcript.json") ||
+    name.includes("transcript") ||
+    name.includes("/transcripts/") ||
+    name.includes("\\transcripts\\") ||
+    ext === "vtt" ||
+    ext === "srt"
+  ) {
+    return { icon: "🎙️", family: "Audio Transcript", type: "transcript" };
+  }
+
+  // Audio folder or audio recording naming (e.g. webm/ogg recorded via mic)
+  if (
+    (name.includes("/audio/") || name.includes("\\audio\\") || name.includes("audio") || name.includes("mic") || name.includes("voice") || name.includes("meeting")) &&
+    ["webm", "ogg", "wav", "mp3", "m4a", "flac", "aac", "wma"].includes(ext)
+  ) {
+    return { icon: "🎵", family: "Audio", type: "audio" };
+  }
+
   if (["doc", "docx", "odt", "rtf"].includes(ext)) return { icon: "📝", family: "Word Document", type: "word" };
   if (["xls", "xlsx", "csv", "tsv", "ods"].includes(ext)) return { icon: "📊", family: "Spreadsheet", type: "spreadsheet" };
   if (["ppt", "pptx", "odp"].includes(ext)) return { icon: "📽️", family: "Presentation", type: "presentation" };
@@ -35,6 +61,6 @@ export function getDocumentKind(extension) {
   if (["pdf"].includes(ext)) return { icon: "📑", family: "PDF Document", type: "pdf" };
   if (["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"].includes(ext)) return { icon: "🖼️", family: "Image", type: "image" };
   if (["mp4", "webm", "ogg", "mov", "mkv"].includes(ext)) return { icon: "🎬", family: "Video", type: "video" };
-  if (["mp3", "wav", "m4a", "flac", "aac"].includes(ext)) return { icon: "🎵", family: "Audio", type: "audio" };
+  if (["mp3", "wav", "m4a", "flac", "aac", "wma"].includes(ext)) return { icon: "🎵", family: "Audio", type: "audio" };
   return { icon: "📃", family: "Document", type: "document" };
 }

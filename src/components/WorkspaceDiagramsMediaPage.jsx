@@ -5,8 +5,6 @@ import {
   ExternalLink,
   Copy,
   Check,
-  PanelLeftClose,
-  PanelLeftOpen,
   Eye,
   CheckSquare,
   Square,
@@ -25,260 +23,41 @@ import {
   Loader2,
   X,
   LayoutTemplate,
+  Info,
+  Trash2,
 } from "lucide-react";
 import {
   extractWorkspaceUsedAssets,
   filterAssets,
   mergeDiskMediaIntoCatalog,
 } from "../services/workspaceMediaService";
-import { readImage, openMediaInDefaultApp, listDiskMediaAssets } from "../services/electronService";
-import { readDrawioImage } from "../services/drawioService";
-import { readDiagramImage } from "../services/diagramService";
-import { readWireframeImage } from "../services/wireframeService";
+import { readImage, openMediaInDefaultApp, listDiskMediaAssets, deleteImage } from "../services/electronService";
+import { readDrawioImage, deleteDrawio } from "../services/drawioService";
+import { readDiagramImage, deleteDiagram } from "../services/diagramService";
+import { readWireframeImage, deleteWireframe } from "../services/wireframeService";
 import { saveAudioRecording } from "../services/electron/mediaService";
 import { transcribeAudio } from "../services/sttService";
 import { showToast } from "../utils/notificationUtils";
 import AppSelect from "./AppSelect";
 import OverlayDialog from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
+import AppButton from "./AppButton";
+import SubpageHeader from "./layout/SubpageHeader";
+import { MediaPreviewPane } from "./MediaPreviewPane";
 import "../styles/WorkspaceDiagramsMedia.css";
 
-// Audio Preview Component
-function AudioPlayerPreviewItem({ asset, basePath }) {
-  const [dataUrl, setDataUrl] = useState(null);
-  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadAudio() {
-      try {
-        const res = await readImage(basePath || "", asset.path);
-        if (!cancelled && res) {
-          setDataUrl(res);
-        }
-      } catch {
-        if (!cancelled) setError(true);
-      }
-    }
-    loadAudio();
-    return () => { cancelled = true; };
-  }, [asset, basePath]);
 
-  if (error || !dataUrl) {
-    return (
-      <div style={{ padding: "16px", textAlign: "center" }}>
-        <Music size={20} style={{ width: 32, height: 32, color: "var(--accent-solid, #ec4899)", marginBottom: "8px" }} />
-        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{asset.name}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: "12px", width: "100%", display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
-      <audio controls src={dataUrl} style={{ width: "100%", maxHeight: "36px" }} />
-    </div>
-  );
-}
-
-// Video Preview Component
-function VideoPlayerPreviewItem({ asset, basePath }) {
-  const [dataUrl, setDataUrl] = useState(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadVideo() {
-      try {
-        const res = await readImage(basePath || "", asset.path);
-        if (!cancelled && res) {
-          setDataUrl(res);
-        }
-      } catch {
-        if (!cancelled) setError(true);
-      }
-    }
-    loadVideo();
-    return () => { cancelled = true; };
-  }, [asset, basePath]);
-
-  if (error || !dataUrl) {
-    return (
-      <div style={{ padding: "16px", textAlign: "center" }}>
-        <Video size={20} style={{ width: 32, height: 32, color: "var(--accent-solid, #f59e0b)", marginBottom: "8px" }} />
-        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{asset.name}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: "8px", width: "100%", display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
-      <video controls src={dataUrl} style={{ width: "100%", maxHeight: "240px", borderRadius: "6px", background: "#000" }} />
-    </div>
-  );
-}
-
-function formatTranscriptSummary(summary) {
-  if (!summary) return "";
-  if (typeof summary === "string") return summary;
-  if (typeof summary === "object") {
-    const parts = [];
-    if (Array.isArray(summary.keyPoints) && summary.keyPoints.length > 0) {
-      parts.push(summary.keyPoints.join(" • "));
-    }
-    if (Array.isArray(summary.actionItems) && summary.actionItems.length > 0) {
-      parts.push("Actions: " + summary.actionItems.join("; "));
-    }
-    return parts.join("\n\n");
-  }
-  return String(summary);
-}
-
-// Transcript Preview Component
-function TranscriptPreviewItem({ asset, basePath, isCardPreview = false, onNotify }) {
-  const [transcriptData, setTranscriptData] = useState(null);
-  const [error, setError] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadTranscript() {
-      try {
-        const res = await readImage(basePath || "", asset.path);
-        if (!cancelled && res) {
-          let text = "";
-          if (res.startsWith("data:")) {
-            const base64 = res.split(",")[1];
-            text = decodeURIComponent(escape(atob(base64)));
-          } else {
-            text = res;
-          }
-          try {
-            const parsed = JSON.parse(text);
-            if (!cancelled) setTranscriptData(parsed);
-          } catch {
-            if (!cancelled) setTranscriptData({ text });
-          }
-        }
-      } catch {
-        if (!cancelled) setError(true);
-      }
-    }
-    loadTranscript();
-    return () => { cancelled = true; };
-  }, [asset, basePath]);
-
-  const summaryText = formatTranscriptSummary(transcriptData?.summary);
-  const rawText = transcriptData?.fullText || transcriptData?.text || "";
-
-  if (isCardPreview) {
-    const previewSnippet = summaryText || rawText || (error ? "Transcript" : "Loading transcript...");
-    return (
-      <div style={{ padding: "12px", width: "100%", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: "4px", fontSize: "11px", color: "var(--text-muted)", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 600 }}>
-          <MessageSquareText size={14} />
-          <span style={{ fontSize: "10px", letterSpacing: "0.05em" }}>TRANSCRIPT</span>
-        </div>
-        <p style={{ margin: "4px 0 0 0", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35, fontSize: "11px", color: "var(--text-secondary)" }}>
-          {previewSnippet}
-        </p>
-      </div>
-    );
-  }
-
-  const handleCopyText = () => {
-    const fullText = rawText || JSON.stringify(transcriptData, null, 2);
-    navigator.clipboard.writeText(fullText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    onNotify?.("Transcript copied to clipboard", "success");
-  };
-
-  const hasStructuredSummary = Boolean(
-    transcriptData?.summary &&
-    typeof transcriptData.summary === "object" &&
-    ((Array.isArray(transcriptData.summary.keyPoints) && transcriptData.summary.keyPoints.length > 0) ||
-     (Array.isArray(transcriptData.summary.actionItems) && transcriptData.summary.actionItems.length > 0))
-  );
-
-  return (
-    <div style={{ padding: "12px", width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: "10px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 600, fontSize: "12px" }}>
-          <MessageSquareText size={16} />
-          <span>Speech-to-Text Transcript</span>
-        </div>
-        <button
-          className="btn btn-secondary btn-sm"
-          type="button"
-          onClick={handleCopyText}
-          style={{ display: "flex", alignItems: "center", gap: "4px", height: "24px", fontSize: "11px", padding: "0 8px" }}
-        >
-          {copied ? <Check size={12} style={{ color: "#10b981" }} /> : <Copy size={12} />}
-          <span>{copied ? "Copied" : "Copy Full Text"}</span>
-        </button>
-      </div>
-
-      {hasStructuredSummary ? (
-        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "6px", fontSize: "11px", lineHeight: 1.4 }}>
-          <strong style={{ color: "#38bdf8", display: "block", marginBottom: "4px" }}>Summary</strong>
-          {Array.isArray(transcriptData.summary.keyPoints) && transcriptData.summary.keyPoints.length > 0 && (
-            <div style={{ marginBottom: "6px" }}>
-              <div style={{ fontWeight: 600, color: "var(--text-secondary)", marginBottom: "2px" }}>Key Points</div>
-              <ul style={{ margin: 0, paddingLeft: "16px", color: "var(--text-primary)" }}>
-                {transcriptData.summary.keyPoints.map((pt, idx) => (
-                  <li key={idx} style={{ marginBottom: "2px" }}>{pt}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {Array.isArray(transcriptData.summary.actionItems) && transcriptData.summary.actionItems.length > 0 && (
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--text-secondary)", marginBottom: "2px" }}>Action Items</div>
-              <ul style={{ margin: 0, paddingLeft: "16px", color: "var(--text-primary)" }}>
-                {transcriptData.summary.actionItems.map((act, idx) => (
-                  <li key={idx} style={{ marginBottom: "2px" }}>{act}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      ) : summaryText ? (
-        <div style={{ padding: "8px 10px", background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.2)", borderRadius: "6px", fontSize: "11px", lineHeight: 1.4 }}>
-          <strong style={{ color: "#38bdf8", display: "block", marginBottom: "2px" }}>Summary</strong>
-          <span>{summaryText}</span>
-        </div>
-      ) : null}
-
-      {transcriptData?.segments && transcriptData.segments.length > 0 ? (
-        <div style={{ maxHeight: "200px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "4px" }}>
-          {transcriptData.segments.map((seg, idx) => (
-            <div key={idx} style={{ fontSize: "11px", lineHeight: 1.35, display: "flex", gap: "6px" }}>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-                [{Math.floor(seg.start || 0)}s]
-              </span>
-              <span>{seg.text}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ maxHeight: "200px", overflowY: "auto", fontSize: "11px", lineHeight: 1.4, whiteSpace: "pre-wrap", color: "var(--text-secondary)" }}>
-          {rawText || "No text content available in transcript."}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Harmonious category colors inspired by Knowledge Graph palette
+// Harmonious high-contrast category colors inspired by Knowledge Graph palette
 const CATEGORY_THEMES = {
-  diagram: { border: "#6366f1", bg: "rgba(99, 102, 241, 0.12)", text: "#818cf8", label: "Diagram" },
-  wireframe: { border: "#14b8a6", bg: "rgba(20, 184, 166, 0.12)", text: "#2dd4bf", label: "UI Prototype" },
-  image: { border: "#06b6d4", bg: "rgba(6, 182, 212, 0.12)", text: "#22d3ee", label: "Image" },
-  pdf: { border: "#10b981", bg: "rgba(16, 185, 129, 0.12)", text: "#34d399", label: "PDF" },
-  video: { border: "#f59e0b", bg: "rgba(245, 158, 11, 0.12)", text: "#fbbf24", label: "Video" },
-  audio: { border: "#ec4899", bg: "rgba(236, 72, 153, 0.12)", text: "#f472b6", label: "Audio" },
-  transcript: { border: "#0ea5e9", bg: "rgba(14, 165, 233, 0.12)", text: "#38bdf8", label: "Transcript" },
-  document: { border: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)", text: "#a78bfa", label: "Doc" },
+  diagram: { border: "rgba(99, 102, 241, 0.4)", bg: "rgba(99, 102, 241, 0.18)", text: "#a5b4fc", label: "Diagram" },
+  wireframe: { border: "rgba(20, 184, 166, 0.4)", bg: "rgba(20, 184, 166, 0.18)", text: "#5eead4", label: "UI Prototype" },
+  image: { border: "rgba(6, 182, 212, 0.4)", bg: "rgba(6, 182, 212, 0.18)", text: "#67e8f9", label: "Image" },
+  pdf: { border: "rgba(16, 185, 129, 0.4)", bg: "rgba(16, 185, 129, 0.18)", text: "#6ee7b7", label: "PDF" },
+  video: { border: "rgba(245, 158, 11, 0.4)", bg: "rgba(245, 158, 11, 0.18)", text: "#fcd34d", label: "Video" },
+  audio: { border: "rgba(236, 72, 153, 0.4)", bg: "rgba(236, 72, 153, 0.18)", text: "#f9a8d4", label: "Audio" },
+  transcript: { border: "rgba(14, 165, 233, 0.4)", bg: "rgba(14, 165, 233, 0.18)", text: "#7dd3fc", label: "Transcript" },
+  document: { border: "rgba(139, 92, 246, 0.4)", bg: "rgba(139, 92, 246, 0.18)", text: "#c4b5fd", label: "Doc" },
 };
 
 function getCategoryTheme(category) {
@@ -400,7 +179,16 @@ function DiagramOrImagePreviewItem({ asset, basePath, className = "" }) {
           }
         }
 
-        // 4. Fallback to readImage with asset path
+        // 4. Try previewPath if available
+        if (!res && asset.previewPath) {
+          try {
+            res = await readImage(basePath || "", asset.previewPath);
+          } catch {
+            // fallback
+          }
+        }
+
+        // 5. Fallback to readImage with asset path
         if (!res && asset.path) {
           try {
             res = await readImage(basePath || "", asset.path);
@@ -409,7 +197,7 @@ function DiagramOrImagePreviewItem({ asset, basePath, className = "" }) {
           }
         }
 
-        // 5. Fallback to readImage with rawPath
+        // 6. Fallback to readImage with rawPath
         if (!res && asset.rawPath) {
           try {
             res = await readImage(basePath || "", asset.rawPath);
@@ -462,8 +250,10 @@ export default function WorkspaceDiagramsMediaPage({
   onNotify,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [viewingAsset, setViewingAsset] = useState(null);
+  const [inspectingAsset, setInspectingAsset] = useState(null);
+  const [assetToDelete, setAssetToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [usageFilter, setUsageFilter] = useState("all"); // all, single, multi
   const [sortOrder, setSortOrder] = useState("ref-desc"); // ref-desc, ref-asc, name-asc, name-desc
@@ -487,8 +277,9 @@ export default function WorkspaceDiagramsMediaPage({
   const showNotification = (message, type = "info") => {
     if (typeof onNotify === "function") {
       onNotify(message, type);
+    } else {
+      showToast(message, type);
     }
-    showToast(message, type);
   };
 
   const refreshDiskFiles = async () => {
@@ -499,6 +290,48 @@ export default function WorkspaceDiagramsMediaPage({
       }
     } catch {
       // ignore
+    }
+  };
+
+  const handleDeleteAsset = async (asset) => {
+    if (!asset || deleting) return;
+    setDeleting(true);
+    try {
+      const targetBase = asset.referencedBy[0]?.notePath || workspacePath || "";
+
+      if (asset.subType === "drawio") {
+        const diagId = asset.diagramId || (asset.fileName || asset.name || "").replace(/\.png$/i, "");
+        if (diagId) {
+          await deleteDrawio(diagId, targetBase).catch(() => {});
+        }
+      } else if (asset.subType === "excalidraw") {
+        const diagId = asset.diagramId || asset.path?.match(/(?:excalidraw|excali-diagrams)[\\/]([^/]+)/i)?.[1];
+        if (diagId) {
+          await deleteDiagram(targetBase, diagId).catch(() => {});
+        }
+      } else if (asset.subType === "wireframe") {
+        const diagId = asset.diagramId || asset.path?.match(/(?:wireframe|wireframes)[\\/]([^/.]+)/i)?.[1] || (asset.fileName || asset.name || "").replace(/\.png$/i, "");
+        if (diagId) {
+          await deleteWireframe(diagId, targetBase).catch(() => {});
+        }
+      }
+
+      if (asset.path && !asset.path.startsWith("inline:")) {
+        await deleteImage(targetBase, asset.path, { removeAllReferences: false }).catch(() => {});
+      }
+      if (asset.previewPath && asset.previewPath !== asset.path) {
+        await deleteImage(targetBase, asset.previewPath, { removeAllReferences: false }).catch(() => {});
+      }
+
+      await refreshDiskFiles();
+      if (viewingAsset?.id === asset.id) setViewingAsset(null);
+      if (inspectingAsset?.id === asset.id) setInspectingAsset(null);
+      setAssetToDelete(null);
+      showNotification(`Deleted "${asset.name}"`, "success");
+    } catch (err) {
+      showNotification(`Failed to delete asset: ${err.message || err}`, "error");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -578,7 +411,8 @@ export default function WorkspaceDiagramsMediaPage({
 
       setTranscriptionStatus("Saving companion transcript...");
       const baseName = asset.name.replace(/\.[^/.]+$/, "");
-      const transcriptFileName = `${baseName}_transcript.json`;
+      const assetDir = asset.path ? asset.path.replace(/\\/g, "/").substring(0, asset.path.lastIndexOf("/")) : "";
+      const transcriptFileName = assetDir ? `${assetDir}/transcript.json` : `${baseName}_transcript.json`;
 
       await saveAudioRecording({
         fileName: transcriptFileName,
@@ -650,7 +484,7 @@ export default function WorkspaceDiagramsMediaPage({
     let textToCopy = "";
     if (asset.subType === "mermaid") {
       textToCopy = `\`\`\`mermaid\n${asset.rawCode}\n\`\`\``;
-    } else if (asset.isImageSyntax || asset.category === "image") {
+    } else if (asset.isImageSyntax || asset.category === "image" || asset.category === "diagram" || asset.category === "wireframe") {
       textToCopy = `![${asset.name}](${asset.path})`;
     } else {
       textToCopy = `[${asset.name}](${asset.path})`;
@@ -665,31 +499,14 @@ export default function WorkspaceDiagramsMediaPage({
   return (
     <div className="workspace-diagrams-media-page">
       {/* Top Breadcrumb Bar */}
-      <div className="detail-topbar">
-        <nav className="detail-breadcrumb" aria-label="Media Gallery navigation">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Workspace
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">Media Gallery</span>
-        </nav>
-      </div>
+      <SubpageHeader
+        breadcrumbCurrent="Diagrams & Media"
+        onBack={onBack}
+      />
 
       <div className="wdm-container">
         {/* Header Bar */}
         <div className="wdm-header-actions">
-          <AppIconButton
-            onClick={() => setSidebarOpen((prev) => !prev)}
-            aria-label={sidebarOpen ? "Hide filters sidebar" : "Show filters sidebar"}
-            title={sidebarOpen ? "Hide filters sidebar" : "Show filters sidebar"}
-          >
-            {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-          </AppIconButton>
-
           {/* Search Input */}
           <div className="wdm-search-wrapper">
             <Search size={14} className="wdm-search-icon" />
@@ -728,18 +545,8 @@ export default function WorkspaceDiagramsMediaPage({
 
         {/* Main Body with Split View */}
         <div className="wdm-body">
-          {/* Collapsible Left Sidebar */}
-          <div
-            className="wdm-sidebar"
-            style={{
-              width: sidebarOpen ? "270px" : "0px",
-              minWidth: sidebarOpen ? "270px" : "0px",
-              opacity: sidebarOpen ? 1 : 0,
-              pointerEvents: sidebarOpen ? "auto" : "none",
-              borderRight: sidebarOpen ? "1px solid var(--border-default)" : "none",
-              transition: "width 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease",
-            }}
-          >
+          {/* Static Left Sidebar */}
+          <div className="wdm-sidebar">
             <div className="wdm-sidebar-section-scroll">
               {/* Category Filter Section */}
               <div className="wdm-sidebar-section">
@@ -872,268 +679,358 @@ export default function WorkspaceDiagramsMediaPage({
                   </div>
                 </div>
               ) : (
-                <div className="wdm-card-grid">
-                  {filteredAssets.map((asset) => {
-                    const theme = getCategoryTheme(asset.category);
-                    const isSelected = selectedAsset?.id === asset.id;
+                <div className="wdm-table-container">
+                  <table className="wdm-table">
+                    <thead>
+                      <tr>
+                        <th>Asset Name</th>
+                        <th style={{ width: "120px" }}>Type</th>
+                        <th style={{ width: "90px" }}>Size</th>
+                        <th style={{ width: "200px" }}>Referenced In</th>
+                        <th style={{ width: "150px" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAssets.map((asset) => {
+                        const isSelected = viewingAsset?.id === asset.id || inspectingAsset?.id === asset.id;
+                        const CategoryIcon = (() => {
+                          switch (asset.category) {
+                            case "diagram": return FileCode;
+                            case "wireframe": return LayoutTemplate;
+                            case "image": return ImageIcon;
+                            case "pdf": return FileDigit;
+                            case "video": return Video;
+                            case "audio": return Music;
+                            case "transcript": return MessageSquareText;
+                            default: return File;
+                          }
+                        })();
 
-                    return (
-                      <div
-                        key={asset.id}
-                        className={`wdm-card ${isSelected ? "selected" : ""}`}
-                        onClick={() => setSelectedAsset(asset)}
-                      >
-                        {/* Visual Thumbnail Area */}
-                        <div className="wdm-card-preview-area">
-                          {asset.subType === "mermaid" ? (
-                            <MermaidRenderer
-                              code={asset.rawCode}
-                              className="wdm-card-preview-mermaid"
-                              isCardPreview={true}
-                            />
-                          ) : (asset.category === "image" || asset.category === "wireframe" || asset.subType === "wireframe" || asset.subType === "drawio" || asset.subType === "excalidraw" || asset.category === "diagram") ? (
-                            <DiagramOrImagePreviewItem
-                              asset={asset}
-                              basePath={asset.referencedBy[0]?.notePath || workspacePath}
-                              className="wdm-card-img"
-                            />
-                          ) : asset.category === "pdf" ? (
-                            <div className="wdm-card-preview-doc">
-                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
-                                <FileDigit size={20} />
-                              </div>
-                            </div>
-                          ) : asset.category === "video" ? (
-                            <div className="wdm-card-preview-doc">
-                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
-                                <Video size={20} />
-                              </div>
-                            </div>
-                          ) : asset.category === "audio" ? (
-                            <div className="wdm-card-preview-doc">
-                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
-                                <Music size={20} />
-                              </div>
-                            </div>
-                          ) : asset.category === "transcript" ? (
-                            <TranscriptPreviewItem
-                              asset={asset}
-                              basePath={asset.referencedBy[0]?.notePath || workspacePath}
-                              isCardPreview={true}
-                            />
-                          ) : (
-                            <div className="wdm-card-preview-doc">
-                              <div className="wdm-card-icon-frame" style={{ background: theme.bg, color: theme.text, border: `1px solid ${theme.border}` }}>
-                                <File size={20} />
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        const typeLabel = (() => {
+                          if (asset.category === "wireframe" || asset.subType === "wireframe") return "WIREFRAME";
+                          if (asset.subType === "excalidraw") return "EXCALIDRAW";
+                          if (asset.subType === "drawio") return "DRAW.IO";
+                          if (asset.subType === "mermaid") return asset.diagramType ? asset.diagramType.toUpperCase() : "MERMAID";
+                          if (asset.category === "transcript" || asset.subType === "transcript") return "TRANSCRIPT";
+                          const raw = asset.diagramType || (asset.subType && asset.subType.length <= 10 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
+                          return String(raw).toUpperCase();
+                        })();
 
-                        {/* Card Content */}
-                        <div className="wdm-card-content">
-                          <div className="wdm-card-title-row">
-                            <h4 className="wdm-card-title" title={asset.name}>
-                              {asset.name}
-                            </h4>
-                          </div>
+                        const formattedSize = (() => {
+                          if (typeof asset.size !== "number" || asset.size <= 0) return "—";
+                          if (asset.size < 1024) return `${asset.size} B`;
+                          if (asset.size < 1024 * 1024) return `${(asset.size / 1024).toFixed(1)} KB`;
+                          return `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
+                        })();
 
-                          <div className="wdm-card-badges">
-                            <span
-                              className="wdm-badge"
-                              style={{
-                                background: theme.bg,
-                                color: theme.text,
-                                border: `1px solid ${theme.border}`,
-                              }}
-                            >
-                              {(() => {
-                                if (asset.category === "wireframe" || asset.subType === "wireframe") {
-                                  return "WIREFRAME";
-                                }
-                                const raw = asset.diagramType || (asset.subType && asset.subType.length <= 8 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
-                                return String(raw).toUpperCase();
-                              })()}
-                            </span>
+                        return (
+                          <tr
+                            key={asset.id}
+                            className={`wdm-table-row ${isSelected ? "selected" : ""}`}
+                            onClick={() => setViewingAsset(asset)}
+                            title="Click to preview asset"
+                          >
+                            {/* Asset Name with Icon & Sub-path */}
+                            <td>
+                              <div className="wdm-asset-name-cell">
+                                <div className={`wdm-asset-icon-box wdm-badge-${asset.category}`}>
+                                  <CategoryIcon size={14} />
+                                </div>
+                                <div className="wdm-asset-name-info">
+                                  <span className="wdm-asset-main-name" title={asset.name}>
+                                    {asset.name}
+                                  </span>
+                                  <span className="wdm-asset-sub-path" title={asset.path}>
+                                    {asset.path?.startsWith("inline:") ? "Inline Diagram" : asset.path}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
 
-                            <span
-                              className={`wdm-reference-count-badge ${asset.referenceCount === 0 ? "is-unused" : ""}`}
-                            >
+                            {/* Type Badge & Companion Transcript Indicator */}
+                            <td>
+                              <div style={{ display: "inline-flex", alignItems: "center", flexWrap: "nowrap" }}>
+                                <span className={`wdm-badge wdm-badge-${asset.category}`}>
+                                  {typeLabel}
+                                </span>
+                                {(asset.hasTranscript || asset.linkedTranscriptId || asset.linkedTranscriptPath) && (
+                                  <span
+                                    className="wdm-transcript-indicator"
+                                    title="Speech-to-Text transcript attached"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInspectingAsset(asset);
+                                    }}
+                                  >
+                                    <MessageSquareText size={12} />
+                                    Transcript
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* File Size */}
+                            <td style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                              {formattedSize}
+                            </td>
+
+                            {/* Referenced Notes / Unused badge */}
+                            <td>
                               {asset.referenceCount === 0 ? (
-                                <>
+                                <span className="wdm-ref-pill is-unused" title="Unlinked asset in workspace">
                                   <AlertCircle size={12} />
                                   Unused
-                                </>
-                              ) : (
-                                <>
+                                </span>
+                              ) : asset.referenceCount === 1 ? (
+                                <button
+                                  className="wdm-ref-pill-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenNote?.(asset.referencedBy[0].notePath, asset.referencedBy[0].lineNumber);
+                                  }}
+                                  title={`Open ${asset.referencedBy[0].noteTitle}:${asset.referencedBy[0].lineNumber}`}
+                                >
                                   <FileText size={12} />
-                                  {asset.referenceCount} {asset.referenceCount === 1 ? "note" : "notes"}
-                                </>
+                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {asset.referencedBy[0].noteTitle}
+                                  </span>
+                                </button>
+                              ) : (
+                                <button
+                                  className="wdm-ref-pill-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setInspectingAsset(asset);
+                                  }}
+                                  title="Click to view all referenced notes in inspector"
+                                >
+                                  <FileText size={12} />
+                                  <span>{asset.referenceCount} notes</span>
+                                </button>
                               )}
-                            </span>
-                          </div>
-                        </div>
+                            </td>
 
-                        {/* Card Footer Actions */}
-                        <div className="wdm-card-footer">
-                          <span
-                            className={`wdm-card-footer-path ${asset.referenceCount === 0 ? "is-unused" : ""}`}
-                            title={asset.referencedBy[0]?.noteTitle || (asset.referenceCount === 0 ? "Unlinked asset in workspace" : "Referenced in workspace")}
-                          >
-                            {asset.referencedBy[0]?.noteTitle || (asset.referenceCount === 0 ? "Unlinked" : "Referenced in workspace")}
-                          </span>
+                            {/* Actions Column */}
+                            <td>
+                              <div className="wdm-table-action-btns">
+                                {(asset.category === "audio" || asset.category === "video") && (
+                                  <button
+                                    className="wdm-icon-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleGenerateTranscript(asset);
+                                    }}
+                                    disabled={Boolean(transcribingAssetId)}
+                                    title={transcribingAssetId === asset.id ? transcriptionStatus : "Generate AI Speech-to-Text Transcript"}
+                                    style={{ color: "#38bdf8" }}
+                                  >
+                                    {transcribingAssetId === asset.id ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                                  </button>
+                                )}
 
-                          <div className="wdm-card-footer-actions">
-                            {(asset.category === "audio" || asset.category === "video") && (
-                              <button
-                                className="wdm-icon-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleGenerateTranscript(asset);
-                                }}
-                                disabled={Boolean(transcribingAssetId)}
-                                title={transcribingAssetId === asset.id ? transcriptionStatus : "Generate AI Speech-to-Text Transcript"}
-                                style={{ color: "#38bdf8" }}
-                              >
-                                {transcribingAssetId === asset.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
-                              </button>
-                            )}
+                                <button
+                                  className="wdm-icon-btn"
+                                  onClick={(e) => handleCopy(asset, e)}
+                                  title="Copy Markdown Link / Embed"
+                                >
+                                  {copiedId === asset.id ? <Check size={14} style={{ color: "#10b981" }} /> : <Copy size={14} />}
+                                </button>
 
-                            <button
-                              className="wdm-icon-btn"
-                              onClick={(e) => handleCopy(asset, e)}
-                              title="Copy Markdown Link"
-                            >
-                              {copiedId === asset.id ? <Check size={12} style={{ color: "#10b981" }} /> : <Copy size={12} />}
-                            </button>
+                                {asset.path && !asset.path.startsWith("inline:") && (
+                                  <button
+                                    className="wdm-icon-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const targetBase = asset.referencedBy[0]?.notePath || workspacePath || "";
+                                      openMediaInDefaultApp(targetBase, asset.path).catch((err) => {
+                                        showNotification(`Failed to open in default app: ${err.message || err}`, "error");
+                                      });
+                                    }}
+                                    title="Open in OS Default App"
+                                  >
+                                    <ExternalLink size={14} />
+                                  </button>
+                                )}
 
-                            <button
-                              className="wdm-icon-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedAsset(asset);
-                              }}
-                              title="Inspect Details & Notes"
-                            >
-                              <Eye size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                                <button
+                                  className="wdm-icon-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setInspectingAsset(asset);
+                                  }}
+                                  title="Inspect Metadata & Note References"
+                                >
+                                  <Info size={14} />
+                                </button>
+
+                                {asset.path && !asset.path.startsWith("inline:") && (
+                                  <button
+                                    className="wdm-icon-btn wdm-delete-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssetToDelete(asset);
+                                    }}
+                                    title="Delete Asset from Disk"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
 
-          {/* Standard Notely OverlayDialog Inspector */}
-          {selectedAsset && (
+          {/* Full Asset Viewer Modal (uses standardized MediaPreviewPane from Editor) */}
+          {viewingAsset && (
             <OverlayDialog
-              open={Boolean(selectedAsset)}
-              onClose={() => setSelectedAsset(null)}
-              ariaLabel={selectedAsset.subType === "mermaid" ? "Diagram Inspector" : "Asset Inspector"}
+              open={Boolean(viewingAsset)}
+              onClose={() => setViewingAsset(null)}
+              ariaLabel={viewingAsset.name || "Asset Viewer"}
+              size="xl"
+            >
+              {viewingAsset.subType === "mermaid" ? (
+                <div style={{ display: "flex", flexDirection: "column", height: "80vh" }}>
+                  <div className="overlay-dialog-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border-default)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className="wdm-badge" style={{ background: getCategoryTheme("diagram").bg, color: getCategoryTheme("diagram").text, border: `1px solid ${getCategoryTheme("diagram").border}`, fontSize: "10px", padding: "2px 6px" }}>
+                        MERMAID
+                      </span>
+                      <h2 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{viewingAsset.name}</h2>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={(e) => handleCopy(viewingAsset, e)}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px" }}
+                      >
+                        <Copy size={12} />
+                        <span>Copy Code</span>
+                      </button>
+                      <button
+                        className="wdm-icon-btn"
+                        onClick={() => {
+                          const a = viewingAsset;
+                          setViewingAsset(null);
+                          setInspectingAsset(a);
+                        }}
+                        title="Inspect Metadata & Notes"
+                      >
+                        <Info size={16} />
+                      </button>
+                      <AppIconButton onClick={() => setViewingAsset(null)} aria-label="Close viewer">
+                        <X size={16} />
+                      </AppIconButton>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, overflow: "auto", padding: "20px", display: "flex", justifyContent: "center", alignItems: "center", background: "var(--surface-subtle)" }}>
+                    <MermaidRenderer code={viewingAsset.rawCode} isCardPreview={false} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", height: "82vh" }}>
+                  <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                    <MediaPreviewPane
+                      mediaPath={viewingAsset.previewPath || viewingAsset.path}
+                      mediaType={viewingAsset.category}
+                      basePath={viewingAsset.referencedBy[0]?.notePath || workspacePath}
+                      onClose={() => setViewingAsset(null)}
+                      onMediaChanged={refreshDiskFiles}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Referenced Notes Footer */}
+              {viewingAsset.referencedBy && viewingAsset.referencedBy.length > 0 && (
+                <div style={{ padding: "8px 16px", borderTop: "1px solid var(--border-default)", background: "var(--surface-subtle)", display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", flexShrink: 0 }}>
+                  <span style={{ fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0 }}>
+                    Referenced in ({viewingAsset.referencedBy.length}):
+                  </span>
+                  <div style={{ display: "flex", gap: "6px", overflowX: "auto", flex: 1, paddingBottom: "2px" }}>
+                    {viewingAsset.referencedBy.map((ref, idx) => (
+                      <button
+                        key={idx}
+                        className="btn btn-tertiary btn-sm"
+                        style={{ fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", whiteSpace: "nowrap" }}
+                        onClick={() => {
+                          setViewingAsset(null);
+                          onOpenNote?.(ref.notePath, ref.lineNumber);
+                        }}
+                        title={`Open ${ref.noteTitle} at line ${ref.lineNumber}`}
+                      >
+                        <FileText size={12} />
+                        <span>{ref.noteTitle}:{ref.lineNumber}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </OverlayDialog>
+          )}
+
+          {/* Asset Inspector Modal (Metadata, Properties, and Note References) */}
+          {inspectingAsset && (
+            <OverlayDialog
+              open={Boolean(inspectingAsset)}
+              onClose={() => setInspectingAsset(null)}
+              ariaLabel={inspectingAsset.name || "Asset Inspector"}
               size="lg"
             >
               <div className="overlay-dialog-header">
                 <h2>
-                  <Sparkles size={16} style={{ color: "var(--accent-solid)", marginRight: 8, display: "inline-block", verticalAlign: "middle" }} />
-                  {selectedAsset.subType === "mermaid" ? "Diagram Inspector" : "Asset Inspector"}
+                  <Info size={16} style={{ color: "var(--accent-solid)", marginRight: 8, display: "inline-block", verticalAlign: "middle" }} />
+                  Asset Inspector
                 </h2>
-                <AppIconButton onClick={() => setSelectedAsset(null)} aria-label="Close inspector">
-                  <X size={16} />
-                </AppIconButton>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      const a = inspectingAsset;
+                      setInspectingAsset(null);
+                      setViewingAsset(a);
+                    }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px" }}
+                  >
+                    <Eye size={12} />
+                    <span>Open Viewer</span>
+                  </button>
+                  <AppIconButton onClick={() => setInspectingAsset(null)} aria-label="Close inspector">
+                    <X size={16} />
+                  </AppIconButton>
+                </div>
               </div>
 
               <div className="wdm-details-body">
-                {/* Full Live Preview */}
+                {/* Thumbnail Preview */}
                 <div className="wdm-details-preview">
-                  {selectedAsset.subType === "mermaid" ? (
-                    <MermaidRenderer
-                      code={selectedAsset.rawCode}
-                      className="wdm-details-preview-mermaid"
-                    />
-                  ) : (selectedAsset.category === "image" || selectedAsset.category === "wireframe" || selectedAsset.subType === "wireframe" || selectedAsset.subType === "drawio" || selectedAsset.subType === "excalidraw" || selectedAsset.category === "diagram") ? (
+                  {inspectingAsset.subType === "mermaid" ? (
+                    <MermaidRenderer code={inspectingAsset.rawCode} isCardPreview={false} />
+                  ) : (
                     <DiagramOrImagePreviewItem
-                      asset={selectedAsset}
-                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
+                      asset={inspectingAsset}
+                      basePath={inspectingAsset.referencedBy[0]?.notePath || workspacePath}
                       className="wdm-details-img"
                     />
-                  ) : selectedAsset.category === "pdf" ? (
-                    <div style={{ textAlign: "center", padding: "16px" }}>
-                      <FileDigit size={20} style={{ width: 48, height: 48, color: CATEGORY_THEMES.pdf.text, marginBottom: "8px" }} />
-                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{selectedAsset.name}</div>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>PDF Document</div>
-                    </div>
-                  ) : selectedAsset.category === "video" ? (
-                    <VideoPlayerPreviewItem
-                      asset={selectedAsset}
-                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
-                    />
-                  ) : selectedAsset.category === "audio" ? (
-                    <AudioPlayerPreviewItem
-                      asset={selectedAsset}
-                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
-                    />
-                  ) : selectedAsset.category === "transcript" ? (
-                    <TranscriptPreviewItem
-                      asset={selectedAsset}
-                      basePath={selectedAsset.referencedBy[0]?.notePath || workspacePath}
-                      isCardPreview={false}
-                      onNotify={showNotification}
-                    />
-                  ) : (
-                    <div style={{ textAlign: "center", padding: "16px" }}>
-                      <File size={20} style={{ width: 48, height: 48, color: CATEGORY_THEMES.document.text, marginBottom: "8px" }} />
-                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{selectedAsset.name}</div>
-                    </div>
                   )}
                 </div>
-
-                {/* Generate AI Transcript action card for audio and video assets */}
-                {(selectedAsset.category === "audio" || selectedAsset.category === "video") && (
-                  <div style={{ margin: "10px 0", padding: "10px 12px", background: "var(--status-info-bg)", border: "1px solid var(--status-info-border)", borderRadius: "var(--radius-md, 8px)", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--status-info-text)" }}>
-                        Speech-to-Text Transcription
-                      </span>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        type="button"
-                        onClick={() => handleGenerateTranscript(selectedAsset)}
-                        disabled={Boolean(transcribingAssetId)}
-                        style={{ display: "flex", alignItems: "center", gap: "5px", height: "26px", fontSize: "11px", cursor: transcribingAssetId ? "not-allowed" : "pointer" }}
-                      >
-                        {transcribingAssetId === selectedAsset.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
-                        <span>{transcribingAssetId === selectedAsset.id ? "Transcribing..." : "Generate AI Transcript"}</span>
-                      </button>
-                    </div>
-                    {transcribingAssetId === selectedAsset.id && (
-                      <span style={{ fontSize: "11px", color: "var(--status-info-text)", fontStyle: "italic" }}>
-                        {transcriptionStatus}
-                      </span>
-                    )}
-                  </div>
-                )}
 
                 {/* Metadata details */}
                 <div className="wdm-detail-row">
                   <span className="label">Name</span>
-                  <strong>{selectedAsset.name}</strong>
+                  <strong>{inspectingAsset.name}</strong>
                 </div>
 
                 <div className="wdm-detail-row">
                   <span className="label">Category & Format</span>
                   <div style={{ display: "flex", gap: "6px" }}>
-                    <span
-                      className="wdm-badge"
-                      style={{
-                        background: getCategoryTheme(selectedAsset.category).bg,
-                        color: getCategoryTheme(selectedAsset.category).text,
-                        border: `1px solid ${getCategoryTheme(selectedAsset.category).border}`,
-                        padding: "3px 8px",
-                      }}
-                    >
-                      {selectedAsset.category.toUpperCase()}
+                    <span className={`wdm-badge wdm-badge-${inspectingAsset.category}`}>
+                      {inspectingAsset.category.toUpperCase()}
                     </span>
                     <span
                       className="wdm-badge"
@@ -1145,47 +1042,122 @@ export default function WorkspaceDiagramsMediaPage({
                       }}
                     >
                       {(() => {
-                        const raw = selectedAsset.diagramType || selectedAsset.extension || (selectedAsset.subType && selectedAsset.subType.length <= 8 && !selectedAsset.subType.includes("/") ? selectedAsset.subType : "") || selectedAsset.category || "FILE";
+                        if (inspectingAsset.category === "wireframe" || inspectingAsset.subType === "wireframe") {
+                          return "UI PROTOTYPE (WIREFRAME)";
+                        }
+                        if (inspectingAsset.subType === "excalidraw") {
+                          return "EXCALIDRAW DIAGRAM";
+                        }
+                        if (inspectingAsset.subType === "drawio") {
+                          return "DRAW.IO DIAGRAM";
+                        }
+                        if (inspectingAsset.subType === "mermaid") {
+                          return inspectingAsset.diagramType ? `MERMAID (${inspectingAsset.diagramType})` : "MERMAID DIAGRAM";
+                        }
+                        if (inspectingAsset.category === "transcript") {
+                          return "SPEECH-TO-TEXT TRANSCRIPT";
+                        }
+                        const raw = inspectingAsset.diagramType || inspectingAsset.extension || (inspectingAsset.subType && inspectingAsset.subType.length <= 12 && !inspectingAsset.subType.includes("/") ? inspectingAsset.subType : "") || inspectingAsset.category || "FILE";
                         return String(raw).toUpperCase();
                       })()}
                     </span>
                   </div>
                 </div>
 
-                {selectedAsset.path && !selectedAsset.path.startsWith("inline:") && (
+                {inspectingAsset.path && !inspectingAsset.path.startsWith("inline:") && (
                   <div className="wdm-detail-row">
                     <span className="label">File Path</span>
-                    <code>{selectedAsset.path}</code>
+                    <code>{inspectingAsset.path}</code>
                   </div>
                 )}
 
-                {/* Open in external OS default app (for files) */}
-                {selectedAsset.path && !selectedAsset.path.startsWith("inline:") && (
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      const targetBase = selectedAsset.referencedBy[0]?.notePath || workspacePath || "";
-                      openMediaInDefaultApp(targetBase, selectedAsset.path).catch((err) => {
-                        showNotification(`Failed to open in default app: ${err.message || err}`, "error");
-                      });
-                    }}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", height: "30px", fontSize: "11px" }}
-                  >
-                    <ExternalLink size={12} />
-                    Open in Default App
-                  </button>
+                {inspectingAsset.previewPath && inspectingAsset.previewPath !== inspectingAsset.path && (
+                  <div className="wdm-detail-row">
+                    <span className="label">Rendered Preview</span>
+                    <code>{inspectingAsset.previewPath}</code>
+                  </div>
                 )}
 
-                {/* Referenced Notes Section (Crucial user requirement) */}
+                {inspectingAsset.size > 0 && (
+                  <div className="wdm-detail-row">
+                    <span className="label">File Size</span>
+                    <span>{Math.round(inspectingAsset.size / 1024)} KB</span>
+                  </div>
+                )}
+
+                {/* Linked media row */}
+                {inspectingAsset.linkedTranscriptName && (
+                  <div className="wdm-detail-row">
+                    <span className="label">Linked Transcript</span>
+                    <button
+                      className="btn btn-tertiary"
+                      style={{ fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                      onClick={() => {
+                        const tr = allCatalogAssets.find((a) => a.id === inspectingAsset.linkedTranscriptId);
+                        if (tr) setInspectingAsset(tr);
+                      }}
+                    >
+                      <MessageSquareText size={12} />
+                      {inspectingAsset.linkedTranscriptName}
+                    </button>
+                  </div>
+                )}
+
+                {inspectingAsset.linkedAudioName && (
+                  <div className="wdm-detail-row">
+                    <span className="label">Source Audio</span>
+                    <button
+                      className="btn btn-tertiary"
+                      style={{ fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                      onClick={() => {
+                        const av = allCatalogAssets.find((a) => a.id === inspectingAsset.linkedAudioId);
+                        if (av) setInspectingAsset(av);
+                      }}
+                    >
+                      <Music size={12} />
+                      {inspectingAsset.linkedAudioName}
+                    </button>
+                  </div>
+                )}
+
+                {/* Open in external OS default app and Delete (for files) */}
+                {inspectingAsset.path && !inspectingAsset.path.startsWith("inline:") && (
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        const targetBase = inspectingAsset.referencedBy[0]?.notePath || workspacePath || "";
+                        openMediaInDefaultApp(targetBase, inspectingAsset.path).catch((err) => {
+                          showNotification(`Failed to open in default app: ${err.message || err}`, "error");
+                        });
+                      }}
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", height: "30px", fontSize: "11px" }}
+                    >
+                      <ExternalLink size={12} />
+                      Open in Default App
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => setAssetToDelete(inspectingAsset)}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", height: "30px", fontSize: "11px", padding: "0 12px" }}
+                      title="Delete asset from disk"
+                    >
+                      <Trash2 size={12} />
+                      Delete
+                    </button>
+                  </div>
+                )}
+
+                {/* Referenced Notes Section */}
                 <div className="wdm-referenced-notes-section">
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span className="label" style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
-                      Referenced In Notes ({selectedAsset.referencedBy.length})
+                      Referenced In Notes ({inspectingAsset.referencedBy.length})
                     </span>
                   </div>
 
-                  {selectedAsset.referencedBy.length === 0 ? (
-                    <div style={{ padding: "12px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-md, 6px)" }}>
+                  {inspectingAsset.referencedBy.length === 0 ? (
+                    <div style={{ padding: "12px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-default)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-warning-text)", fontWeight: "600", fontSize: "12px", marginBottom: "4px" }}>
                         <AlertCircle size={14} /> Unused Media File
                       </div>
@@ -1195,57 +1167,101 @@ export default function WorkspaceDiagramsMediaPage({
                       <button
                         className="btn btn-secondary btn-sm"
                         style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px" }}
-                        onClick={(e) => handleCopy(selectedAsset, e)}
+                        onClick={(e) => handleCopy(inspectingAsset, e)}
                       >
                         <Copy size={12} /> Copy Markdown Embed
                       </button>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {selectedAsset.referencedBy.map((ref, idx) => (
-                      <div key={idx} className="wdm-note-reference-card">
-                        <div className="wdm-note-reference-header">
-                          <span className="wdm-note-reference-title" title={ref.notePath}>
-                            <FileText size={12} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
-                            {ref.noteTitle}
-                          </span>
-                          {ref.lineNumber ? (
-                            <span className="wdm-note-line-badge">
-                              Line {ref.lineNumber}
+                      {inspectingAsset.referencedBy.map((ref, idx) => (
+                        <div key={idx} className="wdm-note-reference-card">
+                          <div className="wdm-note-reference-header">
+                            <span className="wdm-note-reference-title" title={ref.notePath}>
+                              <FileText size={12} style={{ color: "var(--accent-solid)", flexShrink: 0 }} />
+                              {ref.noteTitle}
                             </span>
-                          ) : null}
-                        </div>
-
-                        {ref.snippet && (
-                          <div className="wdm-note-snippet" title={ref.snippet}>
-                            {ref.snippet}
+                            {ref.lineNumber ? (
+                              <span className="wdm-note-line-badge">
+                                Line {ref.lineNumber}
+                              </span>
+                            ) : null}
                           </div>
-                        )}
 
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => {
-                            if (onOpenNote) {
-                              onOpenNote(ref.notePath, ref.lineNumber);
-                            }
-                          }}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "6px",
-                            height: "28px",
-                            fontSize: "11px",
-                            marginTop: "2px",
-                          }}
-                        >
-                          <span>Open Note</span>
-                          <ArrowRight size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                          {ref.snippet && (
+                            <div className="wdm-note-snippet" title={ref.snippet}>
+                              {ref.snippet}
+                            </div>
+                          )}
+
+                          <AppButton
+                            variant="primary"
+                            onClick={() => {
+                              if (onOpenNote) {
+                                onOpenNote(ref.notePath, ref.lineNumber);
+                              }
+                            }}
+                            style={{
+                              width: "100%",
+                              marginTop: "2px",
+                            }}
+                          >
+                            <span>Open Note</span>
+                            <ArrowRight size={12} />
+                          </AppButton>
+                        </div>
+                      ))}
+                    </div>
                   )}
+                </div>
+              </div>
+            </OverlayDialog>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {assetToDelete && (
+            <OverlayDialog
+              open={Boolean(assetToDelete)}
+              onClose={() => !deleting && setAssetToDelete(null)}
+              ariaLabel="Confirm Delete Asset"
+              size="sm"
+            >
+              <div className="overlay-dialog-header">
+                <h2>Delete Asset</h2>
+                <AppIconButton
+                  onClick={() => setAssetToDelete(null)}
+                  disabled={deleting}
+                  aria-label="Close dialog"
+                >
+                  <X size={16} />
+                </AppIconButton>
+              </div>
+              <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px", fontSize: "12px" }}>
+                <p style={{ margin: 0, color: "var(--text-primary)" }}>
+                  Are you sure you want to permanently delete <strong>{assetToDelete.name}</strong> from disk?
+                </p>
+                {assetToDelete.referenceCount > 0 && (
+                  <div style={{ padding: "8px 10px", background: "var(--status-warning-bg)", border: "1px solid var(--status-warning-border)", borderRadius: "var(--radius-default)", color: "var(--status-warning-text)", fontSize: "11px" }}>
+                    ⚠️ This asset is referenced in <strong>{assetToDelete.referenceCount} note{assetToDelete.referenceCount === 1 ? "" : "s"}</strong>. Note embeds may become broken links.
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setAssetToDelete(null)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDeleteAsset(assetToDelete)}
+                    disabled={deleting}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
+                  >
+                    {deleting ? <Loader2 size={12} className="spin" /> : <Trash2 size={12} />}
+                    <span>{deleting ? "Deleting..." : "Delete Asset"}</span>
+                  </button>
                 </div>
               </div>
             </OverlayDialog>

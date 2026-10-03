@@ -25,12 +25,20 @@ import {
   BookOpen,
   ShieldAlert,
   ShieldCheck,
-  Ban
+  Ban,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Edit3,
+  X
 } from "lucide-react";
 import { listTools, executeTool } from "../services/electron/aiService";
 import { mcpGetStatus, mcpGetConfig, onMcpStatusChanged } from "../services/electronService";
-import "../styles/KnowledgeGraph.css";
-import "../styles/AISettings.css";
+import { mcpListPrompts, mcpGetPrompt, mcpSavePrompt, mcpDeletePrompt } from "../services/electron/mcpService";
+import AppButton from "./AppButton";
+import AppInput from "./AppInput";
+import OverlayDialog from "./OverlayDialog";
+import SubpageHeader from "./layout/SubpageHeader";
 import "../styles/MCPSettings.css";
 
 function generateSampleArgs(tool) {
@@ -126,13 +134,26 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [configTarget, setConfigTarget] = useState("antigravity");
 
+  // Prompts Manager State
+  const [activeTab, setActiveTab] = useState("tools"); // "tools" | "prompts"
+  const [prompts, setPrompts] = useState([]);
+  const [promptFilterQuery, setPromptFilterQuery] = useState("");
+  const [expandedPrompt, setExpandedPrompt] = useState(null);
+  const [promptEditorOpen, setPromptEditorOpen] = useState(false);
+  const [promptFormData, setPromptFormData] = useState({ name: "", description: "", arguments: [], template: "" });
+  const [promptTestArgs, setPromptTestArgs] = useState({});
+  const [promptTestResult, setPromptTestResult] = useState(null);
+  const [testingPromptName, setTestingPromptName] = useState(null);
+  const [savingPrompt, setSavingPrompt] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [res, st, cfg] = await Promise.all([
+      const [res, st, cfg, promptList] = await Promise.all([
         listTools().catch(() => null),
         mcpGetStatus().catch(() => null),
-        mcpGetConfig().catch(() => null)
+        mcpGetConfig().catch(() => null),
+        mcpListPrompts().catch(() => [])
       ]);
       const toolArray = Array.isArray(res)
         ? res
@@ -141,6 +162,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
         : [];
       setTools(toolArray);
       setStatus(st);
+      setPrompts(Array.isArray(promptList) ? promptList : []);
       if (cfg) {
         setAllowWrite(cfg.allowWriteTools !== undefined ? Boolean(cfg.allowWriteTools) : true);
       }
@@ -180,6 +202,18 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
       );
     });
   }, [tools, filterQuery, selectedCategory]);
+
+  const filteredPrompts = useMemo(() => {
+    return prompts.filter((p) => {
+      const q = promptFilterQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.source && p.source.toLowerCase().includes(q))
+      );
+    });
+  }, [prompts, promptFilterQuery]);
 
   const handleRunTool = async (tool) => {
     try {
@@ -242,6 +276,75 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
     }
   };
 
+  const handleOpenNewPrompt = () => {
+    setPromptFormData({
+      name: "",
+      description: "",
+      arguments: [{ name: "topic", description: "Target topic or note name", required: true }],
+      template: "Please inspect all notes related to \"{{topic}}\" using the search and read_note tools.\nProvide a structured summary with key takeaways and open action items."
+    });
+    setPromptEditorOpen(true);
+  };
+
+  const handleEditPrompt = (prompt) => {
+    setPromptFormData({
+      name: prompt.name,
+      description: prompt.description || "",
+      arguments: Array.isArray(prompt.arguments) ? JSON.parse(JSON.stringify(prompt.arguments)) : [],
+      template: prompt.template || ""
+    });
+    setPromptEditorOpen(true);
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptFormData.name.trim()) {
+      onNotify?.("Prompt name is required.", "error");
+      return;
+    }
+    try {
+      setSavingPrompt(true);
+      const res = await mcpSavePrompt(promptFormData);
+      if (res?.success) {
+        onNotify?.(`Custom prompt "${res.name}" saved to .notes-app/prompts/`, "success");
+        setPromptEditorOpen(false);
+        await loadData();
+      }
+    } catch (err) {
+      onNotify?.(`Failed to save prompt: ${err.message}`, "error");
+    } finally {
+      setSavingPrompt(false);
+    }
+  };
+
+  const handleDeletePrompt = async (prompt) => {
+    if (!window.confirm(`Are you sure you want to delete the prompt "${prompt.name}"?`)) {
+      return;
+    }
+    try {
+      const res = await mcpDeletePrompt(prompt.name);
+      if (res?.success) {
+        onNotify?.(`Prompt "${prompt.name}" deleted.`, "success");
+        await loadData();
+      }
+    } catch (err) {
+      onNotify?.(`Failed to delete prompt: ${err.message}`, "error");
+    }
+  };
+
+  const handleTestPrompt = async (prompt) => {
+    try {
+      setTestingPromptName(prompt.name);
+      const args = promptTestArgs[prompt.name] || {};
+      const res = await mcpGetPrompt(prompt.name, args);
+      setPromptTestResult({ promptName: prompt.name, result: res });
+      onNotify?.(`Generated messages for prompt "${prompt.name}"`, "success");
+    } catch (err) {
+      onNotify?.(`Prompt evaluation failed: ${err.message}`, "error");
+    } finally {
+      setTestingPromptName(null);
+    }
+  };
+
   const copyToolName = (name) => {
     navigator.clipboard.writeText(name);
     setCopiedName(name);
@@ -279,73 +382,48 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   return (
     <div className="mcp-tools-page-wrapper">
       {/* Top Header Breadcrumb */}
-      <div className="detail-topbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <nav className="detail-breadcrumb" aria-label="Location">
-          <span className="detail-breadcrumb-part">
-            <button className="detail-breadcrumb-link" type="button" onClick={onBack}>
-              Notes
-            </button>
-            <span className="detail-breadcrumb-separator" aria-hidden="true">
-              /
-            </span>
-          </span>
-          <span className="detail-breadcrumb-current">MCP Tools &amp; Capabilities</span>
-        </nav>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={loadData}
-            title="Reload tools and status"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
-          >
-            <RefreshCw size={14} className={loading ? "spin" : ""} /> Refresh
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowHelp(!showHelp)}
-            title="Toggle MCP Server & Client Documentation Guide"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "12px",
-              height: "26px",
-              padding: "0 10px",
-              background: showHelp ? "var(--accent-subtle, rgba(59,130,246,0.15))" : undefined,
-              borderColor: showHelp ? "var(--accent-solid, #3b82f6)" : undefined,
-              color: showHelp ? "var(--accent-solid, #3b82f6)" : undefined
-            }}
-          >
-            <BookOpen size={14} /> {showHelp ? "Hide Docs" : "Docs & Guide"}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={copyManifest}
-            title="Copy full JSON manifest of all registered MCP tools"
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
-          >
-            {copiedManifest ? <Check size={14} color="#10b981" /> : <FileJson size={14} />}
-            {copiedManifest ? "Manifest Copied" : "Export Manifest"}
-          </button>
-
-          {onOpenSettings && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onOpenSettings}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", height: "26px", padding: "0 10px" }}
+      <SubpageHeader
+        breadcrumbCurrent="MCP Tools & Capabilities"
+        rootLabel="Notes"
+        onBack={onBack}
+        actions={
+          <>
+            <AppButton
+              variant="secondary"
+              onClick={loadData}
+              title="Reload tools and status"
             >
-              <Settings size={14} /> MCP Settings
-            </button>
-          )}
-        </div>
-      </div>
+              <RefreshCw size={14} className={loading ? "spin" : ""} /> Refresh
+            </AppButton>
+
+            <AppButton
+              variant={showHelp ? "primary" : "secondary"}
+              onClick={() => setShowHelp(!showHelp)}
+              title="Toggle MCP Server & Client Documentation Guide"
+            >
+              <BookOpen size={14} /> {showHelp ? "Hide Docs" : "Docs & Guide"}
+            </AppButton>
+
+            <AppButton
+              variant="secondary"
+              onClick={copyManifest}
+              title="Copy full JSON manifest of all registered MCP tools"
+            >
+              {copiedManifest ? <Check size={14} style={{ color: "var(--status-success-text)" }} /> : <FileJson size={14} />}
+              {copiedManifest ? "Manifest Copied" : "Export Manifest"}
+            </AppButton>
+
+            {onOpenSettings && (
+              <AppButton
+                variant="secondary"
+                onClick={onOpenSettings}
+              >
+                <Settings size={14} /> MCP Settings
+              </AppButton>
+            )}
+          </>
+        }
+      />
 
       <div className="mcp-tools-scroll-content">
         {/* Status Hero Banner */}
@@ -355,16 +433,16 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               style={{
                 width: "42px",
                 height: "42px",
-                borderRadius: "8px",
+                borderRadius: "var(--radius-default)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 background: isPortConflict
-                  ? "rgba(239, 68, 68, 0.2)"
+                  ? "rgba(239, 68, 68, 0.15)"
                   : isRunning
-                  ? "rgba(16, 185, 129, 0.2)"
+                  ? "rgba(16, 185, 129, 0.15)"
                   : "var(--surface-muted)",
-                color: isPortConflict ? "#ef4444" : isRunning ? "#10b981" : "var(--text-muted)"
+                color: isPortConflict ? "var(--status-danger-text, #ef4444)" : isRunning ? "var(--status-success-text, #10b981)" : "var(--text-muted)"
               }}
             >
               <Server size={20} />
@@ -389,10 +467,10 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
                       padding: "2px 8px",
-                      borderRadius: "5px",
-                      background: "rgba(239, 68, 68, 0.18)",
-                      color: "#ef4444",
-                      border: "1px solid rgba(239, 68, 68, 0.35)"
+                      borderRadius: "var(--radius-default)",
+                      background: "rgba(239, 68, 68, 0.14)",
+                      color: "var(--status-danger-text, #ef4444)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)"
                     }}
                   >
                     <ShieldAlert size={12} /> READ ONLY MODE
@@ -408,10 +486,10 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       letterSpacing: "0.04em",
                       textTransform: "uppercase",
                       padding: "2px 8px",
-                      borderRadius: "5px",
-                      background: "rgba(16, 185, 129, 0.15)",
-                      color: "#10b981",
-                      border: "1px solid rgba(16, 185, 129, 0.3)"
+                      borderRadius: "var(--radius-default)",
+                      background: "rgba(16, 185, 129, 0.12)",
+                      color: "var(--status-success-text, #10b981)",
+                      border: "1px solid rgba(16, 185, 129, 0.28)"
                     }}
                   >
                     <ShieldCheck size={12} /> READ + WRITE
@@ -436,14 +514,14 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>
                 {allowWrite ? tools.length : tools.filter(t => !t.isWrite).length}
                 {!allowWrite && tools.some(t => t.isWrite) && (
-                  <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: 600, marginLeft: "6px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--status-danger-text, #ef4444)", fontWeight: 600, marginLeft: "6px" }}>
                     ({tools.filter(t => t.isWrite).length} hidden)
                   </span>
                 )}
               </div>
             </div>
 
-            <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
+            <div style={{ height: "28px", width: "1px", background: "var(--border-soft)" }} />
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
@@ -452,18 +530,37 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-strong)" }}>{status?.activeSessions || 0}</div>
             </div>
 
-            <div style={{ height: "28px", width: "1px", background: "var(--border-soft, rgba(255,255,255,0.1))" }} />
+            <div style={{ height: "28px", width: "1px", background: "var(--border-soft)" }} />
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                 Invocations
               </div>
-              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--accent-solid, #3b82f6)" }}>{status?.totalToolCalls || 0}</div>
+              <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--accent-solid)" }}>{status?.totalToolCalls || 0}</div>
             </div>
           </div>
         </div>
 
-        {/* Two Column Layout (Left Sidebar) */}
+        {/* Navigation Tabs */}
+        <div className="mcp-nav-tabs">
+          <button
+            type="button"
+            className={`mcp-nav-tab-btn ${activeTab === "tools" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("tools")}
+          >
+            <Wrench size={14} /> Tools &amp; Capabilities ({tools.length})
+          </button>
+          <button
+            type="button"
+            className={`mcp-nav-tab-btn ${activeTab === "prompts" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("prompts")}
+          >
+            <MessageSquare size={14} /> Prompt Workflows ({prompts.length})
+          </button>
+        </div>
+
+        {/* Tab 1: Tools Layout */}
+        {activeTab === "tools" && (
         <div className="mcp-tools-layout">
           {/* Left Sidebar Area */}
           <div className="mcp-tools-sidebar">
@@ -500,23 +597,21 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   <Zap size={16} color="#eab308" /> Client Integration Config
                 </h4>
               </div>
-              <div style={{ display: "flex", gap: "4px", background: "var(--surface-bg)", padding: "2px", borderRadius: "6px" }}>
-                <button
-                  type="button"
-                  className={`btn ${configTarget === "antigravity" ? "btn-primary" : "btn-secondary"}`}
+              <div style={{ display: "flex", gap: "4px", background: "var(--surface-bg)", padding: "2px", borderRadius: "var(--radius-default)" }}>
+                <AppButton
+                  variant={configTarget === "antigravity" ? "primary" : "secondary"}
                   onClick={() => setConfigTarget("antigravity")}
                   style={{ flex: 1, fontSize: "11px", padding: "2px 6px", height: "24px" }}
                 >
                   Antigravity
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${configTarget === "claude" ? "btn-primary" : "btn-secondary"}`}
+                </AppButton>
+                <AppButton
+                  variant={configTarget === "claude" ? "primary" : "secondary"}
                   onClick={() => setConfigTarget("claude")}
                   style={{ flex: 1, fontSize: "11px", padding: "2px 6px", height: "24px" }}
                 >
                   Claude (SSE)
-                </button>
+                </AppButton>
               </div>
               <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.4 }}>
                 {configTarget === "antigravity"
@@ -528,7 +623,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   style={{
                     background: "var(--surface-bg)",
                     border: "1px solid var(--border-soft)",
-                    borderRadius: "6px",
+                    borderRadius: "var(--radius-default)",
                     padding: "10px 12px",
                     fontSize: "11px",
                     fontFamily: "monospace",
@@ -553,9 +648,8 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
   }
 }`}
                 </pre>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+                <AppButton
+                  variant="secondary"
                   onClick={() => {
                     const snippet = JSON.stringify({
                       mcpServers: {
@@ -574,10 +668,10 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                       "success"
                     );
                   }}
-                  style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                  style={{ marginTop: "8px", width: "100%", fontSize: "12px", height: "28px" }}
                 >
                   <Copy size={14} /> Copy Config Snippet
-                </button>
+                </AppButton>
               </div>
             </div>
 
@@ -603,10 +697,10 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             {showHelp && (
               <div
                 style={{
-                  background: "var(--surface-elevated, #161b26)",
-                  border: "1px solid var(--border-soft, rgba(255,255,255,0.08))",
-                  borderLeft: "4px solid var(--accent-solid, #3b82f6)",
-                  borderRadius: "8px",
+                  background: "var(--surface-elevated)",
+                  border: "1px solid var(--border-soft)",
+                  borderLeft: "4px solid var(--accent-solid)",
+                  borderRadius: "var(--radius-default)",
                   padding: "18px 20px",
                   marginBottom: "20px",
                   color: "var(--app-text)"
@@ -614,17 +708,16 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <BookOpen size={16} color="var(--accent-solid, #3b82f6)" />
+                    <BookOpen size={16} color="var(--accent-solid)" />
                     <strong style={{ fontSize: "14px", fontWeight: 700 }}>Notely Model Context Protocol (MCP) Guide</strong>
                   </div>
-                  <button
-                    type="button"
-                    className="btn-link"
+                  <AppButton
+                    variant="ghost"
                     onClick={() => setShowHelp(false)}
-                    style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px" }}
+                    style={{ fontSize: "12px" }}
                   >
                     Close Guide
-                  </button>
+                  </AppButton>
                 </div>
 
                 <div style={{ fontSize: "12.5px", lineHeight: "1.6", color: "var(--text-muted)" }}>
@@ -633,25 +726,25 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   </p>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px", marginTop: "12px" }}>
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         🛡️ Write Access Controls
                       </strong>
-                      Tools marked <span style={{ color: "#ef4444", fontWeight: 700 }}>[W]</span> perform workspace modifications (create, update, delete, rename, commit). When <em>Allow Write Tools</em> is disabled in MCP Settings, all write tools are filtered from discovery and blocked.
+                      Tools marked <span style={{ color: "var(--status-danger-text, #ef4444)", fontWeight: 700 }}>[W]</span> perform workspace modifications (create, update, delete, rename, commit). When <em>Allow Write Tools</em> is disabled in MCP Settings, all write tools are filtered from discovery and blocked.
                     </div>
 
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         ⚡ Interactive Test Console
                       </strong>
                       Click any tool card below to expand its JSON Schema parameters. Click <em>Auto-Fill JSON</em> to generate a valid test payload, then press <em>Run Execution</em> to test it directly from the app.
                     </div>
 
-                    <div style={{ background: "var(--surface-bg, #0d1117)", padding: "12px", borderRadius: "6px", border: "1px solid var(--border-soft, rgba(255,255,255,0.06))" }}>
+                    <div style={{ background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-default)", border: "1px solid var(--border-soft)" }}>
                       <strong style={{ color: "var(--text-strong)", display: "block", marginBottom: "4px" }}>
                         📡 Client Connection URLs
                       </strong>
-                      MCP: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code>. SSE: <code style={{ color: "#38bdf8" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>.
+                      MCP: <code style={{ color: "var(--accent-solid)" }}>http://127.0.0.1:{status?.port || 3700}/mcp</code>. SSE: <code style={{ color: "var(--accent-solid)" }}>http://127.0.0.1:{status?.port || 3700}/sse</code>.
                     </div>
                   </div>
                 </div>
@@ -666,18 +759,18 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                   alignItems: "flex-start",
                   gap: "12px",
                   padding: "14px 16px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-default)",
                   background: "rgba(239, 68, 68, 0.08)",
                   border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderLeft: "4px solid #ef4444",
+                  borderLeft: "4px solid var(--status-danger-text, #ef4444)",
                   marginBottom: "16px",
                   color: "var(--app-text)"
                 }}
               >
-                <Ban size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: "2px" }} />
+                <Ban size={18} color="var(--status-danger-text, #ef4444)" style={{ flexShrink: 0, marginTop: "2px" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <strong style={{ fontSize: "13px", color: "#ef4444" }}>
+                    <strong style={{ fontSize: "13px", color: "var(--status-danger-text, #ef4444)" }}>
                       READ-ONLY MODE ACTIVE
                     </strong>
                     <span
@@ -685,27 +778,26 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                         fontSize: "10px",
                         fontWeight: 700,
                         padding: "1px 6px",
-                        borderRadius: "4px",
-                        background: "rgba(239, 68, 68, 0.2)",
-                        color: "#ef4444"
+                        borderRadius: "var(--radius-default)",
+                        background: "rgba(239, 68, 68, 0.18)",
+                        color: "var(--status-danger-text, #ef4444)"
                       }}
                     >
                       {tools.filter(t => t.isWrite).length} TOOLS BLOCKED
                     </span>
                   </div>
                   <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                    Write operations are disabled in MCP Settings. The highlighted red tools below (<span style={{ color: "#ef4444", fontWeight: 600 }}>WRITE BLOCKED</span>) cannot modify files and are hidden from external AI clients (Claude Desktop, Cursor). Only the {tools.filter(t => !t.isWrite).length} read-only search and inspection tools remain available.
+                    Write operations are disabled in MCP Settings. The highlighted red tools below (<span style={{ color: "var(--status-danger-text, #ef4444)", fontWeight: 600 }}>WRITE BLOCKED</span>) cannot modify files and are hidden from external AI clients (Claude Desktop, Cursor). Only the {tools.filter(t => !t.isWrite).length} read-only search and inspection tools remain available.
                   </p>
                 </div>
                 {onOpenSettings && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
+                  <AppButton
+                    variant="secondary"
                     onClick={onOpenSettings}
                     style={{ fontSize: "11px", height: "26px", padding: "0 10px", flexShrink: 0, alignSelf: "center" }}
                   >
                     Enable Writes
-                  </button>
+                  </AppButton>
                 )}
               </div>
             )}
@@ -714,7 +806,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             {loading ? (
               <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>Loading registered tools catalog…</div>
             ) : filteredTools.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "8px" }}>
+              <div style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)", background: "var(--surface-elevated)", borderRadius: "var(--radius-default)" }}>
                 No capabilities match your query.
               </div>
             ) : (
@@ -742,17 +834,17 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                             style={{
                               width: "36px",
                               height: "36px",
-                              borderRadius: "8px",
+                              borderRadius: "var(--radius-default)",
                               background: isWriteBlocked
-                                ? "rgba(239, 68, 68, 0.2)"
-                                : "var(--surface-subtle, rgba(255,255,255,0.04))",
+                                ? "rgba(239, 68, 68, 0.15)"
+                                : "var(--surface-subtle)",
                               border: isWriteBlocked
-                                ? "1.5px solid rgba(239, 68, 68, 0.5)"
-                                : "1px solid var(--border-soft, rgba(255,255,255,0.06))",
+                                ? "1.5px solid rgba(239, 68, 68, 0.45)"
+                                : "1px solid var(--border-soft)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              color: isWriteBlocked ? "#ef4444" : "var(--accent-solid, #3b82f6)",
+                              color: isWriteBlocked ? "var(--status-danger-text, #ef4444)" : "var(--accent-solid)",
                               flexShrink: 0
                             }}
                           >
@@ -760,19 +852,19 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                              <code style={{ fontSize: "14px", fontWeight: 700, color: isWriteBlocked ? "#ef4444" : "var(--text-strong)" }}>{tool.name}</code>
-                              <button
-                                type="button"
-                                className="btn-link"
+                              <code style={{ fontSize: "14px", fontWeight: 700, color: isWriteBlocked ? "var(--status-danger-text, #ef4444)" : "var(--text-strong)" }}>{tool.name}</code>
+                              <AppButton
+                                variant="ghost"
+                                iconOnly
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   copyToolName(tool.name);
                                 }}
                                 title="Copy tool identifier"
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "2px" }}
+                                style={{ padding: "2px", height: "auto", minHeight: "unset" }}
                               >
-                                {copiedName === tool.name ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                              </button>
+                                {copiedName === tool.name ? <Check size={14} style={{ color: "var(--status-success-text)" }} /> : <Copy size={14} />}
+                              </AppButton>
                               <span className="mcp-tool-badge-cat">
                                 {category}
                               </span>
@@ -798,7 +890,7 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
 
                       {/* Expanded Detail Pane */}
                       {isExpanded && (
-                        <div style={{ borderTop: "1px solid var(--border-soft, rgba(255,255,255,0.08))", padding: "20px", background: "var(--surface-bg)" }}>
+                        <div style={{ borderTop: "1px solid var(--border-soft)", padding: "20px", background: "var(--surface-bg)" }}>
                           {/* Parameters Schema Header */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                             <h4 style={{ margin: 0, fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
@@ -823,15 +915,15 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                       gap: "10px",
                                       padding: "8px 12px",
                                       background: "var(--surface-elevated, var(--bg-card))",
-                                      border: "1px solid var(--border-soft, rgba(255,255,255,0.06))",
-                                      borderRadius: "8px",
+                                      border: "1px solid var(--border-soft)",
+                                      borderRadius: "var(--radius-default)",
                                       fontSize: "12px"
                                     }}
                                   >
-                                    <code style={{ fontWeight: 700, color: "var(--accent-solid, #3b82f6)", minWidth: "110px" }}>{k}</code>
+                                    <code style={{ fontWeight: 700, color: "var(--accent-solid)", minWidth: "110px" }}>{k}</code>
                                     <span className={`mcp-param-tag type-${pType}`}>{pType}</span>
                                     {isReq ? (
-                                      <span style={{ color: "#ef4444", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
+                                      <span style={{ color: "var(--status-danger-text, #ef4444)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em" }}>REQUIRED</span>
                                     ) : (
                                       <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>OPTIONAL</span>
                                     )}
@@ -845,38 +937,33 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                           {/* Interactive Console Block */}
                           <div className="mcp-console-block">
                             <div className="mcp-console-header">
-                              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#e2e8f0" }}>
-                                <Terminal size={14} color="#3b82f6" /> Interactive Tool Runner
+                              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "var(--text-strong)" }}>
+                                <Terminal size={14} color="var(--accent-solid)" /> Interactive Tool Runner
                               </span>
                               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                 {hasProps && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-secondary"
+                                  <AppButton
+                                    variant="secondary"
                                     onClick={() => handlePrefillSample(tool)}
-                                    style={{ fontSize: "11px", padding: "3px 8px", height: "24px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    style={{ fontSize: "11px", padding: "3px 8px", height: "24px" }}
                                   >
-                                    <Sparkles size={12} color="#fbbf24" /> Auto-Fill JSON
-                                  </button>
+                                    <Sparkles size={12} color="var(--status-warning-text, #fbbf24)" /> Auto-Fill JSON
+                                  </AppButton>
                                 )}
-                                <button
-                                  type="button"
-                                  className="btn btn-primary"
+                                <AppButton
+                                  variant="primary"
                                   disabled={runningTest || isWriteBlocked}
                                   onClick={() => handleRunTool(tool)}
                                   style={{
                                     fontSize: "11px",
                                     padding: "3px 12px",
                                     height: "24px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
                                     opacity: isWriteBlocked ? 0.45 : 1,
                                     cursor: isWriteBlocked ? "not-allowed" : "pointer"
                                   }}
                                 >
                                   <Play size={12} /> {runningTest ? "Executing..." : isWriteBlocked ? "Write Blocked" : "Run Execution"}
-                                </button>
+                                </AppButton>
                               </div>
                             </div>
 
@@ -893,42 +980,41 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                     {testResult.response?.success ? (
-                                      <span style={{ color: "#10b981", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                      <span style={{ color: "var(--status-success-text, #10b981)", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
                                         <CheckCircle2 size={14} /> SUCCESS
                                       </span>
                                     ) : (
-                                      <span style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
+                                      <span style={{ color: "var(--status-danger-text, #ef4444)", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700 }}>
                                         <XCircle size={14} /> FAILED
                                       </span>
                                     )}
-                                    <span style={{ color: "#94a3b8", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                    <span style={{ color: "var(--text-muted)", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
                                       <Clock size={12} /> {testResult.durationMs}ms
                                     </span>
                                   </div>
 
-                                  <button
-                                    type="button"
-                                    className="btn-link"
+                                  <AppButton
+                                    variant="ghost"
                                     onClick={() => copyResultOutput(testResult.response)}
-                                    style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    style={{ fontSize: "11px" }}
                                   >
-                                    {copiedOutput ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                                    {copiedOutput ? <Check size={12} style={{ color: "var(--status-success-text)" }} /> : <Copy size={12} />}
                                     {copiedOutput ? "Copied" : "Copy Output"}
-                                  </button>
+                                  </AppButton>
                                 </div>
 
                                 <pre
                                   style={{
-                                    background: "#090d16",
-                                    color: "#38bdf8",
+                                    background: "var(--surface-bg)",
+                                    color: "var(--accent-solid)",
                                     padding: "10px 12px",
-                                    borderRadius: "6px",
+                                    borderRadius: "var(--radius-default)",
                                     fontSize: "11.5px",
                                     maxHeight: "220px",
                                     overflowY: "auto",
                                     margin: 0,
-                                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                    border: "1px solid #1e293b"
+                                    fontFamily: "var(--font-family-jetbrains, monospace)",
+                                    border: "1px solid var(--border-soft)"
                                   }}
                                 >
                                   {JSON.stringify(testResult.response, null, 2)}
@@ -945,6 +1031,336 @@ export function MCPToolsPage({ onBack, onNotify, onOpenSettings }) {
             )}
           </div>
         </div>
+        )}
+
+        {/* Tab 2: Prompts Manager */}
+        {activeTab === "prompts" && (
+          <div className="mcp-prompts-manager-layout" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Prompts Top Controls */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <div style={{ position: "relative", flex: 1, maxWidth: "420px" }}>
+                <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <AppInput
+                  placeholder="Filter prompts by name, description, or source..."
+                  value={promptFilterQuery}
+                  onChange={(e) => setPromptFilterQuery(e.target.value)}
+                  style={{ paddingLeft: "32px", width: "100%", fontSize: "13px" }}
+                />
+              </div>
+
+              <AppButton
+                variant="primary"
+                onClick={handleOpenNewPrompt}
+              >
+                <Plus size={14} /> New Custom Prompt
+              </AppButton>
+            </div>
+
+            {/* Prompts Grid / List */}
+            {filteredPrompts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 20px", background: "var(--surface-bg)", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-lg)" }}>
+                <MessageSquare size={20} style={{ color: "var(--text-muted)", marginBottom: "8px" }} />
+                <h3 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700 }}>No Prompts Found</h3>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
+                  {promptFilterQuery ? "No prompt templates match your search query." : "Author your first custom workflow in .notes-app/prompts/"}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {filteredPrompts.map((prompt) => {
+                  const isExpanded = expandedPrompt === prompt.name;
+                  const isBuiltin = prompt.source === "builtin";
+                  const argsList = Array.isArray(prompt.arguments) ? prompt.arguments : [];
+
+                  return (
+                    <div key={prompt.name} className="mcp-prompt-card">
+                      <div className="mcp-prompt-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <code style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent-solid)" }}>
+                            {prompt.name}
+                          </code>
+                          <span className={isBuiltin ? "mcp-prompt-badge-builtin" : "mcp-prompt-badge-workspace"}>
+                            {isBuiltin ? "Built-in Enterprise" : "Workspace Custom"}
+                          </span>
+                          {prompt.fileName && (
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "var(--font-family-jetbrains)" }}>
+                              .notes-app/prompts/{prompt.fileName}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <AppButton
+                            variant="secondary"
+                            onClick={() => setExpandedPrompt(isExpanded ? null : prompt.name)}
+                          >
+                            <Play size={12} /> {isExpanded ? "Close Tester" : "Test Prompt"}
+                          </AppButton>
+                          {!isBuiltin && (
+                            <AppButton
+                              variant="secondary"
+                              onClick={() => handleEditPrompt(prompt)}
+                              title="Edit custom prompt"
+                            >
+                              <Edit3 size={12} /> Edit
+                            </AppButton>
+                          )}
+                          {!isBuiltin && (
+                            <AppButton
+                              variant="danger"
+                              onClick={() => handleDeletePrompt(prompt)}
+                              title="Delete custom prompt file"
+                            >
+                              <Trash2 size={12} /> Delete
+                            </AppButton>
+                          )}
+                        </div>
+                      </div>
+
+                      <p style={{ margin: "0 0 10px", fontSize: "13px", color: "var(--text-strong)" }}>
+                        {prompt.description}
+                      </p>
+
+                      {/* Arguments Pills */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: isExpanded ? "14px" : "0" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          Arguments:
+                        </span>
+                        {argsList.length === 0 ? (
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>None required</span>
+                        ) : (
+                          argsList.map((arg) => (
+                            <span key={arg.name} className={`mcp-prompt-arg-pill ${arg.required ? "is-required" : ""}`} title={arg.description}>
+                              {arg.name}{arg.required ? " *" : ""}
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Interactive Prompt Tester Block */}
+                      {isExpanded && (
+                        <div style={{ marginTop: "12px", padding: "16px", background: "var(--surface-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-soft)" }}>
+                          <h4 style={{ margin: "0 0 12px", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
+                            Test Prompt Execution (Generate Messages)
+                          </h4>
+
+                          {argsList.length > 0 && (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", marginBottom: "12px" }}>
+                              {argsList.map((arg) => (
+                                <div key={arg.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)" }}>
+                                    {arg.name} {arg.required && <span style={{ color: "var(--status-danger-text)" }}>*</span>}
+                                  </label>
+                                  <AppInput
+                                    placeholder={arg.description || arg.name}
+                                    value={promptTestArgs[prompt.name]?.[arg.name] || ""}
+                                    onChange={(e) => {
+                                      const current = promptTestArgs[prompt.name] || {};
+                                      setPromptTestArgs({
+                                        ...promptTestArgs,
+                                        [prompt.name]: { ...current, [arg.name]: e.target.value }
+                                      });
+                                    }}
+                                    style={{ fontSize: "12px", padding: "4px 8px", height: "28px" }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: promptTestResult?.promptName === prompt.name ? "12px" : "0" }}>
+                            <AppButton
+                              variant="primary"
+                              disabled={testingPromptName === prompt.name}
+                              onClick={() => handleTestPrompt(prompt)}
+                            >
+                              <Play size={12} /> {testingPromptName === prompt.name ? "Generating..." : "Generate Messages"}
+                            </AppButton>
+                          </div>
+
+                          {promptTestResult && promptTestResult.promptName === prompt.name && (
+                            <div style={{ marginTop: "10px", background: "var(--surface-bg)", padding: "12px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-default)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--status-success-text)" }}>MCP Prompt Messages Output:</span>
+                                <AppButton
+                                  variant="ghost"
+                                  onClick={() => copyResultOutput(promptTestResult.result)}
+                                >
+                                  <Copy size={12} /> Copy Output
+                                </AppButton>
+                              </div>
+                              <pre style={{ margin: 0, color: "var(--accent-solid)", fontSize: "11.5px", maxHeight: "200px", overflowY: "auto", fontFamily: "var(--font-family-jetbrains)" }}>
+                                {JSON.stringify(promptTestResult.result, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Prompt Editor Modal */}
+        {promptEditorOpen && (
+          <OverlayDialog
+            open={promptEditorOpen}
+            onClose={() => setPromptEditorOpen(false)}
+            ariaLabel="Custom Prompt Editor"
+            size="lg"
+          >
+            <div className="overlay-dialog-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <MessageSquare size={16} color="var(--accent-solid)" />
+                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>
+                  {promptFormData.name ? `Edit Prompt: ${promptFormData.name}` : "Create Custom Workspace Prompt"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPromptEditorOpen(false)}
+                className="icon-button"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="overlay-dialog-body" style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Name * (Unique Identifier)</label>
+                <AppInput
+                  placeholder="e.g. code_review_brief"
+                  value={promptFormData.name}
+                  onChange={(e) => setPromptFormData({ ...promptFormData, name: e.target.value })}
+                  style={{ fontSize: "13px" }}
+                />
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  Stored on disk as <code>.notes-app/prompts/{promptFormData.name || "name"}.md</code>
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700 }}>Description</label>
+                <AppInput
+                  placeholder="Brief summary of what this workflow accomplishes..."
+                  value={promptFormData.description}
+                  onChange={(e) => setPromptFormData({ ...promptFormData, description: e.target.value })}
+                  style={{ fontSize: "13px" }}
+                />
+              </div>
+
+              {/* Arguments List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 700 }}>Arguments / Parameters</label>
+                  <AppButton
+                    variant="secondary"
+                    onClick={() => {
+                      const current = Array.isArray(promptFormData.arguments) ? promptFormData.arguments : [];
+                      setPromptFormData({
+                        ...promptFormData,
+                        arguments: [...current, { name: "", description: "", required: false }]
+                      });
+                    }}
+                  >
+                    <Plus size={12} /> Add Argument
+                  </AppButton>
+                </div>
+
+                {(!promptFormData.arguments || promptFormData.arguments.length === 0) ? (
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>No arguments defined. Prompt will run without parameters.</span>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {promptFormData.arguments.map((arg, idx) => (
+                      <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <AppInput
+                          placeholder="argName (e.g. topic)"
+                          value={arg.name}
+                          onChange={(e) => {
+                            const next = [...promptFormData.arguments];
+                            next[idx].name = e.target.value;
+                            setPromptFormData({ ...promptFormData, arguments: next });
+                          }}
+                          style={{ flex: 1, fontSize: "12px", height: "28px" }}
+                        />
+                        <AppInput
+                          placeholder="Description..."
+                          value={arg.description}
+                          onChange={(e) => {
+                            const next = [...promptFormData.arguments];
+                            next[idx].description = e.target.value;
+                            setPromptFormData({ ...promptFormData, arguments: next });
+                          }}
+                          style={{ flex: 2, fontSize: "12px", height: "28px" }}
+                        />
+                        <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(arg.required)}
+                            onChange={(e) => {
+                              const next = [...promptFormData.arguments];
+                              next[idx].required = e.target.checked;
+                              setPromptFormData({ ...promptFormData, arguments: next });
+                            }}
+                          />
+                          Required
+                        </label>
+                        <AppButton
+                          variant="ghost"
+                          danger
+                          iconOnly
+                          onClick={() => {
+                            const next = promptFormData.arguments.filter((_, i) => i !== idx);
+                            setPromptFormData({ ...promptFormData, arguments: next });
+                          }}
+                          style={{ padding: "4px", height: "auto", minHeight: "unset" }}
+                        >
+                          <Trash2 size={14} />
+                        </AppButton>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Template Body */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700 }}>Prompt Markdown Template Body</label>
+                <textarea
+                  className="app-input"
+                  rows={8}
+                  placeholder="Please inspect notes related to '{{topic}}' using the search and read_note tools..."
+                  value={promptFormData.template}
+                  onChange={(e) => setPromptFormData({ ...promptFormData, template: e.target.value })}
+                  style={{ fontFamily: "var(--font-family-jetbrains)", fontSize: "12px", lineHeight: "1.5" }}
+                />
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  Use <code>{"{{argName}}"}</code> to substitute argument values dynamically during prompt execution.
+                </span>
+              </div>
+            </div>
+
+            <div className="overlay-dialog-actions" style={{ padding: "12px 16px", display: "flex", justifyContent: "flex-end", gap: "8px", borderTop: "1px solid var(--border-soft)" }}>
+              <AppButton
+                variant="secondary"
+                onClick={() => setPromptEditorOpen(false)}
+              >
+                Cancel
+              </AppButton>
+              <AppButton
+                variant="primary"
+                disabled={savingPrompt}
+                onClick={handleSavePrompt}
+              >
+                <Check size={14} /> {savingPrompt ? "Saving..." : "Save Prompt"}
+              </AppButton>
+            </div>
+          </OverlayDialog>
+        )}
       </div>
     </div>
   );

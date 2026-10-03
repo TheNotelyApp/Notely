@@ -72,6 +72,10 @@ contextBridge.exposeInMainWorld("notesApi", {
   mcpStop: () => ipcRenderer.invoke("mcp:stop"),
   mcpRestart: () => ipcRenderer.invoke("mcp:restart"),
   mcpGetSessions: () => ipcRenderer.invoke("mcp:get-sessions"),
+  mcpListPrompts: () => ipcRenderer.invoke("mcp:list-prompts"),
+  mcpGetPrompt: (name, args) => ipcRenderer.invoke("mcp:get-prompt", name, args),
+  mcpSavePrompt: (promptData) => ipcRenderer.invoke("mcp:save-prompt", promptData),
+  mcpDeletePrompt: (name) => ipcRenderer.invoke("mcp:delete-prompt", name),
   onMcpStatusChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, payload) => callback(payload);

@@ -65,7 +65,7 @@ class GraphBuilder {
       const ExcalidrawKnowledgeSource = require('./sources/ExcalidrawKnowledgeSource');
       const DrawioKnowledgeSource = require('./sources/DrawioKnowledgeSource');
       const MermaidKnowledgeSource = require('./sources/MermaidKnowledgeSource');
-      const CodeKnowledgeSource = require('./sources/CodeKnowledgeSource');
+      const { CodeKnowledgeSource } = require('./sources/code');
 
       const registry = new KnowledgeSourceRegistry();
 
@@ -119,6 +119,29 @@ class GraphBuilder {
                 : `ent-${item.source.sourceType()}-${String(ent.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
               this.graphDb.upsertEntity({ id, name: ent.name, canonical_name: ent.name, type: ent.type || 'Entity', properties: ent.properties || {} });
             }
+
+            const evidenceMap = new Map();
+            if (Array.isArray(evidence)) {
+              for (const ev of evidence) {
+                const evId = evidenceStore.addEvidence({
+                  sourceId: ev.sourceId || item.path,
+                  extractor: ev.extractor || item.source.sourceType(),
+                  subjectText: ev.subjectText || ev.subject_text || item.path,
+                  subjectSpanStart: ev.subjectSpanStart ?? null,
+                  subjectSpanEnd: ev.subjectSpanEnd ?? null,
+                  predicateText: ev.predicateText || ev.predicate_text || 'related_to',
+                  objectText: ev.objectText || ev.object_text || '',
+                  objectSpanStart: ev.objectSpanStart ?? null,
+                  objectSpanEnd: ev.objectSpanEnd ?? null,
+                  rawSentence: ev.rawSentence || ev.raw_sentence || ev.subjectText || item.path,
+                  confidence: ev.confidence || item.source.baseConfidence() || 1.0
+                });
+                if (evId && ev.subjectText && ev.predicateText && ev.objectText) {
+                  evidenceMap.set(`${ev.subjectText}::${ev.predicateText}::${ev.objectText}`, evId);
+                }
+              }
+            }
+
             for (const rel of relationships) {
               const srcId = this.graphService?.entityResolver
                 ? this.graphService.entityResolver.generateEntityId(rel.source_name, rel.source_type || 'Entity')
@@ -129,19 +152,15 @@ class GraphBuilder {
               if (srcId !== tgtId) {
                 this.graphDb.upsertEntity({ id: srcId, name: rel.source_name, canonical_name: rel.source_name, type: rel.source_type || 'Entity' });
                 this.graphDb.upsertEntity({ id: tgtId, name: rel.target_name, canonical_name: rel.target_name, type: rel.target_type || 'Entity' });
-                this.graphDb.upsertRelationship({ source_id: srcId, target_id: tgtId, type: rel.type, weight: rel.weight, confidence: rel.confidence });
-              }
-            }
-            if (Array.isArray(evidence)) {
-              for (const ev of evidence) {
-                evidenceStore.addEvidence({
-                  sourceId: item.path,
+                const evId = evidenceMap.get(`${rel.source_name}::${rel.type}::${rel.target_name}`) || null;
+                this.graphDb.upsertRelationship({
+                  source_id: srcId,
+                  target_id: tgtId,
+                  type: rel.type,
+                  weight: rel.weight,
+                  confidence: rel.confidence,
                   extractor: item.source.sourceType(),
-                  subjectText: ev.subjectText || ev.subject_text || item.path,
-                  predicateText: ev.predicateText || ev.predicate_text || 'related_to',
-                  objectText: ev.objectText || ev.object_text || '',
-                  rawSentence: ev.rawSentence || ev.raw_sentence || ev.subjectText || item.path,
-                  confidence: ev.confidence || item.source.baseConfidence() || 1.0
+                  evidence_id: evId
                 });
               }
             }
@@ -199,9 +218,51 @@ class GraphBuilder {
       const validator = new GraphValidationEngine(this.graphDb, this._logDb);
       await validator.validate();
 
+      // Pre-compute & cache 2D force layout coordinates in SQLite
+      if (this.graphDb && typeof this.graphDb.recomputeLayout === 'function') {
+        try {
+          this.graphDb.recomputeLayout();
+        } catch (lErr) {
+          log.warn('GraphLayoutEngine pass skipped:', lErr.message);
+        }
+      }
+
       // Optimize SQLite query planner
       if (this.graphDb?.db) {
         try { this.graphDb.db.exec('PRAGMA ANALYZE;'); } catch { /* ignore */ }
+      }
+
+      // Update attached repos scan stats in metadata.json
+      if (attachedRepos.length > 0 && workspaceRoot) {
+        try {
+          const metaPath = path.join(workspaceRoot, '.notes-app', 'metadata.json');
+          if (fs.existsSync(metaPath)) {
+            const metaObj = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            if (Array.isArray(metaObj.attachedRepos)) {
+              let changed = false;
+              for (const r of metaObj.attachedRepos) {
+                if (!r || !r.id) continue;
+                let symbolCount = 0;
+                try {
+                  const countRow = this.graphDb.db.prepare(
+                    "SELECT COUNT(*) as count FROM entities WHERE properties LIKE ?"
+                  ).get(`%"repoId":"${r.id}"%`);
+                  symbolCount = countRow?.count || 0;
+                } catch { /* ignore count query */ }
+
+                r.lastScannedAt = new Date().toISOString();
+                r.status = 'indexed';
+                r.symbolCount = symbolCount;
+                changed = true;
+              }
+              if (changed) {
+                fs.writeFileSync(metaPath, JSON.stringify(metaObj, null, 2), 'utf8');
+              }
+            }
+          }
+        } catch (metaErr) {
+          log.warn('Failed to update attached repo scan stats in metadata.json:', metaErr.message);
+        }
       }
 
       log.info(`Knowledge Graph rebuild complete. Processed: ${processedCount}, Failed: ${failedCount}`);

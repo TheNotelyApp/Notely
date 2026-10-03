@@ -22,12 +22,19 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.media-preview-content.pdf-mode {
+.media-preview-content.full-mode,
+.media-preview-content.pdf-mode,
+.media-preview-content.transcript-mode,
+.media-preview-content.text-mode {
+  padding: 0;
   align-items: stretch;
   justify-content: flex-start;
   overflow: hidden;
+  width: 100%;
 }
 
 .media-preview-error {

@@ -73,3 +73,25 @@ describe("toRelativeDocPath", () => {
     expect(rel).toBe("../../media/excalidraw/e900911f/diagram.png");
   });
 });
+
+describe("interpolateTemplateVariables", () => {
+  it("interpolates date, time, title, author, and custom variables", () => {
+    const { interpolateTemplateVariables } = require("../../utils/markdownUtils");
+    const template = "# {{title}}\nDate: {{date}}\nAuthor: {{author}}\nRepo: {{repo}}";
+    const context = {
+      title: "Architecture Spec",
+      dateStr: "2026-10-02",
+      author: "Lead Architect",
+      repo: "NotelyApp/Notely",
+    };
+    const rendered = interpolateTemplateVariables(template, context);
+    expect(rendered).toBe("# Architecture Spec\nDate: 2026-10-02\nAuthor: Lead Architect\nRepo: NotelyApp/Notely");
+  });
+
+  it("leaves unknown template placeholders intact", () => {
+    const { interpolateTemplateVariables } = require("../../utils/markdownUtils");
+    const template = "Hello {{unknown_var}}";
+    expect(interpolateTemplateVariables(template, {})).toBe("Hello {{unknown_var}}");
+  });
+});
+

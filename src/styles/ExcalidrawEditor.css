@@ -68,7 +68,7 @@
   height: 26px;
   box-sizing: border-box;
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   padding: 2px 8px 2px 26px;
   font-size: 0.78rem;
   background: var(--surface-bg);
@@ -91,7 +91,7 @@
   max-height: 320px;
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, var(--border-default) 84%, var(--accent-solid));
-  border-radius: 8px;
+  border-radius: var(--radius-default);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 96%, white) 0%, color-mix(in srgb, var(--surface-bg) 94%, white) 100%);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
 }
@@ -124,7 +124,7 @@
   width: 64px;
   height: 42px;
   border: 1px solid var(--border-soft);
-  border-radius: 6px;
+  border-radius: var(--radius-default);
   background: color-mix(in srgb, var(--surface-muted) 72%, var(--surface-elevated));
   display: inline-flex;
   align-items: center;
