@@ -250,7 +250,8 @@ export function WireframeEditor({
           },
           canvas: {
             styles: [
-              "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+              "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+              "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
             ],
             frameStyle: `
               :root {
@@ -313,40 +314,11 @@ export function WireframeEditor({
 
         editorRef.current = editor;
 
-        // Configure default component type to enable 8-point interactive resizing
-        try {
-          const compManager = editor.Components || editor.DomComponents;
-          if (compManager?.getType && compManager?.addType) {
-            const defaultType = compManager.getType("default");
-            compManager.addType("default", {
-              model: {
-                defaults: {
-                  ...defaultType?.model?.prototype?.defaults,
-                  resizable: {
-                    tl: 1,
-                    tc: 1,
-                    tr: 1,
-                    cl: 1,
-                    cr: 1,
-                    bl: 1,
-                    bc: 1,
-                    br: 1,
-                    minDim: 8,
-                    step: 1
-                  }
-                }
-              }
-            });
-          }
-        } catch (e) {
-          // ignore
-        }
-
         // Register all block primitives
         WIREFRAME_STENCILS.forEach((stencil) => {
           editor.BlockManager.add(stencil.id, {
             id: stencil.id,
-            label: stencil.name,
+            label: stencil.name || stencil.label,
             category: stencil.category,
             content: stencil.content
           });
@@ -910,6 +882,26 @@ export function WireframeEditor({
     onNotify?.("Specifications table copied to clipboard in Markdown format.", "success");
   };
 
+  // Direct component insertion onto canvas or selected element
+  const handleInsertStencil = useCallback((stencil) => {
+    const editor = editorRef.current;
+    if (!editor || !stencil?.content) return;
+    try {
+      const selected = editor.getSelected?.();
+      if (selected) {
+        const added = selected.append(stencil.content)[0];
+        if (added) editor.select(added);
+      } else {
+        const added = editor.addComponents(stencil.content)[0];
+        if (added) editor.select(added);
+      }
+      setHasUnsavedChanges(true);
+      updateAnnotations();
+    } catch (err) {
+      console.error("Failed to insert stencil:", err);
+    }
+  }, [updateAnnotations]);
+
   return (
     <OverlayDialog
       onClose={handleClose}
@@ -951,6 +943,7 @@ export function WireframeEditor({
           filteredStencils={filteredStencils}
           customSnippets={customSnippets}
           onDeleteSnippet={handleDeleteCustomSnippet}
+          onInsertStencil={handleInsertStencil}
         />
 
         {/* Center Canvas Area */}
@@ -962,14 +955,23 @@ export function WireframeEditor({
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
+              const html = e.dataTransfer.getData("text/html");
               const type =
                 e.dataTransfer.getData("gjs-type") || e.dataTransfer.getData("text/plain");
-              if (type && editorRef.current) {
-                const block = editorRef.current.BlockManager.get(type);
-                if (block) {
-                  editorRef.current.addComponents(block.get("content"));
+              if (editorRef.current) {
+                if (html && !html.includes("<!DOCTYPE")) {
+                  const added = editorRef.current.addComponents(html)[0];
+                  if (added) editorRef.current.select(added);
                   setHasUnsavedChanges(true);
                   updateAnnotations();
+                } else if (type) {
+                  const block = editorRef.current.BlockManager.get(type);
+                  if (block) {
+                    const added = editorRef.current.addComponents(block.get("content"))[0];
+                    if (added) editorRef.current.select(added);
+                    setHasUnsavedChanges(true);
+                    updateAnnotations();
+                  }
                 }
               }
             }}

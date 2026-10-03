@@ -10,7 +10,8 @@ export function WireframeSidebar({
   onSearchChange,
   filteredStencils,
   customSnippets,
-  onDeleteSnippet
+  onDeleteSnippet,
+  onInsertStencil
 }) {
   const categoryOptions = combinedCategories.map((c) => ({
     value: c.id,
@@ -88,10 +89,17 @@ export function WireframeSidebar({
                 draggable
                 data-gjs-type={stencil.id}
                 onDragStart={(e) => {
-                  e.dataTransfer.setData("text/plain", stencil.id);
-                  e.dataTransfer.setData("gjs-type", stencil.id);
+                  try {
+                    e.dataTransfer.setData("text/html", stencil.content);
+                    e.dataTransfer.setData("text/plain", stencil.content);
+                    e.dataTransfer.setData("gjs-type", stencil.id);
+                    e.dataTransfer.effectAllowed = "copy";
+                  } catch {
+                    // ignore
+                  }
                 }}
-                title={stencil.desc || stencil.name}
+                onClick={() => onInsertStencil?.(stencil)}
+                title={`${stencil.label || stencil.name}\n${stencil.desc || ""}\n• Click or drag to canvas`}
               >
                 {isCustom && (
                   <button
