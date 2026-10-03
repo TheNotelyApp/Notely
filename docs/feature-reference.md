@@ -78,10 +78,11 @@ During transfer:
 ### Diagrams & Media Gallery
 
 Open via **Workspace -> Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`) or Command Palette:
-- Catalogs all used diagrams (inline Mermaid, Draw.io, Excalidraw), images, videos, audio, and PDF documents in the workspace.
-- **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`) to identify files present on disk that have zero note references.
+- Catalogs all used diagrams (inline Mermaid, Draw.io, Excalidraw, Wireframe UI prototypes), images, videos, audio, and PDF documents in the workspace.
+- **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`, `media/wireframes/`, `media/draw.io/`) to identify files present on disk that have zero note references.
 - **Unused Media Filter**: Quickly isolate unreferenced assets with the `⚠️ Unused / Orphans` filter tab.
 - **Audio & Media Preview**: Embedded audio players, video thumbnails, and transcript drawer with key points and action items.
+- **UI Prototypes & Wireframe Studio**: View, inspect references, and launch Wireframe Studio to edit interactive UI mockups directly.
 - Reuses Knowledge Graph layout aesthetics with collapsible category filters, search, and stat indicators.
 - Inspect details for any item with high-res/diagram live previews, file paths, and exact note references with line numbers and snippets.
 - Direct "Open Note" navigation and "Copy Markdown Link" actions.

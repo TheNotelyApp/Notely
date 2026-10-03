@@ -78,7 +78,19 @@ Notely uses a **4-pass alignment algorithm** to maintain task identity across no
 When editing any note, the top header displays a live task completion progress indicator (e.g. `2/5 tasks`). Clicking this indicator opens the **Task Summary Popover**, listing all open and completed tasks for that note with direct line-jump buttons.
 
 ### Workspace Task Page
+
 Access the full Task Workspace via the left sidebar or Command Palette (`Ctrl + Shift + T`):
-- **Filter by Note**: Focus on tasks from the active note or view tasks across all project notes.
-- **Status Tabs**: Easily switch between `All`, `Open`, `In Progress`, and `Completed`.
-- **Search & Sort**: Filter tasks by title, priority, due date, or assignee.
+- **List & Kanban Board Views**: Toggle between high-density **List View** and visual **Kanban Board** (`Columns` toggle button).
+- **Interactive Drag-and-Drop**: Drag task cards between Kanban columns to instantly transition task status or priority. Changes immediately sync back to source Markdown notes.
+- **Kanban Grouping Modes**:
+  - **Group by Status**: *To Do*, *In Progress*, *Completed*.
+  - **Group by Priority**: *High Priority* (red), *Medium Priority* (amber), *Low Priority* (blue), and *No Priority*.
+- **Smart Timeframe Filters**: Filter tasks quickly using sidebar presets:
+  - **Today**: Tasks due on current date.
+  - **Upcoming**: Scheduled future tasks.
+  - **Overdue**: Incomplete tasks past their due date.
+  - **Completed**: Archived done items.
+  - **All Tasks**: Workspace-wide master list.
+- **Filter by Note**: Focus solely on tasks originating from the active note or view tasks across all project notes.
+- **Search & Sort**: Filter tasks by title keywords, tags, priority, due date, or assignee.
+- **Task Inspector Drawer**: Click any task card to edit descriptions, due dates, reminder times, assignees, and discussion comments in the detail side panel.

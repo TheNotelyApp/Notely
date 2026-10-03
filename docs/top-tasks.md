@@ -80,6 +80,15 @@ Use this page when you want quick, direct steps.
 3. Draw and resize the base image as needed.
 4. Save diagram.
 
+## 11c. Insert and design a Wireframe UI mockup
+
+1. Click toolbar diagram action (`⚡`).
+2. Select **Wireframe**.
+3. Switch to Preview and click the placeholder to launch **Wireframe Studio**.
+4. Drag components from the left stencil sidebar onto the canvas.
+5. Use the Inspector to tweak properties, structure, and annotations.
+6. Click **Save Wireframe**.
+
 ## 12. View or restore note history
 
 1. Click the **History** button in the note's top-right toolbar or press `Ctrl/Cmd + Shift + H`.
@@ -146,12 +155,13 @@ Use this page when you want quick, direct steps.
 
 Set mode in **Settings -> Screen Capture**.
 
-## 22. Review open and completed tasks across workspace
+## 22. Manage tasks in List or Kanban Board view
 
-1. Open Command Palette (`Ctrl/Cmd + K`).
-2. Run **Open Tasks Panel** to review pending tasks.
-3. Run **Open All Tasks** to review open + completed tasks together.
-4. Open source notes directly from task rows.
+1. Open Command Palette (`Ctrl/Cmd + K`) and run **Open Tasks Panel**, or click **Tasks** in the left rail.
+2. Toggle between **List View** and **Kanban Board** using the view switch button (`Columns` icon).
+3. In Kanban view, drag and drop cards between *To Do*, *In Progress*, and *Completed* columns (or switch grouping to Priority).
+4. Filter by timeframe (*Today*, *Upcoming*, *Overdue*) or filter by note.
+5. Click any card to edit details in the inspector drawer or jump directly to the source note.
 
 ## 23. Export workspace as zip
 

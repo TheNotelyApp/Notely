@@ -7,7 +7,7 @@ category: Editor
 
 # Diagrams
 
-Notely supports three diagram formats: **Mermaid** for text-based diagrams written in code, **Excalidraw** for freehand whiteboard-style drawing, and **Draw.io** for structured technical schemas and system architectures.
+Notely supports four diagram and visual prototyping formats: **Mermaid** for text-based diagrams written in code, **Excalidraw** for freehand whiteboard-style drawing, **Draw.io** for structured technical schemas and system architectures, and **Wireframe Studio** for responsive low- and high-fidelity UI mockup prototyping.
 
 ## Mermaid Diagrams
 
@@ -129,11 +129,59 @@ Drop any existing `.drawio` or `.drawio.xml` file directly into the Markdown Edi
 
 ---
 
+## Wireframe Studio
+
+**Wireframe Studio** is Notely's integrated, visual UI prototyping tool powered by GrapesJS. It provides a drag-and-drop studio designed for rapid wireframing of desktop, tablet, and mobile user interfaces directly within your notes.
+
+### Insert a Wireframe
+
+1. Click the **Insert Diagram** icon (`⚡`) on the Markdown toolbar.
+2. Select **Wireframe**.
+3. A wireframe placeholder markdown tag is inserted:
+   ```markdown
+   ![Wireframe Diagram](media/wireframes/<diagram-id>.png){data-diagram-id="<diagram-id>"}
+   ```
+4. In Preview mode, click the placeholder to open **Wireframe Studio**.
+
+### Stencil Library & Components
+
+The left sidebar organizes over 100 UI stencils into searchable categories:
+* **Layouts**: Grid layouts, 2-column/3-column splits, cards, split-screens, and dashboard shells.
+* **Forms & Inputs**: Text inputs, checkboxes, toggle switches, select dropdowns, search bars, and date pickers.
+* **UI Elements**: Buttons, badges, breadcrumbs, tabs, avatars, pagination, tooltips, and progress bars.
+* **Headers & Navigation**: Top navigation bars, sidebars, sub-headers, and mobile app bars.
+* **Hero & Content Sections**: Hero banners, feature grids, CTA blocks, and pricing cards.
+* **Metrics & Feedback**: Metric stat cards, alert banners, toast notifications, modals, and empty state cards.
+* **Tables & Lists**: Data tables, striped tables, and interactive list groups.
+* **Device Frames**: Browser windows, mobile phone bezels, and tablet mockups.
+* **FontAwesome Icons**: Standard icon library elements for UI actions and navigation.
+
+### Viewport Controls & Canvas Tools
+
+* **Responsive Viewports**: Switch instantly between **Desktop (100%)**, **Tablet (768px)**, and **Mobile (375px)** to verify responsive layouts.
+* **Zoom & Pan**: Zoom in/out or fit to screen using bottom status bar controls.
+* **Undo / Redo**: Quick hotkeys (`Ctrl/Cmd + Z` / `Ctrl/Cmd + Y`) and toolbar actions.
+* **Component Outlines & Guides**: Toggle visual wireframe guides to inspect bounding boxes and alignment.
+
+### Inspector: Properties, Structure & Annotations
+
+The right Inspector panel offers three dedicated modes:
+1. **Properties**: Adjust typography, sizing, spacing, borders, background colors, and component attributes.
+2. **Structure**: Visual DOM layer tree for inspecting parent-child component hierarchies and reordering elements.
+3. **Annotations**: Add design notes, rationale, and UX specifications tied directly to selected wireframe blocks.
+
+### Saving & Storage
+
+* Clicking **Save Wireframe** renders a PNG preview to `media/wireframes/<id>.png` and persists the full project structure to `.notes-app/wireframes/<id>.wireframe.json`.
+* Wireframes are fully offline, Git-trackable, and cataloged in the **Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`) under the **UI Prototypes** category.
+
+---
+
 ## Choosing a Diagram Tool
 
-| Feature | Mermaid | Excalidraw | Draw.io |
-|---|---|---|---|
-| **Best for** | Fast text-based flows, timelines | Casual sketching, wireframes | Engineering schematics, network charts |
-| **Editing** | Text syntax | Visual canvas | Visual canvas |
-| **Storage** | Plain Markdown text | JSON `.excalidraw` + SVG preview | XML `.drawio` + PNG preview |
-| **Offline** | ✓ | ✓ | ✓ |
+| Feature | Mermaid | Excalidraw | Draw.io | Wireframe Studio |
+|---|---|---|---|---|
+| **Best for** | Fast text-based flows, timelines | Casual sketching, whiteboard | Engineering schematics, network charts | UI prototyping, app mockups, layout wireframes |
+| **Editing** | Text syntax | Visual canvas | Visual canvas | Drag-and-drop component studio |
+| **Storage** | Plain Markdown text | JSON `.excalidraw` + SVG | XML `.drawio` + PNG | JSON `.wireframe.json` + PNG |
+| **Offline** | ✓ | ✓ | ✓ | ✓ |
