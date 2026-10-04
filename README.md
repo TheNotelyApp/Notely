@@ -11,7 +11,7 @@
   <a href="https://github.com/TheNotelyApp/Notely/actions">
     <img src="https://github.com/TheNotelyApp/Notely/actions/workflows/cd.yml/badge.svg" alt="CD Status">
   </a>
-  <img src="https://img.shields.io/badge/version-v0.1.51-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-v0.1.52-blue" alt="Version" />
   <img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform" />
 
