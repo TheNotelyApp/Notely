@@ -32,7 +32,7 @@ const LEVEL_NAMES = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
 // Patterns for sensitive data redaction
 const REDACTION_PATTERNS = [
-  /(?:api[_-]?key|bearer|token|secret|password|authorization)\s*[:=]\s*['"]?([a-zA-Z0-9_\-\.]{8,})['"]?/gi,
+  /(?:api[_-]?key|bearer|token|secret|password|authorization)\s*[:=]\s*['"]?([a-zA-Z0-9_\-.]{8,})['"]?/gi,
   /(?:AIzaSy[a-zA-Z0-9_-]{33})/g, // Google / Gemini API key
   /(?:sk-[a-zA-Z0-9]{20,})/g,     // OpenAI / Anthropic key format
   /(?:hf_[a-zA-Z0-9]{34,})/g      // HuggingFace token
@@ -428,7 +428,7 @@ class LogCore {
   /**
    * Get telemetry stats summary for UI Header
    */
-  getStats(options = {}) {
+  getStats(_options = {}) {
     if (!this.db) return { total: 0, errors: 0, warns: 0, hourly: [], subsystems: [] };
     this.flush();
 

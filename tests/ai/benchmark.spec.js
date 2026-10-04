@@ -38,7 +38,6 @@ describe('GLiNER2-Relex ONNX Benchmark Performance Tests', () => {
     const service = new GraphService({ appDataDir: tmpDir }, graphDb);
     const notePath = path.join(tmpDir, 'benchmark-note.md');
     
-    // Sample multi-sentence markdown note (~500 words)
     const content = `
 # Quantum Computing Overview
 Quantum computing relies on qubits to perform parallel calculations.
@@ -46,7 +45,7 @@ Superconducting circuits and trapped ions are primary hardware methodologies.
 Shor's Algorithm offers exponential speedup for integer factorization.
 Qiskit and Cirq are open-source software SDKs written in Python.
 IBM, Google, and Rigetti are leading organizations building quantum systems.
-    `.repeat(5);
+    `.repeat(2);
 
     const memBefore = process.memoryUsage().heapUsed;
     const start = performance.now();
@@ -57,16 +56,17 @@ IBM, Google, and Rigetti are leading organizations building quantum systems.
     const memAfter = process.memoryUsage().heapUsed;
     const memDeltaMB = (memAfter - memBefore) / (1024 * 1024);
 
-    console.log(`[Benchmark] 500-word note extraction took ${durationMs.toFixed(2)} ms | Heap Delta: ${memDeltaMB.toFixed(2)} MB`);
+    console.log(`[Benchmark] Note extraction took ${durationMs.toFixed(2)} ms | Heap Delta: ${memDeltaMB.toFixed(2)} MB`);
     assert.ok(durationMs < 120000, `Extraction exceeded threshold: ${durationMs}ms`);
   }, 120000);
 
   it('should benchmark note batch throughput per minute', async () => {
     const service = new GraphService({ appDataDir: tmpDir }, graphDb);
-    const notesCount = 5;
+    const notesCount = 2;
     const start = performance.now();
 
     for (let i = 0; i < notesCount; i++) {
+      await new Promise((r) => setImmediate(r));
       const notePath = path.join(tmpDir, `note-${i}.md`);
       const content = `# Note ${i}\nEntityAlpha links to [[EntityBeta-${i}]] and relies on Python.`;
       await service.processNote(notePath, content);

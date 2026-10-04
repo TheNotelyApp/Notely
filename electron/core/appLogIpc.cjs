@@ -2,9 +2,8 @@
  * appLogIpc.cjs - IPC Handlers for Enterprise Centralized Logging
  */
 
-const { ipcMain, BrowserWindow, app, shell } = require('electron');
+const { ipcMain, BrowserWindow, shell } = require('electron');
 const fs = require('node:fs');
-const path = require('node:path');
 const { logCore } = require('./LogCore.cjs');
 const { assertTrustedIpcSender } = require('../lib/ipc/ipcSecurity.cjs');
 
