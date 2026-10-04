@@ -46,7 +46,16 @@ if (process.parentPort) {
 
     try {
       if (type === 'start') {
-        const { workspaceRoot, appDataDir } = payload;
+        const { workspaceRoot, appDataDir, userDataPath } = payload;
+
+        // Initialize Central LogCore in child worker process if userDataPath is available
+        if (userDataPath) {
+          try {
+            const { logCore } = require('../core/LogCore.cjs');
+            logCore.initialize(userDataPath);
+            logCore.setActiveWorkspace(workspaceRoot);
+          } catch { /* ignore */ }
+        }
 
         const { EmbeddingDB, EmbeddingService, ONNXEmbedder } = require('../../ai/embeddings');
         const { IndexQueue, IndexWorker, GraphQueue, GraphWorker } = require('../../ai/queue');

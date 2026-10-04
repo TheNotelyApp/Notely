@@ -233,6 +233,37 @@ export async function aiGetLogs(subsystem = null, limit = 100, conversationId = 
   return api.aiGetLogs({ subsystem, limit, conversationId });
 }
 
+export async function appLogQuery(options = {}) {
+  const api = getNotesApi();
+  if (typeof api.appLogQuery !== "function") return { success: false, data: { rows: [], total: 0 } };
+  return api.appLogQuery(options);
+}
+
+export async function appLogStats(options = {}) {
+  const api = getNotesApi();
+  if (typeof api.appLogStats !== "function") return { success: false, data: {} };
+  return api.appLogStats(options);
+}
+
+export async function appLogClear(options = {}) {
+  const api = getNotesApi();
+  if (typeof api.appLogClear !== "function") return { success: false };
+  return api.appLogClear(options);
+}
+
+export function appLogWrite(entry = {}) {
+  const api = getNotesApi();
+  if (typeof api.appLogWrite === "function") {
+    api.appLogWrite(entry);
+  }
+}
+
+export async function appLogOpenFolder() {
+  const api = getNotesApi();
+  if (typeof api.appLogOpenFolder !== "function") return { success: false };
+  return api.appLogOpenFolder();
+}
+
 export function onTelemetryEvent(callback) {
   const api = getNotesApi();
   if (typeof api.onTelemetryEvent !== 'function') return () => {};

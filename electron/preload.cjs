@@ -134,6 +134,11 @@ contextBridge.exposeInMainWorld("notesApi", {
   aiGetNoteStats: (notePath) => ipcRenderer.invoke("ai:note:stats", { notePath }),
   aiGetLogs: (payload) => ipcRenderer.invoke("ai:logs:get", payload),
   aiClearLogs: (payload) => ipcRenderer.invoke("ai:logs:clear", payload),
+  appLogQuery: (options) => ipcRenderer.invoke("applog:query", options),
+  appLogStats: (options) => ipcRenderer.invoke("applog:stats", options),
+  appLogClear: (options) => ipcRenderer.invoke("applog:clear", options),
+  appLogWrite: (entry) => ipcRenderer.send("applog:write", entry),
+  appLogOpenFolder: () => ipcRenderer.invoke("applog:open-folder"),
   onTelemetryEvent: (callback) => {
     if (typeof callback !== 'function') return () => {};
     const listener = (_event, payload) => callback(payload);

@@ -47,6 +47,16 @@ const { registerNotePackageIpc } = require("./lib/export/notePackageIpc.cjs");
 const { registerTaskIpc } = require("./lib/tasks/taskIpc.cjs");
 const { ExportHistoryStore } = require("./lib/export/exportHistoryStore.cjs");
 const { registerExportHistoryIpc } = require("./lib/export/exportHistoryIpc.cjs");
+const { logCore } = require("./core/LogCore.cjs");
+const { registerAppLogIpcHandlers } = require("./core/appLogIpc.cjs");
+
+// Bootstrap Central Enterprise Logging immediately
+try {
+  logCore.initialize(app.getPath("userData"), { appVersion: app.getVersion() });
+  logCore.attachCrashHandlers();
+} catch (err) {
+  console.warn("[LogCore] Startup init warning:", err?.message || err);
+}
 
 const exportHistoryStore = new ExportHistoryStore(app.getPath("userData"), () => notesRoot);
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -406,6 +416,7 @@ function applyNotesRoot(nextRootPath) {
   try {
     const { aiService } = require("../ai/core/AIService.js");
     aiService.workspaceRoot = notesRoot;
+    logCore.setActiveWorkspace(notesRoot);
   } catch { /* ignore */ }
   activeProjectSlug = ROOT_PROJECT_SLUG;
   appDataDir = path.join(notesRoot, ".notes-app");
@@ -823,6 +834,9 @@ if (canRunApp) {
         broadcastThemeChange();
       }
     });
+
+    // Register Centralized Logging IPC Handlers
+    registerAppLogIpcHandlers();
 
     // Register AI IPC handlers in the ready phase so renderer calls never race missing handlers.
     initializeAIHandlers(app, aiAgent);

@@ -1,12 +1,23 @@
 /**
  * LogDB - Persistent SQLite database for AI logs (Embeddings, Knowledge Graph)
  * Stored inside {workspace}/.notes-app/ai-logs.db
+ *
+ * NOTE: Fully preserves existing workspace-local DB functionality and schemas
+ * while teeing a structured copy into the centralized LogCore instance.
  */
 
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const { createLogger } = require('../core/logger');
+
+let logCoreInstance = null;
+try {
+  const { logCore } = require('../../electron/core/LogCore.cjs');
+  logCoreInstance = logCore;
+} catch {
+  // Safe fallback
+}
 
 const log = createLogger('LogDB');
 
@@ -49,17 +60,35 @@ class LogDB {
   }
 
   addLog(subsystem, message, level = 'info', metadata = {}) {
-    if (!this.db) return;
-    try {
-      const now = new Date().toISOString();
-      const metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata || {});
-      const stmt = this.db.prepare(`
-        INSERT INTO logs (subsystem, level, message, metadata, timestamp)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-      stmt.run(subsystem, level, message, metaStr, now);
-    } catch (err) {
-      log.error('Failed to add log:', err.message);
+    // 1. Primary write to workspace-local ai-logs.db (Untouched)
+    if (this.db) {
+      try {
+        const now = new Date().toISOString();
+        const metaStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata || {});
+        const stmt = this.db.prepare(`
+          INSERT INTO logs (subsystem, level, message, metadata, timestamp)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        stmt.run(subsystem, level, message, metaStr, now);
+      } catch (err) {
+        log.error('Failed to add log:', err.message);
+      }
+    }
+
+    // 2. Tee copy to Centralized LogCore (Non-blocking, silent on error)
+    if (logCoreInstance && typeof logCoreInstance.write === 'function') {
+      try {
+        logCoreInstance.write({
+          level,
+          category: 'ai',
+          subsystem: subsystem || 'ai',
+          source: 'LogDB',
+          message,
+          metadata
+        });
+      } catch {
+        // Must never throw or affect app execution
+      }
     }
   }
 
@@ -81,10 +110,10 @@ class LogDB {
       }
 
       if (conditions.length > 0) {
-        query += 'WHERE ' + conditions.join(' AND ') + ' ';
+        query += 'WHERE ' + conditions.join(' AND ');
       }
 
-      query += 'ORDER BY id DESC LIMIT ?';
+      query += ' ORDER BY id DESC LIMIT ?';
       params.push(limit);
 
       const stmt = this.db.prepare(query);

@@ -10,6 +10,14 @@ const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const { createLogger } = require('../core/logger');
 
+let logCoreInstance = null;
+try {
+  const { logCore } = require('../../electron/core/LogCore.cjs');
+  logCoreInstance = logCore;
+} catch {
+  // Safe fallback
+}
+
 const log = createLogger('TelemetryDB');
 
 /**
@@ -268,6 +276,21 @@ class TelemetryDB {
           WHERE session_id = ?
         `).run(success ? 1 : 0, success ? 1 : 0, sessionId);
       }
+
+      // Tee to Central LogCore
+      if (logCoreInstance && typeof logCoreInstance.write === 'function') {
+        logCoreInstance.write({
+          level: success ? 'info' : 'error',
+          category: 'mcp',
+          subsystem: 'mcp_tools',
+          source: 'TelemetryDB',
+          event: `mcp.tool.${toolName || 'call'}`,
+          message: `MCP tool call [${toolName}] ${success ? 'succeeded' : 'failed'} (${durationMs || 0}ms)`,
+          duration_ms: durationMs || 0,
+          error_message: error || null,
+          meta_json: { clientName, sessionId, callId: generatedCallId }
+        });
+      }
     } catch (err) {
       log.error('Failed to record MCP tool call in TelemetryDB:', err.message);
     }
@@ -296,6 +319,21 @@ class TelemetryDB {
         JSON.stringify(sanitizePayload(evt.payload || evt.input || {})),
         evt.createdAt || new Date().toISOString()
       );
+
+      // Tee to Central LogCore
+      if (logCoreInstance && typeof logCoreInstance.write === 'function') {
+        const sev = (evt.severity || 'info').toLowerCase();
+        logCoreInstance.write({
+          level: ['error', 'warn', 'debug', 'trace', 'fatal'].includes(sev) ? sev : 'info',
+          category: evt.category || 'telemetry',
+          subsystem: evt.callerType || 'flowtracker',
+          source: 'TelemetryDB',
+          event: evt.eventType || evt.type || 'telemetry.event',
+          message: evt.label || `Telemetry event: ${evt.eventType || evt.type || 'unknown'}`,
+          duration_ms: Number(evt.durationMs || 0) || null,
+          meta_json: evt.payload || evt.input || null
+        });
+      }
     } catch (err) {
       log.error('Failed to record telemetry event:', err.message);
     }

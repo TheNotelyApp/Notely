@@ -2,7 +2,7 @@
  * workerManager.cjs - Manages background utilityProcess lifecycles and messaging
  */
 
-const { utilityProcess, BrowserWindow } = require('electron');
+const { utilityProcess, BrowserWindow, app } = require('electron');
 const path = require('path');
 
 let childProcess = null;
@@ -32,9 +32,16 @@ function startWorker(workspaceRoot, appDataDir, hfToken) {
   childProcess = utilityProcess.fork(scriptPath);
 
   childProcess.on('spawn', () => {
+    let userDataPath = '';
+    try {
+      if (app && typeof app.getPath === 'function') {
+        userDataPath = app.getPath('userData');
+      }
+    } catch { /* ignore */ }
+
     childProcess.postMessage({
       type: 'start',
-      payload: { workspaceRoot, appDataDir, hfToken }
+      payload: { workspaceRoot, appDataDir, hfToken, userDataPath }
     });
   });
 
