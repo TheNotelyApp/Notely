@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const MarkdownIt = require("markdown-it");
-const { createWebsiteRenderer } = require("./web/websiteRenderer.cjs");
-const { createImageMedia } = require("./media/imageMedia.cjs");
+const { createWebsiteRenderer } = require("../electron/lib/web/websiteRenderer.cjs");
+const { createImageMedia } = require("../electron/lib/media/imageMedia.cjs");
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "notely-excalidraw-fallback-"));
@@ -213,7 +213,7 @@ describe("Excalidraw legacy path fallbacks", () => {
         },
       },
       pathToFileURL,
-      MarkdownIt,
+      getMarkdownIt: () => MarkdownIt,
       buildPdfStyles: () => "",
       escapeHtml: (value) => String(value || ""),
       safeDecode,
@@ -277,7 +277,7 @@ describe("Excalidraw legacy path fallbacks", () => {
         },
       },
       pathToFileURL,
-      MarkdownIt,
+      getMarkdownIt: () => MarkdownIt,
       buildPdfStyles: () => "",
       escapeHtml: (value) => String(value || ""),
       safeDecode,

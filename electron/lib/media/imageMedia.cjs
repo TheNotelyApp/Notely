@@ -10,7 +10,7 @@ function createImageMedia(deps) {
     crypto,
     nativeImage,
     pathToFileURL,
-    getMarkdownIt,
+    getMarkdownIt = deps?.MarkdownIt ? () => deps.MarkdownIt : null,
     buildPdfStyles,
     escapeHtml,
     safeDecode,
