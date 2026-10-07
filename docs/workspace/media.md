@@ -39,10 +39,30 @@ Keep your assets tidy using the Media Health Dashboard:
 ## 4. Diagrams & Media Asset Manager
 
 Notely provides a dedicated full-screen asset manager under **Workspace > Diagrams & Media** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`):
-- **Dense Asset Table Layout**: High-density table displaying Asset Name, Type Badge, File Size, Reference Status, and Quick Action buttons.
+- **Dense Asset Table Layout**: High-density table displaying Asset Name, Type Badge, File Size, Reference Status, Extraction Status, and Quick Action buttons.
 - **Fixed Sidebar & Category Filters**: Left sidebar (260px) with real-time counters for Diagrams, UI Prototypes, Images, PDFs, Videos, Audio, Transcripts, and Documents.
 - **Physical Disk Scanner & Orphan Detection**: Discovers assets on disk across `media/`, `assets/`, and `images/`. Unreferenced assets are highlighted with the `⚠️ Unused / Orphans` badge and filter tab.
 - **Asset Bundles**: Audio and video recordings are organized into bundle folders (`media/audio/<id>/` and `media/video/<id>/`) containing the primary recording alongside companion `transcript.json`.
 - **Integrated Full-Screen Media Viewer**: Standardized modal viewer with 100% full-width layout, subtitle/transcript side drawer, playback speed controls, and copy/download tools.
 - **Safe Asset Deletion**: Remove unwanted assets with safety confirmation modals that check note references and warn before removing actively linked files.
 - **Referenced Notes & Line Jumping**: Inspect reference pills to view note names, line numbers, and markdown context snippets, with 1-click navigation to jump directly to the editor position.
+
+---
+
+## 5. Document Text Extraction & Caching
+
+Notely features an automated, background document extraction and indexing engine for office documents and PDFs:
+
+### Supported Formats
+- **Word Documents (`.docx`)**: OpenXML parsing extracting headings, paragraphs, bulleted/numbered lists, and tables as standard Markdown.
+- **Spreadsheets (`.xlsx`, `.xls`, `.csv`)**: SheetJS-powered table extraction preserving multi-sheet workbooks (`### Sheet: Name`) into GFM Markdown tables.
+- **Presentations (`.pptx`)**: Slide-by-slide text hierarchy extraction (`### Slide N: Title`) including presenter speaker notes.
+- **PDF Documents (`.pdf`)**: Spatial line clustering and page-segmented Markdown extraction (`### Page N`).
+
+### Unified Tabbed Preview
+When inspecting or previewing supported documents in the gallery or editor:
+- **`[ Preview | Extracted Text ]` Switcher**: Seamlessly toggle between native rendering and the extracted text view.
+- **Formatted Reading View**: Formatted paper sheet view with typography, scrollable tables, reading time estimation, and metadata pills (page count, word count, SHA-256 content hash).
+- **Markdown Source View**: Synchronized line-numbered raw markdown editor with copy, download, and re-extraction actions.
+- **In-Document Search**: Instant search bar with occurrence counting and keyword highlights across both reading view and raw source lines.
+- **Persistent Caching**: Document hashes and extracted text are stored in `.notes-app/documents.db` and `.notes-app/extracted/` so subsequent reads are instant without re-parsing.

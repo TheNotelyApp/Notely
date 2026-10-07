@@ -8,6 +8,8 @@ import * as XLSX from 'xlsx';
 const { extractDocx } = require('../electron/lib/extractors/DocxExtractor.cjs');
 const { extractPptx } = require('../electron/lib/extractors/PptxExtractor.cjs');
 const { extractSpreadsheet } = require('../electron/lib/extractors/SpreadsheetExtractor.cjs');
+const { extractPdf } = require('../electron/lib/extractors/PdfExtractor.cjs');
+const { extractDocument, isSupportedDocument, getDocumentMimeType } = require('../electron/lib/extractors/DocumentExtractor.cjs');
 const { DocumentCacheStore } = require('../electron/lib/documents/DocumentCacheStore.cjs');
 const { DocumentExtractionService } = require('../electron/services/DocumentExtractionService.cjs');
 
@@ -222,6 +224,53 @@ describe('Document Extractors & Cache Pipeline', () => {
       expect(extractedText).toContain('Books');
 
       service.close();
+    });
+  });
+
+  describe('PdfExtractor & Error Handling', () => {
+    it('handles non-existent PDF files gracefully', async () => {
+      const result = await extractPdf(path.join(tempDir, 'missing.pdf'));
+      expect(result.success).toBe(false);
+      expect(result.status).toBe('failed');
+      expect(result.error).toContain('File not found');
+    });
+
+    it('handles corrupted/empty PDF files gracefully', async () => {
+      const corruptedPath = path.join(tempDir, 'corrupt.pdf');
+      fs.writeFileSync(corruptedPath, 'Not a real PDF stream header');
+      const result = await extractPdf(corruptedPath);
+      expect(result.success).toBe(false);
+      expect(result.status).toBe('failed');
+    });
+  });
+
+  describe('DocumentExtractor Dispatcher', () => {
+    it('identifies supported document file types', () => {
+      expect(isSupportedDocument('report.pdf')).toBe(true);
+      expect(isSupportedDocument('doc.docx')).toBe(true);
+      expect(isSupportedDocument('slides.pptx')).toBe(true);
+      expect(isSupportedDocument('data.xlsx')).toBe(true);
+      expect(isSupportedDocument('data.csv')).toBe(true);
+      expect(isSupportedDocument('image.png')).toBe(false);
+      expect(isSupportedDocument('audio.mp3')).toBe(false);
+    });
+
+    it('returns appropriate MIME types for supported documents', () => {
+      expect(getDocumentMimeType('report.pdf')).toBe('application/pdf');
+      expect(getDocumentMimeType('doc.docx')).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      expect(getDocumentMimeType('slides.pptx')).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation');
+      expect(getDocumentMimeType('data.xlsx')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(getDocumentMimeType('data.csv')).toBe('text/csv');
+      expect(getDocumentMimeType('unknown.xyz')).toBe('application/octet-stream');
+    });
+
+    it('dispatches extraction based on file extension', async () => {
+      const csvPath = path.join(tempDir, 'test.csv');
+      fs.writeFileSync(csvPath, 'Name,Role\nAlice,Developer\nBob,Designer');
+      const result = await extractDocument(csvPath);
+      expect(result.success).toBe(true);
+      expect(result.markdown).toContain('| Name | Role |');
+      expect(result.markdown).toContain('| Alice | Developer |');
     });
   });
 });
