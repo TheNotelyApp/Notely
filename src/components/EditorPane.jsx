@@ -533,6 +533,7 @@ export function EditorPane({
             overlayClassName="media-full-preview-overlay"
             cardClassName="media-full-preview-content"
             useDefaultCardClass={false}
+            size=""
           >
               <MediaPreviewPane
                 mediaPath={selectedMediaPreview.path}
@@ -625,6 +626,7 @@ export function EditorPane({
             overlayClassName="media-full-preview-overlay"
             cardClassName="media-full-preview-content"
             useDefaultCardClass={false}
+            size=""
           >
               <MediaPreviewPane
                 mediaPath={selectedMediaPreview.path}

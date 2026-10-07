@@ -54,36 +54,6 @@ export function ImageViewer({
 
   return (
     <div className="image-viewer-component">
-      <div className="image-zoom-bar">
-        <AppIconButton
-          size="sm"
-          onClick={handleZoomOut}
-          disabled={imageZoom <= 0.5}
-          data-tooltip="Zoom out"
-          aria-label="Zoom out"
-        >
-          <ZoomOut size={14} />
-        </AppIconButton>
-        <span className="image-zoom-level">{Math.round(imageZoom * 100)}%</span>
-        <AppIconButton
-          size="sm"
-          onClick={handleZoomIn}
-          disabled={imageZoom >= 4}
-          data-tooltip="Zoom in"
-          aria-label="Zoom in"
-        >
-          <ZoomIn size={14} />
-        </AppIconButton>
-        <AppIconButton
-          size="sm"
-          onClick={handleZoomReset}
-          data-tooltip="Reset zoom"
-          aria-label="Reset zoom"
-        >
-          <Maximize2 size={14} />
-        </AppIconButton>
-      </div>
-
       <div
         className="media-preview-image-container"
         ref={containerRef}
@@ -112,6 +82,37 @@ export function ImageViewer({
               {annotation.text}
             </span>
           )}
+        </div>
+
+        {/* Floating zoom controls pill — positioned over the image canvas */}
+        <div className="image-zoom-bar">
+          <AppIconButton
+            size="sm"
+            onClick={handleZoomOut}
+            disabled={imageZoom <= 0.5}
+            data-tooltip="Zoom out"
+            aria-label="Zoom out"
+          >
+            <ZoomOut size={14} />
+          </AppIconButton>
+          <span className="image-zoom-level">{Math.round(imageZoom * 100)}%</span>
+          <AppIconButton
+            size="sm"
+            onClick={handleZoomIn}
+            disabled={imageZoom >= 4}
+            data-tooltip="Zoom in"
+            aria-label="Zoom in"
+          >
+            <ZoomIn size={14} />
+          </AppIconButton>
+          <AppIconButton
+            size="sm"
+            onClick={handleZoomReset}
+            data-tooltip="Reset zoom"
+            aria-label="Reset zoom"
+          >
+            <Maximize2 size={14} />
+          </AppIconButton>
         </div>
       </div>
 

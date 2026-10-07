@@ -840,6 +840,7 @@ export function MediaTab({ content, basePath, onNotify, onOpenDocument }) {
           overlayClassName="media-full-preview-overlay"
           cardClassName="media-full-preview-content"
           useDefaultCardClass={false}
+          size=""
         >
             <MediaPreviewPane
               mediaPath={selectedMediaPreview.path}

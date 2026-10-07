@@ -154,6 +154,7 @@ function KanbanCard({ task, isSelected, onSelect, _onStatusChange, onOpenNote })
 
 function KanbanBoard({ tasks, selectedId, groupBy = "status", onSelect, onStatusChange, onPriorityChange, onOpenNote, onNewTask }) {
   const [dragOverCol, setDragOverCol] = useState(null);
+  const processingDrop = useRef(false);
 
   let columns = [];
   if (groupBy === "priority") {
@@ -177,19 +178,34 @@ function KanbanBoard({ tasks, selectedId, groupBy = "status", onSelect, onStatus
 
   const handleDragOver = (e, colId) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     setDragOverCol(colId);
   };
 
-  const handleDragLeave = () => {
-    setDragOverCol(null);
+  const handleDragLeave = (e, colId) => {
+    // Only clear if actually leaving the column (not entering a child element)
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setDragOverCol(prev => prev === colId ? null : prev);
   };
 
   const handleDrop = (e, colId) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverCol(null);
+
+    // Guard against duplicate drop events
+    if (processingDrop.current) return;
+    processingDrop.current = true;
+    setTimeout(() => { processingDrop.current = false; }, 300);
+
     const taskId = e.dataTransfer.getData("text/plain");
     if (!taskId) return;
+
+    // Don't update if dropped in the same column
+    const currentTask = tasks.find(t => t.id === taskId);
+    if (groupBy === "status" && currentTask?.status === colId) return;
+    if (groupBy === "priority" && String(currentTask?.priority ?? 0) === colId) return;
 
     if (groupBy === "priority") {
       onPriorityChange?.(taskId, Number(colId));
@@ -223,7 +239,7 @@ function KanbanBoard({ tasks, selectedId, groupBy = "status", onSelect, onStatus
             key={col.id}
             className={`kanban-column${isTarget ? " drag-over" : ""}`}
             onDragOver={e => handleDragOver(e, col.id)}
-            onDragLeave={handleDragLeave}
+            onDragLeave={e => handleDragLeave(e, col.id)}
             onDrop={e => handleDrop(e, col.id)}
           >
             <div className="kanban-column-header">

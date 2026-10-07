@@ -1030,8 +1030,8 @@
 }
 
 .media-full-preview-content {
-  width: min(1200px, 94vw);
-  height: min(calc(100vh - var(--titlebar-height, 32px) - 40px), 840px);
+  width: min(1600px, 90vw);
+  height: min(90vh, calc(100vh - var(--titlebar-height, 32px) - 32px));
   background: var(--surface-bg);
   border: 1px solid #cfdcda;
   border-radius: var(--radius-xl);

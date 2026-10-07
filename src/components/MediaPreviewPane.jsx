@@ -33,6 +33,7 @@ import {
   runExport,
 } from "../services/electronService";
 import useConfirm from "../hooks/useConfirm";
+import "../styles/media.css";
 import "../styles/mediaPreview.css";
 
 export function MediaPreviewPane({

@@ -892,10 +892,14 @@ export default function WorkspaceDiagramsMediaPage({
               open={Boolean(viewingAsset)}
               onClose={() => setViewingAsset(null)}
               ariaLabel={viewingAsset.name || "Asset Viewer"}
-              size="xl"
+              overlayClassName="media-full-preview-overlay"
+              cardClassName="media-full-preview-content"
+              useDefaultCardClass={false}
+              size=""
             >
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}>
               {viewingAsset.subType === "mermaid" ? (
-                <div style={{ display: "flex", flexDirection: "column", height: "80vh" }}>
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                   <div className="overlay-dialog-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border-default)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span className="wdm-badge" style={{ background: getCategoryTheme("diagram").bg, color: getCategoryTheme("diagram").text, border: `1px solid ${getCategoryTheme("diagram").border}`, fontSize: "10px", padding: "2px 6px" }}>
@@ -933,7 +937,7 @@ export default function WorkspaceDiagramsMediaPage({
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", height: "82vh" }}>
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                   <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                     <MediaPreviewPane
                       mediaPath={viewingAsset.previewPath || viewingAsset.path}
@@ -971,6 +975,7 @@ export default function WorkspaceDiagramsMediaPage({
                   </div>
                 </div>
               )}
+              </div>
             </OverlayDialog>
           )}
 
