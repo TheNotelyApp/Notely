@@ -30,8 +30,9 @@ describe("workspaceMediaService", () => {
     expect(normalizeAssetPath("./images/diagram.png")).toBe("images/diagram.png");
     expect(normalizeAssetPath(".\\assets\\report.pdf")).toBe("assets/report.pdf");
     expect(normalizeAssetPath("<./media/docs/manual.pdf>")).toBe("media/docs/manual.pdf");
-    expect(normalizeAssetPath("images/photo%20with%20spaces.png \"My Photo\"")).toBe("images/photo with spaces.png");
+    expect(normalizeAssetPath("images/photo%20with%20spaces.png \"My Title\"")).toBe("images/photo with spaces.png");
     expect(normalizeAssetPath("images/test.png?v=123#page=1")).toBe("images/test.png");
+    expect(normalizeAssetPath("../../../../media/excalidraw/e900811f/diagram.png")).toBe("media/excalidraw/e900811f/diagram.png");
   });
 
   it("extracts used diagrams, media, and PDFs with referencing notes and line numbers", () => {
@@ -444,5 +445,33 @@ Here is the dashboard UI prototype:
     expect(unrefDrawio).toBeDefined();
     expect(unrefDrawio.isUnused).toBe(true);
     expect(unrefDrawio.previewPath).toBe("media/draw.io/unreferenced_flow.png");
+  });
+
+  it("does not include referenced markdown notes in diagrams and media catalog", () => {
+    const documents = [
+      {
+        filePath: "/workspace/notes/ProjectAlpha.md",
+        title: "Project Alpha",
+        content: `# Project Alpha
+See the related notes:
+- [System Architecture](./Architecture/System%20Architecture.md)
+- [[Deployment Guide]]
+- [API Reference](../docs/api.markdown)
+
+And actual media & documents:
+- ![Design Mockup](./images/mockup.png)
+- [Project Plan](./docs/plan.xlsx)
+`,
+      },
+    ];
+
+    const assets = extractWorkspaceUsedAssets(documents);
+    // Should only contain the image (mockup.png) and the spreadsheet document (plan.xlsx), NOT the referenced markdown notes
+    expect(assets.length).toBe(2);
+    expect(assets.some((a) => a.name.includes("System Architecture"))).toBe(false);
+    expect(assets.some((a) => a.name.includes("Deployment Guide"))).toBe(false);
+    expect(assets.some((a) => a.name.includes("api.markdown"))).toBe(false);
+    expect(assets.some((a) => a.path.includes("mockup.png"))).toBe(true);
+    expect(assets.some((a) => a.path.includes("plan.xlsx"))).toBe(true);
   });
 });

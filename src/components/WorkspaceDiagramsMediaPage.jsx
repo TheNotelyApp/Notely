@@ -44,6 +44,7 @@ import {
   subscribeExtractionStatus,
 } from "../services/documentExtractionService";
 import { showToast } from "../utils/notificationUtils";
+import { cleanRelativePathForDisplay, toWorkspaceRelativePath } from "../utils/markdownUtils";
 import AppSelect from "./AppSelect";
 import OverlayDialog from "./OverlayDialog";
 import AppIconButton from "./AppIconButton";
@@ -847,8 +848,8 @@ export default function WorkspaceDiagramsMediaPage({
                                   <span className="wdm-asset-main-name" title={asset.name}>
                                     {asset.name}
                                   </span>
-                                  <span className="wdm-asset-sub-path" title={asset.path}>
-                                    {asset.path?.startsWith("inline:") ? "Inline Diagram" : asset.path}
+                                  <span className="wdm-asset-sub-path" title={cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}>
+                                    {asset.path?.startsWith("inline:") ? "Inline Diagram" : cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}
                                   </span>
                                 </div>
                               </div>
@@ -1257,7 +1258,7 @@ export default function WorkspaceDiagramsMediaPage({
                 {inspectingAsset.path && !inspectingAsset.path.startsWith("inline:") && (
                   <div className="wdm-detail-row">
                     <span className="label">File Path</span>
-                    <code>{inspectingAsset.path}</code>
+                    <code>{cleanRelativePathForDisplay(toWorkspaceRelativePath(inspectingAsset.path, workspacePath))}</code>
                   </div>
                 )}
 

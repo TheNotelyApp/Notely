@@ -27,7 +27,7 @@ import AudioRecorderBar from "./AudioRecorderBar";
 import { MediaAttachmentPicker } from "./MediaAttachmentPicker";
 import { createAudioMixer } from "../utils/audioMixer";
 import AppSelect from "./AppSelect";
-import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath } from "../utils/markdownUtils";
+import { applySnippet, canonicalPathKey, createMediaMarkdown, insertTextAtCursor, normalizeImagePathForMarkdown, toRelativeDocPath, toWorkspaceRelativePath } from "../utils/markdownUtils";
 import { captureCurrentDisplay, getDesktopSources, listDocuments, listImages, saveImage, saveVideo } from "../services/electronService";
 import { applyMarkdownQuickFix, applyValidationSuggestion, getIssueFixType } from "../utils/markdownQuickFix";
 import { getMediaTypeFromExtension } from "../utils/mediaUtils";
@@ -35,26 +35,6 @@ import { createDiagramMarkdown, generateDiagramId } from "../utils/diagramFileUt
 import { ImageCropModal } from "./ImageCropModal";
 import CodeBlockModal from "./CodeBlockModal";
 import AppIconButton from "./AppIconButton";
-
-function stripUrlSuffix(pathValue) {
-  return String(pathValue || "").split(/[?#]/)[0];
-}
-
-function hasMarkdownExtension(pathValue) {
-  return /\.md$/i.test(stripUrlSuffix(pathValue));
-}
-
-function isValidHttpUrl(value) {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return false;
-
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function getIssueLabel(issue) {
   if (!issue) return "Issue";
@@ -77,10 +57,23 @@ function getAssetMediaType(pathValue) {
   }
 
   const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
+  const lowerPath = normalized.toLowerCase();
+
+  if (
+    extension === "drawio" ||
+    extension === "excalidraw" ||
+    (extension === "json" && (lowerPath.includes(".wireframe.json") || lowerPath.includes("wireframes") || lowerPath.includes("diagrams"))) ||
+    /[/\\](?:draw\.io|drawio|drawio-diagrams|excalidraw|excali-diagrams|wireframes|diagrams)[/\\]/i.test(lowerPath)
+  ) {
+    return "diagram";
+  }
   if (extension === "json" && decodedFileName.toLowerCase().includes("transcript")) {
     return "transcript";
   }
-  return getMediaTypeFromExtension(extension) || "document";
+  if (extension === "md" || extension === "markdown") {
+    return "note";
+  }
+  return getMediaTypeFromExtension(extension, normalized) || "document";
 }
 
 function decodePathForDisplay(pathValue) {
@@ -97,12 +90,6 @@ function decodePathForDisplay(pathValue) {
       }
     })
     .join("/");
-}
-
-function cleanRelativePathForDisplay(relativePath) {
-  const normalized = String(relativePath || "").replace(/^\.\//, "");
-  const withoutParents = normalized.replace(/^(\.\.\/)+/, "");
-  return decodePathForDisplay(withoutParents);
 }
 
 export function MarkdownToolbar({
@@ -124,29 +111,17 @@ export function MarkdownToolbar({
 }) {
   const mermaidPopoverRef = useRef(null);
   const assetLinkPopoverRef = useRef(null);
-  const referenceLinkPopoverRef = useRef(null);
-  const webLinkPopoverRef = useRef(null);
   const tablePopoverRef = useRef(null);
   const validationPopoverRef = useRef(null);
   const calloutPopoverRef = useRef(null);
   const [showMermaidBuilder, setShowMermaidBuilder] = useState(false);
   const [showAssetLinker, setShowAssetLinker] = useState(false);
-  const [showReferenceLinker, setShowReferenceLinker] = useState(false);
-  const [showWebLinker, setShowWebLinker] = useState(false);
   const [showTableBuilder, setShowTableBuilder] = useState(false);
   const [showValidationPanel, setShowValidationPanel] = useState(false);
   const [showCalloutPicker, setShowCalloutPicker] = useState(false);
   const [availableAssets, setAvailableAssets] = useState([]);
-  const [availableReferenceNotes, setAvailableReferenceNotes] = useState([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
-  const [referenceLoading, setReferenceLoading] = useState(false);
   const [assetsError, setAssetsError] = useState("");
-  const [referenceError, setReferenceError] = useState("");
-  const [referenceSearch, setReferenceSearch] = useState("");
-  const [referenceLinkText, setReferenceLinkText] = useState("");
-  const [webLinkText, setWebLinkText] = useState("");
-  const [webLinkUrl, setWebLinkUrl] = useState("");
-  const [webLinkError, setWebLinkError] = useState("");
   const [chartType, setChartType] = useState("flowchart");
   const [flowDirection, setFlowDirection] = useState("LR");
   const [flowStart, setFlowStart] = useState("Start");
@@ -201,8 +176,6 @@ export function MarkdownToolbar({
   const closeToolbarPanels = () => {
     setShowMermaidBuilder(false);
     setShowAssetLinker(false);
-    setShowReferenceLinker(false);
-    setShowWebLinker(false);
     setShowTableBuilder(false);
     setShowValidationPanel(false);
     setShowCalloutPicker(false);
@@ -212,8 +185,6 @@ export function MarkdownToolbar({
   const isPanelOpen = (panel) => {
     if (panel === "mermaid") return showMermaidBuilder;
     if (panel === "asset") return showAssetLinker;
-    if (panel === "reference") return showReferenceLinker;
-    if (panel === "web") return showWebLinker;
     if (panel === "table") return showTableBuilder;
     if (panel === "validation") return showValidationPanel;
     if (panel === "callout") return showCalloutPicker;
@@ -223,8 +194,6 @@ export function MarkdownToolbar({
   const openPanel = (panel) => {
     if (panel === "mermaid") setShowMermaidBuilder(true);
     if (panel === "asset") setShowAssetLinker(true);
-    if (panel === "reference") setShowReferenceLinker(true);
-    if (panel === "web") setShowWebLinker(true);
     if (panel === "table") setShowTableBuilder(true);
     if (panel === "validation") setShowValidationPanel(true);
     if (panel === "callout") setShowCalloutPicker(true);
@@ -242,8 +211,6 @@ export function MarkdownToolbar({
   const anyPopoverOpen =
     showMermaidBuilder ||
     showAssetLinker ||
-    showReferenceLinker ||
-    showWebLinker ||
     showTableBuilder ||
     showValidationPanel ||
     showCalloutPicker;
@@ -256,16 +223,12 @@ export function MarkdownToolbar({
     const handleGlobalClick = (event) => {
       const insideMermaid = mermaidPopoverRef.current?.contains(event.target);
       const insideAssetLinker = assetLinkPopoverRef.current?.contains(event.target);
-      const insideReferenceLinker = referenceLinkPopoverRef.current?.contains(event.target);
-      const insideWebLinker = webLinkPopoverRef.current?.contains(event.target);
       const insideTableBuilder = tablePopoverRef.current?.contains(event.target);
       const insideValidation = validationPopoverRef.current?.contains(event.target);
       const insideCallout = calloutPopoverRef.current?.contains(event.target);
       if (
         !insideMermaid &&
         !insideAssetLinker &&
-        !insideReferenceLinker &&
-        !insideWebLinker &&
         !insideTableBuilder &&
         !insideValidation &&
         !insideCallout
@@ -308,7 +271,6 @@ export function MarkdownToolbar({
 
   const normalizedTableRows = Math.min(Math.max(Number(tableRows) || 1, 1), 20);
   const normalizedTableColumns = Math.min(Math.max(Number(tableColumns) || 1, 1), 20);
-  const hasValidWebLinkUrl = isValidHttpUrl(webLinkUrl);
   const validationSummary =
     validationStatus === "checking"
       ? "Checking"
@@ -352,51 +314,7 @@ export function MarkdownToolbar({
   };
 
   async function openReferenceLinker() {
-    const shouldOpen = toggleToolbarPanel("reference");
-    setReferenceError("");
-
-    if (!shouldOpen) return;
-
-    if (!basePath) {
-      setAvailableReferenceNotes([]);
-      setReferenceError("Save or open a note file before referencing workspace notes.");
-      return;
-    }
-
-    setReferenceLoading(true);
-    try {
-      const docs = await listAllDocumentEntries();
-      const currentPathKey = canonicalPathKey(basePath);
-      const noteAssets = (docs || [])
-        .filter((entry) => {
-          if (canonicalPathKey(entry.filePath) === currentPathKey) return false;
-          if (hasMarkdownExtension(entry?.filePath)) return true;
-          return hasMarkdownExtension(entry?.fileName);
-        })
-        .map((entry) => {
-          const fallbackName = String(entry.fileName || entry.title || "Untitled note").trim() || "Untitled note";
-          const relativePath = normalizeImagePathForMarkdown(toRelativeDocPath(basePath, entry.filePath));
-          const compactPath = cleanRelativePathForDisplay(relativePath);
-          const displayTitle = String(entry.title || entry.fileName || fallbackName).trim() || fallbackName;
-          const showPath = compactPath.includes("/");
-          const displayPath = showPath ? compactPath : "";
-
-          return {
-            filePath: entry.filePath,
-            fileName: entry.fileName,
-            title: entry.title,
-            displayTitle,
-            displayPath,
-          };
-        });
-
-      setAvailableReferenceNotes(noteAssets);
-    } catch (error) {
-      setAvailableReferenceNotes([]);
-      setReferenceError(error?.message || "Unable to load workspace notes.");
-    } finally {
-      setReferenceLoading(false);
-    }
+    return openAssetLinker();
   }
 
   function openDiagramBuilder() {
@@ -498,7 +416,7 @@ export function MarkdownToolbar({
     try {
       const [images, docs] = await Promise.allSettled([
         listImages(basePath),
-        listDocuments(basePath),
+        listAllDocumentEntries(),
       ]);
       const mediaList = images.status === "fulfilled" && Array.isArray(images.value)
         ? images.value.map((pathValue) => {
@@ -524,8 +442,15 @@ export function MarkdownToolbar({
             };
           })
         : [];
+      const currentPathKey = canonicalPathKey(basePath);
       const docsList = docs.status === "fulfilled" && Array.isArray(docs.value)
-        ? docs.value.map((doc) => {
+        ? docs.value
+            .filter((doc) => {
+              if (currentPathKey && canonicalPathKey(doc?.filePath) === currentPathKey) return false;
+              if (doc?.entryType === "folder") return false;
+              return true;
+            })
+            .map((doc) => {
             const fileNameLower = String(doc.fileName || "").toLowerCase();
             const titleLower = String(doc.title || "").toLowerCase();
             const pathLower = String(doc.filePath || "").toLowerCase();
@@ -535,12 +460,19 @@ export function MarkdownToolbar({
               pathLower.includes("transcript");
 
             const title = (doc.title || doc.fileName || "Untitled note").trim();
+            const wsRelPath = toWorkspaceRelativePath(doc.filePath, workspacePath, basePath);
             let displayPath = doc.displayPath || "";
-            if (!displayPath || displayPath === title || displayPath === doc.fileName) {
-              const normPath = String(doc.filePath || "").replace(/\\/g, "/");
+            if (!displayPath || displayPath === title || displayPath === doc.fileName || /^[A-Za-z]:\//.test(displayPath)) {
+              const normPath = wsRelPath.replace(/\\/g, "/");
               const parts = normPath.split("/").filter(Boolean);
               displayPath = parts.length > 1 ? `${parts.slice(0, -1).join("/")}/` : "";
             }
+
+            const isMarkdownNote =
+              fileNameLower.endsWith(".md") ||
+              fileNameLower.endsWith(".markdown") ||
+              pathLower.endsWith(".md") ||
+              pathLower.endsWith(".markdown");
 
             return {
               type: "document",
@@ -548,7 +480,8 @@ export function MarkdownToolbar({
               fileName: doc.fileName,
               title,
               displayPath,
-              mediaType: isTranscriptDoc ? "transcript" : "document",
+              workspaceRelativePath: wsRelPath,
+              mediaType: isTranscriptDoc ? "transcript" : isMarkdownNote ? "note" : "document",
             };
           })
         : [];
@@ -561,50 +494,7 @@ export function MarkdownToolbar({
     }
   }
 
-  function insertReferenceDocLink(targetDoc) {
-    const filePath = targetDoc?.filePath;
-    const text = (referenceLinkText || "").trim() || targetDoc?.title || targetDoc?.fileName || "Linked note";
-    if (!hasMarkdownExtension(filePath)) {
-      setReferenceError("Only markdown notes can be linked. Choose a .md file.");
-      return;
-    }
 
-    let relativePath = toRelativeDocPath(basePath, filePath);
-    if (relativePath && !hasMarkdownExtension(relativePath) && hasMarkdownExtension(targetDoc?.fileName)) {
-      relativePath = `${relativePath}.md`;
-    }
-    const normalizedPath = normalizeImagePathForMarkdown(relativePath);
-    if (!normalizedPath || normalizedPath === "./" || normalizedPath === ".") {
-      setReferenceError("Choose a different note. Linking the current note is not supported.");
-      return;
-    }
-
-    insertTextAtCursor(value, onChange, `[${text}](${normalizedPath})`, textareaRef);
-    setShowReferenceLinker(false);
-    setReferenceLinkText("");
-    setReferenceSearch("");
-    onNotify?.("Document link inserted.", "success");
-  }
-
-  function insertWebLink() {
-    const trimmedUrl = webLinkUrl.trim();
-    if (!trimmedUrl) {
-      setWebLinkError("Enter a URL.");
-      return;
-    }
-    if (!isValidHttpUrl(trimmedUrl)) {
-      setWebLinkError("Use a valid http/https URL.");
-      return;
-    }
-
-    const text = webLinkText.trim() || "link text";
-    insertTextAtCursor(value, onChange, `[${text}](${trimmedUrl})`, textareaRef);
-    setShowWebLinker(false);
-    setWebLinkText("");
-    setWebLinkUrl("");
-    setWebLinkError("");
-    onNotify?.("Web link inserted.", "success");
-  }
 
   const buildMermaidCode = () => {
     if (chartType === "sequence") {
@@ -1425,6 +1315,7 @@ export function MarkdownToolbar({
         isOpen={showAssetLinker}
         onClose={() => setShowAssetLinker(false)}
         basePath={basePath}
+        workspacePath={workspacePath}
         availableAssets={availableAssets}
         assetsLoading={assetsLoading}
         assetsError={assetsError}
@@ -1434,121 +1325,6 @@ export function MarkdownToolbar({
         }}
         onNotify={onNotify}
       />
-
-      {showReferenceLinker && (
-        <div className="image-linker" ref={referenceLinkPopoverRef} role="dialog" aria-label="Reference note picker">
-          <div className="mermaid-builder-header">
-            <strong>Insert Reference Link</strong>
-            <button className="mermaid-close" onClick={() => setShowReferenceLinker(false)} data-tooltip="Close">
-              x
-            </button>
-          </div>
-
-          <div className="mermaid-fields">
-            <label>
-              Search notes
-              <input
-                value={referenceSearch}
-                onChange={(event) => setReferenceSearch(event.target.value)}
-                placeholder="Type note title or file name"
-              />
-            </label>
-            <label>
-              Link text (optional)
-              <input
-                value={referenceLinkText}
-                onChange={(event) => setReferenceLinkText(event.target.value)}
-                placeholder="Defaults to note title"
-              />
-            </label>
-          </div>
-
-          {referenceError && <p className="toolbar-inline-error">{referenceError}</p>}
-          {referenceLoading ? <p className="toolbar-inline-note">Loading workspace notes...</p> : null}
-
-          {!referenceLoading && !availableReferenceNotes.filter((asset) => {
-            const search = referenceSearch.trim().toLowerCase();
-            if (!search) return true;
-            const label = [asset.displayTitle, asset.displayPath, asset.fileName]
-              .filter(Boolean)
-              .join(" ")
-              .toLowerCase();
-            return label.includes(search);
-          }).length ? (
-            <p className="toolbar-inline-note">No matching notes found.</p>
-          ) : (
-            <div className="image-linker-list compact">
-              {availableReferenceNotes
-                .filter((asset) => {
-                  const search = referenceSearch.trim().toLowerCase();
-                  if (!search) return true;
-                  const label = [asset.displayTitle, asset.displayPath, asset.fileName]
-                    .filter(Boolean)
-                    .join(" ")
-                    .toLowerCase();
-                  return label.includes(search);
-                })
-                .map((asset) => (
-                  <button
-                    key={asset.filePath}
-                    className="image-linker-note-item image-linker-note-primary"
-                    type="button"
-                    onClick={() => insertReferenceDocLink(asset)}
-                    title={asset.displayPath || asset.filePath}
-                  >
-                    <span className="image-linker-note-title">{(asset.displayTitle || asset.fileName || "Untitled note").trim()}</span>
-                    {asset.displayPath ? (
-                      <span className="image-linker-note-path">{asset.displayPath}</span>
-                    ) : null}
-                  </button>
-                ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {showWebLinker && (
-        <div className="web-linker" ref={webLinkPopoverRef} role="dialog" aria-label="Web link inserter">
-          <div className="mermaid-builder-header">
-            <strong>Insert Web Link</strong>
-            <button className="mermaid-close" onClick={() => setShowWebLinker(false)} data-tooltip="Close">
-              x
-            </button>
-          </div>
-
-          <div className="mermaid-fields">
-            <label>
-              Link text
-              <input
-                value={webLinkText}
-                onChange={(event) => setWebLinkText(event.target.value)}
-                placeholder="Example: Open dashboard"
-              />
-            </label>
-            <label>
-              URL
-              <input
-                value={webLinkUrl}
-                onChange={(event) => {
-                  setWebLinkUrl(event.target.value);
-                  setWebLinkError("");
-                }}
-                placeholder="https://example.com"
-              />
-            </label>
-          </div>
-
-          {webLinkUrl.trim() && !hasValidWebLinkUrl ? (
-            <p className="toolbar-inline-error">Use a valid http/https URL.</p>
-          ) : null}
-
-          {webLinkError && <p className="toolbar-inline-error">{webLinkError}</p>}
-
-          <div className="image-linker-url-actions">
-            <button onClick={insertWebLink} disabled={!hasValidWebLinkUrl}>Insert Link</button>
-          </div>
-        </div>
-      )}
 
       {showMermaidBuilder && (
         <div className="mermaid-builder" ref={mermaidPopoverRef} role="dialog" aria-label="Mermaid builder">

@@ -64,6 +64,17 @@ export function getMediaTypeFromExtension(extension, filePath = "") {
   if (!extension) return null;
 
   const ext = extension.toLowerCase();
+  const lowerPath = String(filePath || "").toLowerCase();
+
+  // Diagrams & wireframes (Draw.io, Excalidraw, UI wireframes)
+  if (
+    ext === "drawio" ||
+    ext === "excalidraw" ||
+    (ext === "json" && (lowerPath.includes(".wireframe.json") || lowerPath.includes("wireframes") || lowerPath.includes("diagrams"))) ||
+    /[/\\](?:draw\.io|drawio|drawio-diagrams|excalidraw|excali-diagrams|wireframes|diagrams)[/\\]/i.test(lowerPath)
+  ) {
+    return MEDIA_TYPES.DIAGRAM || "diagram";
+  }
 
   // Transcripts (json in audio directory, transcript in path/name, or vtt/srt captions)
   if (
@@ -95,10 +106,14 @@ export function getMediaTypeFromExtension(extension, filePath = "") {
   if (["pdf"].includes(ext)) {
     return MEDIA_TYPES.PDF;
   }
+  // Notes
+  if (["md", "markdown"].includes(ext)) {
+    return MEDIA_TYPES.NOTE || "note";
+  }
   // Documents
   if ([
     "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf",
-    "odt", "ods", "odp", "csv", "tsv", "md", "markdown", "json",
+    "odt", "ods", "odp", "csv", "tsv", "json",
     "xml", "yaml", "yml", "log", "zip", "7z", "rar",
   ].includes(ext)) {
     return MEDIA_TYPES.DOCUMENT;
@@ -159,14 +174,31 @@ export function getAssetMediaType(pathValue) {
   }
 
   const extension = decodedFileName.split(".").pop()?.trim().toLowerCase();
+  const lowerPath = normalized.toLowerCase();
+
+  // Diagrams & wireframes
   if (
-    (extension === "json" && (decodedFileName.toLowerCase().includes("transcript") || normalized.toLowerCase().includes("transcript") || normalized.toLowerCase().includes("/audio/"))) ||
+    extension === "drawio" ||
+    extension === "excalidraw" ||
+    (extension === "json" && (lowerPath.includes(".wireframe.json") || lowerPath.includes("wireframes") || lowerPath.includes("diagrams"))) ||
+    /[/\\](?:draw\.io|drawio|drawio-diagrams|excalidraw|excali-diagrams|wireframes|diagrams)[/\\]/i.test(lowerPath)
+  ) {
+    return "diagram";
+  }
+
+  if (
+    (extension === "json" && (decodedFileName.toLowerCase().includes("transcript") || lowerPath.includes("transcript") || lowerPath.includes("/audio/"))) ||
     extension === "vtt" ||
     extension === "srt" ||
     (decodedFileName.toLowerCase().includes("transcript") && ["json", "txt", "vtt", "srt"].includes(extension))
   ) {
     return "transcript";
   }
+
+  if (extension === "md" || extension === "markdown") {
+    return "note";
+  }
+
   return getMediaTypeFromExtension(extension, normalized) || "document";
 }
 

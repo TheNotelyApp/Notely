@@ -1,6 +1,7 @@
 /**
  * Markdown and text utility functions
  */
+import { decodePathForDisplay } from "./mediaUtils.js";
 
 export function getLineStartOffset(text, targetLine) {
   const safeLine = Math.max(Number(targetLine) || 1, 1);
@@ -131,6 +132,43 @@ export function canonicalPathKey(pathValue) {
 function isAbsoluteFilePath(pathValue) {
   const norm = String(pathValue || "").replace(/\\/g, "/").trim();
   return /^[A-Za-z]:\//.test(norm) || norm.startsWith("/");
+}
+
+export function toWorkspaceRelativePath(targetPath, workspacePath = "", basePath = "") {
+  if (!targetPath) return "";
+  const normTarget = String(targetPath).replace(/\\/g, "/").trim();
+  if (!normTarget) return "";
+
+  if (!isAbsoluteFilePath(normTarget)) {
+    return normTarget.replace(/^\.\//, "");
+  }
+
+  let root = String(workspacePath || "").replace(/\\/g, "/").trim().replace(/\/+$/, "");
+  if (!root && basePath) {
+    const normBase = String(basePath).replace(/\\/g, "/").trim();
+    if (isAbsoluteFilePath(normBase)) {
+      root = normBase.split("/").slice(0, -1).join("/");
+    }
+  }
+
+  if (root) {
+    const rootLower = root.toLowerCase();
+    const targetLower = normTarget.toLowerCase();
+    if (targetLower.startsWith(`${rootLower}/`)) {
+      return normTarget.slice(root.length + 1);
+    }
+    if (targetLower === rootLower) {
+      return "";
+    }
+  }
+
+  return normTarget.replace(/^[A-Za-z]:\//, "");
+}
+
+export function cleanRelativePathForDisplay(relativePath) {
+  const normalized = String(relativePath || "").replace(/^\.\//, "");
+  const withoutParents = normalized.replace(/^(\.\.\/)+/, "");
+  return decodePathForDisplay(withoutParents);
 }
 
 export function toRelativeDocPath(fromFilePath, toFilePath, workspacePath = "") {

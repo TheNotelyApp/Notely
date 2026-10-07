@@ -187,19 +187,19 @@ describe("MarkdownToolbar validation panel interactions", () => {
       await Promise.resolve();
     });
 
-    const noteButton = Array.from(view.host.querySelectorAll(".image-linker-list button")).find((button) =>
+    const noteButton = Array.from(view.host.querySelectorAll(".media-picker-card, .image-linker-list button")).find((button) =>
       button.textContent?.includes("My Linked Note")
     );
     expect(noteButton).toBeTruthy();
 
     act(() => {
-      noteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      noteButton.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
 
     expect(onChange).toHaveBeenCalled();
     const inserted = String(onChange.mock.calls.at(-1)?.[0] || "");
     expect(inserted).toContain("./Team%20Notes/My%20Linked%20Note.md");
-    expect(onNotify).toHaveBeenCalledWith("Document link inserted.", "success");
+    expect(onNotify).toHaveBeenCalledWith("Inserted into note.", "success");
 
     view.unmount();
   });
@@ -242,19 +242,19 @@ describe("MarkdownToolbar validation panel interactions", () => {
       await Promise.resolve();
     });
 
-    const noteButton = Array.from(view.host.querySelectorAll(".image-linker-list button")).find((button) =>
+    const noteButton = Array.from(view.host.querySelectorAll(".media-picker-card, .image-linker-list button")).find((button) =>
       button.textContent?.includes("Nested Ops Runbook")
     );
     expect(noteButton).toBeTruthy();
 
     act(() => {
-      noteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      noteButton.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
 
     expect(onChange).toHaveBeenCalled();
     const inserted = String(onChange.mock.calls.at(-1)?.[0] || "");
     expect(inserted).toContain("./Team%20Notes/Sub%20Folder/Nested%20Ops%20Runbook.md");
-    expect(onNotify).toHaveBeenCalledWith("Document link inserted.", "success");
+    expect(onNotify).toHaveBeenCalledWith("Inserted into note.", "success");
 
     view.unmount();
   });
@@ -297,18 +297,18 @@ describe("MarkdownToolbar validation panel interactions", () => {
       await Promise.resolve();
     });
 
-    const noteButton = Array.from(view.host.querySelectorAll(".image-linker-list button")).find((button) =>
+    const noteButton = Array.from(view.host.querySelectorAll(".media-picker-card, .image-linker-list button")).find((button) =>
       button.textContent?.includes("Remote Drive Note")
     );
     expect(noteButton).toBeTruthy();
 
     act(() => {
-      noteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      noteButton.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
 
     const inserted = String(onChange.mock.calls.at(-1)?.[0] || "");
     expect(inserted).toContain("D:/Shared%20Notes/Remote%20Drive%20Note.md");
-    expect(onNotify).toHaveBeenCalledWith("Document link inserted.", "success");
+    expect(onNotify).toHaveBeenCalledWith("Inserted into note.", "success");
 
     view.unmount();
   });
@@ -339,7 +339,7 @@ describe("MarkdownToolbar validation panel interactions", () => {
       await Promise.resolve();
     });
 
-    const buttons = Array.from(view.host.querySelectorAll(".image-linker-list button"));
+    const buttons = Array.from(view.host.querySelectorAll(".media-picker-card, .image-linker-list button"));
     expect(buttons.some((button) => button.textContent?.includes("Architecture"))).toBe(false);
 
     view.unmount();
@@ -377,7 +377,7 @@ describe("MarkdownToolbar validation panel interactions", () => {
       await Promise.resolve();
     });
 
-    const noteButtons = Array.from(view.host.querySelectorAll(".image-linker-note-primary"));
+    const noteButtons = Array.from(view.host.querySelectorAll(".media-picker-card"));
     expect(noteButtons).toHaveLength(1);
     expect(noteButtons[0]?.textContent || "").toContain("Architecture");
 
@@ -427,7 +427,7 @@ describe("MarkdownToolbar validation panel interactions", () => {
       await Promise.resolve();
     });
 
-    const buttons = Array.from(view.host.querySelectorAll(".image-linker-note-primary"));
+    const buttons = Array.from(view.host.querySelectorAll(".media-picker-card"));
     expect(buttons.some((button) => button.textContent?.includes("System Design"))).toBe(true);
     expect(listDocumentsMock).toHaveBeenCalledWith(undefined);
     expect(listDocumentsMock.mock.calls.some((call) => String(call[0] || "").toLowerCase().includes("architecture"))).toBe(true);
@@ -553,6 +553,142 @@ describe("MarkdownToolbar validation panel interactions", () => {
     expect(inserted).toContain('.png){data-diagram-id="');
     expect(inserted).toContain('data-diagram-type="excalidraw"}');
     expect(onNotify).toHaveBeenCalledWith("Excalidraw reference inserted.", "success");
+
+    view.unmount();
+  });
+
+  it("opens media and attachments picker when clicking toolbar media button", async () => {
+    listImagesMock.mockResolvedValue([]);
+    listDocumentsMock.mockResolvedValue([
+      {
+        entryType: "file",
+        title: "Meeting Minutes",
+        fileName: "Meeting Minutes.md",
+        filePath: "C:/notes/Meeting Minutes.md",
+      },
+    ]);
+
+    const view = renderToolbar({
+      value: "",
+      onChange: vi.fn(),
+      textareaRef: { current: null },
+      basePath: "C:/notes/Current.md",
+      onNotify: vi.fn(),
+      validationStatus: "ready",
+      validationIssues: [],
+      onJumpToLine: vi.fn(),
+    });
+
+    const mediaButton = view.host.querySelector('button[data-tooltip="Insert workspace asset"]');
+    expect(mediaButton).toBeTruthy();
+
+    await act(async () => {
+      mediaButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const picker = view.host.querySelector('.media-picker-popover');
+    expect(picker).toBeTruthy();
+    const noteItems = Array.from(picker.querySelectorAll(".media-picker-card"));
+    expect(noteItems.some((item) => item.textContent?.includes("Meeting Minutes"))).toBe(true);
+
+    view.unmount();
+  });
+
+
+  it("separates notes, documents, and diagrams in workspace asset filter", async () => {
+    listImagesMock.mockResolvedValue([
+      "media/draw.io/workflow.drawio",
+      "media/photos/header.png",
+    ]);
+    listDocumentsMock.mockResolvedValue([
+      {
+        entryType: "file",
+        title: "Sprint Notes",
+        fileName: "Sprint Notes.md",
+        filePath: "C:/notes/Sprint Notes.md",
+      },
+      {
+        entryType: "file",
+        title: "Data Sheet",
+        fileName: "Data Sheet.xlsx",
+        filePath: "C:/notes/Data Sheet.xlsx",
+      },
+    ]);
+
+    const view = renderToolbar({
+      value: "",
+      onChange: vi.fn(),
+      textareaRef: { current: null },
+      basePath: "C:/notes/Current.md",
+      onNotify: vi.fn(),
+      validationStatus: "ready",
+      validationIssues: [],
+      onJumpToLine: vi.fn(),
+    });
+
+    const openWorkspaceInsert = view.host.querySelector('button[data-tooltip="Insert workspace asset"]');
+    expect(openWorkspaceInsert).toBeTruthy();
+
+    await act(async () => {
+      openWorkspaceInsert.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const allButtons = () => Array.from(view.host.querySelectorAll(".media-picker-card, .image-linker-list button"));
+    const filterTrigger = view.host.querySelector('.media-picker-popover .app-select-trigger');
+    expect(filterTrigger).toBeTruthy();
+
+    // Filter by Notes
+    await act(async () => {
+      filterTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    const notesOption = Array.from(view.host.querySelectorAll('.media-picker-popover .app-select-panel .app-select-option'))
+      .find((button) => button.textContent?.trim() === "Notes");
+    expect(notesOption).toBeTruthy();
+
+    await act(async () => {
+      notesOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(allButtons().some((b) => b.textContent?.includes("Sprint Notes"))).toBe(true);
+    expect(allButtons().some((b) => b.textContent?.includes("workflow.drawio"))).toBe(false);
+    expect(allButtons().some((b) => b.textContent?.includes("Data Sheet"))).toBe(false);
+
+    // Filter by Documents
+    await act(async () => {
+      filterTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    const docOption = Array.from(view.host.querySelectorAll('.media-picker-popover .app-select-panel .app-select-option'))
+      .find((button) => button.textContent?.trim() === "Documents");
+    expect(docOption).toBeTruthy();
+
+    await act(async () => {
+      docOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(allButtons().some((b) => b.textContent?.includes("Data Sheet"))).toBe(true);
+    expect(allButtons().some((b) => b.textContent?.includes("Sprint Notes"))).toBe(false);
+    expect(allButtons().some((b) => b.textContent?.includes("workflow.drawio"))).toBe(false);
+
+    // Filter by Diagrams
+    await act(async () => {
+      filterTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    const diagOption = Array.from(view.host.querySelectorAll('.media-picker-popover .app-select-panel .app-select-option'))
+      .find((button) => button.textContent?.trim() === "Diagrams");
+    expect(diagOption).toBeTruthy();
+
+    await act(async () => {
+      diagOption.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(allButtons().some((b) => b.textContent?.includes("workflow.drawio"))).toBe(true);
+    expect(allButtons().some((b) => b.textContent?.includes("Sprint Notes"))).toBe(false);
+    expect(allButtons().some((b) => b.textContent?.includes("Data Sheet"))).toBe(false);
 
     view.unmount();
   });

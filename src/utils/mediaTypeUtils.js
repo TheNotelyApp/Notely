@@ -8,8 +8,10 @@ export const MEDIA_TYPES = {
   VIDEO: "video",
   AUDIO: "audio",
   PDF: "pdf",
+  NOTE: "note",
   DOCUMENT: "document",
   TRANSCRIPT: "transcript",
+  DIAGRAM: "diagram",
 };
 
 export const SUPPORTED_EXTENSIONS = {
@@ -33,11 +35,21 @@ export const SUPPORTED_EXTENSIONS = {
     extensions: ["pdf"],
     mimeTypes: ["application/pdf"],
   },
+  // Notes
+  note: {
+    extensions: ["md", "markdown"],
+    mimeTypes: ["text/markdown", "text/x-markdown"],
+  },
+  // Diagrams
+  diagram: {
+    extensions: ["drawio", "excalidraw", "wireframe.json"],
+    mimeTypes: ["application/xml", "application/json"],
+  },
   // Documents
   document: {
     extensions: [
       "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf",
-      "odt", "ods", "odp", "csv", "tsv", "md", "markdown", "json",
+      "odt", "ods", "odp", "csv", "tsv", "json",
       "xml", "yaml", "yml", "log", "zip", "7z", "rar",
     ],
     mimeTypes: [

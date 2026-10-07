@@ -16,6 +16,7 @@ import {
   UploadCloud,
   Paperclip,
   Plus,
+  Zap,
 } from "lucide-react";
 import { AppSelect } from "./AppSelect";
 import { listImages, listDocuments, readImage } from "../services/electronService";
@@ -28,6 +29,7 @@ import {
   toRelativeDocPath,
   normalizeImagePathForMarkdown,
   hasMarkdownExtension,
+  toWorkspaceRelativePath,
 } from "../utils/markdownUtils";
 
 function isValidHttpUrl(value) {
@@ -46,6 +48,7 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
     isOpen,
     onClose,
     basePath,
+    workspacePath = "",
     availableAssets: propAvailableAssets,
     assetsLoading: propAssetsLoading,
     assetsError: propAssetsError,
@@ -75,9 +78,10 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
   const availableAssets = useMemo(() => {
     return rawAvailableAssets.map((asset) => {
       const rawNormalized = String(asset.path || asset.filePath || "").replace(/\\/g, "/").trim();
-      const withoutQuery = rawNormalized.split(/[?#]/)[0];
+      const wsRelPath = toWorkspaceRelativePath(rawNormalized, workspacePath, basePath);
+      const withoutQuery = wsRelPath.split(/[?#]/)[0];
       const parts = withoutQuery.split("/").filter(Boolean);
-      const rawFileName = parts.length ? parts[parts.length - 1] : rawNormalized;
+      const rawFileName = parts.length ? parts[parts.length - 1] : withoutQuery;
       const decodedFileName = decodePathForDisplay(rawFileName) || rawFileName;
 
       let folderDir = "";
@@ -93,17 +97,19 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
             : decodedFileName);
 
       let displayPath = asset.displayPath || folderDir || "";
-      if (displayPath === title || displayPath === decodedFileName) {
+      if (displayPath === title || displayPath === decodedFileName || /^[A-Za-z]:\//.test(displayPath)) {
         displayPath = folderDir;
       }
+      displayPath = toWorkspaceRelativePath(displayPath, workspacePath, basePath).replace(/^\.\//, "");
 
       return {
         ...asset,
         title,
+        workspaceRelativePath: wsRelPath,
         displayPath: displayPath.replace(/^\.\//, ""),
       };
     });
-  }, [rawAvailableAssets]);
+  }, [rawAvailableAssets, workspacePath, basePath]);
 
   const assetsLoading = propAssetsLoading !== undefined ? propAssetsLoading : internalLoading;
   const [localError, setLocalError] = useState("");
@@ -187,13 +193,19 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
                 displayPath = parts.length > 1 ? `${parts.slice(0, -1).join("/")}/` : "";
               }
 
+              const isMarkdownNote =
+                fileNameLower.endsWith(".md") ||
+                fileNameLower.endsWith(".markdown") ||
+                pathLower.endsWith(".md") ||
+                pathLower.endsWith(".markdown");
+
               return {
                 type: "document",
                 path: doc.filePath,
                 fileName: doc.fileName,
                 title,
                 displayPath,
-                mediaType: isTranscriptDoc ? "transcript" : "document",
+                mediaType: isTranscriptDoc ? "transcript" : isMarkdownNote ? "note" : "document",
               };
             })
         : [];
@@ -259,10 +271,44 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
 
   const filteredAssets = useMemo(() => {
     return availableAssets.filter((asset) => {
-      if (assetFilter !== "all" && assetFilter !== "All Media") {
+      if (assetFilter !== "all" && assetFilter !== "All Media" && assetFilter !== "All Assets") {
         const f = assetFilter.toLowerCase();
-        if (f === "document" || f === "documents" || f === "notes") {
+        if (f === "notes" || f === "note") {
+          const isNote =
+            asset.mediaType === "note" ||
+            hasMarkdownExtension(asset.path || asset.filePath || asset.fileName);
+          if (!isNote) return false;
+        } else if (f === "document" || f === "documents") {
+          const isNote =
+            asset.mediaType === "note" ||
+            hasMarkdownExtension(asset.path || asset.filePath || asset.fileName);
+          const isDiagram =
+            asset.mediaType === "diagram" ||
+            asset.mediaType === "drawio" ||
+            asset.mediaType === "excalidraw" ||
+            asset.mediaType === "wireframe" ||
+            /\.(?:drawio|excalidraw|wireframe\.json)$/i.test(asset.path || asset.filePath || asset.fileName || "") ||
+            /[/\\](?:draw\.io|drawio|drawio-diagrams|excalidraw|excali-diagrams|wireframes|diagrams)[/\\]/i.test(asset.path || asset.filePath || "");
+          if (isNote || isDiagram) return false;
           if (asset.type !== "document" && asset.mediaType !== "document") return false;
+        } else if (f === "diagram" || f === "diagrams") {
+          const isDiagram =
+            asset.mediaType === "diagram" ||
+            asset.mediaType === "drawio" ||
+            asset.mediaType === "excalidraw" ||
+            asset.mediaType === "wireframe" ||
+            /\.(?:drawio|excalidraw|wireframe\.json)$/i.test(asset.path || asset.filePath || asset.fileName || "") ||
+            /[/\\](?:draw\.io|drawio|drawio-diagrams|excalidraw|excali-diagrams|wireframes|diagrams)[/\\]/i.test(asset.path || asset.filePath || "");
+          if (!isDiagram) return false;
+        } else if (f === "images" || f === "image") {
+          const isDiagram =
+            asset.mediaType === "diagram" ||
+            asset.mediaType === "drawio" ||
+            asset.mediaType === "excalidraw" ||
+            asset.mediaType === "wireframe" ||
+            /\.(?:drawio|excalidraw|wireframe\.json)$/i.test(asset.path || asset.filePath || asset.fileName || "");
+          if (isDiagram) return false;
+          if (asset.mediaType !== "image") return false;
         } else if (f === "transcript" || f === "transcripts") {
           const isTranscript =
             asset.mediaType === "transcript" ||
@@ -413,13 +459,15 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
   };
 
   const getMediaIcon = (mediaType, type) => {
-    if (type === "document") return <FileText size={16} />;
+    if (mediaType === "diagram" || mediaType === "drawio" || mediaType === "excalidraw" || mediaType === "wireframe") return <Zap size={16} />;
+    if (mediaType === "note" || (type === "document" && mediaType === "note")) return <FileText size={16} />;
     switch (mediaType) {
       case "image": return <ImageIcon size={16} />;
       case "audio": return <Music size={16} />;
       case "video": return <Film size={16} />;
       case "transcript": return <MessageSquareText size={16} />;
       case "pdf": return <FileDigit size={16} />;
+      case "document": return <FileText size={16} />;
       default: return <FileText size={16} />;
     }
   };
@@ -610,12 +658,14 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
               className="media-picker-select"
             >
               <option value="all">All Media</option>
+              <option value="Notes">Notes</option>
+              <option value="Documents">Documents</option>
+              <option value="Diagrams">Diagrams</option>
               <option value="Images">Images</option>
               <option value="Audio">Audio</option>
               <option value="Transcripts">Transcripts</option>
               <option value="Videos">Videos</option>
               <option value="PDFs">PDFs</option>
-              <option value="Documents">Documents</option>
             </AppSelect>
           </div>
 
@@ -659,7 +709,7 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
                   className={`media-picker-card ${selectedAsset?.path === asset.path ? "selected" : ""}`}
                   onClick={() => handleSelectAsset(asset, idx)}
                   onDoubleClick={() => handleInsertAsset(asset)}
-                  data-tooltip={asset.path}
+                  data-tooltip={asset.workspaceRelativePath || asset.path}
                   type="button"
                 >
                   <div className="media-picker-card-preview">
@@ -671,7 +721,7 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
                   <div className="media-picker-card-info">
                     <span className="media-picker-card-title" title={asset.title}>{asset.title}</span>
                     {asset.displayPath && asset.displayPath !== asset.title ? (
-                      <span className="media-picker-card-sub" title={asset.displayPath}>{asset.displayPath}</span>
+                      <span className="media-picker-card-sub" title={asset.workspaceRelativePath || asset.displayPath}>{asset.displayPath}</span>
                     ) : null}
                   </div>
                 </button>
@@ -685,7 +735,7 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
                   className={`image-linker-note-item ${selectedAsset?.path === asset.path ? "selected" : ""}`}
                   onClick={() => handleSelectAsset(asset, idx)}
                   onDoubleClick={() => handleInsertAsset(asset)}
-                  data-tooltip={asset.path}
+                  data-tooltip={asset.workspaceRelativePath || asset.path}
                   type="button"
                 >
                   <span className="image-linker-note-icon">
@@ -694,7 +744,7 @@ export const MediaAttachmentPicker = forwardRef(function MediaAttachmentPicker(
                   <div className="image-linker-note-info">
                     <span className="image-linker-note-title" title={asset.title}>{asset.title}</span>
                     {asset.displayPath && asset.displayPath !== asset.title ? (
-                      <span className="image-linker-note-path" title={asset.displayPath}>{asset.displayPath}</span>
+                      <span className="image-linker-note-path" title={asset.workspaceRelativePath || asset.displayPath}>{asset.displayPath}</span>
                     ) : null}
                   </div>
                   <span className="image-linker-note-badge">

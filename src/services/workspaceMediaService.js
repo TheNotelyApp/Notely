@@ -100,8 +100,9 @@ export function normalizeAssetPath(rawPath) {
     }
   }
 
-  // 5. Normalize path separators to forward slash and strip leading ./
-  return p.replace(/\\/g, "/").replace(/^\.\//, "");
+  // 5. Normalize path separators to forward slash and strip leading ./ and ../
+  const normalized = p.replace(/\\/g, "/").replace(/^\.\//, "");
+  return normalized.replace(/^(\.\.\/)+/, "");
 }
 
 /**
@@ -187,6 +188,12 @@ export function extractWorkspaceUsedAssets(documents = []) {
         /\.wireframe\.json$/i.test(normalizedPath) ||
         /\.excalidraw$/i.test(normalizedPath) ||
         /\.drawio$/i.test(normalizedPath);
+
+      // Skip markdown note references (.md, .markdown) and extensionless wikilinks to notes
+      // Note-to-note references belong to the knowledge graph / backlinks, not Diagrams & Media
+      if (ext === "md" || ext === "markdown" || (!isImageSyntax && !hasDot && !isDiagram)) {
+        return;
+      }
 
       let category = "document";
       let subType = ext || "link";
@@ -467,6 +474,11 @@ export function mergeDiskMediaIntoCatalog(usedAssets = [], diskFiles = []) {
     const norm = normalizeAssetPath(file.path).toLowerCase();
     const diskFileName = (file.name || "").toLowerCase();
     const ext = (file.ext || "").toLowerCase();
+
+    // Skip markdown notes
+    if (ext === "md" || ext === "markdown") {
+      continue;
+    }
 
     // Check if this file is a diagram or rendered diagram preview
     const isDiagramFile =
