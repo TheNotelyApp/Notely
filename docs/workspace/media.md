@@ -39,7 +39,10 @@ Keep your assets tidy using the Media Health Dashboard:
 ## 4. Diagrams & Media Asset Manager
 
 Notely provides a dedicated full-screen asset manager under **Workspace > Diagrams & Media** (shortcut: `Ctrl+Alt+M` or `Cmd+Alt+M`):
-- **Dense Asset Table Layout**: High-density table displaying Asset Name, Type Badge, File Size, Reference Status, Extraction Status, and Quick Action buttons.
+- **Multi-View Layout Modes**: Switch between three browsing perspectives using the header view mode toolbar:
+  - **List / Table View**: High-density table displaying Asset Name, Type Badge, File Size, Reference Status, Extraction Status, and Quick Action buttons.
+  - **Card View**: Visual gallery cards featuring rich thumbnails, file metadata chips, extraction badges, and direct action buttons.
+  - **Icon Grid View**: Compact, icon-centric grid view ideal for quick scanning across large media collections.
 - **Fixed Sidebar & Category Filters**: Left sidebar (260px) with real-time counters for Diagrams, UI Prototypes, Images, PDFs, Videos, Audio, Transcripts, and Documents.
 - **Physical Disk Scanner & Orphan Detection**: Discovers assets on disk across `media/`, `assets/`, and `images/`. Unreferenced assets are highlighted with the `⚠️ Unused / Orphans` badge and filter tab.
 - **Asset Bundles**: Audio and video recordings are organized into bundle folders (`media/audio/<id>/` and `media/video/<id>/`) containing the primary recording alongside companion `transcript.json`.

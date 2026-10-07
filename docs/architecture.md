@@ -102,17 +102,28 @@ The Electron main process (`electron/main.cjs` & `electron/lib/`) coordinates ap
 * **Security**: AES-256 encrypted bundle (not readable by generic ZIP tools). Each file is SHA-256 hashed and verified on import to reject tampered packages. Optional password protection stores a salted SHA-256 signature in the manifest.
 * **Import**: Decrypts and verifies bundle integrity, resolves asset path conflicts, and places all files into the active workspace. See [Export & Import Reference](/export-reference) for full user-facing documentation.
 
+### D. Multi-Format Document Extraction Subsystem (`DocumentExtractionService.cjs`)
+* **Multi-Format Parsing Engine**: Extract and convert complex binary documents into clean, structured Markdown:
+  * Word documents (`.docx`) using OpenXML text & table parser (`DocxExtractor.cjs`).
+  * Spreadsheets (`.xlsx`, `.xls`, `.csv`, `.tsv`) using SheetJS workbook extraction (`SpreadsheetExtractor.cjs`).
+  * Presentations (`.pptx`) with slide hierarchy and presenter notes (`PptxExtractor.cjs`).
+  * PDF documents (`.pdf`) with spatial line clustering (`PdfExtractor.cjs`).
+* **Document Cache Store (`DocumentCacheStore.cjs`)**: SQLite-backed document store (`.notes-app/documents.db`) and disk cache (`.notes-app/extracted/`) storing content hashes, page counts, word counts, and extracted markdown chunks for instantaneous retrieval.
+
 ### E. Model Context Protocol (MCP) Subsystem (`McpServer.cjs`)
 * **Streamable HTTP & SSE Server**: Embedded dual-transport MCP server listening by default on port `3700` exposing workspace capabilities to external AI clients (Google Antigravity, Claude Desktop, Cursor, IDE agents).
-* **Enterprise Capabilities**: Registers **7 unified enterprise tools** (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`) and **5 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`). See [Enterprise MCP Tools & Prompts Reference](/mcp-tools-reference).
+* **Enterprise Capabilities**: Registers **7 unified enterprise tools** (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`) and **9 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`, `synthesize_document`, `create_diagram`, `atomic_split`, `codebase_sync`). See [Enterprise MCP Tools & Prompts Reference](/mcp-tools-reference).
 * **Permission Control**: Enforces `allowWriteTools` configuration toggle; rejects unauthorized write operations (`[W]`) automatically.
 * **Telemetry Flight Log**: Records tool execution events in SQLite database and streams updates via IPC to `AIHealthPage.jsx`.
 
-### F. Knowledge Graph & Vector Embedding Subsystem
+### F. External AI IDE Bridge & Workspace Ignore Engine (`AiContextBridgeService.cjs`)
+* **Context Bridge**: Background worker that automatically synchronizes real-time workspace sitemaps, open tasks, knowledge hubs, and extracted binary documents into `.notes-app/ai/dynamic-context.md`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.vscode/prompts/`.
+* **Workspace Ignore Policy (`workspaceIgnorePolicy.cjs`)**: Single Source of Truth for ignoring build, dependency, and private system directories across File Tree, Knowledge Graph, Semantic Embeddings, Document Extractions, Task DB, MCP Tools, and external AI bridges. Supports `.notelyignore` and `.gitignore`.
+
+### G. Knowledge Graph & Vector Embedding Subsystem
 * **Vector Embeddings Engine (`EmbeddingDB.js`)**: Stores 384-dimensional `BGE-small` vector chunks in `{workspace}/.notes-app/ai-embeddings.db`. Features physical vector dimension validation (`verifyModelDimensions`) to prevent dimension mismatches.
 * **Knowledge Graph Subsystem (`GraphService.js`, `GraphDB.js`)**: Maps note relations, tags, mentions, Wikilinks, Images, Local Documents, and External URLs in `{workspace}/.notes-app/ai-graph.db`. Executes relation traversals via SQLite **Recursive Common Table Expressions (CTEs)**.
 * **Local ONNX Embedder**: Vector embeddings (`BGE-small-en-v1.5`) and Knowledge Graph entity/relationship extraction run on-device and offline using `onnxruntime-node`.
-* **MCP Integration**: Inbuilt LLM chat was replaced by the embedded **Model Context Protocol (MCP)** server, allowing external AI clients (Claude Desktop, Cursor, AI agents) to query the knowledge graph and search vector indices.
 
 #### AI Layer Architecture
 
@@ -270,10 +281,13 @@ graph TD
   * Video & Audio recordings (`.mp4`, `.webm`, `.mp3`, `.wav`, `.m4a`).
   * Document attachments (`.pdf`).
   * Excalidraw drawing files (`.excalidraw`).
-* **Hidden Subsystem Folder (`{workspace}/.notes-app/`)**: Internal SQLite caches for AI, tasks, and system features:
+* **Hidden Subsystem Folder (`{workspace}/.notes-app/`)**: Internal SQLite caches for AI, tasks, documents, and system features:
+  * `documents.db`: Stores document extraction records, content hashes, extraction status, and parsed metadata.
+  * `extracted/`: Stores cached raw Markdown representations of office and PDF documents.
   * `task-db.sqlite`: Stores workspace-wide task metadata, priorities, due dates, assignee tags, source note hashes, and line indices for bi-directional checklist synchronization.
   * `ai-embeddings.db`: Stores chunk text, line offsets, hashes, and 384-dimensional binary vector `BLOB`s.
   * `ai-graph.db`: Stores extracted Knowledge Graph entity nodes, Wikilinks, media links, and relationship edges.
   * `ai-logs.db`: Stores multitenant application, git, embedding, graph, and AI log entries.
+  * `wireframes/`: Stores GrapesJS UI prototype project JSON definitions (`.wireframe.json`).
   * `app-state.json`: Caches workspace UI state, last opened note handles, and view preferences.
 

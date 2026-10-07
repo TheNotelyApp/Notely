@@ -36,7 +36,12 @@ Notely is built with Electron + React and is designed for project notes, meeting
 - Insert common Markdown snippets from the toolbar.
 - Record audio notes and full meetings with dual-stream audio capture (Microphone + Windows System Audio loopback) with automatic Speech-to-Text (STT) transcription powered by offline local ONNX Whisper or ultra-fast cloud providers (Groq whisper-large-v3, OpenAI whisper-1).
 - Quick capture directly from the landing dashboard with one-click screen snip, desktop recording, and meeting audio capture that saves directly to workspace media without altering notes until you embed them.
-- Explore and audit all diagrams, media, audio, and documents in the **Workspace Diagrams & Media Gallery**, featuring physical disk scanning, unreferenced orphan detection, and an **Unused Media** filter with audio playback and transcript preview.
+- Explore and audit all diagrams, media, audio, and documents in the **Workspace Diagrams & Media Gallery**, featuring Table, Card, and Icon Grid multi-view layouts, physical disk scanning, unreferenced orphan detection, and an **Unused Media** filter with audio playback and transcript preview.
+- Extract and read structured content from Word (`.docx`), Excel spreadsheets (`.xlsx`, `.xls`, `.csv`), PowerPoint presentations (`.pptx`), and PDF files (`.pdf`) with the automated background **Document Extraction Service** and tabbed **Extracted Content Viewer**.
+- Prototype desktop, tablet, and mobile user interfaces directly within notes using **Wireframe Studio**, featuring 100+ UI stencils, 8-point interactive resize handles, responsive column presets, and component inspection.
+- Bridge workspace knowledge natively to external AI coding assistants (VS Code, Cursor, Claude Code, GitHub Copilot, Antigravity, Windsurf) via the **External AI & IDE Bridge**, generating real-time dynamic context, 9 standard MCP prompts, and automatic `.gitignore` isolation.
+- Standardize workspace exclusions across all indexers, graph tools, and external bridges with the unified **Workspace Ignore Policy** (`.notelyignore`, `.gitignore`, and reserved folders).
+- Inspect real-time application diagnostics, subsystem activity, and error telemetry via the **System & Application Logs** console (`LogCore` / `AppLogsPage`).
 - Edit Markdown tables inline with a focused grid editor (row/column add/remove, alignment controls, and compact action chips).
 - Browse, annotate, optimize, and manage linked media.
 - Open note files in VS Code or the system default app.

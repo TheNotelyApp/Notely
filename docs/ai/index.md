@@ -17,7 +17,7 @@ Notely features a modular, local-first AI platform designed around private data 
 - Runs a dual-transport (Streamable HTTP and SSE) MCP server on `http://127.0.0.1:3700`.
 - Connects external AI assistants (Google Antigravity, Claude Desktop, Cursor, and IDE agents) directly to workspace notes, tasks, and diagrams.
 - Exposes **7 high-signal enterprise tools** (`search`, `read_note`, `edit_note`, `manage_tasks`, `manage_diagrams`, `workspace_overview`, `git_control`) with atomic write safety and dry-run options.
-- Exposes **5 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`).
+- Exposes **9 standard MCP prompts** (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`, `synthesize_document`, `create_diagram`, `atomic_split`, `codebase_sync`).
 
 ### 2. SQLite Knowledge Graph Engine
 - Extracts conceptual entities and typed relationships from Markdown documents using an offline `gliner2-multi-v1-onnx` neural model.

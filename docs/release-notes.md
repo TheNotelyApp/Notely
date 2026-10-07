@@ -7,7 +7,60 @@ category: Help
 
 # Release Notes
 
-## 2026-09-18 (latest)
+## v0.1.54 — 2026-10-07 (latest)
+
+### Multi-Format Document Extraction Engine & Extracted Viewer
+
+- **Multi-Format Extraction**: Automatic background extraction of text, tables, and slide structures from Word (`.docx`), Excel spreadsheets (`.xlsx`, `.xls`, `.csv`, `.tsv`), PowerPoint presentations (`.pptx`), and PDF files (`.pdf`).
+- **Tabbed Extracted Document Viewer**: Seamlessly switch between native file previews and structured Extracted Text views in `MediaPreviewPane` and editor overlays.
+- **Formatted Reading & Source Views**: Clean typographic reading view with reading time estimates, metadata badges (page count, word count, SHA-256 hash), and interactive line-numbered raw Markdown views with copy and download actions.
+- **In-Document Search**: Instant occurrence search and term highlighting across extracted text.
+- **High-Performance Document Cache**: Extracted Markdown representations and hashes are cached in `.notes-app/documents.db` and `.notes-app/extracted/` for zero-latency reopening.
+
+### Media Gallery Multi-View Layouts
+
+- **Table, Card, and Icon Views**: Added a view mode switcher to the Diagrams & Media Gallery (`Workspace → Diagrams & Media Gallery` or `Ctrl/Cmd + Alt + M`) allowing users to switch between high-density **Table View**, visual thumbnail **Card View**, and compact **Icon Grid View**.
+- **Media Health & Orphan Scanning**: Scan physical disk assets across `media/`, `assets/`, and `images/` with real-time orphan detection and `⚠️ Unused / Orphans` filtering.
+
+### AI Native IDE Bridge & MCP Prompts
+
+- **External AI IDE Bridge (`AiContextBridgeService`)**: Automatically creates and synchronizes real-time workspace context for VS Code, Cursor, Claude Code, GitHub Copilot, Antigravity, and Windsurf in `.notes-app/ai/dynamic-context.md`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.vscode/prompts/`.
+- **9 Standard MCP Prompts**: Discoverable via `prompts/list` and executable via `prompts/get` (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`, `synthesize_document`, `create_diagram`, `atomic_split`, `codebase_sync`).
+- **Single Source of Truth Workspace Ignore Policy (`workspaceIgnorePolicy`)**: Unified ignore engine across File Tree, Knowledge Graph, Semantic Embeddings, Document Extractions, Task DB, MCP Tools, and AI IDE bridges, supporting `.notelyignore`, `.gitignore`, and reserved folders.
+
+---
+
+## v0.1.53 — 2026-10-07
+
+### Kanban Board & PDF Viewer Enhancements
+
+- **Kanban Task Movement Fixes**: Resolved issue when moving tasks between Kanban status and priority columns (`TaskDatabase.cjs`, `TaskWorkspacePage.jsx`), ensuring instant bidirectional synchronization to source Markdown files.
+- **PDF.js Worker Port Collision Fixes**: Resolved PDF.js worker port lifecycle collisions when closing and reopening multiple PDF preview panes (`PdfViewer.jsx`).
+- **PDF Navigation & Zoom**: Enhanced zoom controls, page jumping, and canvas rendering stability for multi-page documents.
+
+---
+
+## v0.1.52 — 2026-10-04
+
+### Centralized System & App Logging Engine
+
+- **Dedicated LogCore & AppLogsPage**: Added a high-performance centralized SQLite log storage engine (`LogCore.cjs`, `appLogIpc.cjs`, `AppLogsPage.jsx`) accessible via **Help → System & Application Logs**.
+- **Subsystem Log Filters**: Filter logs by subsystem (`app`, `git`, `embeddings`, `graph`, `ai`), severity levels (`debug`, `info`, `warn`, `error`), and keyword search.
+- **Subsystem Cache Clear Actions**: Added direct data cache clear controls for vector embeddings and Knowledge Graph without wiping log history.
+
+---
+
+## v0.1.51 — 2026-10-04
+
+### Modernized Version Control & UI Refinements
+
+- **P2P Synchronization Retirement**: Removed legacy peer-to-peer sync in favor of robust, secure Git remote version control and AES-256 encrypted `.note` Package bundles.
+- **Unified 6-Menu Structure**: Streamlined top menu bar into 6 cohesive menus (File, Edit, View, Workspace, Tools, Help).
+- **Wireframe Studio Enhancements**: Added 8-point interactive resize handles on canvas elements, responsive column presets, stencil drag-and-drop improvements, and accessibility labels.
+
+---
+
+## 2026-09-18
 
 ### Selectable Developer Fonts with Persistence
 

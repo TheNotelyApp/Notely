@@ -172,16 +172,26 @@ Open the **Speech-to-Text** tab in AI Settings:
 - Shows where AI-related app data is stored on your device
 - Lets you clear saved AI working data and learned behavior
 
-## 7. Workspace Metadata and Git Safety
+## 7. Workspace Ignore Policy and Git Safety
 
-If your workspace is also a Git folder, Notely can help keep its own support files out of version control.
+Notely includes a unified **Workspace Ignore Policy** engine (`workspaceIgnorePolicy.cjs`) that standardizes exclusion rules across all background scanners (File Tree, Knowledge Graph, Semantic Embeddings, Document Extractions, Task Database, MCP Tool Suite, and External AI IDE Bridges):
 
-- **Ignore .notes-app: On**: automatically keeps `.notes-app/` ignored in `.gitignore`
-- **Ignore .notes-app: Off**: leaves Git ignore management to you
+- **Built-in Exclusions**: Hidden IDE directories (`.git`, `.vscode`, `.cursor`, `.agents`), build/cache directories (`node_modules`, `dist`, `build`, `coverage`, `chunks`), and test folders (`tests`, `spec`, `fixtures`) are automatically excluded from note trees and indexing.
+- **`.notelyignore` Support**: Create a `.notelyignore` file in your workspace root to define custom glob patterns or directory names to exclude from Notely scanning.
+- **Git Safety Toggle**:
+  - **Ignore .notes-app: On**: automatically appends `.notes-app/` to `.gitignore` under `# >>> Notes App Managed >>>`.
+  - **Ignore .notes-app: Off**: leaves Git ignore management to you.
+- **AI IDE Bridge Isolation**: When external AI bridges are initialized, Notely manages an isolated `.gitignore` block (`# >>> Notely AI IDE Bridge Managed >>>`) keeping machine-specific tokens and generated context safely out of version control without interfering with workspace settings.
 
-Use this when your team stores notes in Git but does not want Notely's private support files committed with them.
+## 8. Model Context Protocol (MCP) Configuration
 
-## 8. Environment Variables
+Configure MCP settings under **AI -> MCP Settings** or via `mcp-config.json`:
+
+- **MCP Server Port**: Listening port for Streamable HTTP and SSE transport (default: `3700`).
+- **Authentication Token**: Optional Bearer token for authenticating external MCP clients.
+- **Allow Write Tools**: Master permission toggle (`allowWriteTools`). When disabled, all mutating tools (`edit_note`, `manage_tasks`, `manage_diagrams`, `git_control`) are completely hidden and blocked, ensuring read-only safety for external agents.
+
+## 9. Environment Variables
 
 Notely respects system environment variables for advanced runtime configuration:
 

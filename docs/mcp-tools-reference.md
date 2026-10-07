@@ -30,7 +30,7 @@ Multi-modal search engine for Notely notes & workspace. Supports fulltext keywor
 
 **Parameters:**
 - `query` (`string`): Search keyword, phrase, or regex pattern. Examples: "system architecture", "TODO", "/#v\d+/"
-- `source` (`string`): Where to search: "notes" (workspace notes), "web" (external web search), or "all" (both)
+- `source` (`string`): Where to search: "notes" (workspace notes), "code" (code entities and AST symbols), "web" (external web search), or "all"
 - `mode` (`string`): Search strategy. "auto" intelligently detects regex, tags, and semantic intent
 - `tags` (`array`): Filter notes matching specific tags (e.g. ["architecture", "draft"])
 - `author` (`string`): Filter notes by author or creator from YAML frontmatter
@@ -89,10 +89,15 @@ Unified visual diagram and whiteboard manager. Reads, creates, and updates Merma
 
 ### `workspace_overview` *(Read-Only)*
 
-Workspace intelligence, structure, health, and diagnostics. Returns hierarchical folder trees, knowledge graph relationships, disk storage stats, link integrity audits (broken wikilinks), and recent file activity.
+Workspace intelligence, structure, health, and diagnostics. Returns hierarchical folder trees, knowledge graph relationships, attached repository summaries, disk storage stats, link integrity audits (broken wikilinks), and recent file activity.
 
 **Parameters:**
-- `operation` (`string`): "summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink nodes & edges), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)
+- `operation` (`string`): "summary" (health & note count), "tree" (folder/file hierarchy), "graph" (wikilink & code entity graph), "repos" (attached git repositories status), "lint" (audit broken wikilinks & empty notes), "index" (structured notes catalog), "recent_activity" (recent modified notes)
+- `action` (`string`): Action for "repos" operation: "list" (all attached repos), "add" (attach new local repo), "remove" (detach repo and purge graph symbols), "status" (inspect scan stats), "refresh" (request rescan)
+- `path` (`string`): Local absolute directory path of the repository to attach
+- `name` (`string`): Display alias name for the repository
+- `branch` (`string`): Default Git branch name (default: main)
+- `repoId` (`string`): Repository ID for "remove" or "status" actions
 - `folder` (`string`): Scoped directory for tree, index, or lint operations
 - `maxDepth` (`number`): Maximum folder depth for tree hierarchy (default: 4)
 
@@ -110,9 +115,9 @@ Workspace Git version control engine. Inspect status, view diffs, view commit lo
 
 ---
 
-## 3. Standard MCP Prompts Reference (5 Prompts)
+## 3. Standard MCP Prompts Reference (9 Prompts)
 
-Notely registers 5 standard MCP prompt templates discoverable via `prompts/list` and executable via `prompts/get`:
+Notely registers 9 standard MCP prompt templates discoverable via `prompts/list` and executable via `prompts/get`:
 
 | Prompt Name | Arguments | Description |
 | :--- | :--- | :--- |
@@ -121,6 +126,10 @@ Notely registers 5 standard MCP prompt templates discoverable via `prompts/list`
 | `explore_knowledge_graph` | `topicOrNote (req), maxDepth` | Analyze relationships, backlinks, and conceptual clusters around a topic or note in the workspace. |
 | `refactor_note` | `notePath (req)` | Clean up an unstructured note: format frontmatter, ensure clean H1-H3 hierarchy, and detect unlinked mentions. |
 | `daily_review` | `filter` | Perform a daily briefing: inspect open/overdue tasks across the workspace and summarize recently edited notes. |
+| `synthesize_document` | `assetPath (req), targetNote` | Read an extracted PDF, slide presentation, Word doc, or audio transcript and produce a structured Markdown study note with wikilinks. |
+| `create_diagram` | `notePath (req), diagramType` | Generate a Mermaid visual diagram (flowchart, sequence, class, state, or ER) from note contents or specifications. |
+| `atomic_split` | `sourceNote (req), outputFolder` | Refactor a large monolithic note into focused atomic notes, creating a master Map of Content (MOC) index note. |
+| `codebase_sync` | `repoName (req)` | Cross-reference an attached Git repository against workspace notes to detect undocumented APIs or missing documentation. |
 
 ---
 

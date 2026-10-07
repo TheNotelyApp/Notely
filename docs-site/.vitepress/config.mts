@@ -6,7 +6,7 @@ export default withMermaid(
   defineConfig({
     title: "Notely",
     description:
-      "Documentation for Notely — the desktop Markdown notes app with Git version control, AI assistance, and P2P sync.",
+      "Documentation for Notely — the desktop Markdown notes app with Git version control, AI assistance, and offline-first storage.",
     base: "/",
     srcDir: "../docs",
     outDir: "../docs-site-dist",
@@ -144,7 +144,7 @@ export default withMermaid(
           text: "Sync",
           collapsed: true,
           items: [
-            { text: "P2P Sync", link: "/sync/" },
+            { text: "Git Sync & Backup", link: "/sync/" },
             { text: "Data & Sync Security", link: "/data-sync-security" },
           ],
         },

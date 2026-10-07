@@ -2,8 +2,26 @@
 
 All notable documentation and user-facing behavior changes are tracked in this file.
 
-## Unreleased
+## [0.1.54] - 2026-10-07
 
+### Added
+
+- Added **Multi-Format Document Extraction Service & Extracted Content Viewer**:
+  - Background extraction and parsing engine for Word (`.docx`), Excel spreadsheets (`.xlsx`, `.xls`, `.csv`, `.tsv`), PowerPoint (`.pptx`), and PDF (`.pdf`) documents.
+  - Tabbed `MediaPreviewPane` supporting instant switching between native file preview and structured Markdown Extracted View.
+  - Typographic reading view with reading time calculation, page/word counts, SHA-256 content hashes, line-numbered raw Markdown editor, and in-document search.
+  - Persistent caching in `{workspace}/.notes-app/documents.db` and `{workspace}/.notes-app/extracted/`.
+- Added **Media Gallery Multi-View Layout Switcher**:
+  - Toggle between **Table / List View**, **Card View** (with rich visual thumbnails and metadata pills), and compact **Icon Grid View** in Diagrams & Media Gallery (`Ctrl/Cmd + Alt + M`).
+- Added **AI Native IDE Bridge & MCP Prompts Subsystem**:
+  - Background AI Context Bridge (`AiContextBridgeService.cjs`) generating real-time workspace dynamic context, sitemaps, open tasks, and knowledge hubs for VS Code, Cursor, Claude Code, GitHub Copilot, Antigravity, and Windsurf.
+  - Added 9 standard MCP prompts in `McpPrompts.cjs` (`summarize_note`, `plan_tasks`, `explore_knowledge_graph`, `refactor_note`, `daily_review`, `synthesize_document`, `create_diagram`, `atomic_split`, `codebase_sync`).
+- Added **Single Source of Truth Workspace Ignore Policy (`workspaceIgnorePolicy.cjs`)**:
+  - Centralized exclusion rules supporting `.notelyignore`, `.gitignore`, and built-in reserved directories across all scanners, graph tools, MCP tools, and external bridges.
+- Added **Wireframe Studio Visual UI Prototyping**:
+  - Integrated visual UI mockup builder powered by GrapesJS with 100+ UI stencils, 8-point interactive resize handles, responsive column presets, and inspector drawer.
+- Added **Centralized System & Application Logs Console (`AppLogsPage.jsx`)**:
+  - SQLite log storage (`LogCore.cjs`, `appLogIpc.cjs`) accessible via **Help → System & Application Logs**.
 - Added **Diagrams & Media Asset Manager & Media Viewer Standardization**:
   - High-density table layout with fixed 260px sidebar replacing card grid for managing workspace media, diagrams, PDFs, and recordings.
   - Category filters with real-time counters and high-contrast badges for Diagrams, UI Prototypes, Images, PDFs, Videos, Audio, Transcripts, and Documents.

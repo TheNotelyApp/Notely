@@ -71,28 +71,40 @@ flowchart TD
   * **Legacy Server-Sent Events (SSE) (Claude Desktop)**:
     * SSE Stream: `http://127.0.0.1:3700/sse` (`GET`)
     * Message Endpoint: `http://127.0.0.1:3700/messages?sessionId=<session_id>` (`POST`)
-* **Health Check**: `GET /health` or `GET /status` returns JSON server state, version (`0.1.41`), and registered tool count.
+* **Health Check**: `GET /health` or `GET /status` returns JSON server state, version (`0.1.54`), and registered tool count.
 * **Authentication**: Optional HTTP Authorization Header `Bearer <token>`.
 * **Session Lifecycle**: Connections managed via `StreamableHTTPServerTransport` and `SSEServerTransport`. Session state and tool metrics tracked in `McpSessionManager`. Telemetry persisted to `.notes-app/ai-telemetry.db`.
 
 ---
 
-## 3. Registered Tool Capabilities
+## 3. Registered Tool Capabilities & Prompts
 
 External clients can call `tools/list` to inspect Notely's available tool schema. Tools are provided via `ApplicationToolRegistry.cjs`:
 
-| Tool Name | Service Domain | Description |
-| :--- | :--- | :--- |
-| `note.create` | Note Service | Create a new Markdown document with initial content and title. |
-| `note.read` | Note Service | Read document content and metadata by relative path. |
-| `note.update` | Note Service | Edit or append to existing Markdown document. |
-| `note.delete` | Note Service | Delete note file in workspace. |
-| `workspace.search` | Workspace Service | Perform full-text search across all workspace Markdown files. |
-| `workspace.list_files` | Workspace Service | Recursively list workspace files and folder structure. |
-| `graph.query` | Knowledge Service | Query knowledge graph nodes, wikilinks, and cross-references. |
-| `graph.get_stats` | Knowledge Service | Get node, link, and graph density statistics. |
-| `tasks.list` | Workspace Service | Parse GFM task lists (`- [ ]`) across notes. |
-| `system.get_info` | App Service | Get workspace path, version info, and server health metrics. |
+| Tool Name | Write Access | Service Domain | Description |
+| :--- | :--- | :--- | :--- |
+| `read_note` | Read-Only | Note Service | Read document content, frontmatter metadata, backlinks, and git revision history by path. |
+| `edit_note` | **[W]** Write | Note Service | Create, overwrite, append, prepend, regex replace, or delete notes with atomic staging and dry-run safety. |
+| `search` | Read-Only | Search & Graph | Multi-modal search engine for workspace notes, code entities, tags, and web. Supports regex and semantic search. |
+| `workspace_overview` | Read-Only | Workspace Service | Hierarchy trees, knowledge graph relationships, attached repositories, health audits, and recent activity. |
+| `manage_tasks` | **[W]** Write | Task Service | Workspace task management. List, add, toggle checkboxes, modify due dates/priorities, and clean completed tasks. |
+| `manage_diagrams` | **[W]** Write | Diagram Service | Unified visual diagram and whiteboard manager for Mermaid, Excalidraw, Draw.io, and Wireframes. |
+| `git_control` | **[W]** Write | Git Subsystem | Workspace Git version control engine for status, diffs, commits, branches, sync, and stashes. |
+
+### Standard MCP Prompts
+
+Notely also registers 9 standard MCP prompt templates discoverable via `prompts/list` (`prompts/get`):
+- `summarize_note`: Executive summaries, key takeaways, and action items.
+- `plan_tasks`: Break down feature goals into actionable checklist tasks.
+- `explore_knowledge_graph`: Traverse relationships, backlinks, and conceptual clusters.
+- `refactor_note`: Clean up notes with frontmatter, headings hierarchy, and unlinked mentions.
+- `daily_review`: Briefing of open/overdue tasks and recently modified notes.
+- `synthesize_document`: Synthesize extracted PDFs, Office docs, slides, or transcripts into structured notes.
+- `create_diagram`: Generate Mermaid flowcharts, sequence diagrams, class models, or state charts.
+- `atomic_split`: Refactor large monolithic notes into atomic notes with a Map of Content (MOC).
+- `codebase_sync`: Cross-reference attached Git repositories to detect missing documentation.
+
+See [Enterprise MCP Tools & Prompts Reference](/mcp-tools-reference) for exhaustive parameter schemas.
 
 ---
 

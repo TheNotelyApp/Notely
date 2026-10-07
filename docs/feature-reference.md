@@ -79,6 +79,7 @@ During transfer:
 
 Open via **Workspace -> Diagrams & Media Gallery** (`Ctrl/Cmd + Alt + M`) or Command Palette:
 - Catalogs all used diagrams (inline Mermaid, Draw.io, Excalidraw, Wireframe UI prototypes), images, videos, audio, and PDF/Office documents in the workspace.
+- **Multi-View Layout Switcher**: Toggle seamlessly between **Table / List View**, **Card Gallery View** (with rich visual thumbnails and metadata chips), and compact **Icon Grid View**.
 - **Physical Disk Scanner & Orphan Detection**: Scans workspace folders (`media/`, `assets/`, `images/`, `media/wireframes/`, `media/draw.io/`) to identify files present on disk that have zero note references.
 - **Unused Media Filter**: Quickly isolate unreferenced assets with the `⚠️ Unused / Orphans` filter tab.
 - **Automated Document Extraction**: Extracts and caches clean structured Markdown from Word (`.docx`), Excel (`.xlsx`, `.xls`, `.csv`), PowerPoint (`.pptx`), and PDF (`.pdf`) files with table preservation and spatial clustering.
