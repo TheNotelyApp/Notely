@@ -3,7 +3,8 @@
  * (Images, PDFs, Excel spreadsheets, PPT presentations, Audio, Video, Text)
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { FileText, Eye } from "lucide-react";
 import AppButton from "./AppButton";
 import { ImageCropModal } from "./ImageCropModal";
 import { MediaPreviewHeader } from "./media/MediaPreviewHeader";
@@ -14,6 +15,7 @@ import { PdfViewer } from "./media/PdfViewer";
 import { ImageViewer } from "./media/ImageViewer";
 import { AudioVideoViewer } from "./media/AudioVideoViewer";
 import { TranscriptViewer } from "./media/TranscriptViewer";
+import { ExtractedContentViewer } from "./media/ExtractedContentViewer";
 import { getDocumentKind, dataUrlToUint8Array } from "./media/mediaUtils";
 
 import {
@@ -41,10 +43,14 @@ export function MediaPreviewPane({
   mediaType,
   basePath,
   showOriginalImages = false,
+  initialTab = "preview",
+  extractionRecord = null,
   onClose,
   onMediaChanged,
+  onNotify,
 }) {
   const { confirm } = useConfirm();
+  const [activeTab, setActiveTab] = useState(initialTab || "preview");
   const [error, setError] = useState(null);
   const [displayedImage, setDisplayedImage] = useState(null);
   const [imageInfo, setImageInfo] = useState(null);
@@ -407,6 +413,18 @@ export function MediaPreviewPane({
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [contextMenu]);
 
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, mediaPath]);
+
+  const supportsExtraction = useMemo(() => {
+    const ext = String(fileExtension || "").toLowerCase();
+    const docTypes = ["pdf", "docx", "pptx", "xlsx", "xls", "csv", "txt", "md"];
+    return docTypes.includes(ext) || mediaType === "pdf" || mediaType === "document" || docKind.type === "pdf" || docKind.type === "spreadsheet" || docKind.type === "presentation" || Boolean(extractionRecord);
+  }, [fileExtension, mediaType, docKind.type, extractionRecord]);
+
   if (!mediaPath) {
     return null;
   }
@@ -418,6 +436,7 @@ export function MediaPreviewPane({
   const isText = docKind.type === "text";
   const isTranscript = docKind.type === "transcript";
   const isAudioVideo = mediaType === "video" || mediaType === "audio" || docKind.type === "video" || docKind.type === "audio";
+  const isExtractedTab = activeTab === "extracted" && supportsExtraction;
 
   return (
     <div className="media-preview-pane">
@@ -437,80 +456,113 @@ export function MediaPreviewPane({
         hasOriginal={originalStatus?.hasOriginal}
         restoringOriginal={restoringOriginal}
         onClose={onClose}
-      />
+      >
+        {supportsExtraction && (
+          <div className="wdm-view-toggle">
+            <button
+              type="button"
+              className={`wdm-view-toggle-btn ${activeTab === "preview" ? "active" : ""}`}
+              onClick={() => setActiveTab("preview")}
+            >
+              <Eye size={12} />
+              <span>Preview</span>
+            </button>
+            <button
+              type="button"
+              className={`wdm-view-toggle-btn ${activeTab === "extracted" ? "active" : ""}`}
+              onClick={() => setActiveTab("extracted")}
+            >
+              <FileText size={12} />
+              <span>Extracted Text</span>
+            </button>
+          </div>
+        )}
+      </MediaPreviewHeader>
 
-      <div className={`media-preview-content ${isPdf ? "pdf-mode full-mode" : ""} ${isTranscript ? "transcript-mode full-mode" : ""} ${isAudioVideo ? "av-mode full-mode" : ""} ${isText ? "text-mode full-mode" : ""} ${isSpreadsheet || isPresentation ? "full-mode" : ""}`}>
+      <div className={`media-preview-content ${isExtractedTab ? "full-mode text-mode" : ""} ${isPdf ? "pdf-mode full-mode" : ""} ${isTranscript ? "transcript-mode full-mode" : ""} ${isAudioVideo ? "av-mode full-mode" : ""} ${isText ? "text-mode full-mode" : ""} ${isSpreadsheet || isPresentation ? "full-mode" : ""}`}>
         {error && <div className="media-preview-error">{error}</div>}
 
-        {isImage && !error && (
-          <ImageViewer
-            src={displayedImage || resolvedPath}
-            annotation={imageAnnotation}
-            dimensions={imageInfo?.dimensions}
-            fileSize={imageInfo?.formattedSize}
-            onError={() => setError("Failed to load image")}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setContextMenu({ x: e.clientX, y: e.clientY });
-            }}
-          />
-        )}
-
-        {isPdf && !error && (
-          <PdfViewer src={resolvedPath} />
-        )}
-
-        {isSpreadsheet && !error && (
-          <SpreadsheetViewer dataUrl={resolvedPath} />
-        )}
-
-        {isPresentation && !error && (
-          <PresentationViewer dataUrl={resolvedPath} />
-        )}
-
-        {isText && !error && (
-          <TextViewer dataUrl={resolvedPath} />
-        )}
-
-        {isTranscript && !error && (
-          <TranscriptViewer
-            dataUrl={resolvedPath}
+        {isExtractedTab ? (
+          <ExtractedContentViewer
+            mediaPath={mediaPath}
             fileName={fileName}
-            onNotify={null}
+            fileExtension={fileExtension}
+            extractionRecord={extractionRecord}
+            onNotify={onNotify}
           />
-        )}
+        ) : (
+          <>
+            {isImage && !error && (
+              <ImageViewer
+                src={displayedImage || resolvedPath}
+                annotation={imageAnnotation}
+                dimensions={imageInfo?.dimensions}
+                fileSize={imageInfo?.formattedSize}
+                onError={() => setError("Failed to load image")}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({ x: e.clientX, y: e.clientY });
+                }}
+              />
+            )}
 
-        {isAudioVideo && !error && (
-          <AudioVideoViewer
-            src={mediaBlobUrl || resolvedPath}
-            mediaType={mediaType || docKind.type}
-            fileName={fileName}
-            transcriptData={companionTranscript}
-          />
-        )}
+            {isPdf && !error && (
+              <PdfViewer src={resolvedPath} />
+            )}
 
-        {!isImage && !isPdf && !isSpreadsheet && !isPresentation && !isText && !isTranscript && !isAudioVideo && !error && (
-          <div className="media-preview-document-container">
-            <div className="document-icon">{docKind.icon}</div>
-            <p className="document-family">{docKind.family}</p>
-            <p className="document-filename">{fileName}</p>
-            <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
-              <AppButton
-                variant="small"
-                onClick={handleOpenInDefaultApp}
-                disabled={!basePath || openingExternal}
-              >
-                {openingExternal ? "Opening..." : "Open in App"}
-              </AppButton>
-              <AppButton
-                variant="small"
-                onClick={handleRevealInExplorer}
-                disabled={!basePath || revealingInExplorer}
-              >
-                {revealingInExplorer ? "Locating..." : "Show in Explorer"}
-              </AppButton>
-            </div>
-          </div>
+            {isSpreadsheet && !error && (
+              <SpreadsheetViewer dataUrl={resolvedPath} />
+            )}
+
+            {isPresentation && !error && (
+              <PresentationViewer dataUrl={resolvedPath} />
+            )}
+
+            {isText && !error && (
+              <TextViewer dataUrl={resolvedPath} />
+            )}
+
+            {isTranscript && !error && (
+              <TranscriptViewer
+                dataUrl={resolvedPath}
+                fileName={fileName}
+                onNotify={null}
+              />
+            )}
+
+            {isAudioVideo && !error && (
+              <AudioVideoViewer
+                src={mediaBlobUrl || resolvedPath}
+                mediaType={mediaType || docKind.type}
+                fileName={fileName}
+                transcriptData={companionTranscript}
+              />
+            )}
+
+            {!isImage && !isPdf && !isSpreadsheet && !isPresentation && !isText && !isTranscript && !isAudioVideo && !error && (
+              <div className="media-preview-document-container">
+                <div className="document-icon">{docKind.icon}</div>
+                <p className="document-family">{docKind.family}</p>
+                <p className="document-filename">{fileName}</p>
+                <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+                  <AppButton
+                    variant="small"
+                    onClick={handleOpenInDefaultApp}
+                    disabled={!basePath || openingExternal}
+                  >
+                    {openingExternal ? "Opening..." : "Open in App"}
+                  </AppButton>
+                  <AppButton
+                    variant="small"
+                    onClick={handleRevealInExplorer}
+                    disabled={!basePath || revealingInExplorer}
+                  >
+                    {revealingInExplorer ? "Locating..." : "Show in Explorer"}
+                  </AppButton>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

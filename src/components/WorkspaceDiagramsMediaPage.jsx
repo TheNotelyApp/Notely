@@ -25,18 +25,24 @@ import {
   LayoutTemplate,
   Info,
   Trash2,
+  Download,
 } from "lucide-react";
 import {
   extractWorkspaceUsedAssets,
   filterAssets,
   mergeDiskMediaIntoCatalog,
 } from "../services/workspaceMediaService";
-import { readImage, openMediaInDefaultApp, listDiskMediaAssets, deleteImage } from "../services/electronService";
+import { readImage, openMediaInDefaultApp, listDiskMediaAssets, deleteImage, runExport } from "../services/electronService";
 import { readDrawioImage, deleteDrawio } from "../services/drawioService";
 import { readDiagramImage, deleteDiagram } from "../services/diagramService";
 import { readWireframeImage, deleteWireframe } from "../services/wireframeService";
 import { saveAudioRecording } from "../services/electron/mediaService";
 import { transcribeAudio } from "../services/sttService";
+import {
+  getAllExtractionRecords,
+  forceReextract,
+  subscribeExtractionStatus,
+} from "../services/documentExtractionService";
 import { showToast } from "../utils/notificationUtils";
 import AppSelect from "./AppSelect";
 import OverlayDialog from "./OverlayDialog";
@@ -274,6 +280,11 @@ export default function WorkspaceDiagramsMediaPage({
   const [transcribingAssetId, setTranscribingAssetId] = useState(null);
   const [transcriptionStatus, setTranscriptionStatus] = useState("");
 
+  // Document extraction cache and preview states
+  const [extractions, setExtractions] = useState({});
+  const [reextractingAssetId, setReextractingAssetId] = useState(null);
+  const [viewingAssetTab, setViewingAssetTab] = useState("preview"); // "preview" | "extracted"
+
   const showNotification = (message, type = "info") => {
     if (typeof onNotify === "function") {
       onNotify(message, type);
@@ -344,6 +355,99 @@ export default function WorkspaceDiagramsMediaPage({
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [workspacePath, documents]);
+
+  // Load extraction records & subscribe to extraction status events
+  useEffect(() => {
+    let cancelled = false;
+    getAllExtractionRecords().then((records) => {
+      if (!cancelled && Array.isArray(records)) {
+        const map = {};
+        for (const r of records) {
+          const rel = r.relativePath || r.relative_path || "";
+          if (rel) {
+            map[rel] = r;
+            const basename = rel.split("/").pop();
+            if (basename) map[basename] = r;
+          }
+        }
+        setExtractions(map);
+      }
+    }).catch(() => {});
+
+    const unsub = subscribeExtractionStatus((event) => {
+      if (event?.relPath) {
+        setExtractions((prev) => {
+          const updated = { ...prev };
+          const rel = event.relPath;
+          const basename = rel.split("/").pop();
+          const rec = event.record || {
+            relativePath: rel,
+            status: event.status,
+            errorMessage: event.error,
+          };
+          updated[rel] = { ...(updated[rel] || {}), ...rec };
+          if (basename) updated[basename] = updated[rel];
+          return updated;
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [workspacePath]);
+
+  const handleDownloadMermaid = async (asset) => {
+    if (!asset?.rawCode) return;
+    const filename = `${asset.name || "diagram"}.mmd`;
+    try {
+      await runExport("markdown", {
+        content: asset.rawCode,
+        filename,
+        defaultFilename: filename,
+        category: "diagram",
+      });
+      showNotification(`Exported "${filename}"`, "success");
+    } catch {
+      try {
+        const blob = new Blob([asset.rawCode], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showNotification(`Downloaded "${filename}"`, "success");
+      } catch (err) {
+        showNotification(`Failed to download: ${err.message || err}`, "error");
+      }
+    }
+  };
+
+  const handleForceReextract = async (asset) => {
+    if (!asset || reextractingAssetId) return;
+    const relPath = asset.path || asset.name || "";
+    setReextractingAssetId(asset.id);
+    try {
+      showNotification(`Re-extracting text from "${asset.name}"...`, "info");
+      const rec = await forceReextract(relPath);
+      if (rec) {
+        setExtractions((prev) => ({
+          ...prev,
+          [relPath]: rec,
+          [asset.name]: rec,
+        }));
+        showNotification(`Extracted "${asset.name}" successfully`, "success");
+      }
+    } catch (err) {
+      showNotification(`Failed to extract document: ${err.message || err}`, "error");
+    } finally {
+      setReextractingAssetId(null);
+    }
+  };
 
   // Extract catalog from documents
   const allUsedAssets = useMemo(() => {
@@ -723,6 +827,9 @@ export default function WorkspaceDiagramsMediaPage({
                           return `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
                         })();
 
+                        const extractionRec = extractions[asset.path] || extractions[asset.name] || extractions[asset.fileName];
+                        const isDocumentCategory = asset.category === "pdf" || asset.category === "document" || ["pdf", "docx", "pptx", "xlsx", "xls", "csv"].includes(String(asset.extension || "").toLowerCase());
+
                         return (
                           <tr
                             key={asset.id}
@@ -747,7 +854,7 @@ export default function WorkspaceDiagramsMediaPage({
                               </div>
                             </td>
 
-                            {/* Type Badge & Companion Transcript Indicator */}
+                            {/* Type Badge & Companion Transcript / Extraction Indicators */}
                             <td>
                               <div style={{ display: "inline-flex", alignItems: "center", flexWrap: "nowrap" }}>
                                 <span className={`wdm-badge wdm-badge-${asset.category}`}>
@@ -764,6 +871,56 @@ export default function WorkspaceDiagramsMediaPage({
                                   >
                                     <MessageSquareText size={12} />
                                     Transcript
+                                  </span>
+                                )}
+                                {isDocumentCategory && extractionRec && (
+                                  <span
+                                    className={`wdm-extraction-indicator ${extractionRec.status || "ready"}`}
+                                    title={
+                                      extractionRec.status === "ready"
+                                        ? `Extracted: ${extractionRec.pageCount || 1} ${extractionRec.pageCount === 1 ? "page" : "pages"}, ${extractionRec.wordCount || 0} words. Click to preview extracted markdown.`
+                                        : extractionRec.status === "processing" || extractionRec.status === "pending"
+                                        ? "Extracting text in background..."
+                                        : extractionRec.status === "encrypted"
+                                        ? "Password Protected PDF"
+                                        : extractionRec.status === "empty"
+                                        ? "Scanned Document (No text layer)"
+                                        : extractionRec.errorMessage || "Extraction failed"
+                                    }
+                                    onClick={(e) => {
+                                      if (extractionRec.status === "ready") {
+                                        e.stopPropagation();
+                                        setViewingAsset(asset);
+                                        setViewingAssetTab("extracted");
+                                      }
+                                    }}
+                                  >
+                                    {extractionRec.status === "processing" || extractionRec.status === "pending" ? (
+                                      <>
+                                        <Loader2 size={12} className="spin" />
+                                        <span>Extracting</span>
+                                      </>
+                                    ) : extractionRec.status === "ready" ? (
+                                      <>
+                                        <Check size={12} />
+                                        <span>{extractionRec.wordCount > 0 ? `${extractionRec.wordCount}w` : "Extracted"}</span>
+                                      </>
+                                    ) : extractionRec.status === "empty" ? (
+                                      <>
+                                        <Info size={12} />
+                                        <span>Scanned</span>
+                                      </>
+                                    ) : extractionRec.status === "encrypted" ? (
+                                      <>
+                                        <AlertCircle size={12} />
+                                        <span>Protected</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <AlertCircle size={12} />
+                                        <span>Failed</span>
+                                      </>
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -813,6 +970,21 @@ export default function WorkspaceDiagramsMediaPage({
                             {/* Actions Column */}
                             <td>
                               <div className="wdm-table-action-btns">
+                                {isDocumentCategory && extractionRec?.status === "ready" && (
+                                  <button
+                                    className="wdm-icon-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingAsset(asset);
+                                      setViewingAssetTab("extracted");
+                                    }}
+                                    title="View Extracted Text"
+                                    style={{ color: "#34d399" }}
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
+
                                 {(asset.category === "audio" || asset.category === "video") && (
                                   <button
                                     className="wdm-icon-btn"
@@ -912,9 +1084,19 @@ export default function WorkspaceDiagramsMediaPage({
                         className="btn btn-secondary btn-sm"
                         onClick={(e) => handleCopy(viewingAsset, e)}
                         style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px" }}
+                        title="Copy raw Mermaid code"
                       >
                         <Copy size={12} />
                         <span>Copy Code</span>
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleDownloadMermaid(viewingAsset)}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11px" }}
+                        title="Download Mermaid file (.mmd)"
+                      >
+                        <Download size={12} />
+                        <span>Download</span>
                       </button>
                       <button
                         className="wdm-icon-btn"
@@ -943,8 +1125,11 @@ export default function WorkspaceDiagramsMediaPage({
                       mediaPath={viewingAsset.previewPath || viewingAsset.path}
                       mediaType={viewingAsset.category}
                       basePath={viewingAsset.referencedBy[0]?.notePath || workspacePath}
+                      initialTab={viewingAssetTab}
+                      extractionRecord={extractions[viewingAsset.path] || extractions[viewingAsset.name] || extractions[viewingAsset.fileName]}
                       onClose={() => setViewingAsset(null)}
                       onMediaChanged={refreshDiskFiles}
+                      onNotify={showNotification}
                     />
                   </div>
                 </div>
@@ -1152,6 +1337,61 @@ export default function WorkspaceDiagramsMediaPage({
                     </button>
                   </div>
                 )}
+
+                {/* Document Extraction Details in Inspector */}
+                {(() => {
+                  const inspectingExtractionRec = extractions[inspectingAsset.path] || extractions[inspectingAsset.name] || extractions[inspectingAsset.fileName];
+                  if (!inspectingExtractionRec) return null;
+
+                  return (
+                    <div style={{ padding: "12px", background: "var(--surface-muted, rgba(255,255,255,0.03))", border: "1px solid var(--border-soft, rgba(255,255,255,0.08))", borderRadius: "var(--radius-default)", display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>
+                          Document Text Extraction
+                        </span>
+                        <span className={`wdm-extraction-indicator ${inspectingExtractionRec.status || "ready"}`}>
+                          {inspectingExtractionRec.status?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", gap: "16px", fontSize: "11px", color: "var(--text-secondary)" }}>
+                        <span>Pages/Slides: <strong>{inspectingExtractionRec.pageCount || 1}</strong></span>
+                        <span>Words: <strong>{inspectingExtractionRec.wordCount || 0}</strong></span>
+                      </div>
+                      {inspectingExtractionRec.contentHash && (
+                        <div style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "var(--font-mono, monospace)" }}>
+                          SHA-256: {inspectingExtractionRec.contentHash.substring(0, 16)}...
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                        {inspectingExtractionRec.status === "ready" && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "4px", fontSize: "11px" }}
+                            onClick={() => {
+                              const a = inspectingAsset;
+                              setInspectingAsset(null);
+                              setViewingAsset(a);
+                              setViewingAssetTab("extracted");
+                            }}
+                          >
+                            <FileText size={12} />
+                            <span>View Extracted Text</span>
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "4px", fontSize: "11px" }}
+                          onClick={() => handleForceReextract(inspectingAsset)}
+                          disabled={Boolean(reextractingAssetId)}
+                          title="Force re-extraction of text"
+                        >
+                          {reextractingAssetId === inspectingAsset.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
+                          <span>Re-extract</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Referenced Notes Section */}
                 <div className="wdm-referenced-notes-section">

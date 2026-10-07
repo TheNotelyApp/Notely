@@ -201,4 +201,31 @@ describe("Media Viewers & Standardized Header", () => {
     expect(host.textContent).toContain("Line 3: 200 OK");
     expect(host.textContent).toContain("3 lines");
   });
+
+  it("renders ExtractedContentViewer with stats, search input and markdown rendering", async () => {
+    const { ExtractedContentViewer } = await import("../../components/media/ExtractedContentViewer");
+
+    await act(async () => {
+      root.render(
+        <ExtractedContentViewer
+          mediaPath="demo/report.pdf"
+          fileName="Quarterly_Report.pdf"
+          fileExtension="pdf"
+          extractionRecord={{
+            status: "ready",
+            wordCount: 1420,
+            pageCount: 6,
+            contentHash: "a1b2c3d4e5f67890",
+            extractedText: "# Quarterly Financial Overview\n\nRevenue grew by **28%** year-over-year across all sectors.\n\n- North America: $12M\n- EMEA: $8M",
+          }}
+        />
+      );
+    });
+
+    expect(host.textContent).toContain("Quarterly_Report");
+    expect(host.textContent).toContain("1,420 words");
+    expect(host.textContent).toContain("6 pages");
+    expect(host.textContent).toContain("Quarterly Financial Overview");
+    expect(host.textContent).toContain("Revenue grew by");
+  });
 });
