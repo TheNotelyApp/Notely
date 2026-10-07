@@ -49,6 +49,8 @@ const { ExportHistoryStore } = require("./lib/export/exportHistoryStore.cjs");
 const { registerExportHistoryIpc } = require("./lib/export/exportHistoryIpc.cjs");
 const { logCore } = require("./core/LogCore.cjs");
 const { registerAppLogIpcHandlers } = require("./core/appLogIpc.cjs");
+const { DocumentExtractionService } = require("./services/DocumentExtractionService.cjs");
+const { registerDocumentExtractionIpc } = require("./lib/documents/documentExtractionIpc.cjs");
 
 // Bootstrap Central Enterprise Logging immediately
 try {
@@ -59,6 +61,15 @@ try {
 }
 
 const exportHistoryStore = new ExportHistoryStore(app.getPath("userData"), () => notesRoot);
+const documentExtractionService = new DocumentExtractionService("", (eventData) => {
+  if (BrowserWindow) {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send("doc-extract:event", eventData);
+      }
+    });
+  }
+});
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 
 
@@ -417,6 +428,9 @@ function applyNotesRoot(nextRootPath) {
     const { aiService } = require("../ai/core/AIService.js");
     aiService.workspaceRoot = notesRoot;
     logCore.setActiveWorkspace(notesRoot);
+  } catch { /* ignore */ }
+  try {
+    documentExtractionService.setWorkspaceRoot(notesRoot);
   } catch { /* ignore */ }
   activeProjectSlug = ROOT_PROJECT_SLUG;
   appDataDir = path.join(notesRoot, ".notes-app");
@@ -1240,5 +1254,11 @@ registerTaskIpc(ipcMain, {
   getActiveProject,
   getMetadataStore: () => metadataStore,
   getAppDataDir: () => appDataDir,
+});
+
+registerDocumentExtractionIpc({
+  ipcMain,
+  BrowserWindow,
+  documentExtractionService,
 });
 

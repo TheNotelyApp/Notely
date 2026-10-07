@@ -404,6 +404,22 @@ contextBridge.exposeInMainWorld("notesApi", {
     ipcRenderer.on("exports:record-added", listener);
     return () => ipcRenderer.removeListener("exports:record-added", listener);
   },
+  // ── Document Extraction & Cache ──────────────────────────────────────────
+  documentExtraction: {
+    getAll: () => ipcRenderer.invoke("doc-extract:getAll"),
+    getRecord: (relativePath) => ipcRenderer.invoke("doc-extract:getRecord", { relativePath }),
+    getContent: (relativePath) => ipcRenderer.invoke("doc-extract:getContent", { relativePath }),
+    forceReextract: (relativePath) => ipcRenderer.invoke("doc-extract:forceReextract", { relativePath }),
+    scanWorkspace: () => ipcRenderer.invoke("doc-extract:scanWorkspace"),
+    onStatusChange: (callback) => {
+      if (typeof callback !== "function") {
+        return () => {};
+      }
+      const listener = (_event, data) => callback(data);
+      ipcRenderer.on("doc-extract:event", listener);
+      return () => ipcRenderer.removeListener("doc-extract:event", listener);
+    },
+  },
 });
 
 

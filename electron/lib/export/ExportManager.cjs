@@ -96,6 +96,9 @@ class ExportManager {
         break;
       case "diagram_image":
       case "media":
+      case "markdown":
+      case "document":
+      case "text":
         result = await this._exportMediaOrDiagram(payload, downloadDir, type);
         break;
       case "persona":
@@ -987,7 +990,9 @@ class ExportManager {
       }
     }
 
-    if (resolvedSrc && fs.existsSync(resolvedSrc)) {
+    if (typeof payload?.content === "string") {
+      fs.writeFileSync(targetPath, payload.content, "utf8");
+    } else if (resolvedSrc && fs.existsSync(resolvedSrc)) {
       fs.copyFileSync(resolvedSrc, targetPath);
     } else if (effectiveDataUrl) {
       if (effectiveDataUrl.includes(";base64,")) {
