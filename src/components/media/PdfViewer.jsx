@@ -1,19 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import PdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import AppButton from "../AppButton";
 import AppIconButton from "../AppIconButton";
 import { dataUrlToUint8Array } from "./mediaUtils";
 
-let pdfWorkerPort = null;
-function ensurePdfWorker() {
-  if (typeof window === "undefined") return;
-  if (pdfjsLib.GlobalWorkerOptions.workerPort) return;
-  if (!pdfWorkerPort) {
-    pdfWorkerPort = new PdfWorker();
-  }
-  pdfjsLib.GlobalWorkerOptions.workerPort = pdfWorkerPort;
+if (typeof window !== "undefined" && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 }
 
 export function PdfViewer({ src }) {
@@ -58,6 +52,7 @@ export function PdfViewer({ src }) {
   useEffect(() => {
     let cancelled = false;
     let loadingTask = null;
+    let loadedPdf = null;
 
     async function loadPdf() {
       if (!src) {
@@ -78,8 +73,6 @@ export function PdfViewer({ src }) {
       setZoom(1);
 
       try {
-        ensurePdfWorker();
-
         let source = src;
         if (typeof src === "string" && src.startsWith("data:")) {
           const bytes = dataUrlToUint8Array(src);
@@ -92,22 +85,34 @@ export function PdfViewer({ src }) {
         const pdf = await loadingTask.promise;
 
         if (!cancelled) {
+          loadedPdf = pdf;
           setPdfDoc(pdf);
           setNumPages(pdf.numPages);
           setLoading(false);
+        } else {
+          try {
+            await pdf.destroy();
+          } catch {
+            // ignore
+          }
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err?.message || "Failed to load PDF document.");
+          if (err?.name !== "RenderingCancelledException" && !String(err?.message || "").includes("cancelled")) {
+            setError(err?.message || "Failed to load PDF document.");
+          }
           setLoading(false);
         }
       }
     }
 
     loadPdf();
+
     return () => {
       cancelled = true;
-      if (loadingTask) {
+      if (loadedPdf) {
+        loadedPdf.destroy().catch(() => {});
+      } else if (loadingTask) {
         loadingTask.destroy().catch(() => {});
       }
     };
