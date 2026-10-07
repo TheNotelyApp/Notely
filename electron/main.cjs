@@ -432,6 +432,9 @@ function applyNotesRoot(nextRootPath) {
   try {
     documentExtractionService.setWorkspaceRoot(notesRoot);
   } catch { /* ignore */ }
+  try {
+    mcpLifecycle.setWorkspaceRootProvider(() => notesRoot);
+  } catch { /* ignore */ }
   activeProjectSlug = ROOT_PROJECT_SLUG;
   appDataDir = path.join(notesRoot, ".notes-app");
   versionsRoot = path.join(appDataDir, "versions");

@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { shouldHideDirectory, shouldHideFile } = require('../lib/core/workspaceIgnorePolicy.cjs');
 
 function toWorkspaceRelative(targetPath, workspaceRoot) {
   if (!targetPath || typeof targetPath !== 'string') return targetPath;
@@ -56,11 +57,12 @@ function collectMarkdownFiles(dirPath, fileList = []) {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+    if (shouldHideDirectory(entry.name)) continue;
     const fullPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
       collectMarkdownFiles(fullPath, fileList);
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      if (shouldHideFile(entry.name, fullPath)) continue;
       fileList.push(fullPath);
     }
   }

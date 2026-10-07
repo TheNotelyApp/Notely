@@ -26,6 +26,7 @@ const {
   getFileGitHistory,
   getNoteBacklinks
 } = require('../services/NoteApplicationService.cjs');
+const { shouldHideDirectory, shouldHideFile } = require('../lib/core/workspaceIgnorePolicy.cjs');
 
 
 // ─── ENTERPRISE CAPABILITY SUITE CLASS ────────────────────────────────────────
@@ -1174,10 +1175,11 @@ class EnterpriseToolSuite {
         try {
           const entries = fs.readdirSync(dir, { withFileTypes: true });
           for (const e of entries) {
-            if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+            if (shouldHideDirectory(e.name)) continue;
             const fp = path.join(dir, e.name);
             if (e.isDirectory()) scanDir(fp);
             else if (e.name.endsWith('.excalidraw') || e.name.endsWith('.drawio')) {
+              if (shouldHideFile(e.name, fp)) continue;
               diagrams.push({
                 filePath: toWorkspaceRelative(fp, workspaceRoot),
                 type: e.name.endsWith('.excalidraw') ? 'excalidraw' : 'drawio',

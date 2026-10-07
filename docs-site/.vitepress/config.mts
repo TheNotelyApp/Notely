@@ -133,6 +133,7 @@ export default withMermaid(
           collapsed: false,
           items: [
             { text: "AI & MCP Overview", link: "/ai/" },
+            { text: "External IDE & AI Bridge", link: "/ai/ide-bridge" },
             { text: "AI Capabilities", link: "/ai/features" },
             { text: "Provider Setup", link: "/ai/setup" },
             { text: "Knowledge Graph Engine", link: "/ai/knowledge-graph" },

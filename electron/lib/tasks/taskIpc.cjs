@@ -1,7 +1,6 @@
-'use strict';
-
 const { getTaskDatabase } = require('./TaskDatabase.cjs');
 const { assertTrustedIpcSender } = require('../ipc/ipcSecurity.cjs');
+const { shouldHideDirectory, shouldHideFile } = require('../core/workspaceIgnorePolicy.cjs');
 const path = require('node:path');
 const fs = require('node:fs');
 
@@ -96,11 +95,12 @@ function syncAllWorkspaceNotes(notesRoot, db) {
       let entries = [];
       try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+        if (shouldHideDirectory(entry.name)) continue;
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           walk(fullPath);
         } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))) {
+          if (shouldHideFile(entry.name, fullPath)) continue;
           try {
             const content = fs.readFileSync(fullPath, 'utf8');
             const parsed = parseMarkdownTasks(content);
@@ -484,11 +484,12 @@ function registerTaskIpc(ipcMain, deps) {
           let entries = [];
           try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
           for (const entry of entries) {
-            if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+            if (shouldHideDirectory(entry.name)) continue;
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
               walkNotes(fullPath);
             } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))) {
+              if (shouldHideFile(entry.name, fullPath)) continue;
               try {
                 const stat = fs.statSync(fullPath);
                 let content = '';

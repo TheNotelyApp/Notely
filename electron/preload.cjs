@@ -76,6 +76,7 @@ contextBridge.exposeInMainWorld("notesApi", {
   mcpGetPrompt: (name, args) => ipcRenderer.invoke("mcp:get-prompt", name, args),
   mcpSavePrompt: (promptData) => ipcRenderer.invoke("mcp:save-prompt", promptData),
   mcpDeletePrompt: (name) => ipcRenderer.invoke("mcp:delete-prompt", name),
+  mcpSyncAiBridge: () => ipcRenderer.invoke("mcp:sync-ai-bridge"),
   onMcpStatusChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, payload) => callback(payload);

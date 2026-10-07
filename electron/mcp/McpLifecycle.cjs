@@ -7,6 +7,7 @@ const { McpConfig } = require('./McpConfig.cjs');
 const { McpSessionManager } = require('./McpSessionManager.cjs');
 const { McpServer } = require('./McpServer.cjs');
 const { mcpPromptsRegistry } = require('./McpPrompts.cjs');
+const { AiContextBridgeService } = require('../services/AiContextBridgeService.cjs');
 
 class McpLifecycle {
   constructor() {
@@ -18,6 +19,7 @@ class McpLifecycle {
     this.getWorkspaceRoot = null;
     this.telemetryDbInstance = null;
     this.telemetryDbRoot = null;
+    this.aiBridge = null;
   }
 
   getTelemetryDb(root) {
@@ -52,6 +54,12 @@ class McpLifecycle {
       if (this.server) {
         this.server.updateConfig({ getWorkspaceRoot: fn });
       }
+      if (this.aiBridge) {
+        const root = fn();
+        if (root) {
+          this.aiBridge.setWorkspaceRoot(root);
+        }
+      }
     }
   }
 
@@ -62,6 +70,16 @@ class McpLifecycle {
 
     if (typeof getWorkspaceRoot === 'function') {
       this.getWorkspaceRoot = getWorkspaceRoot;
+    }
+
+    this.aiBridge = new AiContextBridgeService({
+      getMcpConfig: () => (this.config ? this.config.getConfig() : {})
+    });
+    if (this.getWorkspaceRoot) {
+      const currentRoot = this.getWorkspaceRoot();
+      if (currentRoot) {
+        this.aiBridge.setWorkspaceRoot(currentRoot);
+      }
     }
 
     this.server = new McpServer({
@@ -132,9 +150,11 @@ class McpLifecycle {
     try {
       await this.server.start();
       this.broadcastStatus();
+      if (this.aiBridge) this.aiBridge.scheduleSync(200);
       return this.getStatus();
     } catch {
       this.broadcastStatus();
+      if (this.aiBridge) this.aiBridge.scheduleSync(200);
       return this.getStatus();
     }
   }
@@ -143,6 +163,7 @@ class McpLifecycle {
     if (!this.server) return this.getStatus();
     await this.server.stop();
     this.broadcastStatus();
+    if (this.aiBridge) this.aiBridge.scheduleSync(200);
     return this.getStatus();
   }
 
@@ -175,6 +196,7 @@ class McpLifecycle {
     }
 
     this.broadcastStatus();
+    if (this.aiBridge) this.aiBridge.scheduleSync(200);
     return {
       config: newConfig,
       status: this.getStatus()
@@ -206,6 +228,9 @@ class McpLifecycle {
   broadcastResourceUpdated(uri) {
     if (this.server && typeof this.server.broadcastResourceUpdated === 'function') {
       this.server.broadcastResourceUpdated(uri);
+    }
+    if (this.aiBridge) {
+      this.aiBridge.scheduleSync();
     }
   }
 
@@ -253,12 +278,23 @@ class McpLifecycle {
 
     ipcMain.handle('mcp:save-prompt', async (_event, promptData) => {
       const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
-      return mcpPromptsRegistry.saveCustomPrompt(root, promptData);
+      const res = mcpPromptsRegistry.saveCustomPrompt(root, promptData);
+      if (this.aiBridge) this.aiBridge.scheduleSync(100);
+      return res;
     });
 
     ipcMain.handle('mcp:delete-prompt', async (_event, name) => {
       const root = typeof this.getWorkspaceRoot === 'function' ? this.getWorkspaceRoot() : null;
-      return mcpPromptsRegistry.deleteCustomPrompt(root, name);
+      const res = mcpPromptsRegistry.deleteCustomPrompt(root, name);
+      if (this.aiBridge) this.aiBridge.scheduleSync(100);
+      return res;
+    });
+
+    ipcMain.handle('mcp:sync-ai-bridge', async () => {
+      if (this.aiBridge) {
+        return this.aiBridge.syncNow();
+      }
+      return { ok: false, error: 'AI Bridge not initialized' };
     });
   }
 

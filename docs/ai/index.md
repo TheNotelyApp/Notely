@@ -34,7 +34,13 @@ Notely features a modular, local-first AI platform designed around private data 
 - Runs offline via on-device WebAssembly/ONNX Whisper models (`whisper-tiny.en`, `whisper-base.en`, `whisper-small`), with optional sub-second cloud transcription via Groq or OpenAI Whisper.
 - Synchronized transcript view with key points and action items embedded into notes and the Media Gallery.
 
-### 5. In-App Tools Catalog & MCP Diagnostics
+### 5. External IDE & AI Bridge
+- Automatically configures external AI coding assistants (VS Code, Cursor, Claude Code, GitHub Copilot, Antigravity, Windsurf).
+- Real-time debounced synchronization of workspace sitemaps, open task registries, knowledge hubs, and extracted binary documents in `.notes-app/ai/dynamic-context.md`.
+- Transpiles custom workspace prompts into executable VS Code `.prompt.md` slash commands and Cursor `.mdc` rules.
+- → [External IDE & AI Bridge — full guide](/ai/ide-bridge)
+
+### 6. In-App Tools Catalog & MCP Diagnostics
 - **MCP Tools Page** (`Ctrl/Cmd + Shift + M`): Interactive catalog to view tool definitions, test inputs, and verify outputs.
 - **AI Health / Diagnostics**: Real-time telemetry dashboard monitoring MCP connection status, client sessions, request volume, and error diagnostics.
 - **AI Settings** (`Ctrl/Cmd + Shift + ,`): Configure API providers, embedding options, STT engines, and Knowledge Graph extraction confidence thresholds.

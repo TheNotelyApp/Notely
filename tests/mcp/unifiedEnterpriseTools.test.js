@@ -509,9 +509,9 @@ Refers to [[System Architecture]] and [[MissingDoc]].
   });
 
   describe('9. MCP Prompts Primitive', () => {
-    it('should register 5 enterprise prompts', () => {
+    it('should register enterprise prompts', () => {
       const prompts = mcpPromptsRegistry.listPrompts();
-      expect(prompts.length).toBe(5);
+      expect(prompts.length).toBe(9);
 
       const names = prompts.map(p => p.name);
       expect(names).toEqual([
@@ -519,7 +519,11 @@ Refers to [[System Architecture]] and [[MissingDoc]].
         'plan_tasks',
         'explore_knowledge_graph',
         'refactor_note',
-        'daily_review'
+        'daily_review',
+        'synthesize_document',
+        'create_diagram',
+        'atomic_split',
+        'codebase_sync'
       ]);
     });
 
@@ -562,7 +566,7 @@ Refers to [[System Architecture]] and [[MissingDoc]].
 
       expect(res.statusCode).toBe(200);
       expect(Array.isArray(res.json.prompts)).toBe(true);
-      expect(res.json.prompts.length).toBe(5);
+      expect(res.json.prompts.length).toBe(9);
     });
 
     it('should expose only 7 unified enterprise tools via /tools when toolMode is unified', async () => {

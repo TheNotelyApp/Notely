@@ -1,8 +1,10 @@
-const DEFAULT_EXCLUDE_DIRS = new Set([
-  ".notes-app", ".versions", "node_modules", ".git", ".svn", ".hg",
-  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed", "excali-diagrams",
-  ".venv", "venv", ".next", ".nuxt", "coverage"
-]);
+const {
+  shouldHideDirectory,
+  shouldHideFile,
+  DEFAULT_WALK_EXCLUDE_DIRS
+} = require("../core/workspaceIgnorePolicy.cjs");
+
+const DEFAULT_EXCLUDE_DIRS = DEFAULT_WALK_EXCLUDE_DIRS;
 
 // Extracts [[wiki link]] targets from markdown content.
 function extractWikiLinks(content) {
@@ -62,12 +64,13 @@ function walkMarkdownFiles(fs, rootDir) {
     for (const entry of entries) {
       const fullPath = require("path").join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (!DEFAULT_EXCLUDE_DIRS.has(entry.name) && !entry.name.startsWith(".")) {
+        if (!DEFAULT_EXCLUDE_DIRS.has(entry.name) && !shouldHideDirectory(entry.name)) {
           visit(fullPath);
         }
         continue;
       }
       if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+        if (shouldHideFile(entry.name, fullPath)) continue;
         files.push(fullPath);
       }
     }
@@ -94,7 +97,7 @@ function walkMediaFiles(fs, rootDir) {
     for (const entry of entries) {
       const fullPath = require("path").join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (!DEFAULT_EXCLUDE_DIRS.has(entry.name) && !entry.name.startsWith(".")) {
+        if (!DEFAULT_EXCLUDE_DIRS.has(entry.name) && !shouldHideDirectory(entry.name)) {
           visit(fullPath);
         }
         continue;

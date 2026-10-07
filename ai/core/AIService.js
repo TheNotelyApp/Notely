@@ -101,7 +101,15 @@ class AIService {
    * Note save hook - enqueues embeddings indexing and triggers incremental graph update
    */
   onNoteSave(filePath) {
-    if (!this.enabled || !this.agent) return;
+    if (!this.enabled || !this.agent || !filePath) return;
+
+    try {
+      const path = require('path');
+      const { shouldHideFile } = require('../../electron/lib/core/workspaceIgnorePolicy.cjs');
+      if (shouldHideFile(path.basename(filePath), filePath)) {
+        return;
+      }
+    } catch { /* ignore fallback */ }
 
     // 1. Enqueue in background embeddings index via workerManager
     try {

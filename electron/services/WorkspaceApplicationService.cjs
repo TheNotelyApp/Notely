@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { collectMarkdownFiles } = require('./NoteApplicationService.cjs');
+const { shouldHideDirectory, shouldHideFile } = require('../lib/core/workspaceIgnorePolicy.cjs');
 
 class WorkspaceApplicationService {
   /**
@@ -98,12 +99,13 @@ class WorkspaceApplicationService {
       try {
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         for (const entry of entries) {
-          if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
           const fullPath = path.join(dirPath, entry.name);
           if (entry.isDirectory()) {
+            if (shouldHideDirectory(entry.name)) continue;
             const childTree = buildTree(fullPath, currentDepth + 1);
             if (childTree) node.children.push(childTree);
           } else if (entry.isFile()) {
+            if (shouldHideFile(entry.name, fullPath)) continue;
             const stat = fs.statSync(fullPath);
             node.children.push({
               name: entry.name,

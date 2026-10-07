@@ -1,10 +1,8 @@
-const { shouldHideDirectory } = require("../core/folderPolicy.cjs");
-
-const DEFAULT_WALK_EXCLUDE_DIRS = new Set([
-  ".notes-app", ".versions", "node_modules", ".git", ".svn", ".hg",
-  "dist", "build", ".artifacts", ".cache", "__pycache__", "removed", "excali-diagrams",
-  ".venv", "venv", ".next", ".nuxt", "coverage", "media"
-]);
+const {
+  shouldHideDirectory,
+  shouldHideFile,
+  DEFAULT_WALK_EXCLUDE_DIRS
+} = require("../core/workspaceIgnorePolicy.cjs");
 
 function createWorkspaceEntries(deps) {
   const {
@@ -29,6 +27,7 @@ function createWorkspaceEntries(deps) {
           continue;
         }
         if (entry.isFile()) {
+          if (shouldHideFile(entry.name, nextPath)) continue;
           files.push(nextPath);
         }
       }
@@ -136,7 +135,11 @@ function createWorkspaceEntries(deps) {
         if (entry.isDirectory()) {
           return !shouldHideDirectory(entry.name);
         }
-        return entry.isFile() && entry.name.toLowerCase().endsWith(".md");
+        return (
+          entry.isFile() &&
+          entry.name.toLowerCase().endsWith(".md") &&
+          !shouldHideFile(entry.name, path.join(rootDir, entry.name))
+        );
       })
       .map((entry) => {
         const entryPath = path.join(rootDir, entry.name);

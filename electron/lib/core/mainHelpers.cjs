@@ -1,4 +1,4 @@
-const { shouldHideDirectory } = require("./folderPolicy.cjs");
+const { shouldHideDirectory } = require("./workspaceIgnorePolicy.cjs");
 
 function createMainHelpers(deps) {
   const {

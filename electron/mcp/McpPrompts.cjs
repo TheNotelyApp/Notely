@@ -161,6 +161,128 @@ Provide an executive daily briefing:
         }
       ];
     }
+  },
+  {
+    name: 'synthesize_document',
+    description: 'Read an extracted PDF, slide presentation, Word doc, or audio transcript and produce a structured Markdown study note with wikilinks.',
+    arguments: [
+      {
+        name: 'assetPath',
+        description: 'Relative path of the document or audio file (e.g. "specs/system.pdf", "media/audio/standup")',
+        required: true
+      },
+      {
+        name: 'targetNote',
+        description: 'Optional destination note path to create (e.g. "docs/System-Synthesis.md")',
+        required: false
+      }
+    ],
+    generateMessages: (args) => {
+      return [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please inspect the extracted text or audio transcript for "${args.assetPath}" using the search and read_note tools.
+Produce a comprehensive synthesis note:
+1. Document Overview & Key Themes
+2. Core Takeaways & Architectural Highlights
+3. Connect relevant concepts to existing workspace notes using [[wikilinks]]
+4. Extract all actionable tasks formatted as checkboxes with due dates if mentioned (- [ ] task @due(YYYY-MM-DD))
+${args.targetNote ? `Save the synthesized note to "${args.targetNote}" using the edit_note tool.` : ''}`
+          }
+        }
+      ];
+    }
+  },
+  {
+    name: 'create_diagram',
+    description: 'Generate a Mermaid visual diagram (flowchart, sequence, class, state, or ER) from note contents or specifications.',
+    arguments: [
+      {
+        name: 'notePath',
+        description: 'Path of the note to generate a diagram for',
+        required: true
+      },
+      {
+        name: 'diagramType',
+        description: 'Diagram type: "flowchart", "sequence", "class", "state", "er", or "mindmap" (default: "flowchart")',
+        required: false
+      }
+    ],
+    generateMessages: (args) => {
+      const type = args.diagramType || 'flowchart';
+      return [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please read the note at "${args.notePath}" using read_note.
+Construct a clear, elegant Mermaid diagram of type "${type}":
+1. Model the core processes, data flows, or entities described in the note.
+2. Ensure valid Mermaid syntax.
+3. Use manage_diagrams or edit_note to embed the diagram block into the note.`
+          }
+        }
+      ];
+    }
+  },
+  {
+    name: 'atomic_split',
+    description: 'Refactor a large monolithic note into focused atomic notes, creating a master Map of Content (MOC) index note.',
+    arguments: [
+      {
+        name: 'sourceNote',
+        description: 'Path of the monolithic note to split',
+        required: true
+      },
+      {
+        name: 'outputFolder',
+        description: 'Folder to store the new atomic notes in (e.g. "topics/arch/")',
+        required: false
+      }
+    ],
+    generateMessages: (args) => {
+      return [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please read note "${args.sourceNote}" using read_note and plan an atomic refactoring:
+1. Identify 2-5 distinct subtopics that should become standalone atomic notes.
+2. For each subtopic: define a clear title, YAML frontmatter (with tags/aliases), and concise content.
+3. Turn the original note into an index Map of Content (MOC) linking to each new note with [[wikilinks]].
+4. Review with dryRun before creating files.`
+          }
+        }
+      ];
+    }
+  },
+  {
+    name: 'codebase_sync',
+    description: 'Cross-reference an attached Git repository against workspace notes to detect undocumented APIs or missing documentation.',
+    arguments: [
+      {
+        name: 'repoName',
+        description: 'Name of the attached repository to inspect (from dynamic-context.md)',
+        required: true
+      }
+    ],
+    generateMessages: (args) => {
+      return [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please inspect the attached code repository "${args.repoName}" alongside workspace notes using workspace_overview and search.
+Identify:
+1. Key exported modules, endpoints, or data models in the codebase.
+2. Which APIs or components are already documented in notes vs. which are missing.
+3. Draft a documentation note outline with [[wikilinks]] linking related concepts.`
+          }
+        }
+      ];
+    }
   }
 ];
 

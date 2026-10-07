@@ -11,18 +11,7 @@ const {
   getDocumentMimeType,
   extractDocument,
 } = require('../lib/extractors/DocumentExtractor.cjs');
-
-const IGNORED_DIRS = new Set([
-  '.git',
-  '.notes-app',
-  '.note-app',
-  'node_modules',
-  'dist',
-  'docs-site-dist',
-  '.vitepress',
-  '.codegraph',
-  'scratch',
-]);
+const { shouldHideDirectory, shouldHideFile } = require('../lib/core/workspaceIgnorePolicy.cjs');
 
 class DocumentExtractionService {
   constructor(workspaceRoot = '', onStatusChange = null) {
@@ -66,12 +55,12 @@ class DocumentExtractionService {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
       for (const entry of entries) {
         const name = entry.name;
-        if (IGNORED_DIRS.has(name) || name.startsWith('.')) continue;
+        if (shouldHideDirectory(name)) continue;
 
         const fullPath = path.join(dirPath, name);
         if (entry.isDirectory()) {
           this.collectDocumentFiles(fullPath, fileList);
-        } else if (entry.isFile() && isSupportedDocument(fullPath)) {
+        } else if (entry.isFile() && !shouldHideFile(name, fullPath) && isSupportedDocument(fullPath)) {
           fileList.push(fullPath);
         }
       }
