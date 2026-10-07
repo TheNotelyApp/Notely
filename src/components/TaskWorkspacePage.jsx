@@ -13,9 +13,15 @@ import AppButton from "./AppButton";
 import AppSelect from "./AppSelect";
 import SubpageHeader from "./layout/SubpageHeader";
 import useConfirm from "../hooks/useConfirm";
+import { showSuccessToast } from "../utils/notificationUtils";
 
 const PRIORITY_LABELS = { 0: "None", 1: "Low", 2: "Medium", 3: "High" };
 const PRIORITY_COLORS = { 0: "none", 1: "low", 2: "medium", 3: "high" };
+const STATUS_LABELS = {
+  open: "To Do",
+  in_progress: "In Progress",
+  done: "Completed",
+};
 
 const VIEW_META = {
   today:    { label: "Today",     Icon: Clock,         desc: "Due today" },
@@ -337,6 +343,7 @@ function TaskDetail({ task, comments, commentsLoading, persons, onUpdate, onDele
       personTags: personTagsDraft,
     });
     onDirtyChange?.(false);
+    showSuccessToast("Task updated");
   };
 
   const submitComment = (e) => {
@@ -402,7 +409,10 @@ function TaskDetail({ task, comments, commentsLoading, persons, onUpdate, onDele
                 confirmLabel: "Delete",
                 variant: "danger",
               });
-              if (ok) onDelete(task.id);
+              if (ok) {
+                onDelete(task.id);
+                showSuccessToast("Task deleted");
+              }
             }}
             title="Delete task"
             className="task-header-delete-btn"
@@ -641,6 +651,7 @@ function NewTaskModal({ onCreate, onClose, defaultStatus = "open", defaultNoteFi
       sourcePath: targetNotePath || "none",
       standalone: !targetNotePath,
     });
+    showSuccessToast("Task created");
     onClose();
   };
 
@@ -953,8 +964,14 @@ export function TaskWorkspacePage({ onBack, onOpenNote, noteFilter = null }) {
               selectedId={ws.selectedId}
               groupBy={ws.kanbanGroupBy}
               onSelect={handleSelectTask}
-              onStatusChange={(id, status) => ws.handleUpdate(id, { status })}
-              onPriorityChange={(id, priority) => ws.handleUpdate(id, { priority })}
+              onStatusChange={(id, status) => {
+                ws.handleUpdate(id, { status });
+                showSuccessToast(`Task moved to ${STATUS_LABELS[status] || status}`);
+              }}
+              onPriorityChange={(id, priority) => {
+                ws.handleUpdate(id, { priority });
+                showSuccessToast(`Priority set to ${PRIORITY_LABELS[priority] || "None"}`);
+              }}
               onOpenNote={onOpenNote}
               onNewTask={status => handleOpenNewTaskModal(status)}
             />
@@ -978,7 +995,10 @@ export function TaskWorkspacePage({ onBack, onOpenNote, noteFilter = null }) {
                     task={task}
                     isSelected={task.id === ws.selectedId}
                     onSelect={handleSelectTask}
-                    onComplete={ws.handleComplete}
+                    onComplete={(id, status) => {
+                      ws.handleComplete(id, status);
+                      showSuccessToast(status === "done" ? "Task marked as completed" : "Task reopened");
+                    }}
                     onOpenNote={onOpenNote}
                   />
                 ))}

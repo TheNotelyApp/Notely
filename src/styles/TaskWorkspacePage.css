@@ -45,27 +45,30 @@
 .task-search-box {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-default);
-  padding: 0 8px;
-  height: 28px;
-  width: 180px;
+  gap: 8px;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  height: 32px;
+  width: 260px;
+  min-width: 200px;
+  max-width: 340px;
   color: var(--text-muted);
-  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), width var(--motion-fast);
 }
 .task-search-box:focus-within {
-  border-color: var(--accent-solid);
+  border-color: var(--focus-ring-color);
   box-shadow: 0 0 0 2px var(--focus-ring-color);
   background: var(--surface-bg);
+  width: 300px;
 }
 .task-search-box input {
   flex: 1;
   border: none;
   background: transparent;
   color: var(--app-text);
-  font-size: 11px;
+  font-size: var(--font-size-label);
   outline: none;
   width: 100%;
 }

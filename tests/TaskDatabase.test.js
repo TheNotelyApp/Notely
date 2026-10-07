@@ -63,4 +63,29 @@ describe('TaskDatabase duplicate titles and collision handling', () => {
     expect(tasks.length).toBe(2);
     expect(tasks.every(t => t.title === 'Task A')).toBe(true);
   });
+
+  it('does not duplicate task when moving status in kanban and resyncing note', () => {
+    const notePath = path.join(tempDir, 'notes', 'kanban-move.md');
+    
+    // Initial sync from note
+    taskDb.syncFromNote(notePath, [
+      { title: 'Write specs', status: 'open', line: 5, lineText: '- [ ] Write specs' },
+    ]);
+
+    let tasks = taskDb.listTasks({ noteFilter: notePath });
+    expect(tasks.length).toBe(1);
+    const taskId = tasks[0].id;
+
+    // User moves task in Kanban to 'in_progress'
+    taskDb.updateTask(taskId, { status: 'in_progress' });
+
+    // Note file sync happens after note is updated or scanned
+    taskDb.syncFromNote(notePath, [
+      { title: 'Write specs', status: 'open', line: 5, lineText: '- [ ] Write specs' },
+    ]);
+
+    tasks = taskDb.listTasks({ noteFilter: notePath });
+    expect(tasks.length).toBe(1);
+    expect(tasks[0].id).toBe(taskId);
+  });
 });

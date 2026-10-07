@@ -12,6 +12,7 @@ export default defineConfig({
     hookTimeout: 60000,
     teardownTimeout: 60000,
     pool: "forks",
+    minWorkers: 1,
     maxWorkers: 4,
     isolate: true,
     alias: {

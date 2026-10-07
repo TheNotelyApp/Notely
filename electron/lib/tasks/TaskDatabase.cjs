@@ -190,7 +190,7 @@ class TaskDatabase {
 
     if (this.db) {
       const existingDbTasks = this.db.prepare(
-        'SELECT * FROM tasks WHERE source_path = ? AND user_managed = 0'
+        'SELECT * FROM tasks WHERE source_path = ?'
       ).all(filePath).map(r => this._deserialize(r));
 
       const matchedTaskIds = new Set();
@@ -265,7 +265,7 @@ class TaskDatabase {
           const hash = this._getUniqueSourceHash(filePath, p.title, p.occ);
           const existingHashMatch = this.db.prepare('SELECT id, user_managed, completed_at FROM tasks WHERE source_hash = ?').get(hash);
 
-          if (existingHashMatch && !existingHashMatch.user_managed) {
+          if (existingHashMatch) {
             matchedTaskIds.add(existingHashMatch.id);
             const completedAt = p.completed_at || (p.status === 'done' ? (existingHashMatch.completed_at || now) : null);
             this.db.prepare(
@@ -324,13 +324,13 @@ class TaskDatabase {
             completed_at: t.completed_at || (t.status === 'done' ? now : null),
           });
           inserted++;
-        } else if (!existing.user_managed && (
+        } else if (
           existing.status !== t.status ||
           existing.priority !== t.priority ||
           existing.due_date !== t.due_date ||
           existing.scheduled_start !== t.scheduled_start ||
           existing.scheduled_end !== t.scheduled_end
-        )) {
+        ) {
           existing.status = t.status;
           existing.priority = t.priority ?? 0;
           existing.due_date = t.due_date ?? null;
@@ -348,7 +348,7 @@ class TaskDatabase {
 
       // Purge orphaned tasks for this file
       this.jsonState.tasks = this.jsonState.tasks.filter(
-        t => t.source_path !== filePath || t.user_managed === 1 || activeHashSet.has(t.source_hash)
+        t => t.source_path !== filePath || activeHashSet.has(t.source_hash)
       );
 
       this._saveJson();
@@ -555,8 +555,14 @@ class TaskDatabase {
         params.push(null);
       }
 
-      sets.push('updated_at = ?', 'user_managed = 1');
+      sets.push('updated_at = ?');
       params.push(now);
+
+      if (fields.userManaged !== undefined || fields.user_managed !== undefined) {
+        const um = fields.userManaged !== undefined ? fields.userManaged : fields.user_managed;
+        sets.push('user_managed = ?');
+        params.push(um ? 1 : 0);
+      }
 
       this.db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`).run(...params, id);
       return this.getTask(id);
@@ -570,7 +576,10 @@ class TaskDatabase {
         const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
         task[snakeKey] = val;
       }
-      task.user_managed = 1;
+      if (fields.userManaged !== undefined || fields.user_managed !== undefined) {
+        const um = fields.userManaged !== undefined ? fields.userManaged : fields.user_managed;
+        task.user_managed = um ? 1 : 0;
+      }
       task.updated_at = now;
 
       if (fields.status === 'done' && !fields.completedAt) {
