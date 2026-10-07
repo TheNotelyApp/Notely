@@ -28,7 +28,7 @@
   gap: var(--space-4, 12px);
   padding: 10px 16px;
   min-height: 52px;
-  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--border-default);
   background: var(--surface-subtle, var(--surface-bg));
   box-sizing: border-box;
   flex-wrap: nowrap;
@@ -45,17 +45,17 @@
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   pointer-events: none;
 }
 
 .wdm-search-input {
   width: 100%;
   padding: 6px 12px 6px 32px;
-  background: var(--surface-bg, #1a1a1a);
-  border: 1px solid var(--border-default, #333);
+  background: var(--input-bg, var(--surface-bg));
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  color: var(--text-strong, #fff);
+  color: var(--text-primary);
   font-size: 13px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -74,18 +74,63 @@
   gap: 10px;
   padding: 0 12px;
   height: 32px;
-  background: var(--surface-muted, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   font-size: 12px;
-  color: var(--text-secondary, #aaa);
+  color: var(--text-secondary);
   font-weight: 500;
   box-sizing: border-box;
   white-space: nowrap;
 }
 
 .wdm-stats-pill strong {
-  color: var(--text-strong, #fff);
+  color: var(--text-strong, var(--text-primary));
+}
+
+/* View Mode Switcher in Header */
+.wdm-view-mode-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-subtle, var(--surface-bg));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  height: 32px;
+  box-sizing: border-box;
+  margin-left: auto;
+}
+
+.wdm-view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  outline: none;
+}
+
+.wdm-view-mode-btn:hover {
+  color: var(--text-strong, var(--text-primary));
+  background: var(--surface-hover);
+}
+
+.wdm-view-mode-btn.active {
+  background: var(--surface-elevated, var(--surface-selected, rgba(99, 102, 241, 0.18)));
+  color: var(--accent-solid, #6366f1);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 /* Main Body */
@@ -102,8 +147,8 @@
 .wdm-sidebar {
   width: 260px;
   min-width: 260px;
-  border-right: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
-  background: var(--surface-elevated, #161616);
+  border-right: 1px solid var(--border-default);
+  background: var(--surface-subtle, var(--surface-bg));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -358,11 +403,42 @@
   padding: 40px 20px;
 }
 
+/* Cards Grid View */
+.wdm-cards-grid-container {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.wdm-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.wdm-card {
+  background: var(--surface-elevated, #161616);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+  cursor: pointer;
+  position: relative;
+  min-width: 0;
+}
+
 .wdm-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background: var(--surface-hover, color-mix(in srgb, var(--surface-elevated) 96%, #fff));
-  border-color: var(--border-hover, rgba(255, 255, 255, 0.16));
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.18));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
 }
 
 .wdm-card.selected {
@@ -372,7 +448,7 @@
 
 .wdm-card-preview-area {
   height: 140px;
-  background: var(--surface-muted, rgba(0, 0, 0, 0.15));
+  background: var(--surface-muted, rgba(0, 0, 0, 0.2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -383,10 +459,20 @@
   box-sizing: border-box;
 }
 
-.wdm-card-preview-area img {
+.wdm-card-preview-img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+.wdm-card-top-badges {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
 }
 
 .wdm-card-preview-mermaid {
@@ -451,6 +537,219 @@
   white-space: nowrap;
   margin: 0;
   flex: 1;
+}
+
+.wdm-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.wdm-card-size {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+/* Icons / Compact Grid View */
+.wdm-icons-grid-container {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.wdm-icons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.wdm-icon-tile {
+  background: var(--surface-elevated, #161616);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  position: relative;
+  user-select: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.wdm-icon-tile:hover {
+  transform: translateY(-2px);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.2));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.wdm-icon-tile.selected {
+  outline: 2px solid var(--accent-solid, #6366f1);
+  border-color: transparent;
+  background: var(--surface-selected, rgba(99, 102, 241, 0.12));
+}
+
+.wdm-icon-tile-thumb {
+  width: 100%;
+  height: 90px;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.04));
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.wdm-icon-tile-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.wdm-icon-tile-mermaid {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.wdm-icon-tile-mermaid svg {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  height: auto !important;
+}
+
+.wdm-icon-tile-category-box {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Hover overlay actions on icon tiles */
+.wdm-icon-tile-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 3;
+}
+
+.wdm-icon-tile:hover .wdm-icon-tile-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wdm-icon-tile-action-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 3px;
+  border-radius: var(--radius-xs, 3px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease;
+}
+
+.wdm-icon-tile-action-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.wdm-icon-tile-tag {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: var(--radius-xs, 2px);
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wdm-icon-tile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+}
+
+.wdm-icon-tile-name {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-strong, #fff);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.wdm-icon-tile-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+
+.wdm-icon-tile-refcount {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: var(--radius-xs, 2px);
+  background: var(--surface-muted, rgba(255, 255, 255, 0.06));
+  color: var(--text-secondary);
+}
+
+.wdm-icon-tile-unused {
+  font-size: 10px;
 }
 
 .wdm-card-badges {

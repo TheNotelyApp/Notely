@@ -26,6 +26,9 @@ import {
   Info,
   Trash2,
   Download,
+  LayoutGrid,
+  Grid2X2,
+  List,
 } from "lucide-react";
 import {
   extractWorkspaceUsedAssets,
@@ -264,6 +267,22 @@ export default function WorkspaceDiagramsMediaPage({
   const [copiedId, setCopiedId] = useState(null);
   const [usageFilter, setUsageFilter] = useState("all"); // all, single, multi
   const [sortOrder, setSortOrder] = useState("ref-desc"); // ref-desc, ref-asc, name-asc, name-desc
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem("notely_wdm_view_mode") || "cards";
+    } catch {
+      return "cards";
+    }
+  });
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem("notely_wdm_view_mode", mode);
+    } catch {
+      // ignore
+    }
+  };
 
   // Category filters
   const [selectedCategories, setSelectedCategories] = useState({
@@ -646,6 +665,43 @@ export default function WorkspaceDiagramsMediaPage({
               </>
             )}
           </div>
+
+          {/* View Mode Switcher */}
+          <div className="wdm-view-mode-control" role="group" aria-label="Gallery view mode">
+            <button
+              type="button"
+              className={`wdm-view-mode-btn ${viewMode === "cards" ? "active" : ""}`}
+              onClick={() => handleViewModeChange("cards")}
+              data-tooltip="Card View"
+              title="Card View (Visual Previews)"
+              aria-label="Card View"
+            >
+              <LayoutGrid size={14} />
+              <span>Cards</span>
+            </button>
+            <button
+              type="button"
+              className={`wdm-view-mode-btn ${viewMode === "icons" ? "active" : ""}`}
+              onClick={() => handleViewModeChange("icons")}
+              data-tooltip="Icon View"
+              title="Icon View (Compact Grid)"
+              aria-label="Icon View"
+            >
+              <Grid2X2 size={14} />
+              <span>Icons</span>
+            </button>
+            <button
+              type="button"
+              className={`wdm-view-mode-btn ${viewMode === "list" ? "active" : ""}`}
+              onClick={() => handleViewModeChange("list")}
+              data-tooltip="List View"
+              title="List View (Detailed Table)"
+              aria-label="List View"
+            >
+              <List size={14} />
+              <span>List</span>
+            </button>
+          </div>
         </div>
 
         {/* Main Body with Split View */}
@@ -770,294 +826,668 @@ export default function WorkspaceDiagramsMediaPage({
           {/* Main Gallery Area */}
           <div className="wdm-canvas-wrapper">
             {filteredAssets.length === 0 ? (
-                <div className="wdm-empty-state">
-                  <Layers size={20} style={{ width: 40, height: 40, opacity: 0.3 }} />
-                  <div>
-                    <h3 style={{ margin: "0 0 6px 0", fontSize: "16px", color: "var(--text-strong)" }}>
-                      No Used Diagrams or Media Found
-                    </h3>
-                    <p style={{ margin: 0, fontSize: "12px", maxWidth: "380px" }}>
-                      {searchQuery
-                        ? "Try clearing your search query or selecting more categories in the filter sidebar."
-                        : "Embed Mermaid diagrams (```mermaid), Draw.io/Excalidraw, images, or PDFs in your workspace notes to see them cataloged here."}
-                    </p>
-                  </div>
+              <div className="wdm-empty-state">
+                <Layers size={20} style={{ width: 40, height: 40, opacity: 0.3 }} />
+                <div>
+                  <h3 style={{ margin: "0 0 6px 0", fontSize: "16px", color: "var(--text-strong)" }}>
+                    No Used Diagrams or Media Found
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "12px", maxWidth: "380px" }}>
+                    {searchQuery
+                      ? "Try clearing your search query or selecting more categories in the filter sidebar."
+                      : "Embed Mermaid diagrams (```mermaid), Draw.io/Excalidraw, images, or PDFs in your workspace notes to see them cataloged here."}
+                  </p>
                 </div>
-              ) : (
-                <div className="wdm-table-container">
-                  <table className="wdm-table">
-                    <thead>
-                      <tr>
-                        <th>Asset Name</th>
-                        <th style={{ width: "120px" }}>Type</th>
-                        <th style={{ width: "90px" }}>Size</th>
-                        <th style={{ width: "200px" }}>Referenced In</th>
-                        <th style={{ width: "150px" }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAssets.map((asset) => {
-                        const isSelected = viewingAsset?.id === asset.id || inspectingAsset?.id === asset.id;
-                        const CategoryIcon = (() => {
-                          switch (asset.category) {
-                            case "diagram": return FileCode;
-                            case "wireframe": return LayoutTemplate;
-                            case "image": return ImageIcon;
-                            case "pdf": return FileDigit;
-                            case "video": return Video;
-                            case "audio": return Music;
-                            case "transcript": return MessageSquareText;
-                            default: return File;
-                          }
-                        })();
+              </div>
+            ) : viewMode === "cards" ? (
+              /* ── Card View ── */
+              <div className="wdm-cards-grid-container">
+                <div className="wdm-cards-grid">
+                  {filteredAssets.map((asset) => {
+                    const isSelected = viewingAsset?.id === asset.id || inspectingAsset?.id === asset.id;
+                    const CategoryIcon = (() => {
+                      switch (asset.category) {
+                        case "diagram": return FileCode;
+                        case "wireframe": return LayoutTemplate;
+                        case "image": return ImageIcon;
+                        case "pdf": return FileDigit;
+                        case "video": return Video;
+                        case "audio": return Music;
+                        case "transcript": return MessageSquareText;
+                        default: return File;
+                      }
+                    })();
 
-                        const typeLabel = (() => {
-                          if (asset.category === "wireframe" || asset.subType === "wireframe") return "WIREFRAME";
-                          if (asset.subType === "excalidraw") return "EXCALIDRAW";
-                          if (asset.subType === "drawio") return "DRAW.IO";
-                          if (asset.subType === "mermaid") return asset.diagramType ? asset.diagramType.toUpperCase() : "MERMAID";
-                          if (asset.category === "transcript" || asset.subType === "transcript") return "TRANSCRIPT";
-                          const raw = asset.diagramType || (asset.subType && asset.subType.length <= 10 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
-                          return String(raw).toUpperCase();
-                        })();
+                    const typeLabel = (() => {
+                      if (asset.category === "wireframe" || asset.subType === "wireframe") return "WIREFRAME";
+                      if (asset.subType === "excalidraw") return "EXCALIDRAW";
+                      if (asset.subType === "drawio") return "DRAW.IO";
+                      if (asset.subType === "mermaid") return asset.diagramType ? asset.diagramType.toUpperCase() : "MERMAID";
+                      if (asset.category === "transcript" || asset.subType === "transcript") return "TRANSCRIPT";
+                      const raw = asset.diagramType || (asset.subType && asset.subType.length <= 10 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
+                      return String(raw).toUpperCase();
+                    })();
 
-                        const formattedSize = (() => {
-                          if (typeof asset.size !== "number" || asset.size <= 0) return "—";
-                          if (asset.size < 1024) return `${asset.size} B`;
-                          if (asset.size < 1024 * 1024) return `${(asset.size / 1024).toFixed(1)} KB`;
-                          return `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
-                        })();
+                    const formattedSize = (() => {
+                      if (typeof asset.size !== "number" || asset.size <= 0) return "—";
+                      if (asset.size < 1024) return `${asset.size} B`;
+                      if (asset.size < 1024 * 1024) return `${(asset.size / 1024).toFixed(1)} KB`;
+                      return `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
+                    })();
 
-                        const extractionRec = extractions[asset.path] || extractions[asset.name] || extractions[asset.fileName];
-                        const isDocumentCategory = asset.category === "pdf" || asset.category === "document" || ["pdf", "docx", "pptx", "xlsx", "xls", "csv"].includes(String(asset.extension || "").toLowerCase());
+                    const extractionRec = extractions[asset.path] || extractions[asset.name] || extractions[asset.fileName];
+                    const isDocumentCategory = asset.category === "pdf" || asset.category === "document" || ["pdf", "docx", "pptx", "xlsx", "xls", "csv"].includes(String(asset.extension || "").toLowerCase());
+                    const isMediaAudioVideo = asset.category === "audio" || asset.category === "video";
 
-                        return (
-                          <tr
-                            key={asset.id}
-                            className={`wdm-table-row ${isSelected ? "selected" : ""}`}
-                            onClick={() => setViewingAsset(asset)}
-                            title="Click to preview asset"
-                          >
-                            {/* Asset Name with Icon & Sub-path */}
-                            <td>
-                              <div className="wdm-asset-name-cell">
-                                <div className={`wdm-asset-icon-box wdm-badge-${asset.category}`}>
-                                  <CategoryIcon size={14} />
-                                </div>
-                                <div className="wdm-asset-name-info">
-                                  <span className="wdm-asset-main-name" title={asset.name}>
-                                    {asset.name}
-                                  </span>
-                                  <span className="wdm-asset-sub-path" title={cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}>
-                                    {asset.path?.startsWith("inline:") ? "Inline Diagram" : cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}
-                                  </span>
-                                </div>
+                    return (
+                      <div
+                        key={asset.id}
+                        className={`wdm-card ${isSelected ? "selected" : ""}`}
+                        onClick={() => setViewingAsset(asset)}
+                        title={`Click to preview "${asset.name}"`}
+                      >
+                        {/* Card Preview Area */}
+                        <div className="wdm-card-preview-area">
+                          {asset.subType === "mermaid" ? (
+                            <div className="wdm-card-preview-mermaid">
+                              <MermaidRenderer code={asset.rawCode} isCardPreview={true} />
+                            </div>
+                          ) : (asset.category === "image" || asset.category === "wireframe" || asset.subType === "wireframe" || asset.subType === "drawio" || asset.subType === "excalidraw" || asset.category === "diagram") ? (
+                            <DiagramOrImagePreviewItem
+                              asset={asset}
+                              basePath={asset.referencedBy[0]?.notePath || workspacePath}
+                              className="wdm-card-preview-img"
+                            />
+                          ) : isDocumentCategory ? (
+                            <div className="wdm-card-preview-doc">
+                              <div className={`wdm-card-icon-frame wdm-badge-${asset.category}`}>
+                                <CategoryIcon size={20} />
                               </div>
-                            </td>
-
-                            {/* Type Badge & Companion Transcript / Extraction Indicators */}
-                            <td>
-                              <div style={{ display: "inline-flex", alignItems: "center", flexWrap: "nowrap" }}>
-                                <span className={`wdm-badge wdm-badge-${asset.category}`}>
-                                  {typeLabel}
-                                </span>
-                                {(asset.hasTranscript || asset.linkedTranscriptId || asset.linkedTranscriptPath) && (
-                                  <span
-                                    className="wdm-transcript-indicator"
-                                    title="Speech-to-Text transcript attached"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setInspectingAsset(asset);
-                                    }}
-                                  >
-                                    <MessageSquareText size={12} />
-                                    Transcript
-                                  </span>
-                                )}
-                                {isDocumentCategory && extractionRec && (
-                                  <span
-                                    className={`wdm-extraction-indicator ${extractionRec.status || "ready"}`}
-                                    title={
-                                      extractionRec.status === "ready"
-                                        ? `Extracted: ${extractionRec.pageCount || 1} ${extractionRec.pageCount === 1 ? "page" : "pages"}, ${extractionRec.wordCount || 0} words. Click to preview extracted markdown.`
-                                        : extractionRec.status === "processing" || extractionRec.status === "pending"
-                                        ? "Extracting text in background..."
-                                        : extractionRec.status === "encrypted"
-                                        ? "Password Protected PDF"
-                                        : extractionRec.status === "empty"
-                                        ? "Scanned Document (No text layer)"
-                                        : extractionRec.errorMessage || "Extraction failed"
-                                    }
-                                    onClick={(e) => {
-                                      if (extractionRec.status === "ready") {
-                                        e.stopPropagation();
-                                        setViewingAsset(asset);
-                                        setViewingAssetTab("extracted");
-                                      }
-                                    }}
-                                  >
-                                    {extractionRec.status === "processing" || extractionRec.status === "pending" ? (
-                                      <>
-                                        <Loader2 size={12} className="spin" />
-                                        <span>Extracting</span>
-                                      </>
-                                    ) : extractionRec.status === "ready" ? (
-                                      <>
-                                        <Check size={12} />
-                                        <span>{extractionRec.wordCount > 0 ? `${extractionRec.wordCount}w` : "Extracted"}</span>
-                                      </>
-                                    ) : extractionRec.status === "empty" ? (
-                                      <>
-                                        <Info size={12} />
-                                        <span>Scanned</span>
-                                      </>
-                                    ) : extractionRec.status === "encrypted" ? (
-                                      <>
-                                        <AlertCircle size={12} />
-                                        <span>Protected</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <AlertCircle size={12} />
-                                        <span>Failed</span>
-                                      </>
-                                    )}
-                                  </span>
-                                )}
+                            </div>
+                          ) : isMediaAudioVideo ? (
+                            <div className="wdm-card-preview-doc">
+                              <div className={`wdm-card-icon-frame wdm-badge-${asset.category}`}>
+                                <CategoryIcon size={20} />
                               </div>
-                            </td>
+                            </div>
+                          ) : (
+                            <div className="wdm-card-preview-doc">
+                              <div className="wdm-card-icon-frame wdm-badge-document">
+                                <File size={20} />
+                              </div>
+                            </div>
+                          )}
 
-                            {/* File Size */}
-                            <td style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
-                              {formattedSize}
-                            </td>
+                          {/* Top Badges */}
+                          <div className="wdm-card-top-badges">
+                            <span className={`wdm-badge wdm-badge-${asset.category}`}>
+                              {typeLabel}
+                            </span>
+                          </div>
+                        </div>
 
-                            {/* Referenced Notes / Unused badge */}
-                            <td>
-                              {asset.referenceCount === 0 ? (
-                                <span className="wdm-ref-pill is-unused" title="Unlinked asset in workspace">
-                                  <AlertCircle size={12} />
-                                  Unused
+                        {/* Card Content */}
+                        <div className="wdm-card-content">
+                          <div className="wdm-card-title-row">
+                            <h4 className="wdm-card-title" title={asset.name}>
+                              {asset.name}
+                            </h4>
+                          </div>
+
+                          <div className="wdm-card-meta-row">
+                            <span className="wdm-card-size">{formattedSize}</span>
+                            {asset.referenceCount === 0 ? (
+                              <span className="wdm-ref-pill is-unused" title="Unlinked asset in workspace">
+                                <AlertCircle size={12} /> Unused
+                              </span>
+                            ) : asset.referenceCount === 1 ? (
+                              <span
+                                className="wdm-ref-pill"
+                                title={`Referenced in: ${asset.referencedBy[0]?.noteTitle}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenNote?.(asset.referencedBy[0].notePath, asset.referencedBy[0].lineNumber);
+                                }}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <FileText size={12} />
+                                <span style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {asset.referencedBy[0]?.noteTitle}
                                 </span>
-                              ) : asset.referenceCount === 1 ? (
-                                <button
-                                  className="wdm-ref-pill-btn"
-                                  onClick={(e) => {
+                              </span>
+                            ) : (
+                              <span
+                                className="wdm-ref-pill"
+                                title={`${asset.referenceCount} notes reference this asset`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectingAsset(asset);
+                                }}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <FileText size={12} />
+                                <span>{asset.referenceCount} notes</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Badges / indicators */}
+                          <div className="wdm-card-badges">
+                            {(asset.hasTranscript || asset.linkedTranscriptId || asset.linkedTranscriptPath) && (
+                              <span
+                                className="wdm-transcript-indicator"
+                                title="Speech-to-Text transcript attached"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectingAsset(asset);
+                                }}
+                              >
+                                <MessageSquareText size={12} />
+                                Transcript
+                              </span>
+                            )}
+                            {isDocumentCategory && extractionRec && (
+                              <span
+                                className={`wdm-extraction-indicator ${extractionRec.status || "ready"}`}
+                                title={extractionRec.status === "ready" ? `Extracted: ${extractionRec.wordCount || 0} words` : extractionRec.status}
+                                onClick={(e) => {
+                                  if (extractionRec.status === "ready") {
                                     e.stopPropagation();
-                                    onOpenNote?.(asset.referencedBy[0].notePath, asset.referencedBy[0].lineNumber);
-                                  }}
-                                  title={`Open ${asset.referencedBy[0].noteTitle}:${asset.referencedBy[0].lineNumber}`}
-                                >
-                                  <FileText size={12} />
-                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {asset.referencedBy[0].noteTitle}
-                                  </span>
-                                </button>
-                              ) : (
-                                <button
-                                  className="wdm-ref-pill-btn"
+                                    setViewingAsset(asset);
+                                    setViewingAssetTab("extracted");
+                                  }
+                                }}
+                              >
+                                {extractionRec.status === "ready" ? <><Check size={12} /><span>{extractionRec.wordCount > 0 ? `${extractionRec.wordCount}w` : "Extracted"}</span></> : <span>{extractionRec.status}</span>}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="wdm-card-footer">
+                          <span
+                            className={`wdm-card-footer-path ${asset.referenceCount === 0 ? "is-unused" : ""}`}
+                            title={asset.path?.startsWith("inline:") ? "Inline Diagram" : cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}
+                          >
+                            {asset.path?.startsWith("inline:") ? "Inline Diagram" : cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}
+                          </span>
+
+                          <div className="wdm-card-footer-actions">
+                            {isDocumentCategory && extractionRec?.status === "ready" && (
+                              <button
+                                className="wdm-icon-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingAsset(asset);
+                                  setViewingAssetTab("extracted");
+                                }}
+                                title="View Extracted Text"
+                                style={{ color: "#34d399" }}
+                              >
+                                <FileText size={14} />
+                              </button>
+                            )}
+
+                            {isMediaAudioVideo && (
+                              <button
+                                className="wdm-icon-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGenerateTranscript(asset);
+                                }}
+                                disabled={Boolean(transcribingAssetId)}
+                                title={transcribingAssetId === asset.id ? transcriptionStatus : "Generate AI Speech-to-Text Transcript"}
+                                style={{ color: "#38bdf8" }}
+                              >
+                                {transcribingAssetId === asset.id ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                              </button>
+                            )}
+
+                            <button
+                              className="wdm-icon-btn"
+                              onClick={(e) => handleCopy(asset, e)}
+                              title="Copy Markdown Embed"
+                            >
+                              {copiedId === asset.id ? <Check size={14} style={{ color: "#10b981" }} /> : <Copy size={14} />}
+                            </button>
+
+                            {asset.path && !asset.path.startsWith("inline:") && (
+                              <button
+                                className="wdm-icon-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const targetBase = asset.referencedBy[0]?.notePath || workspacePath || "";
+                                  openMediaInDefaultApp(targetBase, asset.path).catch((err) => {
+                                    showNotification(`Failed to open in default app: ${err.message || err}`, "error");
+                                  });
+                                }}
+                                title="Open in OS Default App"
+                              >
+                                <ExternalLink size={14} />
+                              </button>
+                            )}
+
+                            <button
+                              className="wdm-icon-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInspectingAsset(asset);
+                              }}
+                              title="Inspect Details & Notes"
+                            >
+                              <Info size={14} />
+                            </button>
+
+                            {asset.path && !asset.path.startsWith("inline:") && (
+                              <button
+                                className="wdm-icon-btn wdm-delete-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAssetToDelete(asset);
+                                }}
+                                title="Delete Asset from Disk"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : viewMode === "icons" ? (
+              /* ── Icon / Compact Grid View ── */
+              <div className="wdm-icons-grid-container">
+                <div className="wdm-icons-grid">
+                  {filteredAssets.map((asset) => {
+                    const isSelected = viewingAsset?.id === asset.id || inspectingAsset?.id === asset.id;
+                    const CategoryIcon = (() => {
+                      switch (asset.category) {
+                        case "diagram": return FileCode;
+                        case "wireframe": return LayoutTemplate;
+                        case "image": return ImageIcon;
+                        case "pdf": return FileDigit;
+                        case "video": return Video;
+                        case "audio": return Music;
+                        case "transcript": return MessageSquareText;
+                        default: return File;
+                      }
+                    })();
+
+                    const typeLabel = (() => {
+                      if (asset.category === "wireframe" || asset.subType === "wireframe") return "WIREFRAME";
+                      if (asset.subType === "excalidraw") return "EXCALIDRAW";
+                      if (asset.subType === "drawio") return "DRAW.IO";
+                      if (asset.subType === "mermaid") return asset.diagramType ? asset.diagramType.toUpperCase() : "MERMAID";
+                      if (asset.category === "transcript" || asset.subType === "transcript") return "TRANSCRIPT";
+                      const raw = asset.diagramType || (asset.subType && asset.subType.length <= 10 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
+                      return String(raw).toUpperCase();
+                    })();
+
+                    const formattedSize = (() => {
+                      if (typeof asset.size !== "number" || asset.size <= 0) return "—";
+                      if (asset.size < 1024) return `${asset.size} B`;
+                      if (asset.size < 1024 * 1024) return `${(asset.size / 1024).toFixed(1)} KB`;
+                      return `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
+                    })();
+
+                    return (
+                      <div
+                        key={asset.id}
+                        className={`wdm-icon-tile ${isSelected ? "selected" : ""}`}
+                        onClick={() => setViewingAsset(asset)}
+                        title={`${asset.name}\nType: ${typeLabel}\nSize: ${formattedSize}\nReferences: ${asset.referenceCount}`}
+                      >
+                        {/* Tile Preview / Icon Box */}
+                        <div className="wdm-icon-tile-thumb">
+                          {asset.subType === "mermaid" ? (
+                            <div className="wdm-icon-tile-mermaid">
+                              <MermaidRenderer code={asset.rawCode} isCardPreview={true} />
+                            </div>
+                          ) : (asset.category === "image" || asset.category === "wireframe" || asset.subType === "wireframe" || asset.subType === "drawio" || asset.subType === "excalidraw" || asset.category === "diagram") ? (
+                            <DiagramOrImagePreviewItem
+                              asset={asset}
+                              basePath={asset.referencedBy[0]?.notePath || workspacePath}
+                              className="wdm-icon-tile-img"
+                            />
+                          ) : (
+                            <div className={`wdm-icon-tile-category-box wdm-badge-${asset.category}`}>
+                              <CategoryIcon size={20} />
+                            </div>
+                          )}
+
+                          {/* Quick Actions Hover Overlay */}
+                          <div className="wdm-icon-tile-overlay" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="wdm-icon-tile-action-btn"
+                              onClick={() => setViewingAsset(asset)}
+                              title="Preview"
+                            >
+                              <Eye size={12} />
+                            </button>
+                            <button
+                              className="wdm-icon-tile-action-btn"
+                              onClick={(e) => handleCopy(asset, e)}
+                              title="Copy embed"
+                            >
+                              {copiedId === asset.id ? <Check size={12} style={{ color: "#10b981" }} /> : <Copy size={12} />}
+                            </button>
+                            <button
+                              className="wdm-icon-tile-action-btn"
+                              onClick={() => setInspectingAsset(asset)}
+                              title="Inspect info"
+                            >
+                              <Info size={12} />
+                            </button>
+                          </div>
+
+                          {/* Tag chip */}
+                          <span className={`wdm-icon-tile-tag wdm-badge-${asset.category}`}>
+                            {typeLabel}
+                          </span>
+                        </div>
+
+                        {/* Tile Meta */}
+                        <div className="wdm-icon-tile-info">
+                          <span className="wdm-icon-tile-name" title={asset.name}>
+                            {asset.name}
+                          </span>
+                          <div className="wdm-icon-tile-sub">
+                            <span>{formattedSize}</span>
+                            {asset.referenceCount === 0 ? (
+                              <span className="wdm-icon-tile-unused" title="Unused in notes">⚠️</span>
+                            ) : (
+                              <span className="wdm-icon-tile-refcount" title={`${asset.referenceCount} notes`}>
+                                {asset.referenceCount}n
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* ── List / Table View ── */
+              <div className="wdm-table-container">
+                <table className="wdm-table">
+                  <thead>
+                    <tr>
+                      <th>Asset Name</th>
+                      <th style={{ width: "120px" }}>Type</th>
+                      <th style={{ width: "90px" }}>Size</th>
+                      <th style={{ width: "200px" }}>Referenced In</th>
+                      <th style={{ width: "150px" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAssets.map((asset) => {
+                      const isSelected = viewingAsset?.id === asset.id || inspectingAsset?.id === asset.id;
+                      const CategoryIcon = (() => {
+                        switch (asset.category) {
+                          case "diagram": return FileCode;
+                          case "wireframe": return LayoutTemplate;
+                          case "image": return ImageIcon;
+                          case "pdf": return FileDigit;
+                          case "video": return Video;
+                          case "audio": return Music;
+                          case "transcript": return MessageSquareText;
+                          default: return File;
+                        }
+                      })();
+
+                      const typeLabel = (() => {
+                        if (asset.category === "wireframe" || asset.subType === "wireframe") return "WIREFRAME";
+                        if (asset.subType === "excalidraw") return "EXCALIDRAW";
+                        if (asset.subType === "drawio") return "DRAW.IO";
+                        if (asset.subType === "mermaid") return asset.diagramType ? asset.diagramType.toUpperCase() : "MERMAID";
+                        if (asset.category === "transcript" || asset.subType === "transcript") return "TRANSCRIPT";
+                        const raw = asset.diagramType || (asset.subType && asset.subType.length <= 10 && !asset.subType.includes("/") ? asset.subType : "") || asset.extension || asset.category || "FILE";
+                        return String(raw).toUpperCase();
+                      })();
+
+                      const formattedSize = (() => {
+                        if (typeof asset.size !== "number" || asset.size <= 0) return "—";
+                        if (asset.size < 1024) return `${asset.size} B`;
+                        if (asset.size < 1024 * 1024) return `${(asset.size / 1024).toFixed(1)} KB`;
+                        return `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
+                      })();
+
+                      const extractionRec = extractions[asset.path] || extractions[asset.name] || extractions[asset.fileName];
+                      const isDocumentCategory = asset.category === "pdf" || asset.category === "document" || ["pdf", "docx", "pptx", "xlsx", "xls", "csv"].includes(String(asset.extension || "").toLowerCase());
+
+                      return (
+                        <tr
+                          key={asset.id}
+                          className={`wdm-table-row ${isSelected ? "selected" : ""}`}
+                          onClick={() => setViewingAsset(asset)}
+                          title="Click to preview asset"
+                        >
+                          {/* Asset Name with Icon & Sub-path */}
+                          <td>
+                            <div className="wdm-asset-name-cell">
+                              <div className={`wdm-asset-icon-box wdm-badge-${asset.category}`}>
+                                <CategoryIcon size={14} />
+                              </div>
+                              <div className="wdm-asset-name-info">
+                                <span className="wdm-asset-main-name" title={asset.name}>
+                                  {asset.name}
+                                </span>
+                                <span className="wdm-asset-sub-path" title={cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}>
+                                  {asset.path?.startsWith("inline:") ? "Inline Diagram" : cleanRelativePathForDisplay(toWorkspaceRelativePath(asset.path, workspacePath))}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Type Badge & Companion Transcript / Extraction Indicators */}
+                          <td>
+                            <div style={{ display: "inline-flex", alignItems: "center", flexWrap: "nowrap" }}>
+                              <span className={`wdm-badge wdm-badge-${asset.category}`}>
+                                {typeLabel}
+                              </span>
+                              {(asset.hasTranscript || asset.linkedTranscriptId || asset.linkedTranscriptPath) && (
+                                <span
+                                  className="wdm-transcript-indicator"
+                                  title="Speech-to-Text transcript attached"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setInspectingAsset(asset);
                                   }}
-                                  title="Click to view all referenced notes in inspector"
                                 >
-                                  <FileText size={12} />
-                                  <span>{asset.referenceCount} notes</span>
-                                </button>
+                                  <MessageSquareText size={12} />
+                                  Transcript
+                                </span>
                               )}
-                            </td>
-
-                            {/* Actions Column */}
-                            <td>
-                              <div className="wdm-table-action-btns">
-                                {isDocumentCategory && extractionRec?.status === "ready" && (
-                                  <button
-                                    className="wdm-icon-btn"
-                                    onClick={(e) => {
+                              {isDocumentCategory && extractionRec && (
+                                <span
+                                  className={`wdm-extraction-indicator ${extractionRec.status || "ready"}`}
+                                  title={
+                                    extractionRec.status === "ready"
+                                      ? `Extracted: ${extractionRec.pageCount || 1} ${extractionRec.pageCount === 1 ? "page" : "pages"}, ${extractionRec.wordCount || 0} words. Click to preview extracted markdown.`
+                                      : extractionRec.status === "processing" || extractionRec.status === "pending"
+                                      ? "Extracting text in background..."
+                                      : extractionRec.status === "encrypted"
+                                      ? "Password Protected PDF"
+                                      : extractionRec.status === "empty"
+                                      ? "Scanned Document (No text layer)"
+                                      : extractionRec.errorMessage || "Extraction failed"
+                                  }
+                                  onClick={(e) => {
+                                    if (extractionRec.status === "ready") {
                                       e.stopPropagation();
                                       setViewingAsset(asset);
                                       setViewingAssetTab("extracted");
-                                    }}
-                                    title="View Extracted Text"
-                                    style={{ color: "#34d399" }}
-                                  >
-                                    <FileText size={14} />
-                                  </button>
-                                )}
-
-                                {(asset.category === "audio" || asset.category === "video") && (
-                                  <button
-                                    className="wdm-icon-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleGenerateTranscript(asset);
-                                    }}
-                                    disabled={Boolean(transcribingAssetId)}
-                                    title={transcribingAssetId === asset.id ? transcriptionStatus : "Generate AI Speech-to-Text Transcript"}
-                                    style={{ color: "#38bdf8" }}
-                                  >
-                                    {transcribingAssetId === asset.id ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
-                                  </button>
-                                )}
-
-                                <button
-                                  className="wdm-icon-btn"
-                                  onClick={(e) => handleCopy(asset, e)}
-                                  title="Copy Markdown Link / Embed"
+                                    }
+                                  }}
                                 >
-                                  {copiedId === asset.id ? <Check size={14} style={{ color: "#10b981" }} /> : <Copy size={14} />}
-                                </button>
+                                  {extractionRec.status === "processing" || extractionRec.status === "pending" ? (
+                                    <>
+                                      <Loader2 size={12} className="spin" />
+                                      <span>Extracting</span>
+                                    </>
+                                  ) : extractionRec.status === "ready" ? (
+                                    <>
+                                      <Check size={12} />
+                                      <span>{extractionRec.wordCount > 0 ? `${extractionRec.wordCount}w` : "Extracted"}</span>
+                                    </>
+                                  ) : extractionRec.status === "empty" ? (
+                                    <>
+                                      <Info size={12} />
+                                      <span>Scanned</span>
+                                    </>
+                                  ) : extractionRec.status === "encrypted" ? (
+                                    <>
+                                      <AlertCircle size={12} />
+                                      <span>Protected</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertCircle size={12} />
+                                      <span>Failed</span>
+                                    </>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </td>
 
-                                {asset.path && !asset.path.startsWith("inline:") && (
-                                  <button
-                                    className="wdm-icon-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const targetBase = asset.referencedBy[0]?.notePath || workspacePath || "";
-                                      openMediaInDefaultApp(targetBase, asset.path).catch((err) => {
-                                        showNotification(`Failed to open in default app: ${err.message || err}`, "error");
-                                      });
-                                    }}
-                                    title="Open in OS Default App"
-                                  >
-                                    <ExternalLink size={14} />
-                                  </button>
-                                )}
+                          {/* File Size */}
+                          <td style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                            {formattedSize}
+                          </td>
 
+                          {/* Referenced Notes / Unused badge */}
+                          <td>
+                            {asset.referenceCount === 0 ? (
+                              <span className="wdm-ref-pill is-unused" title="Unlinked asset in workspace">
+                                <AlertCircle size={12} />
+                                Unused
+                              </span>
+                            ) : asset.referenceCount === 1 ? (
+                              <button
+                                className="wdm-ref-pill-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenNote?.(asset.referencedBy[0].notePath, asset.referencedBy[0].lineNumber);
+                                }}
+                                title={`Open ${asset.referencedBy[0].noteTitle}:${asset.referencedBy[0].lineNumber}`}
+                              >
+                                <FileText size={12} />
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {asset.referencedBy[0].noteTitle}
+                                </span>
+                              </button>
+                            ) : (
+                              <button
+                                className="wdm-ref-pill-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectingAsset(asset);
+                                }}
+                                title="Click to view all referenced notes in inspector"
+                              >
+                                <FileText size={12} />
+                                <span>{asset.referenceCount} notes</span>
+                              </button>
+                            )}
+                          </td>
+
+                          {/* Actions Column */}
+                          <td>
+                            <div className="wdm-table-action-btns">
+                              {isDocumentCategory && extractionRec?.status === "ready" && (
                                 <button
                                   className="wdm-icon-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setInspectingAsset(asset);
+                                    setViewingAsset(asset);
+                                    setViewingAssetTab("extracted");
                                   }}
-                                  title="Inspect Metadata & Note References"
+                                  title="View Extracted Text"
+                                  style={{ color: "#34d399" }}
                                 >
-                                  <Info size={14} />
+                                  <FileText size={14} />
                                 </button>
+                              )}
 
-                                {asset.path && !asset.path.startsWith("inline:") && (
-                                  <button
-                                    className="wdm-icon-btn wdm-delete-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAssetToDelete(asset);
-                                    }}
-                                    title="Delete Asset from Disk"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                              {(asset.category === "audio" || asset.category === "video") && (
+                                <button
+                                  className="wdm-icon-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGenerateTranscript(asset);
+                                  }}
+                                  disabled={Boolean(transcribingAssetId)}
+                                  title={transcribingAssetId === asset.id ? transcriptionStatus : "Generate AI Speech-to-Text Transcript"}
+                                  style={{ color: "#38bdf8" }}
+                                >
+                                  {transcribingAssetId === asset.id ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                                </button>
+                              )}
+
+                              <button
+                                className="wdm-icon-btn"
+                                onClick={(e) => handleCopy(asset, e)}
+                                title="Copy Markdown Link / Embed"
+                              >
+                                {copiedId === asset.id ? <Check size={14} style={{ color: "#10b981" }} /> : <Copy size={14} />}
+                              </button>
+
+                              {asset.path && !asset.path.startsWith("inline:") && (
+                                <button
+                                  className="wdm-icon-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const targetBase = asset.referencedBy[0]?.notePath || workspacePath || "";
+                                    openMediaInDefaultApp(targetBase, asset.path).catch((err) => {
+                                      showNotification(`Failed to open in default app: ${err.message || err}`, "error");
+                                    });
+                                  }}
+                                  title="Open in OS Default App"
+                                >
+                                  <ExternalLink size={14} />
+                                </button>
+                              )}
+
+                              <button
+                                className="wdm-icon-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectingAsset(asset);
+                                }}
+                                title="Inspect Metadata & Note References"
+                              >
+                                <Info size={14} />
+                              </button>
+
+                              {asset.path && !asset.path.startsWith("inline:") && (
+                                <button
+                                  className="wdm-icon-btn wdm-delete-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssetToDelete(asset);
+                                  }}
+                                  title="Delete Asset from Disk"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
 
           {/* Full Asset Viewer Modal (uses standardized MediaPreviewPane from Editor) */}
           {viewingAsset && (
@@ -1514,6 +1944,5 @@ export default function WorkspaceDiagramsMediaPage({
           )}
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
